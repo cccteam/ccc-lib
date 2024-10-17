@@ -1,4 +1,4 @@
-import { ErrorMessage } from '../models/error-message';
+import { ErrorMessage } from "../models/error-message";
 export declare namespace AuthenticationGuardAction {
     class SetRedirectUrl {
         redirectUrl: string;
@@ -54,6 +54,11 @@ export declare namespace AppAction {
         redirectUrl: string;
         static readonly type = "[App] Set Redirect Url";
         constructor(redirectUrl: string);
+    }
+    class SetNavIdentifier {
+        identifier: string;
+        static readonly type = "[App] Set Nav Identifier";
+        constructor(identifier: string);
     }
 }
 export declare namespace HeaderAction {

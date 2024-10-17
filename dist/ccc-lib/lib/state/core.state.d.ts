@@ -1,11 +1,13 @@
-import { StateContext } from '@ngxs/store';
-import { Observable } from 'rxjs';
-import { SessionInfo } from '../models/session-info';
-import { ErrorMessage } from '../models/error-message';
+import { StateContext } from "@ngxs/store";
+import { Observable } from "rxjs";
+import { ErrorMessage } from "../models/error-message";
+import { SessionInfo } from "../models/session-info";
+import { AppAction } from "./core.actions";
 import * as i0 from "@angular/core";
 export interface CoreStateModel {
     loading: string[];
     sidenavOpened: boolean;
+    currentSidenavIdentifier: string;
     auth: {
         authenticated: boolean;
         redirectUrl: string;
@@ -22,6 +24,8 @@ export declare class CoreState {
     static isAuthenticated(state: CoreStateModel): boolean;
     static redirectUrl(state: CoreStateModel): string;
     static isLoading(state: CoreStateModel): boolean;
+    static currentSidenavIdentifier(state: CoreStateModel): string;
+    setNavIdentifier(ctx: StateContext<CoreStateModel>, action: AppAction.SetNavIdentifier): void;
     publishError(ctx: StateContext<CoreStateModel>, action: {
         message: ErrorMessage;
     }): void;

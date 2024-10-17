@@ -1,8 +1,8 @@
 import { Directive, Input, TemplateRef, ViewContainerRef, inject } from "@angular/core";
 import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { Store } from "@ngxs/store";
-import { CoreState } from "ccc-lib";
 import { Subject, catchError, combineLatest, map, of } from "rxjs";
+import { CoreState } from "../state/core.state";
 
 @Directive({
   selector: "[appHasPermission]",

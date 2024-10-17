@@ -1,128 +1,22 @@
 import * as i0 from '@angular/core';
-import { InjectionToken, inject, Injectable, NgZone, EventEmitter, Component, Input, Output } from '@angular/core';
-import * as i4 from '@angular/router';
-import { Router, RouterModule } from '@angular/router';
+import { InjectionToken, inject, Injectable, NgZone, EventEmitter, Component, Input, Output, TemplateRef, ViewContainerRef, Directive } from '@angular/core';
 import { Action, Selector, State, Store } from '@ngxs/store';
-import { map, BehaviorSubject, tap, of, catchError as catchError$1, throwError, finalize } from 'rxjs';
-import { __decorate } from 'tslib';
-import { patch } from '@ngxs/store/operators';
+import { map, BehaviorSubject, tap, of, catchError as catchError$1, throwError, finalize, Subject, combineLatest } from 'rxjs';
+import { switchMap, map as map$1, catchError } from 'rxjs/operators';
 import * as i1 from '@angular/common/http';
 import { HttpContextToken, HttpContext } from '@angular/common/http';
+import { __decorate } from 'tslib';
+import { patch } from '@ngxs/store/operators';
 import { cloneDeep } from 'lodash-es';
-import { switchMap, map as map$1, catchError } from 'rxjs/operators';
+import * as i4 from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import * as i3 from '@angular/common';
 import { CommonModule } from '@angular/common';
 import * as i2 from '@angular/material/button';
 import { MatButtonModule } from '@angular/material/button';
 import * as i1$1 from '@angular/material/icon';
 import { MatIconModule } from '@angular/material/icon';
-
-/* eslint-disable @typescript-eslint/no-namespace */
-// no-namespace rule is disabled because action hygiene prevents import pollution
-var AuthenticationGuardAction;
-(function (AuthenticationGuardAction) {
-    class SetRedirectUrl {
-        redirectUrl;
-        static type = '[AuthenticationGuard] Set Redirect Url And Navigate To Login Page';
-        constructor(redirectUrl) {
-            this.redirectUrl = redirectUrl;
-        }
-    }
-    AuthenticationGuardAction.SetRedirectUrl = SetRedirectUrl;
-    class CheckUserSession {
-        static type = '[AuthenticationGuard] Check User Session';
-    }
-    AuthenticationGuardAction.CheckUserSession = CheckUserSession;
-})(AuthenticationGuardAction || (AuthenticationGuardAction = {}));
-var ApiInterceptorAction;
-(function (ApiInterceptorAction) {
-    class BeginActivity {
-        process;
-        static type = '[ApiInterceptor] Add Loading Activity';
-        constructor(process) {
-            this.process = process;
-        }
-    }
-    ApiInterceptorAction.BeginActivity = BeginActivity;
-    class EndActivity {
-        process;
-        static type = '[ApiInterceptor] Remove Loading Activity';
-        constructor(process) {
-            this.process = process;
-        }
-    }
-    ApiInterceptorAction.EndActivity = EndActivity;
-    class SetRedirectUrl {
-        redirectUrl;
-        static type = '[ApiInterceptor] Set Redirect Url';
-        constructor(redirectUrl) {
-            this.redirectUrl = redirectUrl;
-        }
-    }
-    ApiInterceptorAction.SetRedirectUrl = SetRedirectUrl;
-    class PublishError {
-        message;
-        static type = '[ApiInterceptor] Publish Error';
-        constructor(message) {
-            this.message = message;
-        }
-    }
-    ApiInterceptorAction.PublishError = PublishError;
-})(ApiInterceptorAction || (ApiInterceptorAction = {}));
-var LoginAction;
-(function (LoginAction) {
-    class Logout {
-        static type = '[Login] Auto Logout';
-    }
-    LoginAction.Logout = Logout;
-    class SetRedirectUrl {
-        redirectUrl;
-        static type = '[Login] Set Redirect Url';
-        constructor(redirectUrl) {
-            this.redirectUrl = redirectUrl;
-        }
-    }
-    LoginAction.SetRedirectUrl = SetRedirectUrl;
-    class PublishError {
-        message;
-        static type = '[Login] Publish Error';
-        constructor(message) {
-            this.message = message;
-        }
-    }
-    LoginAction.PublishError = PublishError;
-})(LoginAction || (LoginAction = {}));
-var AppAction;
-(function (AppAction) {
-    class CheckUserSession {
-        static type = '[App] Check User Session';
-    }
-    AppAction.CheckUserSession = CheckUserSession;
-    class SetRedirectUrl {
-        redirectUrl;
-        static type = '[App] Set Redirect Url';
-        constructor(redirectUrl) {
-            this.redirectUrl = redirectUrl;
-        }
-    }
-    AppAction.SetRedirectUrl = SetRedirectUrl;
-})(AppAction || (AppAction = {}));
-var HeaderAction;
-(function (HeaderAction) {
-    class ToggleSidenav {
-        static type = '[Header] Toggle Sidenav';
-    }
-    HeaderAction.ToggleSidenav = ToggleSidenav;
-    class Logout {
-        static type = '[Header] User Logout';
-    }
-    HeaderAction.Logout = Logout;
-})(HeaderAction || (HeaderAction = {}));
-
-var Domain;
-(function (Domain) {
-    Domain[Domain["Global"] = 0] = "Global";
-})(Domain || (Domain = {}));
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 const CUSTOM_HTTP_REQUEST_OPTIONS = new HttpContextToken(() => ({
     suppressGlobalError: false,
@@ -177,6 +71,11 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImpor
                 }]
         }], ctorParameters: () => [{ type: i1.HttpClient }] });
 
+var Domain;
+(function (Domain) {
+    Domain[Domain["Global"] = 0] = "Global";
+})(Domain || (Domain = {}));
+
 class ErrorService {
     errorMessages = new BehaviorSubject([]);
     errorId = 0;
@@ -211,12 +110,123 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImpor
                 }]
         }] });
 
+/* eslint-disable @typescript-eslint/no-namespace */
+// no-namespace rule is disabled because action hygiene prevents import pollution
+var AuthenticationGuardAction;
+(function (AuthenticationGuardAction) {
+    class SetRedirectUrl {
+        redirectUrl;
+        static type = "[AuthenticationGuard] Set Redirect Url And Navigate To Login Page";
+        constructor(redirectUrl) {
+            this.redirectUrl = redirectUrl;
+        }
+    }
+    AuthenticationGuardAction.SetRedirectUrl = SetRedirectUrl;
+    class CheckUserSession {
+        static type = "[AuthenticationGuard] Check User Session";
+    }
+    AuthenticationGuardAction.CheckUserSession = CheckUserSession;
+})(AuthenticationGuardAction || (AuthenticationGuardAction = {}));
+var ApiInterceptorAction;
+(function (ApiInterceptorAction) {
+    class BeginActivity {
+        process;
+        static type = "[ApiInterceptor] Add Loading Activity";
+        constructor(process) {
+            this.process = process;
+        }
+    }
+    ApiInterceptorAction.BeginActivity = BeginActivity;
+    class EndActivity {
+        process;
+        static type = "[ApiInterceptor] Remove Loading Activity";
+        constructor(process) {
+            this.process = process;
+        }
+    }
+    ApiInterceptorAction.EndActivity = EndActivity;
+    class SetRedirectUrl {
+        redirectUrl;
+        static type = "[ApiInterceptor] Set Redirect Url";
+        constructor(redirectUrl) {
+            this.redirectUrl = redirectUrl;
+        }
+    }
+    ApiInterceptorAction.SetRedirectUrl = SetRedirectUrl;
+    class PublishError {
+        message;
+        static type = "[ApiInterceptor] Publish Error";
+        constructor(message) {
+            this.message = message;
+        }
+    }
+    ApiInterceptorAction.PublishError = PublishError;
+})(ApiInterceptorAction || (ApiInterceptorAction = {}));
+var LoginAction;
+(function (LoginAction) {
+    class Logout {
+        static type = "[Login] Auto Logout";
+    }
+    LoginAction.Logout = Logout;
+    class SetRedirectUrl {
+        redirectUrl;
+        static type = "[Login] Set Redirect Url";
+        constructor(redirectUrl) {
+            this.redirectUrl = redirectUrl;
+        }
+    }
+    LoginAction.SetRedirectUrl = SetRedirectUrl;
+    class PublishError {
+        message;
+        static type = "[Login] Publish Error";
+        constructor(message) {
+            this.message = message;
+        }
+    }
+    LoginAction.PublishError = PublishError;
+})(LoginAction || (LoginAction = {}));
+var AppAction;
+(function (AppAction) {
+    class CheckUserSession {
+        static type = "[App] Check User Session";
+    }
+    AppAction.CheckUserSession = CheckUserSession;
+    class SetRedirectUrl {
+        redirectUrl;
+        static type = "[App] Set Redirect Url";
+        constructor(redirectUrl) {
+            this.redirectUrl = redirectUrl;
+        }
+    }
+    AppAction.SetRedirectUrl = SetRedirectUrl;
+    class SetNavIdentifier {
+        identifier;
+        static type = "[App] Set Nav Identifier";
+        constructor(identifier) {
+            this.identifier = identifier;
+        }
+    }
+    AppAction.SetNavIdentifier = SetNavIdentifier;
+})(AppAction || (AppAction = {}));
+var HeaderAction;
+(function (HeaderAction) {
+    class ToggleSidenav {
+        static type = "[Header] Toggle Sidenav";
+    }
+    HeaderAction.ToggleSidenav = ToggleSidenav;
+    class Logout {
+        static type = "[Header] User Logout";
+    }
+    HeaderAction.Logout = Logout;
+})(HeaderAction || (HeaderAction = {}));
+
 const initState = {
     loading: [],
     sidenavOpened: true,
+    currentSidenavIdentifier: "",
     auth: {
         authenticated: false,
-        redirectUrl: '',
+        redirectUrl: "",
         sessionInfo: null,
     },
 };
@@ -245,6 +255,14 @@ let CoreState = class CoreState {
     }
     static isLoading(state) {
         return state.loading.length > 0;
+    }
+    static currentSidenavIdentifier(state) {
+        return state.currentSidenavIdentifier;
+    }
+    setNavIdentifier(ctx, action) {
+        ctx.setState(patch({
+            currentSidenavIdentifier: action.identifier,
+        }));
     }
     publishError(ctx, action) {
         this.errors.addGlobalError(action.message);
@@ -284,10 +302,7 @@ let CoreState = class CoreState {
         // There can be multiple activities running with the same process signature
         const index = loading.findIndex((activity) => activity === action.process);
         if (index !== -1) {
-            const newLoading = [
-                ...loading.slice(0, index),
-                ...loading.slice(index + 1),
-            ];
+            const newLoading = [...loading.slice(0, index), ...loading.slice(index + 1)];
             ctx.patchState({
                 loading: newLoading,
             });
@@ -304,13 +319,13 @@ let CoreState = class CoreState {
     static ɵprov = i0.ɵɵngDeclareInjectable({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: CoreState });
 };
 __decorate([
+    Action([AppAction.SetNavIdentifier])
+], CoreState.prototype, "setNavIdentifier", null);
+__decorate([
     Action([ApiInterceptorAction.PublishError, LoginAction.PublishError])
 ], CoreState.prototype, "publishError", null);
 __decorate([
-    Action([
-        AppAction.CheckUserSession,
-        AuthenticationGuardAction.CheckUserSession,
-    ])
+    Action([AppAction.CheckUserSession, AuthenticationGuardAction.CheckUserSession])
 ], CoreState.prototype, "checkUserSession", null);
 __decorate([
     Action([LoginAction.Logout])
@@ -350,27 +365,18 @@ __decorate([
 __decorate([
     Selector()
 ], CoreState, "isLoading", null);
+__decorate([
+    Selector()
+], CoreState, "currentSidenavIdentifier", null);
 CoreState = __decorate([
     State({
-        name: 'coreState',
+        name: "coreState",
         defaults: initState,
     })
 ], CoreState);
 i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: CoreState, decorators: [{
             type: Injectable
-        }], propDecorators: { publishError: [], checkUserSession: [], logout: [], setRedirectUrl: [], beginActivity: [], endActivity: [], toggleSidenav: [] } });
-
-const AuthorizationGuard = (route) => {
-    const store = inject(Store);
-    const router = inject(Router);
-    return store.select(CoreState.hasPermission).pipe(map((permissionFn) => permissionFn(route.data['permissions'])), map((hasPermission) => {
-        if (hasPermission) {
-            return true;
-        }
-        router.navigate(['/']);
-        return false;
-    }));
-};
+        }], propDecorators: { setNavIdentifier: [], publishError: [], checkUserSession: [], logout: [], setRedirectUrl: [], beginActivity: [], endActivity: [], toggleSidenav: [] } });
 
 const AuthenticationGuard = (route, routerState) => {
     const store = inject(Store);
@@ -400,6 +406,18 @@ const AuthenticationGuard = (route, routerState) => {
     }), catchError(() => {
         authenticate();
         return of(false);
+    }));
+};
+
+const AuthorizationGuard = (route) => {
+    const store = inject(Store);
+    const router = inject(Router);
+    return store.select(CoreState.hasPermission).pipe(map((permissionFn) => permissionFn(route.data['permissions'])), map((hasPermission) => {
+        if (hasPermission) {
+            return true;
+        }
+        router.navigate(['/']);
+        return false;
     }));
 };
 
@@ -472,6 +490,89 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImpor
                 type: Output
             }] } });
 
+class HasPermissionDirective {
+    templateRef = inject((TemplateRef));
+    viewContainer = inject(ViewContainerRef);
+    store = inject(Store);
+    permissions = new Subject();
+    set appHasPermission(val) {
+        this.permissions.next(val);
+    }
+    constructor() {
+        combineLatest({
+            permissionFn: this.store.select(CoreState.hasPermission),
+            permissions: this.permissions.asObservable(),
+        })
+            .pipe(takeUntilDestroyed(), map(({ permissionFn, permissions }) => permissionFn(permissions)), catchError$1(() => {
+            return of(false);
+        }))
+            .subscribe((result) => {
+            if (result) {
+                if (!this.viewContainer.get(0)) {
+                    this.viewContainer.createEmbeddedView(this.templateRef);
+                }
+            }
+            else {
+                this.viewContainer.clear();
+            }
+        });
+    }
+    static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: HasPermissionDirective, deps: [], target: i0.ɵɵFactoryTarget.Directive });
+    static ɵdir = i0.ɵɵngDeclareDirective({ minVersion: "14.0.0", version: "18.2.7", type: HasPermissionDirective, isStandalone: true, selector: "[appHasPermission]", inputs: { appHasPermission: "appHasPermission" }, ngImport: i0 });
+}
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: HasPermissionDirective, decorators: [{
+            type: Directive,
+            args: [{
+                    selector: "[appHasPermission]",
+                    standalone: true,
+                }]
+        }], ctorParameters: () => [], propDecorators: { appHasPermission: [{
+                type: Input
+            }] } });
+
+/**
+ * Accepts a FormGroup and compares it to an object to return the dirty form values
+ * @param form - FormGroup
+ * @param compareData - object to compare form values against
+ * @returns Partial<T>
+ * @example dirtyFormData<UserCreate>(this.userForm, initUser)
+ */
+function dirtyFormData(form, compareData) {
+    const dirtyFormData = {};
+    for (const [key, control] of Object.entries(form.controls)) {
+        const controlValue = control.value;
+        const compareValue = compareData[key];
+        if (Array.isArray(controlValue)) {
+            if (!Array.isArray(compareValue)) {
+                dirtyFormData[key] = controlValue;
+                continue;
+            }
+            const diff = controlValue.filter((value) => !compareValue.includes(value));
+            if (diff.length > 0) {
+                dirtyFormData[key] = controlValue;
+            }
+            continue;
+        }
+        if (controlValue !== compareValue) {
+            dirtyFormData[key] = controlValue;
+        }
+    }
+    return dirtyFormData;
+}
+/**
+ * Accepts a FormArray and removes empty strings
+ * @param formArray - FormArray
+ * @returns FormArray
+ */
+function cleanStringFormArray(formArray) {
+    for (let i = formArray.controls.length - 1; i >= 0; i--) {
+        if (formArray.at(i).value === '') {
+            formArray.removeAt(i);
+        }
+    }
+    return formArray;
+}
+
 /*
  * Public API Surface of ccc-lib
  */
@@ -481,5 +582,5 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImpor
  * Generated bundle index. Do not edit.
  */
 
-export { AlertComponent, AlertLevel, ApiInterceptor, ApiInterceptorAction, AppAction, AuthService, AuthenticationGuard, AuthenticationGuardAction, AuthorizationGuard, CUSTOM_HTTP_REQUEST_OPTIONS, CoreState, Domain, ErrorService, HeaderAction, LoginAction, errorOptions, initState };
+export { AlertComponent, AlertLevel, ApiInterceptor, ApiInterceptorAction, AppAction, AuthService, AuthenticationGuard, AuthenticationGuardAction, AuthorizationGuard, CUSTOM_HTTP_REQUEST_OPTIONS, CoreState, Domain, ErrorService, HasPermissionDirective, HeaderAction, LoginAction, cleanStringFormArray, dirtyFormData, errorOptions, initState };
 //# sourceMappingURL=ccc-lib.mjs.map
