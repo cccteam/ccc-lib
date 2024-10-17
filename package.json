@@ -4,6 +4,9 @@
   "main": "fesm2022/ccc-lib.js",
   "module": "fesm2022/ccc-lib.mjs",
   "typings": "index.d.ts",
+  "publishConfig": {
+    "@cccteam:registry": "https:npm.pkg.github.com"
+  },
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
