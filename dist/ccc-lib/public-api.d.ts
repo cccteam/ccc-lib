@@ -10,6 +10,7 @@ export * from "./lib/models/error-message";
 export * from "./lib/models/permission-domain";
 export * from "./lib/models/session-info";
 export * from "./lib/components/alert/alert.component";
+export * from "./lib/components/sidenav/sidenav.component";
 export * from "./lib/directives/has-permission.directive";
 export * from "./lib/forms/form-helpers";
 export * from "./lib/base/tokens";

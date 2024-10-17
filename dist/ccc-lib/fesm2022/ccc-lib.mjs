@@ -1,5 +1,5 @@
 import * as i0 from '@angular/core';
-import { InjectionToken, Injectable, Inject, inject, NgZone, EventEmitter, Component, Input, Output, TemplateRef, ViewContainerRef, Directive } from '@angular/core';
+import { InjectionToken, Injectable, Inject, inject, NgZone, EventEmitter, Component, Input, Output, TemplateRef, ViewContainerRef, Directive, DestroyRef } from '@angular/core';
 import { Action, Selector, State, Store } from '@ngxs/store';
 import { map, BehaviorSubject, tap, of, catchError as catchError$1, throwError, finalize, Subject, combineLatest } from 'rxjs';
 import { switchMap, map as map$1, catchError } from 'rxjs/operators';
@@ -8,7 +8,7 @@ import { HttpContextToken, HttpContext } from '@angular/common/http';
 import { __decorate } from 'tslib';
 import { patch } from '@ngxs/store/operators';
 import { cloneDeep } from 'lodash-es';
-import * as i4 from '@angular/router';
+import * as i2$1 from '@angular/router';
 import { Router, RouterModule } from '@angular/router';
 import * as i3 from '@angular/common';
 import { CommonModule } from '@angular/common';
@@ -17,6 +17,8 @@ import { MatButtonModule } from '@angular/material/button';
 import * as i1$1 from '@angular/material/icon';
 import { MatIconModule } from '@angular/material/icon';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatSidenavModule } from '@angular/material/sidenav';
 
 const BASE_URL = new InjectionToken("BASE_URL");
 
@@ -480,7 +482,7 @@ class AlertComponent {
         }
     }
     static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: AlertComponent, deps: [], target: i0.ɵɵFactoryTarget.Component });
-    static ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "17.0.0", version: "18.2.7", type: AlertComponent, isStandalone: true, selector: "app-alert", inputs: { error: "error" }, outputs: { dismiss: "dismiss" }, ngImport: i0, template: "<div class=\"alert\" [ngClass]=\"error.level\">\n  <div class=\"message\">\n    <span>{{ error.message }}</span>\n  </div>\n  <div class=\"alert-end\">\n    @if (error.link) {\n    <span [routerLink]=\"error.link\" class=\"link\">View</span>\n    }\n    <button (click)=\"dismissAlert()\" mat-icon-button aria-label=\"Close Alert\">\n      <mat-icon>close</mat-icon>\n    </button>\n  </div>\n</div>\n", styles: [".alert{margin:auto;border:1px solid;max-width:450px;border-radius:5px;background-color:#d3d3d3;display:flex;flex-direction:row;align-items:center;justify-content:space-between}.message{padding-left:15px;max-width:400px;display:flex;justify-content:space-between}.alert-end{display:flex;flex-direction:row;align-items:center;gap:5px}.link{cursor:pointer}.link:hover{text-decoration:underline}.warn{border-color:red;background-color:#fff5f4}.accent{border-color:#dfb51d;background-color:#fff8e0}\n"], dependencies: [{ kind: "ngmodule", type: MatIconModule }, { kind: "component", type: i1$1.MatIcon, selector: "mat-icon", inputs: ["color", "inline", "svgIcon", "fontSet", "fontIcon"], exportAs: ["matIcon"] }, { kind: "ngmodule", type: MatButtonModule }, { kind: "component", type: i2.MatIconButton, selector: "button[mat-icon-button]", exportAs: ["matButton"] }, { kind: "ngmodule", type: CommonModule }, { kind: "directive", type: i3.NgClass, selector: "[ngClass]", inputs: ["class", "ngClass"] }, { kind: "ngmodule", type: RouterModule }, { kind: "directive", type: i4.RouterLink, selector: "[routerLink]", inputs: ["target", "queryParams", "fragment", "queryParamsHandling", "state", "info", "relativeTo", "preserveFragment", "skipLocationChange", "replaceUrl", "routerLink"] }] });
+    static ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "17.0.0", version: "18.2.7", type: AlertComponent, isStandalone: true, selector: "app-alert", inputs: { error: "error" }, outputs: { dismiss: "dismiss" }, ngImport: i0, template: "<div class=\"alert\" [ngClass]=\"error.level\">\n  <div class=\"message\">\n    <span>{{ error.message }}</span>\n  </div>\n  <div class=\"alert-end\">\n    @if (error.link) {\n    <span [routerLink]=\"error.link\" class=\"link\">View</span>\n    }\n    <button (click)=\"dismissAlert()\" mat-icon-button aria-label=\"Close Alert\">\n      <mat-icon>close</mat-icon>\n    </button>\n  </div>\n</div>\n", styles: [".alert{margin:auto;border:1px solid;max-width:450px;border-radius:5px;background-color:#d3d3d3;display:flex;flex-direction:row;align-items:center;justify-content:space-between}.message{padding-left:15px;max-width:400px;display:flex;justify-content:space-between}.alert-end{display:flex;flex-direction:row;align-items:center;gap:5px}.link{cursor:pointer}.link:hover{text-decoration:underline}.warn{border-color:red;background-color:#fff5f4}.accent{border-color:#dfb51d;background-color:#fff8e0}\n"], dependencies: [{ kind: "ngmodule", type: MatIconModule }, { kind: "component", type: i1$1.MatIcon, selector: "mat-icon", inputs: ["color", "inline", "svgIcon", "fontSet", "fontIcon"], exportAs: ["matIcon"] }, { kind: "ngmodule", type: MatButtonModule }, { kind: "component", type: i2.MatIconButton, selector: "button[mat-icon-button]", exportAs: ["matButton"] }, { kind: "ngmodule", type: CommonModule }, { kind: "directive", type: i3.NgClass, selector: "[ngClass]", inputs: ["class", "ngClass"] }, { kind: "ngmodule", type: RouterModule }, { kind: "directive", type: i2$1.RouterLink, selector: "[routerLink]", inputs: ["target", "queryParams", "fragment", "queryParamsHandling", "state", "info", "relativeTo", "preserveFragment", "skipLocationChange", "replaceUrl", "routerLink"] }] });
 }
 i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: AlertComponent, decorators: [{
             type: Component,
@@ -529,6 +531,54 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImpor
                     standalone: true,
                 }]
         }], ctorParameters: () => [], propDecorators: { appHasPermission: [{
+                type: Input
+            }] } });
+
+class SidenavComponent {
+    store = inject(Store);
+    destroyRef = inject(DestroyRef);
+    navGroups;
+    currentNav = [];
+    hasPermissionFn = this.store.select(CoreState.hasPermission);
+    ngOnInit() {
+        this.store
+            .select(CoreState.currentSidenavIdentifier)
+            .pipe(tap((identifier) => {
+            this.currentNav = this.updateNavItems(identifier);
+        }), takeUntilDestroyed(this.destroyRef))
+            .subscribe();
+    }
+    /**
+     * Updates the currentNav based on the identifier
+     * @param identifier
+     * @returns NavItem[]
+     * @memberof SidenavComponent
+     */
+    updateNavItems(identifier) {
+        if (!this.navGroups) {
+            return [];
+        }
+        if (!this.navGroups[identifier]) {
+            // pick the first one if the identifier is not found so we don't break the UI
+            identifier = Object.keys(this.navGroups)[0];
+        }
+        return this.navGroups[identifier];
+    }
+    static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: SidenavComponent, deps: [], target: i0.ɵɵFactoryTarget.Component });
+    static ɵcmp = i0.ɵɵngDeclareComponent({ minVersion: "17.0.0", version: "18.2.7", type: SidenavComponent, isStandalone: true, selector: "app-sidenav", inputs: { navGroups: "navGroups" }, ngImport: i0, template: "<div class=\"nav-container\">\n  <nav>\n    @for (navItem of currentNav; track navItem.label) {\n      <ng-container *ngTemplateOutlet=\"typeRendererTemplate; context: { navItem: navItem }\"></ng-container>\n    }\n  </nav>\n</div>\n<ng-template #typeRendererTemplate let-navItem=\"navItem\">\n  @switch (navItem.type) {\n    @case ('header') {\n      <ng-container [ngTemplateOutlet]=\"headerTemplate\" [ngTemplateOutletContext]=\"{ navItem: navItem }\"></ng-container>\n    }\n    @case ('link') {\n      <ng-container [ngTemplateOutlet]=\"linkTemplate\" [ngTemplateOutletContext]=\"{ navItem: navItem }\"></ng-container>\n    }\n    @case ('expandable') {\n      <ng-container\n        [ngTemplateOutlet]=\"expandableTemplate\"\n        [ngTemplateOutletContext]=\"{ navItem: navItem }\"></ng-container>\n    }\n  }\n</ng-template>\n<ng-template #headerTemplate let-navItem=\"navItem\">\n  <div class=\"link-header\">{{ navItem.label }}</div>\n</ng-template>\n<ng-template #linkTemplate let-navItem=\"navItem\">\n  @if (navItem.permissions.length === 0) {\n    <a [routerLink]=\"navItem.routerLink\">\n      <div class=\"nav-item\" routerLinkActive=\"active-link\">\n        <div class=\"link-button\">\n          <div class=\"icon\">\n            <mat-icon class=\"material-icons-outlined\" [inline]=\"true\">\n              {{ navItem.icon }}\n            </mat-icon>\n          </div>\n          <div class=\"text\">\n            {{ navItem.label | titlecase }}\n          </div>\n        </div>\n      </div>\n    </a>\n  }\n  @if (navItem.permissions.length > 0) {\n    <a [routerLink]=\"navItem.routerLink\" *appHasPermission=\"navItem.permissions\">\n      <ng-container *ngTemplateOutlet=\"navItemTemplate\"></ng-container>\n    </a>\n  }\n  <ng-template #navItemTemplate>\n    <div class=\"nav-item\" routerLinkActive=\"active-link\">\n      <div class=\"link-button\">\n        <div class=\"icon\">\n          <mat-icon class=\"material-icons-outlined\" [inline]=\"true\">\n            {{ navItem.icon }}\n          </mat-icon>\n        </div>\n        <div class=\"text\">\n          {{ navItem.label | titlecase }}\n        </div>\n      </div>\n    </div>\n  </ng-template>\n</ng-template>\n<ng-template #expandableTemplate let-navItem=\"navItem\">\n  <div class=\"nav-item\" aria-hidden=\"true\" (click)=\"navItem.isExpanded = !navItem.isExpanded\">\n    <div class=\"link-button\">\n      <div class=\"icon\">\n        <mat-icon class=\"material-icons-outlined\" [inline]=\"true\">\n          {{ navItem.isExpanded ? 'expand_less' : 'expand_more' }}\n        </mat-icon>\n      </div>\n      <div class=\"text\">{{ navItem.label }}</div>\n    </div>\n  </div>\n  @if (navItem.isExpanded) {\n    <div class=\"expandable-links\">\n      @for (navItemChild of navItem.children; track navItemChild) {\n        <ng-container *ngTemplateOutlet=\"typeRendererTemplate; context: { navItem: navItemChild }\"> </ng-container>\n      }\n    </div>\n  }\n</ng-template>\n", styles: [".nav-container{padding:0;height:100%}nav{max-width:100%;margin:0 10px}.nav-item{width:100%;height:48px;font-size:18px;display:flex;flex-direction:column;justify-content:center;color:#003b49;padding:0 15px;position:relative}.nav-item:hover{background-color:#0000000a;transition:background-color .1s ease}.nav-item:active{background-color:#0000001a;transition:background-color .1s ease}.link-header{color:#003b49;text-transform:uppercase;font-weight:700;font-size:12px;margin:20px 0 0 5px}.link-button{display:flex;flex-direction:row;width:100%}.link-button .icon{min-width:20px;margin-right:10px;display:flex;flex-direction:column;justify-content:center}.link-button .text{margin-right:10px;text-align:left;display:flex;flex-direction:row;justify-content:left;text-decoration:capitalize}.expandable-links{display:flex;flex-direction:column;width:100%;padding-left:30px}a:active,a:link,a:visited{color:#003b49!important}a{text-decoration:none}.active-link:before{content:\"\";position:absolute;left:3px;width:5px;height:38px;background-color:#003b49}.active-link{background-color:#0000000a;position:relative}\n"], dependencies: [{ kind: "ngmodule", type: MatIconModule }, { kind: "component", type: i1$1.MatIcon, selector: "mat-icon", inputs: ["color", "inline", "svgIcon", "fontSet", "fontIcon"], exportAs: ["matIcon"] }, { kind: "ngmodule", type: RouterModule }, { kind: "directive", type: i2$1.RouterLink, selector: "[routerLink]", inputs: ["target", "queryParams", "fragment", "queryParamsHandling", "state", "info", "relativeTo", "preserveFragment", "skipLocationChange", "replaceUrl", "routerLink"] }, { kind: "directive", type: i2$1.RouterLinkActive, selector: "[routerLinkActive]", inputs: ["routerLinkActiveOptions", "ariaCurrentWhenActive", "routerLinkActive"], outputs: ["isActiveChange"], exportAs: ["routerLinkActive"] }, { kind: "ngmodule", type: CommonModule }, { kind: "directive", type: i3.NgTemplateOutlet, selector: "[ngTemplateOutlet]", inputs: ["ngTemplateOutletContext", "ngTemplateOutlet", "ngTemplateOutletInjector"] }, { kind: "pipe", type: i3.TitleCasePipe, name: "titlecase" }, { kind: "ngmodule", type: MatExpansionModule }, { kind: "ngmodule", type: MatButtonModule }, { kind: "directive", type: HasPermissionDirective, selector: "[appHasPermission]", inputs: ["appHasPermission"] }, { kind: "ngmodule", type: MatSidenavModule }] });
+}
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: SidenavComponent, decorators: [{
+            type: Component,
+            args: [{ selector: "app-sidenav", standalone: true, imports: [
+                        MatIconModule,
+                        RouterModule,
+                        CommonModule,
+                        MatExpansionModule,
+                        MatButtonModule,
+                        HasPermissionDirective,
+                        MatSidenavModule,
+                    ], template: "<div class=\"nav-container\">\n  <nav>\n    @for (navItem of currentNav; track navItem.label) {\n      <ng-container *ngTemplateOutlet=\"typeRendererTemplate; context: { navItem: navItem }\"></ng-container>\n    }\n  </nav>\n</div>\n<ng-template #typeRendererTemplate let-navItem=\"navItem\">\n  @switch (navItem.type) {\n    @case ('header') {\n      <ng-container [ngTemplateOutlet]=\"headerTemplate\" [ngTemplateOutletContext]=\"{ navItem: navItem }\"></ng-container>\n    }\n    @case ('link') {\n      <ng-container [ngTemplateOutlet]=\"linkTemplate\" [ngTemplateOutletContext]=\"{ navItem: navItem }\"></ng-container>\n    }\n    @case ('expandable') {\n      <ng-container\n        [ngTemplateOutlet]=\"expandableTemplate\"\n        [ngTemplateOutletContext]=\"{ navItem: navItem }\"></ng-container>\n    }\n  }\n</ng-template>\n<ng-template #headerTemplate let-navItem=\"navItem\">\n  <div class=\"link-header\">{{ navItem.label }}</div>\n</ng-template>\n<ng-template #linkTemplate let-navItem=\"navItem\">\n  @if (navItem.permissions.length === 0) {\n    <a [routerLink]=\"navItem.routerLink\">\n      <div class=\"nav-item\" routerLinkActive=\"active-link\">\n        <div class=\"link-button\">\n          <div class=\"icon\">\n            <mat-icon class=\"material-icons-outlined\" [inline]=\"true\">\n              {{ navItem.icon }}\n            </mat-icon>\n          </div>\n          <div class=\"text\">\n            {{ navItem.label | titlecase }}\n          </div>\n        </div>\n      </div>\n    </a>\n  }\n  @if (navItem.permissions.length > 0) {\n    <a [routerLink]=\"navItem.routerLink\" *appHasPermission=\"navItem.permissions\">\n      <ng-container *ngTemplateOutlet=\"navItemTemplate\"></ng-container>\n    </a>\n  }\n  <ng-template #navItemTemplate>\n    <div class=\"nav-item\" routerLinkActive=\"active-link\">\n      <div class=\"link-button\">\n        <div class=\"icon\">\n          <mat-icon class=\"material-icons-outlined\" [inline]=\"true\">\n            {{ navItem.icon }}\n          </mat-icon>\n        </div>\n        <div class=\"text\">\n          {{ navItem.label | titlecase }}\n        </div>\n      </div>\n    </div>\n  </ng-template>\n</ng-template>\n<ng-template #expandableTemplate let-navItem=\"navItem\">\n  <div class=\"nav-item\" aria-hidden=\"true\" (click)=\"navItem.isExpanded = !navItem.isExpanded\">\n    <div class=\"link-button\">\n      <div class=\"icon\">\n        <mat-icon class=\"material-icons-outlined\" [inline]=\"true\">\n          {{ navItem.isExpanded ? 'expand_less' : 'expand_more' }}\n        </mat-icon>\n      </div>\n      <div class=\"text\">{{ navItem.label }}</div>\n    </div>\n  </div>\n  @if (navItem.isExpanded) {\n    <div class=\"expandable-links\">\n      @for (navItemChild of navItem.children; track navItemChild) {\n        <ng-container *ngTemplateOutlet=\"typeRendererTemplate; context: { navItem: navItemChild }\"> </ng-container>\n      }\n    </div>\n  }\n</ng-template>\n", styles: [".nav-container{padding:0;height:100%}nav{max-width:100%;margin:0 10px}.nav-item{width:100%;height:48px;font-size:18px;display:flex;flex-direction:column;justify-content:center;color:#003b49;padding:0 15px;position:relative}.nav-item:hover{background-color:#0000000a;transition:background-color .1s ease}.nav-item:active{background-color:#0000001a;transition:background-color .1s ease}.link-header{color:#003b49;text-transform:uppercase;font-weight:700;font-size:12px;margin:20px 0 0 5px}.link-button{display:flex;flex-direction:row;width:100%}.link-button .icon{min-width:20px;margin-right:10px;display:flex;flex-direction:column;justify-content:center}.link-button .text{margin-right:10px;text-align:left;display:flex;flex-direction:row;justify-content:left;text-decoration:capitalize}.expandable-links{display:flex;flex-direction:column;width:100%;padding-left:30px}a:active,a:link,a:visited{color:#003b49!important}a{text-decoration:none}.active-link:before{content:\"\";position:absolute;left:3px;width:5px;height:38px;background-color:#003b49}.active-link{background-color:#0000000a;position:relative}\n"] }]
+        }], propDecorators: { navGroups: [{
                 type: Input
             }] } });
 
@@ -584,5 +634,5 @@ function cleanStringFormArray(formArray) {
  * Generated bundle index. Do not edit.
  */
 
-export { AlertComponent, AlertLevel, ApiInterceptor, ApiInterceptorAction, AppAction, AuthService, AuthenticationGuard, AuthenticationGuardAction, AuthorizationGuard, BASE_URL, CUSTOM_HTTP_REQUEST_OPTIONS, CoreState, Domain, ErrorService, HasPermissionDirective, HeaderAction, LoginAction, cleanStringFormArray, dirtyFormData, errorOptions, initState };
+export { AlertComponent, AlertLevel, ApiInterceptor, ApiInterceptorAction, AppAction, AuthService, AuthenticationGuard, AuthenticationGuardAction, AuthorizationGuard, BASE_URL, CUSTOM_HTTP_REQUEST_OPTIONS, CoreState, Domain, ErrorService, HasPermissionDirective, HeaderAction, LoginAction, SidenavComponent, cleanStringFormArray, dirtyFormData, errorOptions, initState };
 //# sourceMappingURL=ccc-lib.mjs.map

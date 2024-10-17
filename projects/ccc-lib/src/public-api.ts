@@ -25,6 +25,7 @@ export * from "./lib/models/session-info";
 
 // Components
 export * from "./lib/components/alert/alert.component";
+export * from "./lib/components/sidenav/sidenav.component";
 
 // Directives
 export * from "./lib/directives/has-permission.directive";
