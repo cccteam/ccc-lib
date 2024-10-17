@@ -1,24 +1,19 @@
-import { Injectable, inject } from '@angular/core';
-import { Action, Selector, State, StateContext } from '@ngxs/store';
-import {
-  ApiInterceptorAction,
-  AppAction,
-  AuthenticationGuardAction,
-  LoginAction,
-  HeaderAction,
-} from './core.actions';
-import { Observable, tap } from 'rxjs';
-import { patch } from '@ngxs/store/operators';
-import { SessionInfo } from '../models/session-info';
-import { Domain } from '../models/permission-domain';
-import { ErrorMessage } from '../models/error-message';
-import { AuthService } from '../service/auth.service';
-import { ErrorService } from '../service/error.service';
-import { cloneDeep } from 'lodash-es';
+import { Injectable, inject } from "@angular/core";
+import { Action, Selector, State, StateContext } from "@ngxs/store";
+import { patch } from "@ngxs/store/operators";
+import { cloneDeep } from "lodash-es";
+import { Observable, tap } from "rxjs";
+import { ErrorMessage } from "../models/error-message";
+import { Domain } from "../models/permission-domain";
+import { SessionInfo } from "../models/session-info";
+import { AuthService } from "../service/auth.service";
+import { ErrorService } from "../service/error.service";
+import { ApiInterceptorAction, AppAction, AuthenticationGuardAction, HeaderAction, LoginAction } from "./core.actions";
 
 export interface CoreStateModel {
   loading: string[];
   sidenavOpened: boolean;
+  currentSidenavIdentifier: string;
   auth: {
     authenticated: boolean;
     redirectUrl: string;
@@ -29,15 +24,16 @@ export interface CoreStateModel {
 export const initState: CoreStateModel = {
   loading: [],
   sidenavOpened: true,
+  currentSidenavIdentifier: "",
   auth: {
     authenticated: false,
-    redirectUrl: '',
+    redirectUrl: "",
     sessionInfo: null,
   },
 };
 
 @State<CoreStateModel>({
-  name: 'coreState',
+  name: "coreState",
   defaults: initState,
 })
 @Injectable()
@@ -56,14 +52,10 @@ export class CoreState {
   }
 
   @Selector()
-  static hasPermission(
-    state: CoreStateModel
-  ): (permissions: string[]) => boolean {
+  static hasPermission(state: CoreStateModel): (permissions: string[]) => boolean {
     return (permissions: string[]): boolean => {
       if (state?.auth.sessionInfo?.permissions[Domain.Global]) {
-        return state.auth.sessionInfo.permissions[Domain.Global].some(
-          (p: string) => permissions.includes(p)
-        );
+        return state.auth.sessionInfo.permissions[Domain.Global].some((p: string) => permissions.includes(p));
       }
 
       return false;
@@ -85,21 +77,27 @@ export class CoreState {
     return state.loading.length > 0;
   }
 
+  @Selector()
+  static currentSidenavIdentifier(state: CoreStateModel): string {
+    return state.currentSidenavIdentifier;
+  }
+
+  @Action([AppAction.SetNavIdentifier])
+  setNavIdentifier(ctx: StateContext<CoreStateModel>, action: AppAction.SetNavIdentifier): void {
+    ctx.setState(
+      patch({
+        currentSidenavIdentifier: action.identifier,
+      })
+    );
+  }
+
   @Action([ApiInterceptorAction.PublishError, LoginAction.PublishError])
-  publishError(
-    ctx: StateContext<CoreStateModel>,
-    action: { message: ErrorMessage }
-  ): void {
+  publishError(ctx: StateContext<CoreStateModel>, action: { message: ErrorMessage }): void {
     this.errors.addGlobalError(action.message);
   }
 
-  @Action([
-    AppAction.CheckUserSession,
-    AuthenticationGuardAction.CheckUserSession,
-  ])
-  checkUserSession(
-    ctx: StateContext<CoreStateModel>
-  ): Observable<SessionInfo | null> {
+  @Action([AppAction.CheckUserSession, AuthenticationGuardAction.CheckUserSession])
+  checkUserSession(ctx: StateContext<CoreStateModel>): Observable<SessionInfo | null> {
     return this.authService.checkUserSession().pipe(
       tap((result) =>
         ctx.setState(
@@ -131,10 +129,7 @@ export class CoreState {
     AuthenticationGuardAction.SetRedirectUrl,
     ApiInterceptorAction.SetRedirectUrl,
   ])
-  setRedirectUrl(
-    ctx: StateContext<CoreStateModel>,
-    action: { redirectUrl: string }
-  ): CoreStateModel {
+  setRedirectUrl(ctx: StateContext<CoreStateModel>, action: { redirectUrl: string }): CoreStateModel {
     ctx.setState(
       patch({
         auth: patch({
@@ -146,10 +141,7 @@ export class CoreState {
   }
 
   @Action([ApiInterceptorAction.BeginActivity])
-  beginActivity(
-    ctx: StateContext<CoreStateModel>,
-    action: { process: string }
-  ): CoreStateModel {
+  beginActivity(ctx: StateContext<CoreStateModel>, action: { process: string }): CoreStateModel {
     const state = ctx.getState();
     ctx.patchState({
       loading: [action.process, ...state.loading],
@@ -158,18 +150,12 @@ export class CoreState {
   }
 
   @Action([ApiInterceptorAction.EndActivity])
-  endActivity(
-    ctx: StateContext<CoreStateModel>,
-    action: { process: string }
-  ): CoreStateModel | null {
+  endActivity(ctx: StateContext<CoreStateModel>, action: { process: string }): CoreStateModel | null {
     const loading = ctx.getState().loading;
     // There can be multiple activities running with the same process signature
     const index = loading.findIndex((activity) => activity === action.process);
     if (index !== -1) {
-      const newLoading = [
-        ...loading.slice(0, index),
-        ...loading.slice(index + 1),
-      ];
+      const newLoading = [...loading.slice(0, index), ...loading.slice(index + 1)];
       ctx.patchState({
         loading: newLoading,
       });
