@@ -1,8 +1,9 @@
-import { HttpClient } from '@angular/common/http';
-import { inject, Inject, Injectable, InjectionToken } from '@angular/core';
-import { Observable, map } from 'rxjs';
-import { errorOptions } from './request-options';
-import { SessionInfo } from '../models/session-info';
+import { HttpClient } from "@angular/common/http";
+import { Inject, Injectable } from "@angular/core";
+import { map, Observable } from "rxjs";
+import { BASE_URL } from "../base/tokens";
+import { SessionInfo } from "../models/session-info";
+import { errorOptions } from "./request-options";
 
 const routes = {
   login: (rootUrl: string): string => `${rootUrl}/user/login`,
@@ -10,13 +11,10 @@ const routes = {
 };
 
 @Injectable({
-  providedIn: 'root',
+  providedIn: "root",
 })
 export class AuthService {
-  API_URL = new InjectionToken<string>('apiUrl');
-  apiUrl = inject(this.API_URL);
-
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, @Inject(BASE_URL) private baseUrl: string) {}
 
   /**
    * Logs a user out.
@@ -24,9 +22,7 @@ export class AuthService {
    * @returns Observable with a boolean indicating whether they were logged out.
    */
   logout(): Observable<boolean> {
-    return this.http
-      .delete(routes.session(this.apiUrl), errorOptions(false))
-      .pipe(map(() => true));
+    return this.http.delete(routes.session(this.baseUrl), errorOptions(false)).pipe(map(() => true));
   }
 
   /**
@@ -35,13 +31,10 @@ export class AuthService {
    * @returns Observable with the user session info
    */
   checkUserSession(): Observable<SessionInfo | null> {
-    return this.http.get<SessionInfo>(
-      routes.session(this.apiUrl),
-      errorOptions(false)
-    );
+    return this.http.get<SessionInfo>(routes.session(this.baseUrl), errorOptions(false));
   }
 
   loginRoute(): string {
-    return routes.login(this.apiUrl);
+    return routes.login(this.baseUrl);
   }
 }

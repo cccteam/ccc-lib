@@ -1,5 +1,5 @@
 import * as i0 from '@angular/core';
-import { InjectionToken, inject, Injectable, NgZone, EventEmitter, Component, Input, Output, TemplateRef, ViewContainerRef, Directive } from '@angular/core';
+import { InjectionToken, Injectable, Inject, inject, NgZone, EventEmitter, Component, Input, Output, TemplateRef, ViewContainerRef, Directive } from '@angular/core';
 import { Action, Selector, State, Store } from '@ngxs/store';
 import { map, BehaviorSubject, tap, of, catchError as catchError$1, throwError, finalize, Subject, combineLatest } from 'rxjs';
 import { switchMap, map as map$1, catchError } from 'rxjs/operators';
@@ -37,10 +37,10 @@ const routes = {
 };
 class AuthService {
     http;
-    API_URL = new InjectionToken('apiUrl');
-    apiUrl = inject(this.API_URL);
-    constructor(http) {
+    baseUrl;
+    constructor(http, baseUrl) {
         this.http = http;
+        this.baseUrl = baseUrl;
     }
     /**
      * Logs a user out.
@@ -48,9 +48,7 @@ class AuthService {
      * @returns Observable with a boolean indicating whether they were logged out.
      */
     logout() {
-        return this.http
-            .delete(routes.session(this.apiUrl), errorOptions(false))
-            .pipe(map(() => true));
+        return this.http.delete(routes.session(this.baseUrl), errorOptions(false)).pipe(map(() => true));
     }
     /**
      * Checks a user's session with the server.
@@ -58,20 +56,23 @@ class AuthService {
      * @returns Observable with the user session info
      */
     checkUserSession() {
-        return this.http.get(routes.session(this.apiUrl), errorOptions(false));
+        return this.http.get(routes.session(this.baseUrl), errorOptions(false));
     }
     loginRoute() {
-        return routes.login(this.apiUrl);
+        return routes.login(this.baseUrl);
     }
-    static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: AuthService, deps: [{ token: i1.HttpClient }], target: i0.ɵɵFactoryTarget.Injectable });
-    static ɵprov = i0.ɵɵngDeclareInjectable({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: AuthService, providedIn: 'root' });
+    static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: AuthService, deps: [{ token: i1.HttpClient }, { token: BASE_URL }], target: i0.ɵɵFactoryTarget.Injectable });
+    static ɵprov = i0.ɵɵngDeclareInjectable({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: AuthService, providedIn: "root" });
 }
 i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: AuthService, decorators: [{
             type: Injectable,
             args: [{
-                    providedIn: 'root',
+                    providedIn: "root",
                 }]
-        }], ctorParameters: () => [{ type: i1.HttpClient }] });
+        }], ctorParameters: () => [{ type: i1.HttpClient }, { type: undefined, decorators: [{
+                    type: Inject,
+                    args: [BASE_URL]
+                }] }] });
 
 /* eslint-disable @typescript-eslint/no-namespace */
 // no-namespace rule is disabled because action hygiene prevents import pollution

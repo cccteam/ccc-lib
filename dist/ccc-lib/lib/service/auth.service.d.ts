@@ -1,13 +1,11 @@
-import { HttpClient } from '@angular/common/http';
-import { InjectionToken } from '@angular/core';
-import { Observable } from 'rxjs';
-import { SessionInfo } from '../models/session-info';
+import { HttpClient } from "@angular/common/http";
+import { Observable } from "rxjs";
+import { SessionInfo } from "../models/session-info";
 import * as i0 from "@angular/core";
 export declare class AuthService {
     private http;
-    API_URL: InjectionToken<string>;
-    apiUrl: string;
-    constructor(http: HttpClient);
+    private baseUrl;
+    constructor(http: HttpClient, baseUrl: string);
     /**
      * Logs a user out.
      *
