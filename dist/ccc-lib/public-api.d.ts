@@ -12,3 +12,4 @@ export * from "./lib/models/session-info";
 export * from "./lib/components/alert/alert.component";
 export * from "./lib/directives/has-permission.directive";
 export * from "./lib/forms/form-helpers";
+export * from "./lib/base/tokens";

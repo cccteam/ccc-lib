@@ -31,3 +31,6 @@ export * from "./lib/directives/has-permission.directive";
 
 // Utils
 export * from "./lib/forms/form-helpers";
+
+// Tokens
+export * from "./lib/base/tokens";

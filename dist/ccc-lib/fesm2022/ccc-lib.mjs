@@ -583,5 +583,5 @@ function cleanStringFormArray(formArray) {
  * Generated bundle index. Do not edit.
  */
 
-export { AlertComponent, AlertLevel, ApiInterceptor, ApiInterceptorAction, AppAction, AuthService, AuthenticationGuard, AuthenticationGuardAction, AuthorizationGuard, CUSTOM_HTTP_REQUEST_OPTIONS, CoreState, Domain, ErrorService, HasPermissionDirective, HeaderAction, LoginAction, cleanStringFormArray, dirtyFormData, errorOptions, initState };
+export { AlertComponent, AlertLevel, ApiInterceptor, ApiInterceptorAction, AppAction, AuthService, AuthenticationGuard, AuthenticationGuardAction, AuthorizationGuard, BASE_URL, CUSTOM_HTTP_REQUEST_OPTIONS, CoreState, Domain, ErrorService, HasPermissionDirective, HeaderAction, LoginAction, cleanStringFormArray, dirtyFormData, errorOptions, initState };
 //# sourceMappingURL=ccc-lib.mjs.map
