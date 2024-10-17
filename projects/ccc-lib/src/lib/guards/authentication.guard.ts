@@ -1,11 +1,12 @@
-import { inject, InjectionToken } from '@angular/core';
-import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
-import { Store } from '@ngxs/store';
-import { of, Observable } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
-import { AuthService } from '../service/auth.service';
-import { CoreState } from '../state/core.state';
-import { AuthenticationGuardAction } from '../state/core.actions';
+import { inject } from "@angular/core";
+import { ActivatedRouteSnapshot, RouterStateSnapshot } from "@angular/router";
+import { Store } from "@ngxs/store";
+import { Observable, of } from "rxjs";
+import { catchError, map, switchMap } from "rxjs/operators";
+import { BASE_URL } from "../base/tokens";
+import { AuthService } from "../service/auth.service";
+import { AuthenticationGuardAction } from "../state/core.actions";
+import { CoreState } from "../state/core.state";
 
 export const AuthenticationGuard = (
   route: ActivatedRouteSnapshot,
@@ -14,13 +15,11 @@ export const AuthenticationGuard = (
   const store = inject(Store);
   const authService = inject(AuthService);
 
-  const API_URL = new InjectionToken<string>('apiUrl');
-  const apiUrl = inject(API_URL);
+  const baseUrl = inject(BASE_URL);
 
   const authenticate = (): void => {
     const url = routerState.url;
-    const absoluteUrl =
-      apiUrl + (!url.toString().startsWith('/') ? '/' + url : url);
+    const absoluteUrl = baseUrl + (!url.toString().startsWith("/") ? "/" + url : url);
     const encodedUrl = encodeURIComponent(absoluteUrl);
     window.location.href = `${authService.loginRoute()}?returnUrl=${encodedUrl}`;
   };

@@ -18,6 +18,8 @@ import * as i1$1 from '@angular/material/icon';
 import { MatIconModule } from '@angular/material/icon';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
+const BASE_URL = new InjectionToken("BASE_URL");
+
 const CUSTOM_HTTP_REQUEST_OPTIONS = new HttpContextToken(() => ({
     suppressGlobalError: false,
 }));
@@ -70,45 +72,6 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImpor
                     providedIn: 'root',
                 }]
         }], ctorParameters: () => [{ type: i1.HttpClient }] });
-
-var Domain;
-(function (Domain) {
-    Domain[Domain["Global"] = 0] = "Global";
-})(Domain || (Domain = {}));
-
-class ErrorService {
-    errorMessages = new BehaviorSubject([]);
-    errorId = 0;
-    addGlobalError(error) {
-        error.id = this.errorId++;
-        this.errorMessages.next([...this.errorMessages.value, error]);
-        return error.id;
-    }
-    dismissGlobalErrorById(errorId) {
-        this.errorMessages.next(this.errorMessages.value.filter((a) => !(a.id === errorId)));
-    }
-    dismissGlobalError(error) {
-        if (error.id !== undefined) {
-            this.dismissGlobalErrorById(error.id);
-        }
-    }
-    updateError(error) {
-        this.errorMessages.next(this.errorMessages.value.map((a) => {
-            if (a.id === error.id) {
-                return error;
-            }
-            return a;
-        }));
-    }
-    static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: ErrorService, deps: [], target: i0.ɵɵFactoryTarget.Injectable });
-    static ɵprov = i0.ɵɵngDeclareInjectable({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: ErrorService, providedIn: 'root' });
-}
-i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: ErrorService, decorators: [{
-            type: Injectable,
-            args: [{
-                    providedIn: 'root',
-                }]
-        }] });
 
 /* eslint-disable @typescript-eslint/no-namespace */
 // no-namespace rule is disabled because action hygiene prevents import pollution
@@ -219,6 +182,45 @@ var HeaderAction;
     }
     HeaderAction.Logout = Logout;
 })(HeaderAction || (HeaderAction = {}));
+
+var Domain;
+(function (Domain) {
+    Domain[Domain["Global"] = 0] = "Global";
+})(Domain || (Domain = {}));
+
+class ErrorService {
+    errorMessages = new BehaviorSubject([]);
+    errorId = 0;
+    addGlobalError(error) {
+        error.id = this.errorId++;
+        this.errorMessages.next([...this.errorMessages.value, error]);
+        return error.id;
+    }
+    dismissGlobalErrorById(errorId) {
+        this.errorMessages.next(this.errorMessages.value.filter((a) => !(a.id === errorId)));
+    }
+    dismissGlobalError(error) {
+        if (error.id !== undefined) {
+            this.dismissGlobalErrorById(error.id);
+        }
+    }
+    updateError(error) {
+        this.errorMessages.next(this.errorMessages.value.map((a) => {
+            if (a.id === error.id) {
+                return error;
+            }
+            return a;
+        }));
+    }
+    static ɵfac = i0.ɵɵngDeclareFactory({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: ErrorService, deps: [], target: i0.ɵɵFactoryTarget.Injectable });
+    static ɵprov = i0.ɵɵngDeclareInjectable({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: ErrorService, providedIn: 'root' });
+}
+i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImport: i0, type: ErrorService, decorators: [{
+            type: Injectable,
+            args: [{
+                    providedIn: 'root',
+                }]
+        }] });
 
 const initState = {
     loading: [],
@@ -381,11 +383,10 @@ i0.ɵɵngDeclareClassMetadata({ minVersion: "12.0.0", version: "18.2.7", ngImpor
 const AuthenticationGuard = (route, routerState) => {
     const store = inject(Store);
     const authService = inject(AuthService);
-    const API_URL = new InjectionToken('apiUrl');
-    const apiUrl = inject(API_URL);
+    const baseUrl = inject(BASE_URL);
     const authenticate = () => {
         const url = routerState.url;
-        const absoluteUrl = apiUrl + (!url.toString().startsWith('/') ? '/' + url : url);
+        const absoluteUrl = baseUrl + (!url.toString().startsWith("/") ? "/" + url : url);
         const encodedUrl = encodeURIComponent(absoluteUrl);
         window.location.href = `${authService.loginRoute()}?returnUrl=${encodedUrl}`;
     };
