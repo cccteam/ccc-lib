@@ -1,11 +1,11 @@
-import { Directive, Input, TemplateRef, ViewContainerRef, inject } from "@angular/core";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { Store } from "@ngxs/store";
-import { Subject, catchError, combineLatest, map, of } from "rxjs";
-import { CoreState } from "../state/core.state";
+import { Directive, Input, TemplateRef, ViewContainerRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Store } from '@ngxs/store';
+import { Subject, catchError, combineLatest, map, of } from 'rxjs';
+import { CoreState } from '../state/core.state';
 
 @Directive({
-  selector: "[appHasPermission]",
+  selector: '[appHasPermission]',
   standalone: true,
 })
 export class HasPermissionDirective {
@@ -30,7 +30,7 @@ export class HasPermissionDirective {
         map(({ permissionFn, permissions }) => permissionFn(permissions)),
         catchError(() => {
           return of(false);
-        })
+        }),
       )
       .subscribe((result) => {
         if (result) {

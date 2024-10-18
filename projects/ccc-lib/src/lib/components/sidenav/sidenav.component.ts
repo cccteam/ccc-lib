@@ -1,18 +1,18 @@
-import { CommonModule } from "@angular/common";
-import { Component, DestroyRef, inject, Input, OnInit } from "@angular/core";
-import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
-import { MatButtonModule } from "@angular/material/button";
-import { MatExpansionModule } from "@angular/material/expansion";
-import { MatIconModule } from "@angular/material/icon";
-import { MatSidenavModule } from "@angular/material/sidenav";
-import { RouterModule } from "@angular/router";
-import { Store } from "@ngxs/store";
-import { Observable, tap } from "rxjs";
-import { HasPermissionDirective } from "../../directives/has-permission.directive";
-import { CoreState } from "../../state/core.state";
+import { CommonModule } from '@angular/common';
+import { Component, DestroyRef, inject, Input, OnInit } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatButtonModule } from '@angular/material/button';
+import { MatExpansionModule } from '@angular/material/expansion';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { RouterModule } from '@angular/router';
+import { Store } from '@ngxs/store';
+import { Observable, tap } from 'rxjs';
+import { HasPermissionDirective } from '../../directives/has-permission.directive';
+import { CoreState } from '../../state/core.state';
 
 export interface NavItem {
-  type: "link" | "header" | "expandable";
+  type: 'link' | 'header' | 'expandable';
   routerLink?: string[];
   label: string;
   icon?: string;
@@ -25,9 +25,9 @@ export interface NavItem {
 export type NavGroups = Record<string, NavItem[]>;
 
 @Component({
-  selector: "app-sidenav",
-  templateUrl: "./sidenav.component.html",
-  styleUrls: ["./sidenav.component.scss"],
+  selector: 'app-sidenav',
+  templateUrl: './sidenav.component.html',
+  styleUrls: ['./sidenav.component.scss'],
   standalone: true,
   imports: [
     MatIconModule,
@@ -55,7 +55,7 @@ export class SidenavComponent implements OnInit {
         tap((identifier) => {
           this.currentNav = this.updateNavItems(identifier);
         }),
-        takeUntilDestroyed(this.destroyRef)
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe();
   }

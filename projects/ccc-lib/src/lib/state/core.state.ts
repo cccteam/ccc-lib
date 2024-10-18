@@ -1,14 +1,14 @@
-import { Injectable, inject } from "@angular/core";
-import { Action, Selector, State, StateContext } from "@ngxs/store";
-import { patch } from "@ngxs/store/operators";
-import { cloneDeep } from "lodash-es";
-import { Observable, tap } from "rxjs";
-import { ErrorMessage } from "../models/error-message";
-import { Domain } from "../models/permission-domain";
-import { SessionInfo } from "../models/session-info";
-import { AuthService } from "../service/auth.service";
-import { ErrorService } from "../service/error.service";
-import { ApiInterceptorAction, AppAction, AuthenticationGuardAction, HeaderAction, LoginAction } from "./core.actions";
+import { Injectable, inject } from '@angular/core';
+import { Action, Selector, State, StateContext } from '@ngxs/store';
+import { patch } from '@ngxs/store/operators';
+import { cloneDeep } from 'lodash-es';
+import { Observable, tap } from 'rxjs';
+import { ErrorMessage } from '../models/error-message';
+import { Domain } from '../models/permission-domain';
+import { SessionInfo } from '../models/session-info';
+import { AuthService } from '../service/auth.service';
+import { ErrorService } from '../service/error.service';
+import { ApiInterceptorAction, AppAction, AuthenticationGuardAction, HeaderAction, LoginAction } from './core.actions';
 
 export interface CoreStateModel {
   loading: string[];
@@ -24,16 +24,16 @@ export interface CoreStateModel {
 export const initState: CoreStateModel = {
   loading: [],
   sidenavOpened: true,
-  currentSidenavIdentifier: "",
+  currentSidenavIdentifier: '',
   auth: {
     authenticated: false,
-    redirectUrl: "",
+    redirectUrl: '',
     sessionInfo: null,
   },
 };
 
 @State<CoreStateModel>({
-  name: "coreState",
+  name: 'coreState',
   defaults: initState,
 })
 @Injectable()
@@ -87,7 +87,7 @@ export class CoreState {
     ctx.setState(
       patch({
         currentSidenavIdentifier: action.identifier,
-      })
+      }),
     );
   }
 
@@ -106,9 +106,9 @@ export class CoreState {
               authenticated: !!result?.authenticated,
               sessionInfo: result,
             }),
-          })
-        )
-      )
+          }),
+        ),
+      ),
     );
   }
 
@@ -119,7 +119,7 @@ export class CoreState {
     return this.authService.logout().pipe(
       tap(() => {
         ctx.setState(localStateCopy);
-      })
+      }),
     );
   }
 
@@ -135,7 +135,7 @@ export class CoreState {
         auth: patch({
           redirectUrl: action.redirectUrl,
         }),
-      })
+      }),
     );
     return ctx.getState();
   }
@@ -169,7 +169,7 @@ export class CoreState {
     ctx.setState(
       patch({
         sidenavOpened: !ctx.getState().sidenavOpened,
-      })
+      }),
     );
   }
 }

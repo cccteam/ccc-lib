@@ -1,16 +1,16 @@
-import { inject } from "@angular/core";
-import { ActivatedRouteSnapshot, RouterStateSnapshot } from "@angular/router";
-import { Store } from "@ngxs/store";
-import { Observable, of } from "rxjs";
-import { catchError, map, switchMap } from "rxjs/operators";
-import { BASE_URL } from "../base/tokens";
-import { AuthService } from "../service/auth.service";
-import { AuthenticationGuardAction } from "../state/core.actions";
-import { CoreState } from "../state/core.state";
+import { inject } from '@angular/core';
+import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
+import { Store } from '@ngxs/store';
+import { Observable, of } from 'rxjs';
+import { catchError, map, switchMap } from 'rxjs/operators';
+import { BASE_URL } from '../base/tokens';
+import { AuthService } from '../service/auth.service';
+import { AuthenticationGuardAction } from '../state/core.actions';
+import { CoreState } from '../state/core.state';
 
 export const AuthenticationGuard = (
   route: ActivatedRouteSnapshot,
-  routerState: RouterStateSnapshot
+  routerState: RouterStateSnapshot,
 ): Observable<boolean> => {
   const store = inject(Store);
   const authService = inject(AuthService);
@@ -19,7 +19,7 @@ export const AuthenticationGuard = (
 
   const authenticate = (): void => {
     const url = routerState.url;
-    const absoluteUrl = baseUrl + (!url.toString().startsWith("/") ? "/" + url : url);
+    const absoluteUrl = baseUrl + (!url.toString().startsWith('/') ? '/' + url : url);
     const encodedUrl = encodeURIComponent(absoluteUrl);
     window.location.href = `${authService.loginRoute()}?returnUrl=${encodedUrl}`;
   };
@@ -33,7 +33,7 @@ export const AuthenticationGuard = (
       return store.dispatch(AuthenticationGuardAction.CheckUserSession).pipe(
         switchMap(() => {
           return store.select(CoreState.isAuthenticated);
-        })
+        }),
       );
     }),
     map((authenticated) => {
@@ -49,6 +49,6 @@ export const AuthenticationGuard = (
       authenticate();
 
       return of(false);
-    })
+    }),
   );
 };

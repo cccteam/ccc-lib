@@ -16,9 +16,7 @@ export class ErrorService {
   }
 
   dismissGlobalErrorById(errorId: number): void {
-    this.errorMessages.next(
-      this.errorMessages.value.filter((a) => !(a.id === errorId))
-    );
+    this.errorMessages.next(this.errorMessages.value.filter((a) => !(a.id === errorId)));
   }
 
   dismissGlobalError(error: ErrorMessage): void {
@@ -34,7 +32,7 @@ export class ErrorService {
           return error;
         }
         return a;
-      })
+      }),
     );
   }
 }

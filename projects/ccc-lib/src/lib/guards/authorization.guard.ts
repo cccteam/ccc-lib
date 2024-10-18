@@ -4,9 +4,7 @@ import { Store } from '@ngxs/store';
 import { map, Observable } from 'rxjs';
 import { CoreState } from '../state/core.state';
 
-export const AuthorizationGuard = (
-  route: ActivatedRouteSnapshot
-): Observable<boolean> => {
+export const AuthorizationGuard = (route: ActivatedRouteSnapshot): Observable<boolean> => {
   const store = inject(Store);
   const router = inject(Router);
   return store.select(CoreState.hasPermission).pipe(
@@ -17,6 +15,6 @@ export const AuthorizationGuard = (
       }
       router.navigate(['/']);
       return false;
-    })
+    }),
   );
 };
