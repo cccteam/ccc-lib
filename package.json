@@ -1,9 +1,9 @@
 {
-  "name": "ccc-lib",
+  "name": "ccc-ui",
   "version": "0.0.0",
-  "main": "dist/ccc-lib/fesm2022/ccc-lib.js",
-  "module": "dist/ccc-lib/fesm2022/ccc-lib.mjs",
-  "typings": "dist/ccc-lib/index.d.ts",
+  "main": "dist/ccc-ui/fesm2022/ccc-ui.js",
+  "module": "dist/ccc-ui/fesm2022/ccc-ui.mjs",
+  "typings": "dist/ccc-ui/index.d.ts",
   "publishConfig": {
     "@cccteam:registry": "https:npm.pkg.github.com"
   },

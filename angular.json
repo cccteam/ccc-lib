@@ -3,23 +3,23 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "ccc-lib": {
+    "ccc-ui": {
       "projectType": "library",
-      "root": "projects/ccc-lib",
-      "sourceRoot": "projects/ccc-lib/src",
+      "root": "projects/ccc-ui",
+      "sourceRoot": "projects/ccc-ui/src",
       "prefix": "lib",
       "architect": {
         "build": {
           "builder": "@angular-devkit/build-angular:ng-packagr",
           "options": {
-            "project": "projects/ccc-lib/ng-package.json"
+            "project": "projects/ccc-ui/ng-package.json"
           },
           "configurations": {
             "production": {
-              "tsConfig": "projects/ccc-lib/tsconfig.lib.prod.json"
+              "tsConfig": "projects/ccc-ui/tsconfig.lib.prod.json"
             },
             "development": {
-              "tsConfig": "projects/ccc-lib/tsconfig.lib.json"
+              "tsConfig": "projects/ccc-ui/tsconfig.lib.json"
             }
           },
           "defaultConfiguration": "production"
@@ -27,11 +27,8 @@
         "test": {
           "builder": "@angular-devkit/build-angular:karma",
           "options": {
-            "tsConfig": "projects/ccc-lib/tsconfig.spec.json",
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ]
+            "tsConfig": "projects/ccc-ui/tsconfig.spec.json",
+            "polyfills": ["zone.js", "zone.js/testing"]
           }
         }
       }

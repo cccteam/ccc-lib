@@ -1,5 +1,5 @@
 {
-  "name": "ccc-lib",
+  "name": "ccc-ui",
   "version": "0.0.1",
   "peerDependencies": {
     "@angular/material": "^18.1.0",

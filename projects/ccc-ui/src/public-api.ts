@@ -1,5 +1,5 @@
 /*
- * Public API Surface of ccc-lib
+ * Public API Surface of ccc-ui
  */
 
 // Guards
@@ -33,5 +33,5 @@ export * from './lib/directives/has-permission.directive';
 // Utils
 export * from './lib/forms/form-helpers';
 
-// Tokens
+// Injection Tokens
 export * from './lib/base/tokens';

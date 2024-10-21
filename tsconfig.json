@@ -4,9 +4,7 @@
   "compileOnSave": false,
   "compilerOptions": {
     "paths": {
-      "ccc-lib": [
-        "./dist/ccc-lib"
-      ]
+      "ccc-ui": ["./dist/ccc-ui"]
     },
     "outDir": "./dist/out-tsc",
     "strict": true,
@@ -24,10 +22,7 @@
     "importHelpers": true,
     "target": "ES2022",
     "module": "ES2022",
-    "lib": [
-      "ES2022",
-      "dom"
-    ]
+    "lib": ["ES2022", "dom"]
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,
