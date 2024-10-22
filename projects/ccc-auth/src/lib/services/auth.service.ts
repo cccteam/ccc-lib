@@ -1,9 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Inject, Injectable } from '@angular/core';
 import { map, Observable } from 'rxjs';
-import { BASE_URL } from '../base/tokens';
+import { BASE_URL } from '../../../../ccc-ui/src/lib/base/tokens';
+import { errorOptions } from '../../../../ccc-ui/src/lib/services/request-options';
 import { SessionInfo } from '../models/session-info';
-import { errorOptions } from './request-options';
 
 const routes = {
   login: (rootUrl: string): string => `${rootUrl}/user/login`,

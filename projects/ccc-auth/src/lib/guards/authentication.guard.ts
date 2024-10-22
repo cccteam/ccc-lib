@@ -3,10 +3,10 @@ import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { Store } from '@ngxs/store';
 import { Observable, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
-import { BASE_URL } from '../base/tokens';
-import { AuthService } from '../service/auth.service';
-import { AuthenticationGuardAction } from '../state/core.actions';
-import { CoreState } from '../state/core.state';
+import { BASE_URL } from '../../../../ccc-ui/src/lib/base/tokens';
+import { AuthenticationGuardAction } from '../../../../ccc-ui/src/lib/state/core.actions';
+import { CoreState } from '../../../../ccc-ui/src/lib/state/core.state';
+import { AuthService } from '../services/auth.service';
 
 export const AuthenticationGuard = (
   route: ActivatedRouteSnapshot,

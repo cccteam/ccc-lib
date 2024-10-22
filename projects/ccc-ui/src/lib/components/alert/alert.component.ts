@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterModule } from '@angular/router';
 import { ErrorMessage } from '../../models/error-message';
-import { ErrorService } from '../../service/error.service';
+import { ErrorService } from '../../services/error.service';
 
 @Component({
   selector: 'lib-alert',

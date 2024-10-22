@@ -8,7 +8,7 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { RouterModule } from '@angular/router';
 import { Store } from '@ngxs/store';
 import { Observable, tap } from 'rxjs';
-import { HasPermissionDirective } from '../../directives/has-permission.directive';
+import { HasPermissionDirective } from '../../../../../ccc-auth/src/lib/directives/has-permission.directive';
 import { CoreState } from '../../state/core.state';
 
 export interface NavItem {

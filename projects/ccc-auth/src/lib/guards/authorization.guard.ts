@@ -2,7 +2,7 @@ import { inject } from '@angular/core';
 import { ActivatedRouteSnapshot, Router } from '@angular/router';
 import { Store } from '@ngxs/store';
 import { map, Observable } from 'rxjs';
-import { CoreState } from '../state/core.state';
+import { CoreState } from '../../../../ccc-ui/src/lib/state/core.state';
 
 export const AuthorizationGuard = (route: ActivatedRouteSnapshot): Observable<boolean> => {
   const store = inject(Store);

@@ -2,7 +2,7 @@ import { Directive, Input, TemplateRef, ViewContainerRef, inject } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Store } from '@ngxs/store';
 import { Subject, catchError, combineLatest, map, of } from 'rxjs';
-import { CoreState } from '../state/core.state';
+import { CoreState } from '../../../../ccc-ui/src/lib/state/core.state';
 
 @Directive({
   selector: '[libHasPermission]',

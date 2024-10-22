@@ -45,6 +45,49 @@
           }
         }
       }
+    },
+    "ccc-auth": {
+      "projectType": "library",
+      "root": "projects/ccc-auth",
+      "sourceRoot": "projects/ccc-auth/src",
+      "prefix": "lib",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/ccc-auth/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/ccc-auth/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/ccc-auth/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "tsConfig": "projects/ccc-auth/tsconfig.spec.json",
+            "polyfills": [
+              "zone.js",
+              "zone.js/testing"
+            ]
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "projects/ccc-auth/**/*.ts",
+              "projects/ccc-auth/**/*.html"
+            ],
+            "eslintConfig": "projects/ccc-auth/eslint.config.js"
+          }
+        }
+      }
     }
   },
   "cli": {
