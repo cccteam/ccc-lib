@@ -25,7 +25,7 @@ export interface NavItem {
 export type NavGroups = Record<string, NavItem[]>;
 
 @Component({
-  selector: 'app-sidenav',
+  selector: 'lib-sidenav',
   templateUrl: './sidenav.component.html',
   styleUrls: ['./sidenav.component.scss'],
   standalone: true,
