@@ -4,6 +4,9 @@
   "main": "dist/ccc-ui/fesm2022/ccc-ui.js",
   "module": "dist/ccc-ui/fesm2022/ccc-ui.mjs",
   "typings": "dist/ccc-ui/index.d.ts",
+  "workspaces": [
+    "projects/*"
+  ],
   "publishConfig": {
     "@cccteam:registry": "https:npm.pkg.github.com"
   },
