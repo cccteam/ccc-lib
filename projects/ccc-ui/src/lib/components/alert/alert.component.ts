@@ -7,7 +7,7 @@ import { ErrorMessage } from '../../models/error-message';
 import { ErrorService } from '../../service/error.service';
 
 @Component({
-  selector: 'app-alert',
+  selector: 'lib-alert',
   templateUrl: './alert.component.html',
   styleUrls: ['./alert.component.scss'],
   standalone: true,

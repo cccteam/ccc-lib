@@ -5,7 +5,7 @@ import { Subject, catchError, combineLatest, map, of } from 'rxjs';
 import { CoreState } from '../state/core.state';
 
 @Directive({
-  selector: '[appHasPermission]',
+  selector: '[libHasPermission]',
   standalone: true,
 })
 export class HasPermissionDirective {

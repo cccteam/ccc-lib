@@ -8,15 +8,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  closes-issue-check:
-    uses: cccteam/github-workflows/.github/workflows/closes-issue-check.yml@v4.1.0
-
   angular:
     name: Run angular checks
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./gui
+        working-directory: .
     steps:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v4
@@ -26,11 +23,14 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install Angular CLI
+        run: npm install -g @angular/cli
+
       - name: Install dependencies
         run: npm ci
 
       - name: Run lint
-        run: npm run lint
+        run: npm run lint:all
 
       - name: Run build
-        run: npm run build
+        run: npm run build:all

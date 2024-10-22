@@ -4,15 +4,18 @@
   "main": "dist/ccc-ui/fesm2022/ccc-ui.js",
   "module": "dist/ccc-ui/fesm2022/ccc-ui.mjs",
   "typings": "dist/ccc-ui/index.d.ts",
+  "workspaces": [
+    "projects/*"
+  ],
   "publishConfig": {
     "@cccteam:registry": "https:npm.pkg.github.com"
   },
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "lint:ccc-ui": "ng lint ccc-ui",
+    "build:ccc-ui": "ng build ccc-ui",
+    "lint:all": "npm run lint:ccc-ui",
+    "build:all": "npm run build:ccc-ui"
   },
   "private": true,
   "dependencies": {
@@ -33,6 +36,9 @@
     "@angular/cli": "^18.2.4",
     "@angular/compiler-cli": "^18.2.0",
     "@types/jasmine": "~5.1.0",
+    "angular-eslint": "18.4.0",
+    "eslint": "^9.13.0",
+    "eslint-config-prettier": "^9.1.0",
     "jasmine-core": "~5.2.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
@@ -40,6 +46,7 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
     "ng-packagr": "^18.2.0",
-    "typescript": "~5.5.2"
+    "typescript": "~5.5.2",
+    "typescript-eslint": "8.10.0"
   }
 }
