@@ -8,11 +8,10 @@
     "@cccteam:registry": "https:npm.pkg.github.com"
   },
   "scripts": {
-    "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "lint:ccc-ui": "npm --prefix ./projects/ccc-ui run lint",
+    "build:ccc-ui": "npm --prefix ./projects/ccc-ui run build",
+    "lint:all": "npm run lint:ccc-ui",
+    "build:all": "npm run build:ccc-ui"
   },
   "private": true,
   "dependencies": {
