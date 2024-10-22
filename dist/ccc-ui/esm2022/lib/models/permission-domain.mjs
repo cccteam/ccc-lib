@@ -1,5 +1,0 @@
-export var Domain;
-(function (Domain) {
-    Domain[Domain["Global"] = 0] = "Global";
-})(Domain || (Domain = {}));
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicGVybWlzc2lvbi1kb21haW4uanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi8uLi8uLi8uLi9wcm9qZWN0cy9jY2MtbGliL3NyYy9saWIvbW9kZWxzL3Blcm1pc3Npb24tZG9tYWluLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBLE1BQU0sQ0FBTixJQUFZLE1BRVg7QUFGRCxXQUFZLE1BQU07SUFDaEIsdUNBQVUsQ0FBQTtBQUNaLENBQUMsRUFGVyxNQUFNLEtBQU4sTUFBTSxRQUVqQiIsInNvdXJjZXNDb250ZW50IjpbImV4cG9ydCBlbnVtIERvbWFpbiB7XG4gIEdsb2JhbCA9IDAsXG59XG4iXX0=
