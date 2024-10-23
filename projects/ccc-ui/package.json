@@ -2,7 +2,7 @@
   "name": "@cccteam/ccc-ui",
   "repository": {
     "type": "git",
-    "url": "git://github.com/cccteam/ccc-lib"
+    "url": "git://github.com/cccteam/ccc-lib.git"
   },
   "version": "0.0.1",
   "peerDependencies": {
