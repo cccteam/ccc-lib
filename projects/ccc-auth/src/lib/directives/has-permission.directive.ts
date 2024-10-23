@@ -2,7 +2,7 @@ import { Directive, Input, TemplateRef, ViewContainerRef, inject } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Store } from '@ngxs/store';
 import { Subject, catchError, combineLatest, map, of } from 'rxjs';
-import { CoreState } from '../../../../ccc-ui/src/lib/state/core.state';
+import { AuthState } from '../state/auth.state';
 
 @Directive({
   selector: '[libHasPermission]',
@@ -22,7 +22,7 @@ export class HasPermissionDirective {
 
   constructor() {
     combineLatest({
-      permissionFn: this.store.select(CoreState.hasPermission),
+      permissionFn: this.store.select(AuthState.hasPermission),
       permissions: this.permissions.asObservable(),
     })
       .pipe(

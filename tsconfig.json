@@ -7,6 +7,9 @@
       "ccc-auth": [
         "./dist/ccc-auth"
       ],
+      "ccc-base": [
+        "./dist/ccc-base"
+      ],
       "ccc-ui": ["./dist/ccc-ui"]
     },
     "outDir": "./dist/out-tsc",

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 // no-namespace rule is disabled because action hygiene prevents import pollution
 
-import { ErrorMessage } from '../../../../ccc-ui/src/lib/models/error-message';
+import { ErrorMessage } from '../models/error-message';
 
 export namespace AuthenticationGuardAction {
   export class SetRedirectUrl {
@@ -26,11 +26,6 @@ export namespace ApiInterceptorAction {
   export class SetRedirectUrl {
     static readonly type = '[ApiInterceptor] Set Redirect Url';
     constructor(public redirectUrl: string) {}
-  }
-
-  export class PublishError {
-    static readonly type = '[ApiInterceptor] Publish Error';
-    constructor(public message: ErrorMessage) {}
   }
 }
 

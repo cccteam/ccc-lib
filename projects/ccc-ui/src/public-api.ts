@@ -22,6 +22,3 @@ export * from './lib/components/sidenav/sidenav.component';
 
 // Utils
 export * from './lib/forms/form-helpers';
-
-// Injection Tokens
-export * from './lib/base/tokens';

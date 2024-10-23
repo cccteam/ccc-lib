@@ -28,19 +28,13 @@
           "builder": "@angular-devkit/build-angular:karma",
           "options": {
             "tsConfig": "projects/ccc-ui/tsconfig.spec.json",
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ]
+            "polyfills": ["zone.js", "zone.js/testing"]
           }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
-            "lintFilePatterns": [
-              "projects/ccc-ui/**/*.ts",
-              "projects/ccc-ui/**/*.html"
-            ],
+            "lintFilePatterns": ["projects/ccc-ui/**/*.ts", "projects/ccc-ui/**/*.html"],
             "eslintConfig": "projects/ccc-ui/eslint.config.js"
           }
         }
@@ -71,19 +65,13 @@
           "builder": "@angular-devkit/build-angular:karma",
           "options": {
             "tsConfig": "projects/ccc-auth/tsconfig.spec.json",
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ]
+            "polyfills": ["zone.js", "zone.js/testing"]
           }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
-            "lintFilePatterns": [
-              "projects/ccc-auth/**/*.ts",
-              "projects/ccc-auth/**/*.html"
-            ],
+            "lintFilePatterns": ["projects/ccc-auth/**/*.ts", "projects/ccc-auth/**/*.html"],
             "eslintConfig": "projects/ccc-auth/eslint.config.js"
           }
         }
@@ -92,8 +80,6 @@
   },
   "cli": {
     "analytics": false,
-    "schematicCollections": [
-      "@angular-eslint/schematics"
-    ]
+    "schematicCollections": ["@angular-eslint/schematics"]
   }
 }

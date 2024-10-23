@@ -1,5 +1,9 @@
 {
-  "name": "ccc-auth",
+  "name": "@cccteam/ccc-auth",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/cccteam/ccc-lib"
+  },
   "version": "0.0.1",
   "peerDependencies": {
     "@angular/common": "^18.2.0",

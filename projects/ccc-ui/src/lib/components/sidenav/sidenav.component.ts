@@ -8,7 +8,6 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { RouterModule } from '@angular/router';
 import { Store } from '@ngxs/store';
 import { Observable, tap } from 'rxjs';
-import { HasPermissionDirective } from '../../../../../ccc-auth/src/lib/directives/has-permission.directive';
 import { CoreState } from '../../state/core.state';
 
 export interface NavItem {
@@ -29,15 +28,7 @@ export type NavGroups = Record<string, NavItem[]>;
   templateUrl: './sidenav.component.html',
   styleUrls: ['./sidenav.component.scss'],
   standalone: true,
-  imports: [
-    MatIconModule,
-    RouterModule,
-    CommonModule,
-    MatExpansionModule,
-    MatButtonModule,
-    HasPermissionDirective,
-    MatSidenavModule,
-  ],
+  imports: [MatIconModule, RouterModule, CommonModule, MatExpansionModule, MatButtonModule, MatSidenavModule],
 })
 export class SidenavComponent implements OnInit {
   private store = inject(Store);
@@ -45,8 +36,6 @@ export class SidenavComponent implements OnInit {
 
   @Input() navGroups?: NavGroups;
   currentNav: NavItem[] = [];
-
-  hasPermissionFn = this.store.select(CoreState.hasPermission);
 
   ngOnInit(): void {
     this.store
