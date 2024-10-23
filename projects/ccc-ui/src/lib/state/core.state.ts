@@ -1,35 +1,20 @@
 import { Injectable, inject } from '@angular/core';
 import { Action, Selector, State, StateContext } from '@ngxs/store';
 import { patch } from '@ngxs/store/operators';
-import { cloneDeep } from 'lodash-es';
-import { Observable, tap } from 'rxjs';
 import { ErrorMessage } from '../models/error-message';
-import { Domain } from '../models/permission-domain';
-import { SessionInfo } from '../models/session-info';
-import { AuthService } from '../service/auth.service';
-import { ErrorService } from '../service/error.service';
-import { ApiInterceptorAction, AppAction, AuthenticationGuardAction, HeaderAction, LoginAction } from './core.actions';
+import { ErrorService } from '../services/error.service';
+import { ApiInterceptorAction, AppAction, HeaderAction, LoginAction } from './core.actions';
 
 export interface CoreStateModel {
   loading: string[];
   sidenavOpened: boolean;
   currentSidenavIdentifier: string;
-  auth: {
-    authenticated: boolean;
-    redirectUrl: string;
-    sessionInfo: SessionInfo | null;
-  };
 }
 
 export const initState: CoreStateModel = {
   loading: [],
   sidenavOpened: true,
   currentSidenavIdentifier: '',
-  auth: {
-    authenticated: false,
-    redirectUrl: '',
-    sessionInfo: null,
-  },
 };
 
 @State<CoreStateModel>({
@@ -38,38 +23,11 @@ export const initState: CoreStateModel = {
 })
 @Injectable()
 export class CoreState {
-  private authService = inject(AuthService);
   private errors = inject(ErrorService);
 
   @Selector()
   static sidenavOpened(state: CoreStateModel): boolean {
     return state?.sidenavOpened;
-  }
-
-  @Selector()
-  static permissions(state: CoreStateModel): string[] | undefined {
-    return state?.auth.sessionInfo?.permissions[Domain.Global];
-  }
-
-  @Selector()
-  static hasPermission(state: CoreStateModel): (permissions: string[]) => boolean {
-    return (permissions: string[]): boolean => {
-      if (state?.auth.sessionInfo?.permissions[Domain.Global]) {
-        return state.auth.sessionInfo.permissions[Domain.Global].some((p: string) => permissions.includes(p));
-      }
-
-      return false;
-    };
-  }
-
-  @Selector()
-  static isAuthenticated(state: CoreStateModel): boolean {
-    return state?.auth.authenticated;
-  }
-
-  @Selector()
-  static redirectUrl(state: CoreStateModel): string {
-    return state?.auth.redirectUrl;
   }
 
   @Selector()
@@ -94,50 +52,6 @@ export class CoreState {
   @Action([ApiInterceptorAction.PublishError, LoginAction.PublishError])
   publishError(ctx: StateContext<CoreStateModel>, action: { message: ErrorMessage }): void {
     this.errors.addGlobalError(action.message);
-  }
-
-  @Action([AppAction.CheckUserSession, AuthenticationGuardAction.CheckUserSession])
-  checkUserSession(ctx: StateContext<CoreStateModel>): Observable<SessionInfo | null> {
-    return this.authService.checkUserSession().pipe(
-      tap((result) =>
-        ctx.setState(
-          patch({
-            auth: patch({
-              authenticated: !!result?.authenticated,
-              sessionInfo: result,
-            }),
-          }),
-        ),
-      ),
-    );
-  }
-
-  @Action([LoginAction.Logout])
-  logout(ctx: StateContext<CoreStateModel>): Observable<boolean> {
-    const localStateCopy = cloneDeep(initState);
-    localStateCopy.auth.redirectUrl = ctx.getState().auth.redirectUrl;
-    return this.authService.logout().pipe(
-      tap(() => {
-        ctx.setState(localStateCopy);
-      }),
-    );
-  }
-
-  @Action([
-    AppAction.SetRedirectUrl,
-    LoginAction.SetRedirectUrl,
-    AuthenticationGuardAction.SetRedirectUrl,
-    ApiInterceptorAction.SetRedirectUrl,
-  ])
-  setRedirectUrl(ctx: StateContext<CoreStateModel>, action: { redirectUrl: string }): CoreStateModel {
-    ctx.setState(
-      patch({
-        auth: patch({
-          redirectUrl: action.redirectUrl,
-        }),
-      }),
-    );
-    return ctx.getState();
   }
 
   @Action([ApiInterceptorAction.BeginActivity])
