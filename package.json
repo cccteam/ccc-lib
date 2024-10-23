@@ -34,5 +34,6 @@
     "ng-packagr": "^18.2.0",
     "typescript": "~5.5.2",
     "typescript-eslint": "8.10.0"
-  }
+  },
+  "version": ""
 }
