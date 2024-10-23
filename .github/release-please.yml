@@ -12,3 +12,11 @@ updates:
       go-dependencies:
         patterns:
           - '*'
+  - package-ecosystem: 'npm'
+    directory: '/projects/ccc-auth'
+    schedule:
+      interval: 'weekly'
+    groups:
+      go-dependencies:
+        patterns:
+          - '*'
