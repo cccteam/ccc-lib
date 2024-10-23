@@ -8,20 +8,15 @@ function pack_lib() {
 }
 
 function install_lib() {
-    npm install
     (cd projects/$1 && npm install)
 }
 
-function ci_lib() {
-    (cd projects/$1 && npm ci)
-}
-
 function lint_lib() {
-    (cd projects/$1 && ng lint)
+    npx ng lint "$1"
 }
 
 function build_lib() {
-    ng build "$1"
+    npx ng build "$1"
 }
 
 function publish_lib() {
@@ -30,24 +25,20 @@ function publish_lib() {
 
 # Parse command-line arguments
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 [pack|install|ci|lint|build|publish]"
+    echo "Usage: $0 [pack|install|lint|build|publish]"
     exit 1
 fi
 
 for target in "$@"; do
-    # Composite action for all libraries
     case $target in
         pack)
             for lib in "${LIBS[@]}"; do
                 pack_lib "$lib"
             done;;
         install)
+            npm install
             for lib in "${LIBS[@]}"; do
                 install_lib "$lib"
-            done;;
-        ci)
-            for lib in "${LIBS[@]}"; do
-                ci_lib "$lib"
             done;;
         lint)
             for lib in "${LIBS[@]}"; do

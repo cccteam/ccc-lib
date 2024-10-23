@@ -27,7 +27,7 @@ jobs:
         run: npm install -g @angular/cli
 
       - name: Install dependencies
-        run: ./manage.sh ci
+        run: ./manage.sh install
 
       - name: Run lint
         run: ./manage.sh lint
