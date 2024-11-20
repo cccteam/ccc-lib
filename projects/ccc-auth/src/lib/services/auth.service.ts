@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Inject, Injectable } from '@angular/core';
+import { SessionInfo } from 'projects/ccc-types/dist';
 import { map, Observable } from 'rxjs';
 import { BASE_URL } from '../base/tokens';
-import { SessionInfo } from '../models/session-info';
 import { errorOptions } from './request-options';
 
 const routes = {

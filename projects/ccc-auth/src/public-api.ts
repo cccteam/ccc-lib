@@ -9,10 +9,6 @@ export * from './lib/directives/has-permission.directive';
 export * from './lib/guards/authentication.guard';
 export * from './lib/guards/authorization.guard';
 
-// Models
-export * from './lib/models/permission-domain';
-export * from './lib/models/session-info';
-
 // Services
 export * from './lib/services/auth.service';
 

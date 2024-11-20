@@ -7,7 +7,7 @@
       "projectType": "library",
       "root": "projects/ccc-ui",
       "sourceRoot": "projects/ccc-ui/src",
-      "prefix": "lib",
+      "prefix": "ccc",
       "architect": {
         "build": {
           "builder": "@angular-devkit/build-angular:ng-packagr",
@@ -44,7 +44,7 @@
       "projectType": "library",
       "root": "projects/ccc-auth",
       "sourceRoot": "projects/ccc-auth/src",
-      "prefix": "lib",
+      "prefix": "ccc",
       "architect": {
         "build": {
           "builder": "@angular-devkit/build-angular:ng-packagr",
@@ -73,6 +73,43 @@
           "options": {
             "lintFilePatterns": ["projects/ccc-auth/**/*.ts", "projects/ccc-auth/**/*.html"],
             "eslintConfig": "projects/ccc-auth/eslint.config.js"
+          }
+        }
+      }
+    },
+    "ccc-types": {
+      "projectType": "library",
+      "root": "projects/ccc-types",
+      "sourceRoot": "projects/ccc-types/src",
+      "prefix": "ccc",
+      "architect": {
+        "build": {
+          "builder": "@angular-devkit/build-angular:ng-packagr",
+          "options": {
+            "project": "projects/ccc-types/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/ccc-types/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/ccc-types/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "test": {
+          "builder": "@angular-devkit/build-angular:karma",
+          "options": {
+            "tsConfig": "projects/ccc-types/tsconfig.spec.json",
+            "polyfills": ["zone.js", "zone.js/testing"]
+          }
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": ["projects/ccc-types/**/*.ts", "projects/ccc-types/**/*.html"],
+            "eslintConfig": "projects/ccc-types/eslint.config.js"
           }
         }
       }

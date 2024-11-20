@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
+import { Permission, PermissionScope, Resource, SessionInfo } from '@cccteam/ccc-types';
 import { Action, Selector, State, StateContext } from '@ngxs/store';
 import { patch } from '@ngxs/store/operators';
 import { cloneDeep } from 'lodash-es';
 import { Observable, tap } from 'rxjs';
-import { Domain } from '../models/permission-domain';
-import { SessionInfo } from '../models/session-info';
+import { PERMISSION_REQUIRED } from '../base/tokens';
 import { AuthService } from '../services/auth.service';
 import { ApiInterceptorAction, AppAction, AuthenticationGuardAction, LoginAction } from './auth.actions';
 
@@ -29,19 +29,16 @@ export class AuthState {
   private authService = inject(AuthService);
 
   @Selector()
-  static permissions(state: AuthStateModel): string[] | undefined {
-    return state?.sessionInfo?.permissions[Domain.Global];
+  static hasPermission(state: AuthStateModel): (scope?: PermissionScope) => boolean {
+    return (scope?: PermissionScope) => {
+      if (!scope) return false;
+      const resourcePermissions = state?.sessionInfo?.permissions?.[scope.domain]?.[scope.resource];
+      return Array.isArray(resourcePermissions) && resourcePermissions.includes(scope.permission);
+    };
   }
 
-  @Selector()
-  static hasPermission(state: AuthStateModel): (permissions: string[]) => boolean {
-    return (permissions: string[]): boolean => {
-      if (state?.sessionInfo?.permissions[Domain.Global]) {
-        return state.sessionInfo.permissions[Domain.Global].some((p: string) => permissions.includes(p));
-      }
-
-      return false;
-    };
+  static requiresPermission(resource: Resource, permission: Permission): boolean {
+    return inject(PERMISSION_REQUIRED)(resource, permission);
   }
 
   @Selector()

@@ -4,5 +4,5 @@
 export interface SessionInfo {
   authenticated: boolean;
   username: string;
-  permissions: Record<string, string[]>;
+  permissions: Record<string, Record<string, string[]>>;
 }

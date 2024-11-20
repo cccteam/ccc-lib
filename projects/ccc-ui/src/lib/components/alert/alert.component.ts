@@ -3,11 +3,11 @@ import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterModule } from '@angular/router';
-import { ErrorMessage } from '../../models/error-message';
+import { ErrorMessage } from '@cccteam/ccc-types';
 import { ErrorService } from '../../services/error.service';
 
 @Component({
-  selector: 'lib-alert',
+  selector: 'ccc-alert',
   templateUrl: './alert.component.html',
   styleUrls: ['./alert.component.scss'],
   standalone: true,

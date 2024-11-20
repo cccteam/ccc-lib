@@ -1,12 +1,11 @@
 {
-  "name": "@cccteam/ccc-auth",
+  "name": "@cccteam/ccc-types",
   "repository": {
     "type": "git",
     "url": "git://github.com/cccteam/ccc-lib.git"
   },
   "version": "0.0.1",
   "peerDependencies": {
-    "@cccteam/ccc-types": "^0.0.1",
     "@angular/common": "^18.2.0",
     "@angular/core": "^18.2.0"
   },

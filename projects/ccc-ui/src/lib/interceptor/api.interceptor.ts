@@ -1,9 +1,9 @@
 import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
 import { inject, Injectable, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
+import { AlertLevel } from '@cccteam/ccc-types';
 import { Store } from '@ngxs/store';
 import { catchError, finalize, Observable, throwError } from 'rxjs';
-import { AlertLevel } from '../models/error-message';
 import { CUSTOM_HTTP_REQUEST_OPTIONS } from '../services/request-options';
 import { ApiInterceptorAction } from '../state/core.actions';
 

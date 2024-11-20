@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 // no-namespace rule is disabled because action hygiene prevents import pollution
 
-import { ErrorMessage } from '../models/error-message';
+import { ErrorMessage } from '@cccteam/ccc-types';
 
 export namespace AuthenticationGuardAction {
   export class SetRedirectUrl {

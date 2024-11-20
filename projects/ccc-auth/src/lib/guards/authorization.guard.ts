@@ -8,7 +8,7 @@ export const AuthorizationGuard = (route: ActivatedRouteSnapshot): Observable<bo
   const store = inject(Store);
   const router = inject(Router);
   return store.select(AuthState.hasPermission).pipe(
-    map((permissionFn) => permissionFn(route.data['permissions'])),
+    map((permissionFn) => permissionFn(route.data['scopes'])),
     map((hasPermission) => {
       if (hasPermission) {
         return true;

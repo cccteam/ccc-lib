@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
+import { ErrorMessage } from '@cccteam/ccc-types';
 import { Action, Selector, State, StateContext } from '@ngxs/store';
 import { patch } from '@ngxs/store/operators';
-import { ErrorMessage } from '../models/error-message';
 import { ErrorService } from '../services/error.service';
 import { ApiInterceptorAction, AppAction, HeaderAction, LoginAction } from './core.actions';
 
