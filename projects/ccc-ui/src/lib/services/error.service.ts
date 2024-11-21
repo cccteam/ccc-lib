@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
+import { ErrorMessage } from '@cccteam/ccc-types';
 import { BehaviorSubject } from 'rxjs';
-import { ErrorMessage } from '../models/error-message';
 
 @Injectable({
   providedIn: 'root',

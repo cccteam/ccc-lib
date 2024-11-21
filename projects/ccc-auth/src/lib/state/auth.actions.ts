@@ -27,11 +27,6 @@ export namespace ApiInterceptorAction {
     static readonly type = '[ApiInterceptor] Set Redirect Url';
     constructor(public redirectUrl: string) {}
   }
-
-  export class PublishError {
-    static readonly type = '[ApiInterceptor] Publish Error';
-    constructor(public message: ErrorMessage) {}
-  }
 }
 
 export namespace LoginAction {

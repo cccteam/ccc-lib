@@ -3,8 +3,11 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "baseUrl": "./",
     "paths": {
-      "ccc-ui": ["./dist/ccc-ui"]
+      "@cccteam/ccc-auth": ["dist/ccc-auth"],
+      "@cccteam/ccc-types": ["dist/ccc-types"],
+      "@cccteam/ccc-ui": ["dist/ccc-ui"]
     },
     "outDir": "./dist/out-tsc",
     "strict": true,
@@ -16,7 +19,7 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "sourceMap": true,
-    "declaration": false,
+    "declaration": true,
     "experimentalDecorators": true,
     "moduleResolution": "bundler",
     "importHelpers": true,
