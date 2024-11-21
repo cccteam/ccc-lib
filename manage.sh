@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Library array
-LIBS=("ccc-auth" "ccc-ui")
+LIBS=("ccc-auth" "ccc-ui" "ccc-types")
 
 function pack_lib() {
     (cd dist/$1 && npm pack)

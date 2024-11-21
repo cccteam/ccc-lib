@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Inject, Injectable } from '@angular/core';
-import { SessionInfo } from 'projects/ccc-types/dist';
+import { SessionInfo } from '@cccteam/ccc-types';
 import { map, Observable } from 'rxjs';
 import { BASE_URL } from '../base/tokens';
 import { errorOptions } from './request-options';

@@ -4,7 +4,7 @@
     "type": "git",
     "url": "git://github.com/cccteam/ccc-lib.git"
   },
-  "version": "0.0.1",
+  "version": "0.0.2",
   "peerDependencies": {
     "@cccteam/ccc-types": "^0.0.1",
     "@angular/common": "^18.2.0",

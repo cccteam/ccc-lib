@@ -5,9 +5,9 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
-      "@cccteam/ccc-auth": ["projects/ccc-auth/dist"],
-      "@cccteam/ccc-types": ["projects/ccc-types/dist"],
-      "@cccteam/ccc-ui": ["projects/ccc-ui/dist"]
+      "@cccteam/ccc-auth": ["dist/ccc-auth"],
+      "@cccteam/ccc-types": ["dist/ccc-types"],
+      "@cccteam/ccc-ui": ["dist/ccc-ui"]
     },
     "outDir": "./dist/out-tsc",
     "strict": true,
