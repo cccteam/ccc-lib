@@ -3,8 +3,9 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "baseUrl": "./",
     "paths": {
-      "ccc-ui": ["./dist/ccc-ui"]
+      "@cccteam/ccc-lib": ["./dist/ccc-lib"]
     },
     "outDir": "./dist/out-tsc",
     "strict": true,
@@ -16,7 +17,7 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "sourceMap": true,
-    "declaration": false,
+    "declaration": true,
     "experimentalDecorators": true,
     "moduleResolution": "bundler",
     "importHelpers": true,
