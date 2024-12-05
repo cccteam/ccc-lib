@@ -25,7 +25,7 @@ export * from './lib/auth/state/auth.state';
 export * from './lib/types/base/tokens';
 
 // Types
-export * from './lib/types/error-message';
+export * from './lib/types/notification-message';
 export * from './lib/types/permissions';
 export * from './lib/types/session-info';
 
@@ -37,7 +37,7 @@ export * from './lib/ui/components/sidenav/sidenav.component';
 export * from './lib/ui/interceptor/api.interceptor';
 
 // Ui services
-export * from './lib/ui/services/error.service';
+export * from './lib/ui/services/notification.service';
 
 // Ui state
 export * from './lib/ui/state/core.actions';

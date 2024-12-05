@@ -3,8 +3,8 @@ import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterModule } from '@angular/router';
-import { ErrorMessage } from '../../../types/error-message';
-import { ErrorService } from '../../services/error.service';
+import { NotificationMessage } from '../../../types/notification-message';
+import { NotificationService } from '../../services/notification.service';
 
 @Component({
   selector: 'ccc-alert',
@@ -14,10 +14,10 @@ import { ErrorService } from '../../services/error.service';
   imports: [MatIconModule, MatButtonModule, CommonModule, RouterModule],
 })
 export class AlertComponent implements OnInit {
-  @Input({ required: true }) error!: ErrorMessage;
+  @Input({ required: true }) error!: NotificationMessage;
   @Output() dismiss = new EventEmitter();
 
-  errors = inject(ErrorService);
+  errors = inject(NotificationService);
   ngOnInit(): void {
     if (this.error.duration === undefined) {
       this.error.duration = 30000;
@@ -30,7 +30,7 @@ export class AlertComponent implements OnInit {
 
   dismissAlert(): void {
     if (this.error.id !== undefined) {
-      this.errors.dismissGlobalError(this.error);
+      this.errors.dismissGlobalNotification(this.error);
     }
   }
 }

@@ -5,7 +5,7 @@ import { Store } from '@ngxs/store';
 import { catchError, finalize, Observable, throwError } from 'rxjs';
 import { CUSTOM_HTTP_REQUEST_OPTIONS } from '../../auth/services/request-options';
 import { BASE_URL } from '../../types/base/tokens';
-import { AlertLevel } from '../../types/error-message';
+import { AlertLevel } from '../../types/notification-message';
 import { ApiInterceptorAction } from '../state/core.actions';
 
 @Injectable()

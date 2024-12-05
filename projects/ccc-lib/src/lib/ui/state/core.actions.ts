@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 // no-namespace rule is disabled because action hygiene prevents import pollution
 
-import { ErrorMessage } from '../../types/error-message';
+import { CreateNotificationMessage } from '../../types/notification-message';
 
 export namespace ApiInterceptorAction {
   export class BeginActivity {
@@ -14,7 +14,7 @@ export namespace ApiInterceptorAction {
   }
   export class PublishError {
     static readonly type = '[ApiInterceptor] Publish Error';
-    constructor(public message: ErrorMessage) {}
+    constructor(public message: CreateNotificationMessage) {}
   }
   export class SetRedirectUrl {
     static readonly type = '[ApiInterceptor] Set Redirect Url';

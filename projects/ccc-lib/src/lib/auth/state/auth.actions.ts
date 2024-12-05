@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 // no-namespace rule is disabled because action hygiene prevents import pollution
 
-import { ErrorMessage } from '../../types/error-message';
+import { CreateNotificationMessage } from '../../types/notification-message';
 
 export namespace AuthenticationGuardAction {
   export class SetRedirectUrl {
@@ -26,7 +26,7 @@ export namespace LoginAction {
 
   export class PublishError {
     static readonly type = '[Login] Publish Error';
-    constructor(public message: ErrorMessage) {}
+    constructor(public message: CreateNotificationMessage) {}
   }
 }
 

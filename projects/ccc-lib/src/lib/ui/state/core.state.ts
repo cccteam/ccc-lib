@@ -2,8 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { Action, Selector, State, StateContext } from '@ngxs/store';
 import { patch } from '@ngxs/store/operators';
 import { AppAction, LoginAction } from '../../auth/state/auth.actions';
-import { ErrorMessage } from '../../types/error-message';
-import { ErrorService } from '../services/error.service';
+import { CreateNotificationMessage } from '../../types/notification-message';
+import { NotificationService } from '../services/notification.service';
 import { ApiInterceptorAction, HeaderAction } from './core.actions';
 
 interface CoreStateModel {
@@ -24,7 +24,7 @@ const initState: CoreStateModel = {
 })
 @Injectable()
 export class CoreState {
-  private errors = inject(ErrorService);
+  private notifications = inject(NotificationService);
 
   @Selector()
   static sidenavOpened(state: CoreStateModel): boolean {
@@ -51,8 +51,8 @@ export class CoreState {
   }
 
   @Action([ApiInterceptorAction.PublishError, LoginAction.PublishError])
-  publishError(ctx: StateContext<CoreStateModel>, action: { message: ErrorMessage }): void {
-    this.errors.addGlobalError(action.message);
+  publishError(ctx: StateContext<CoreStateModel>, action: { message: CreateNotificationMessage }): void {
+    this.notifications.addGlobalNotification(action.message);
   }
 
   @Action([ApiInterceptorAction.BeginActivity])
