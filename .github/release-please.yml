@@ -5,15 +5,7 @@
 version: 2
 updates:
   - package-ecosystem: 'npm'
-    directory: '/projects/ccc-ui'
-    schedule:
-      interval: 'weekly'
-    groups:
-      go-dependencies:
-        patterns:
-          - '*'
-  - package-ecosystem: 'npm'
-    directory: '/projects/ccc-auth'
+    directory: '/projects/ccc-lib'
     schedule:
       interval: 'weekly'
     groups:
