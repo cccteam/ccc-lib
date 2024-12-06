@@ -7,11 +7,10 @@ import { NotificationMessage } from '../../../types/notification-message';
 import { NotificationService } from '../../services/notification.service';
 
 @Component({
-  selector: 'ccc-alert',
-  templateUrl: './alert.component.html',
-  styleUrls: ['./alert.component.scss'],
-  standalone: true,
-  imports: [MatIconModule, MatButtonModule, CommonModule, RouterModule],
+    selector: 'ccc-alert',
+    templateUrl: './alert.component.html',
+    styleUrls: ['./alert.component.scss'],
+    imports: [MatIconModule, MatButtonModule, CommonModule, RouterModule]
 })
 export class AlertComponent implements OnInit {
   @Input({ required: true }) error!: NotificationMessage;

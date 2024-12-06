@@ -27,19 +27,18 @@ export interface NavItem {
 export type NavGroups = Record<string, NavItem[]>;
 
 @Component({
-  selector: 'ccc-sidenav',
-  templateUrl: './sidenav.component.html',
-  styleUrls: ['./sidenav.component.scss'],
-  standalone: true,
-  imports: [
-    MatIconModule,
-    RouterModule,
-    CommonModule,
-    MatExpansionModule,
-    MatButtonModule,
-    MatSidenavModule,
-    HasPermissionDirective,
-  ],
+    selector: 'ccc-sidenav',
+    templateUrl: './sidenav.component.html',
+    styleUrls: ['./sidenav.component.scss'],
+    imports: [
+        MatIconModule,
+        RouterModule,
+        CommonModule,
+        MatExpansionModule,
+        MatButtonModule,
+        MatSidenavModule,
+        HasPermissionDirective,
+    ]
 })
 export class SidenavComponent implements OnInit {
   private store = inject(Store);

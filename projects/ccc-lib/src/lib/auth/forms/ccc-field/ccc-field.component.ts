@@ -11,16 +11,15 @@ export enum InputMode {
 }
 
 @Component({
-  selector: 'ccc-input-field',
-  standalone: true,
-  imports: [MatFormFieldModule, MatInputModule],
-  template: `
+    selector: 'ccc-input-field',
+    imports: [MatFormFieldModule, MatInputModule],
+    template: `
     <mat-form-field [class]="className()">
       <mat-label>{{ name() }}</mat-label>
       <input matInput [disabled]="mode() === inputMode.Edit && canEdit()" [value]="value()" />
     </mat-form-field>
   `,
-  styleUrl: './ccc-field.component.scss',
+    styleUrl: './ccc-field.component.scss'
 })
 export class CccInputFieldComponent implements OnInit {
   store = inject(Store);
