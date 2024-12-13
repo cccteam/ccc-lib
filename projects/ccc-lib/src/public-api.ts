@@ -3,42 +3,36 @@
  */
 
 // Auth directives
-export * from './lib/auth/directives/has-permission.directive';
+export * from '@cccteam/ccc-lib/src/auth-has-permission';
 
 // Auth forms
-export * from './lib/auth/forms/ccc-field/ccc-field.component';
-export * from './lib/auth/forms/form-helpers';
+export * from '@cccteam/ccc-lib/src/auth-forms';
 
 // Auth guards
-export * from './lib/auth/guards/authentication.guard';
-export * from './lib/auth/guards/authorization.guard';
+export * from '@cccteam/ccc-lib/src/auth-authentication-guard';
+export * from '@cccteam/ccc-lib/src/auth-authorization-guard';
 
 // Auth services
-export * from './lib/auth/services/auth.service';
-export * from './lib/auth/services/request-options';
+export * from '@cccteam/ccc-lib/src/auth-service';
+
+// Util
+export * from '@cccteam/ccc-lib/src/util-request-options';
 
 // Auth state
-export * from './lib/auth/state/auth.actions';
-export * from './lib/auth/state/auth.state';
-
-// Types tokens
-export * from './lib/types/base/tokens';
+export * from '@cccteam/ccc-lib/src/auth-state';
 
 // Types
-export * from './lib/types/notification-message';
-export * from './lib/types/permissions';
-export * from './lib/types/session-info';
+export * from '@cccteam/ccc-lib/src/types';
 
 // Ui components
-export * from './lib/ui/components/alert/alert.component';
-export * from './lib/ui/components/sidenav/sidenav.component';
+export * from '@cccteam/ccc-lib/src/ui-alert';
+export * from '@cccteam/ccc-lib/src/ui-sidenav';
 
 // Ui interceptor
-export * from './lib/ui/interceptor/api.interceptor';
+export * from '@cccteam/ccc-lib/src/ui-interceptor';
 
 // Ui services
-export * from './lib/ui/services/notification.service';
+export * from '@cccteam/ccc-lib/src/ui-notification-service';
 
 // Ui state
-export * from './lib/ui/state/core.actions';
-export * from './lib/ui/state/core.state';
+export * from '@cccteam/ccc-lib/src/ui-core-state';

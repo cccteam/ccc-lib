@@ -5,7 +5,8 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
-      "@cccteam/ccc-lib": ["./dist/ccc-lib"]
+      "@cccteam/ccc-lib/*": ["projects/ccc-lib/*"],
+      "@cccteam/ccc-lib": ["projects/ccc-lib/src/public-api.ts"]
     },
     "outDir": "./dist/out-tsc",
     "strict": true,
