@@ -1,27 +1,64 @@
-# CccLib
+# CCC-Lib
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.2.4.
+## Overview
 
-## Development server
+**CCC-Lib** provides a collection of reusable UI components, authentication functions, utility functions, and type definitions.
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+## Features
 
-## Code scaffolding
+- **Components**: A set of reusable UI components
+- **Authentication Functions**: Authentication and authorization guards
+- **Utilities**: Utility functions for patching, cleaning forms, and customizing requests
+- **Type Definitions**: Types for allowing permissions and
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+## Installation
 
-## Build
+You can install **CCC-Lib** via npm:
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+```bash
+npm install ccc-lib
+```
 
-## Running unit tests
+## Building the Library
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+To build **CCC-Lib**, use the Angular CLI:
 
-## Running end-to-end tests
+```bash
+ng build ccc-lib
+```
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+This command compiles the library and outputs the build artifacts to the `dist/ccc-lib` directory.
 
-## Further help
+## Packaging
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+After building the library, navigate to the distribution folder and create a package:
+
+```bash
+cd dist/ccc-lib
+npm pack
+```
+
+This will generate a `.tgz` file that can be published to the npm registry or used locally.
+
+## Publishing
+
+Before publishing, ensure that you have updated the version number in `package.json` following [Semantic Versioning](https://semver.org/).
+
+To publish **CCC-Lib** to the npm registry:
+
+1. **Bump the Version**
+
+   Update the version number in `dist/ccc-lib/package.json`:
+
+   ```bash
+   cd dist/ccc-lib
+   npm version patch # or minor, major
+   ```
+
+2. **Publish to npm**
+
+   ```bash
+   npm publish
+   ```
+
+   > **Note:** Ensure you have the necessary permissions and are logged in to your npm account using `npm login`.

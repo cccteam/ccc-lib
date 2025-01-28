@@ -1,0 +1,16 @@
+{
+  "name": "@cccteam/ccc-lib",
+  "version": "0.0.10",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/cccteam/ccc-lib.git"
+  },
+  "peerDependencies": {
+    "@angular/common": "^19.0.2",
+    "@angular/core": "^19.0.2"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false
+}

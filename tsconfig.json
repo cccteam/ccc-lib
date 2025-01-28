@@ -3,8 +3,10 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "baseUrl": "./",
     "paths": {
-      "ccc-ui": ["./dist/ccc-ui"]
+      "@cccteam/ccc-lib/*": ["projects/ccc-lib/*"],
+      "@cccteam/ccc-lib": ["projects/ccc-lib/src/public-api.ts"]
     },
     "outDir": "./dist/out-tsc",
     "strict": true,
@@ -16,7 +18,7 @@
     "isolatedModules": true,
     "esModuleInterop": true,
     "sourceMap": true,
-    "declaration": false,
+    "declaration": true,
     "experimentalDecorators": true,
     "moduleResolution": "bundler",
     "importHelpers": true,

@@ -5,7 +5,7 @@
 version: 2
 updates:
   - package-ecosystem: 'npm'
-    directory: '/projects/ccc-ui'
+    directory: '/projects/ccc-lib'
     schedule:
       interval: 'weekly'
     groups:
