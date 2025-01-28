@@ -1,0 +1,51 @@
+{
+  "name": "ccc-lib",
+  "workspaces": [
+    "projects/*"
+  ],
+  "private": true,
+  "dependencies": {
+    "@angular/animations": "^19.0.2",
+    "@angular/common": "^19.0.2",
+    "@angular/compiler": "^19.0.2",
+    "@angular/core": "^19.0.2",
+    "@angular/forms": "^19.0.2",
+    "@angular/material": "^19.0.2",
+    "@angular/platform-browser": "^19.0.2",
+    "@angular/platform-browser-dynamic": "^19.0.2",
+    "@angular/router": "^19.0.2",
+    "@ngxs/store": "^19.0.0",
+    "@types/lodash-es": "^4.17.12",
+    "lodash-es": "^4.17.21",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^19.0.2",
+    "@angular/cli": "^19.0.2",
+    "@angular/compiler-cli": "^19.0.2",
+    "@ngxs/store": "^19.0.0",
+    "@types/jasmine": "~5.1.0",
+    "angular-eslint": "19.0.0",
+    "eslint": "^9.16.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-boundaries": "^5.0.1",
+    "eslint-plugin-import": "^2.31.0",
+    "jasmine-core": "~5.2.0",
+    "karma": "~6.4.0",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-coverage": "~2.2.0",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.1.0",
+    "madge": "^8.0.0",
+    "ng-packagr": "^19.0.1",
+    "prettier": "3.4.2",
+    "typescript": "~5.5.2",
+    "typescript-eslint": "8.16.0"
+  },
+  "version": "0.0.1",
+  "scripts": {
+    "lint": "ng lint"
+  }
+}

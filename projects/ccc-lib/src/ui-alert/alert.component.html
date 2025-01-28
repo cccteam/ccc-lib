@@ -1,0 +1,13 @@
+<div class="alert" [ngClass]="error.level">
+  <div class="message">
+    <span>{{ error.message }}</span>
+  </div>
+  <div class="alert-end">
+    @if (error.link) {
+    <span [routerLink]="error.link" class="link">View</span>
+    }
+    <button (click)="dismissAlert()" mat-icon-button aria-label="Close Alert">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+</div>
