@@ -44,6 +44,7 @@ export class CccInputFieldComponent implements OnInit {
       permission: ReadPermission,
       domain: this.domain(),
     });
+    // TODO(tjohnston): mask instead disappear
     this.canReadSelector = this.store.selectSnapshot(AuthState.hasPermission)({
       resource: this.resource(),
       permission: UpdatePermission,
