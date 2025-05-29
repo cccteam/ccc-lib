@@ -19,6 +19,11 @@ export class NotificationService {
       ...notification,
       id: this.notificationId++,
     };
+    const existingNotification = this._notifications().find((n) => n.message === newNotification.message);
+    if (existingNotification) {
+      this.updateNotification({ ...existingNotification, ...newNotification });
+      return existingNotification.id;
+    }
     this._notifications.update((current) => [...current, newNotification]);
     return newNotification.id;
   }
