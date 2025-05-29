@@ -1,6 +1,6 @@
 <div class="nav-container">
   <nav>
-    @for (navItem of currentNav; track navItem.label) {
+    @for (navItem of currentNav(); track navItem) {
       <ng-container *ngTemplateOutlet="typeRendererTemplate; context: { navItem: navItem }"></ng-container>
     }
   </nav>

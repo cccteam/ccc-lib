@@ -1,20 +1,17 @@
-import { inject } from '@angular/core';
+import { computed, inject, Signal } from '@angular/core';
 import { ActivatedRouteSnapshot, Router } from '@angular/router';
-import { AuthState } from '@cccteam/ccc-lib/src/auth-state';
-import { Store } from '@ngxs/store';
-import { map, Observable } from 'rxjs';
+import { AuthService } from '@cccteam/ccc-lib/src/auth-service';
 
-export const AuthorizationGuard = (route: ActivatedRouteSnapshot): Observable<boolean> => {
-  const store = inject(Store);
+export const AuthorizationGuard = (route: ActivatedRouteSnapshot): Signal<boolean> => {
   const router = inject(Router);
-  return store.select(AuthState.hasPermission).pipe(
-    map((permissionFn) => permissionFn(route.data['scope'])),
-    map((hasPermission) => {
-      if (hasPermission) {
-        return true;
-      }
+  const auth = inject(AuthService);
+  return computed(() => {
+    const hasPermission = auth.hasPermission(route.data['scope']);
+    if (hasPermission) {
+      return true;
+    } else {
       router.navigate(['/']);
       return false;
-    }),
-  );
+    }
+  });
 };

@@ -5,7 +5,7 @@ import { CreateNotificationMessage, NotificationMessage } from '@cccteam/ccc-lib
   providedIn: 'root',
 })
 export class NotificationService {
-  private notificationId = 0;
+  private notificationId = signal(0);
   private _notifications = signal<NotificationMessage[]>([]);
   notifications = this._notifications.asReadonly();
 
@@ -15,10 +15,16 @@ export class NotificationService {
    * @returns The unique ID assigned to the notification.
    */
   addGlobalNotification(notification: CreateNotificationMessage): number {
+    this.notificationId.update((id) => id + 1);
     const newNotification: NotificationMessage = {
       ...notification,
-      id: this.notificationId++,
+      id: this.notificationId(),
     };
+    const existingNotification = this._notifications().find((n) => n.message === newNotification.message);
+    if (existingNotification) {
+      this.updateNotification({ ...existingNotification, ...newNotification });
+      return existingNotification.id;
+    }
     this._notifications.update((current) => [...current, newNotification]);
     return newNotification.id;
   }

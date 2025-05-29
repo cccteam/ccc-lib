@@ -1,9 +1,8 @@
 import { Component, computed, inject, input, OnInit, signal, Signal } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { AuthState } from '@cccteam/ccc-lib/src/auth-state';
+import { AuthService } from '@cccteam/ccc-lib/src/auth-service';
 import { Domain, ReadPermission, Resource, UpdatePermission } from '@cccteam/ccc-lib/src/types';
-import { Store } from '@ngxs/store';
 
 export enum InputMode {
   Read = 'read',
@@ -22,7 +21,7 @@ export enum InputMode {
   styleUrl: './ccc-field.component.scss',
 })
 export class CccInputFieldComponent implements OnInit {
-  store = inject(Store);
+  auth = inject(AuthService);
   className = input();
   mode = input.required<InputMode>();
   resource = input.required<Resource>();
@@ -39,12 +38,12 @@ export class CccInputFieldComponent implements OnInit {
   canReadSelector = false;
 
   ngOnInit(): void {
-    this.canEditSelector = this.store.selectSnapshot(AuthState.hasPermission)({
+    this.canEditSelector = this.auth.hasPermission({
       resource: this.resource(),
       permission: ReadPermission,
       domain: this.domain(),
     });
-    this.canReadSelector = this.store.selectSnapshot(AuthState.hasPermission)({
+    this.canReadSelector = this.auth.hasPermission({
       resource: this.resource(),
       permission: UpdatePermission,
       domain: this.domain(),
@@ -55,7 +54,7 @@ export class CccInputFieldComponent implements OnInit {
       if (!res) {
         return false;
       }
-      if (AuthState.requiresPermission(this.resource(), ReadPermission)) {
+      if (AuthService.requiresPermission(this.resource(), ReadPermission)) {
         return this.canReadSelector;
       }
       return false;
@@ -66,7 +65,7 @@ export class CccInputFieldComponent implements OnInit {
       if (!res) {
         return false;
       }
-      if (AuthState.requiresPermission(this.resource(), UpdatePermission)) {
+      if (AuthService.requiresPermission(this.resource(), UpdatePermission)) {
         return this.canEditSelector;
       }
       return false;
