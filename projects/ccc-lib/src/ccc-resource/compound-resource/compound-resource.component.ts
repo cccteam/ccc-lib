@@ -19,13 +19,13 @@ import {
   RecordData,
   Resource,
   RESOURCE_META,
-  ResourceArrayViewComponent,
-  ResourceListCreateComponent,
-  ResourceResolverComponent,
-  ResourceStore,
-  ResourceViewComponent,
   RootConfig,
 } from '@cccteam/ccc-lib';
+import { ResourceArrayViewComponent } from '../resource-array-view/resource-array-view.component';
+import { ResourceListCreateComponent } from '../resource-list-create/resource-list-create.component';
+import { ResourceResolverComponent } from '../resource-resolver/resource-resolver.component';
+import { ResourceStore } from '../resource-store.service';
+import { ResourceViewComponent } from '../resource-view/resource-view.component';
 
 @Component({
   selector: 'ccc-compound-resource',
