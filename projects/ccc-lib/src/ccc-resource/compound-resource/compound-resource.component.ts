@@ -1,47 +1,63 @@
 import { CommonModule, Location } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, OnInit, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  Injector,
+  input,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-import { ResourceArrayViewComponent } from '@cccteam/ccc-lib/src/ccc-resource/resource-array-view/resource-array-view.component';
-import { ResourceListCreateComponent } from '@cccteam/ccc-lib/src/ccc-resource/resource-list-create/resource-list-create.component';
-  input,
-import { ResourceStore } from '@cccteam/ccc-lib/src/ccc-resource/resource-store.service';
-import { ResourceViewComponent } from '@cccteam/ccc-lib/src/ccc-resource/resource-view/resource-view.component';
+import {
+  ChildResourceConfig,
+  ParentResourceConfig,
+  RecordData,
+  Resource,
+  RESOURCE_META,
+  ResourceArrayViewComponent,
+  ResourceListCreateComponent,
+  ResourceResolverComponent,
+  ResourceStore,
+  ResourceViewComponent,
+  RootConfig,
+} from '@cccteam/ccc-lib';
+
 @Component({
   selector: 'ccc-compound-resource',
   templateUrl: './compound-resource.component.html',
   styleUrl: './compound-resource.component.scss',
-import { Resource, RESOURCE_META } from '@cccteam/ccc-lib';
+  changeDetection: ChangeDetectionStrategy.OnPush,
   standalone: true,
-import { ResourceArrayViewComponent } from '@cccteam/ccc-lib/src/ccc-resource/resource-array-view/resource-array-view.component';
   imports: [
     MatIconModule,
-import { ResourceStore } from '@cccteam/ccc-lib/src/ccc-resource/resource-store.service';
     RouterModule,
     MatButtonModule,
     ResourceViewComponent,
     ResourceListCreateComponent,
     ResourceArrayViewComponent,
-    ResourceArrayViewComponent,
+    ResourceResolverComponent,
     CommonModule,
+    RouterModule,
   ],
   providers: [ResourceStore],
 })
 export class CompoundResourceComponent implements OnInit {
   location = inject(Location);
   route = inject(ActivatedRoute);
-    ResourceListCreateComponent,
-    ResourceArrayViewComponent,
-    ResourceArrayViewComponent,
+  store = inject(ResourceStore);
+  injector = inject(Injector);
+  resourceMeta = inject(RESOURCE_META);
 
   resourceConfig = input<ParentResourceConfig | ChildResourceConfig>();
-  providers: [ResourceStore],
   isArrayChild = input<boolean>(false);
   uuid = input.required<string>();
   parentData = input<RecordData>();
 
-  store = inject(ResourceStore);
   rootConfig = computed(() => this.route.snapshot.data['config'] as RootConfig);
 
   emptyOneToOne = signal(false);
@@ -56,7 +72,7 @@ export class CompoundResourceComponent implements OnInit {
     const data = this.resolvedData();
     if (config.type === 'View' || config.type === 'ListView') {
       const parentKey = config.parentRelation?.parentKey;
-    return config && (config.type === 'ListView' || config.type === 'View') && config.elements.length > 0;
+      if (parentKey !== '') {
         return String(data[parentKey]);
       }
     }
@@ -84,17 +100,6 @@ export class CompoundResourceComponent implements OnInit {
 
   isRootConfig = computed(() => {
     return this.resourceConfig() === undefined;
-  });
-
-  showBackButton = computed(() => {
-    const config = this.primaryConfig();
-    if (!this.isRootConfig()) {
-      return false;
-    }
-    if (config.type === 'ListView' || config.type === 'View') {
-      return config.showBackButton;
-    }
-    return false;
   });
 
   configs = computed(() => {
@@ -125,10 +130,6 @@ export class CompoundResourceComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    if (this.store.viewData()) {
-      return this.store.viewData() as RecordData;
-    }
-
     const resource = this.primaryConfig().primaryResource as Resource;
     const meta = this.resourceMeta(resource);
 
@@ -137,25 +138,9 @@ export class CompoundResourceComponent implements OnInit {
       this.store.resourceMeta.set(meta);
     }
   }
-      this.store.resourceName.set(resource);
-      this.store.resourceMeta.set(meta);
 
   constructor() {
     effect(() => {
-  constructor() {
-    effect(() => {
-      this.store.uuid.set(this.primaryConfigParentId());
-
-      const c = this.primaryConfig();
-      if (c.type === 'View') {
-        this.store.resetResourceView();
-      } else if (c.type === 'ListView') {
-        this.store.resetResourceList();
-        this.store.resetResourceView();
-      }
-    });
-  }
-
       this.store.uuid.set(this.primaryConfigParentId());
 
       const c = this.primaryConfig();
