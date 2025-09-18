@@ -35,10 +35,11 @@ import { NotificationService } from '../../ui-notification-service';
 import { CamelCaseToTitlePipe } from '../camel-case-to-title.pipe';
 import { FormStateService } from '../form-state.service';
 import { flattenElements } from '../gui-constants';
+import { CreateOperation } from '../operation-types';
 import { ResourceCacheService } from '../resource-cache.service';
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
 import { ResourceStore } from '../resource-store.service';
-import { cleanStringForm, CreateOperation, metadataTypeCoercion } from '../resources-helpers';
+import { cleanStringForm, metadataTypeCoercion } from '../resources-helpers';
 
 @Component({
   selector: 'ccc-resource-create',

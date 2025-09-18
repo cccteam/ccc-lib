@@ -1,10 +1,9 @@
 import { inject, ModelSignal } from '@angular/core';
-import { AbstractControl, FormArray, FormControl, FormGroup, ValidatorFn } from '@angular/forms';
+import { AbstractControl, FormArray, FormControl, FormGroup } from '@angular/forms';
 import { Route } from '@angular/router';
 import { format, isValid } from 'date-fns';
 import type { Resource } from '../internal-types';
 import { RESOURCE_META } from '../internal-types';
-import { dirtyFormDeactivateGuard, ResourceBaseComponent } from '../public-api';
 import {
   ConfigElement,
   DataType,
@@ -14,13 +13,14 @@ import {
   PristineData,
   RecordData,
   ResourceMeta,
-  ResourceValidatorFn,
   RootConfig,
   RouteResourceData,
   RPCRecordData,
   ViewConfig,
 } from '../types';
+import { dirtyFormDeactivateGuard } from './can-deactivate.guard';
 import { civildateCoercion, flattenElements } from './gui-constants';
+import { ResourceBaseComponent } from './resource-base/resource-base.component';
 
 /**
  * Recursively cleans a FormGroup or FormArray, removing controls with empty string values.
@@ -222,26 +222,6 @@ export function extractFieldNames(elements: ConfigElement[]): string[] {
   return fields;
 }
 
-export type PatchOperation = 'add' | 'patch' | 'remove';
-
-export interface Operation {
-  op: PatchOperation;
-  value?: Record<string, unknown>;
-  path: string;
-}
-
-export interface CreateOperation extends Operation {
-  op: 'add';
-}
-
-export interface UpdateOperation extends Operation {
-  op: 'patch';
-}
-
-export interface DeleteOperation extends Operation {
-  op: 'remove';
-}
-
 /**
  * Checks if a string is a valid UUID (versions 1-5) according to RFC 4122.
  *
@@ -279,8 +259,4 @@ export function metadataTypeCoercion(
   }
 
   return record;
-}
-
-export function createResourceValidator(validator: ValidatorFn): ResourceValidatorFn {
-  return validator as ResourceValidatorFn;
 }

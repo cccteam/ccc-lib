@@ -1,7 +1,6 @@
 import { Component, computed, effect, input, untracked, viewChild, ViewContainerRef } from '@angular/core';
 import { ResourceStore } from '../../ccc-resource/resource-store.service';
 import { ChildResourceConfig, ComponentConfig, FieldName, RecordData } from '../../types';
-import { CompoundResourceComponent } from '../compound-resource/compound-resource.component';
 
 @Component({
   selector: 'ccc-resource-resolver',
@@ -51,10 +50,13 @@ export class ResourceResolverComponent {
 
             if (uuid == '') return;
 
-            const primaryComponentRef = this.dynamicSlot().createComponent(CompoundResourceComponent);
-            primaryComponentRef.setInput('resourceConfig', caseConfig);
-            primaryComponentRef.setInput('uuid', uuid);
-            primaryComponentRef.setInput('parentData', parentData);
+            // Use dynamic import to avoid circular dependency
+            import('../compound-resource/compound-resource.component').then(({ CompoundResourceComponent }) => {
+              const primaryComponentRef = this.dynamicSlot().createComponent(CompoundResourceComponent);
+              primaryComponentRef.setInput('resourceConfig', caseConfig);
+              primaryComponentRef.setInput('uuid', uuid);
+              primaryComponentRef.setInput('parentData', parentData);
+            });
             break;
           }
           default:

@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterModule } from '@angular/router';
 import { GridModule, SelectableMode, SelectableSettings } from '@progress/kendo-angular-grid';
-import { CamelCaseToTitlePipe } from '../ccc-resource';
+import { CamelCaseToTitlePipe } from '../ccc-resource/camel-case-to-title.pipe';
 import { ColumnConfig, RecordData } from '../types';
 import { TableButtonComponent } from './table-button/table-button.component';
 

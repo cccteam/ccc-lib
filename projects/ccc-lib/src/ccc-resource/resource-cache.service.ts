@@ -7,7 +7,7 @@ import type { FieldSort, RecordData, Resource } from '../internal-types';
 import { AlertLevel, API_URL } from '../internal-types';
 import { CreateNotificationMessage } from '../types';
 import { NotificationService } from '../ui-notification-service/notification.service';
-import { Operation } from './resources-helpers';
+import { Operation } from './operation-types';
 
 @Injectable()
 export class ResourceCacheService {

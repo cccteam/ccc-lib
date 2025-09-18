@@ -3,7 +3,7 @@ import { isDate } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { isNumber } from 'lodash-es';
 import { ConfigElement, ResourceValidatorFn } from '../types';
-import { createResourceValidator } from './resources-helpers';
+import { createResourceValidator } from './utils/validator-utils';
 
 export const maxConfigElementRecursionDepth = 240;
 export const maxLayoutNestingDepth = 48;

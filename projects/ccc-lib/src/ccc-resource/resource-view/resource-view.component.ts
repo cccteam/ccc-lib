@@ -40,10 +40,11 @@ import {
 import { NotificationService } from '../../ui-notification-service';
 import { FormStateService } from '../form-state.service';
 import { civildateCoercion, flattenElements } from '../gui-constants';
+import { DeleteOperation, UpdateOperation } from '../operation-types';
 import { ResourceCacheService } from '../resource-cache.service';
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
 import { ResourceStore } from '../resource-store.service';
-import { DeleteOperation, metadataTypeCoercion, UpdateOperation } from '../resources-helpers';
+import { metadataTypeCoercion } from '../resources-helpers';
 
 @Component({
   selector: 'ccc-resource-view',
