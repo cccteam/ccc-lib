@@ -33,3 +33,10 @@ export * from '@cccteam/ccc-lib/src/ui-interceptor';
 
 // Ui services
 export * from '@cccteam/ccc-lib/src/ui-notification-service';
+
+// Resources
+
+export * from '@cccteam/ccc-lib/src/ccc-resource';
+
+// Grid
+export * from '@cccteam/ccc-lib/src/ccc-grid';

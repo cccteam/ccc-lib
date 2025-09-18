@@ -1,0 +1,55 @@
+<div class="page-container">
+  <div class="header-container">
+    @if (showBackButton()) {
+      <button mat-icon-button color="primary" (click)="goBack()">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+    }
+    <div class="title" [class.title-without-back]="!showBackButton() && title()">
+      @if (title() !== '') {
+        <h1>{{ title() }}</h1>
+      }
+    </div>
+  </div>
+
+  @if (hasElements() || configs().length > 0) {
+    <div class="resource-container" [class.empty-elements]="!hasElements()">
+      @let primaryConfigRef = primaryConfig();
+      @if (primaryConfigRef.type === 'View' || primaryConfigRef.type === 'ListView') {
+        <ccc-resource-view
+          [uuid]="uuid()"
+          [config]="primaryConfigRef"
+          [relatedData]="resolvedData()"
+          [compoundResourceView]="true">
+        </ccc-resource-view>
+      }
+
+      @for (config of configs(); track config) {
+        @let hasrelatedConfigs = 'relatedConfigs' in config && config.relatedConfigs.length > 0;
+        @if (hasrelatedConfigs) {
+          <ccc-compound-resource
+            [uuid]="primaryConfigParentId()"
+            [parentData]="resolvedData()"
+            [resourceConfig]="config">
+          </ccc-compound-resource>
+        } @else if (config.type === 'ListView') {
+          <ccc-resource-list-create
+            [resourceConfig]="config"
+            [parentData]="resolvedData()"
+            [isRootList]="false"
+            [parentId]="primaryConfigParentId()">
+          </ccc-resource-list-create>
+        } @else if (config.type === 'Array') {
+          <ccc-resource-array-view [resourceConfig]="config" [parentData]="store.viewData()"> </ccc-resource-array-view>
+        } @else if (config.type === 'View') {
+          <ccc-resource-view
+            [uuid]="primaryConfigParentId()"
+            [config]="config"
+            [relatedData]="resolvedData()"></ccc-resource-view>
+        } @else if (config.type === 'Component') {
+          <ccc-resource-resolver [parentData]="resolvedData()" [resourceConfig]="config"> </ccc-resource-resolver>
+        }
+      }
+    </div>
+  }
+</div>
