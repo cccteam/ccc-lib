@@ -6,9 +6,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { RouterModule } from '@angular/router';
 
-import { HasPermissionDirective } from '@cccteam/ccc-lib/src/auth-has-permission';
-import { PermissionScope } from '@cccteam/ccc-lib/src/types';
-import { UiCoreService } from '@cccteam/ccc-lib/src/ui-core-service';
+import { HasPermissionDirective } from '../auth-has-permission';
+import { PermissionScope } from '../types';
+import { UiCoreService } from '../ui-core-service';
 
 export interface NavItem {
   type: 'link' | 'header' | 'expandable';

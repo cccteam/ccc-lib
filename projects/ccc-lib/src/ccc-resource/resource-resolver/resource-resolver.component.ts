@@ -1,7 +1,6 @@
 import { Component, computed, effect, input, untracked, viewChild, ViewContainerRef } from '@angular/core';
-import { FieldName } from '@cccteam/ccc-lib';
-import { ResourceStore } from '@cccteam/ccc-lib/src/ccc-resource/resource-store.service';
-import { ChildResourceConfig, ComponentConfig, RecordData } from '@cccteam/ccc-lib/src/types';
+import { ResourceStore } from '../../ccc-resource/resource-store.service';
+import { ChildResourceConfig, ComponentConfig, FieldName, RecordData } from '../../types';
 import { CompoundResourceComponent } from '../compound-resource/compound-resource.component';
 
 @Component({

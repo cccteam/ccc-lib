@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Inject, Injectable, signal } from '@angular/core';
+import { map, Observable, tap } from 'rxjs';
 import {
   API_URL,
   Permission,
@@ -7,9 +8,8 @@ import {
   PermissionScope,
   Resource,
   SessionInfo,
-} from '@cccteam/ccc-lib/src/types';
-import { errorOptions } from '@cccteam/ccc-lib/src/util-request-options';
-import { map, Observable, tap } from 'rxjs';
+} from '../types';
+import { errorOptions } from '../util-request-options';
 
 const routes = {
   login: (rootUrl: string): string => `${rootUrl}/user/login`,

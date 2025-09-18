@@ -1,9 +1,9 @@
 import { inject } from '@angular/core';
 import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
-import { AuthService } from '@cccteam/ccc-lib/src/auth-service';
-import { BASE_URL } from '@cccteam/ccc-lib/src/types';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { AuthService } from '../auth-service';
+import { BASE_URL } from '../types';
 
 export const AuthenticationGuard = (
   route: ActivatedRouteSnapshot,

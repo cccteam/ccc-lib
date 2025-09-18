@@ -2,21 +2,19 @@ import {
   Component,
   computed,
   effect,
-  forwardRef,
   inject,
   Injector,
   input,
   OnInit,
   output,
   signal,
-  viewChild,
+  viewChild
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ArrayConfig, ColumnConfig, RecordData, ViewConfig } from '@cccteam/ccc-lib/src/types';
-import { RESOURCE_META } from '../../types';
+import { ArrayConfig, ColumnConfig, RecordData, RESOURCE_META, ViewConfig } from '../../types';
 import { CompoundResourceComponent } from '../compound-resource/compound-resource.component';
 import { ResourceCacheService } from '../resource-cache.service';
 import { ResourceCreateComponent } from '../resource-create/resource-create.component';
@@ -32,7 +30,7 @@ import { ResourceStore } from '../resource-store.service';
     MatIconModule,
     MatTooltipModule,
     ResourceCreateComponent,
-    forwardRef(() => CompoundResourceComponent),
+    CompoundResourceComponent,
   ],
   providers: [ResourceStore],
 })

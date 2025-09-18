@@ -1,6 +1,8 @@
 import { ValidatorFn } from '@angular/forms';
 import { TooltipPosition } from '@angular/material/tooltip';
-import { ConcatFn, defaultEmptyFieldValue, FieldName, Method, Resource } from '@cccteam/ccc-lib';
+import { ConcatFn } from '../ccc-resource/concat-fns';
+import { defaultEmptyFieldValue } from './constants';
+import { FieldName, Method, Resource } from './permissions';
 declare const __singletonValidatorBrand: unique symbol;
 export type ResourceValidatorFn = ValidatorFn & {
   readonly [__singletonValidatorBrand]: true;

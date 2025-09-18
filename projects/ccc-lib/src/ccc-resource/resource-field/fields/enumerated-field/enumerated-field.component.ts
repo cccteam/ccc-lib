@@ -10,8 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Resource } from '@cccteam/ccc-lib';
-import { defaultEmptyFieldValue, EnumeratedConfig, FieldElement } from '@cccteam/ccc-lib/src/types';
+import { defaultEmptyFieldValue, EnumeratedConfig, FieldElement, Resource } from '../../../../types';
 import { concatFunctions, hyphenConcat } from '../../../concat-fns';
 import { BaseInputComponent } from '../../base-field.directive';
 

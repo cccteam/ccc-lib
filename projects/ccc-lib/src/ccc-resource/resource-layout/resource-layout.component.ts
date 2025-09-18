@@ -1,6 +1,6 @@
 import { Component, computed, effect, HostBinding, input, model, OnInit, untracked } from '@angular/core';
 import { FormGroup } from '@angular/forms';
-import { ConfigElement, DataType, FieldElement, Meta, RecordData } from '@cccteam/ccc-lib/src/types';
+import { ConfigElement, DataType, FieldElement, Meta, RecordData } from '../../types';
 import { flattenElements, maxLayoutNestingDepth } from '../gui-constants';
 import { PaddingElementComponent } from '../padding-element/padding-element.component';
 import { ComputedFieldComponent } from '../resource-field/fields/computed-field/computed-field.component';

@@ -1,8 +1,8 @@
 import { Component, computed, inject, input, OnInit, signal, Signal } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { AuthService } from '@cccteam/ccc-lib/src/auth-service';
-import { Domain, ReadPermission, Resource, UpdatePermission } from '@cccteam/ccc-lib/src/types';
+import { AuthService } from '../../auth-service';
+import { Domain, ReadPermission, Resource, UpdatePermission } from '../../types';
 
 export enum InputMode {
   Read = 'read',

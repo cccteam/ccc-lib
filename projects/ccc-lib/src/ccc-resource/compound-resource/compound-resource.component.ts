@@ -8,19 +8,12 @@ import {
   Injector,
   input,
   OnInit,
-  signal,
+  signal
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-import {
-  ChildResourceConfig,
-  ParentResourceConfig,
-  RecordData,
-  Resource,
-  RESOURCE_META,
-  RootConfig,
-} from '@cccteam/ccc-lib';
+import { ChildResourceConfig, ParentResourceConfig, RecordData, Resource, RESOURCE_META, RootConfig } from '../../types';
 import { ResourceArrayViewComponent } from '../resource-array-view/resource-array-view.component';
 import { ResourceListCreateComponent } from '../resource-list-create/resource-list-create.component';
 import { ResourceResolverComponent } from '../resource-resolver/resource-resolver.component';

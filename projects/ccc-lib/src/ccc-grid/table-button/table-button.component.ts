@@ -3,7 +3,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule, TooltipPosition } from '@angular/material/tooltip';
 import { RouterModule } from '@angular/router';
-import { ActionButtonConfig } from '@cccteam/ccc-lib/src/types';
+import { ActionButtonConfig } from '../../types';
 
 @Component({
   selector: 'ccc-table-button',

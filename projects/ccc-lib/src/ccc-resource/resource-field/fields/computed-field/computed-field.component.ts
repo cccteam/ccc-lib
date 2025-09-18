@@ -2,7 +2,7 @@ import { Component, computed, effect, HostBinding, input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { ComputedDisplayFieldElement, RecordData } from '@cccteam/ccc-lib/src/types';
+import { ComputedDisplayFieldElement, RecordData } from '../../../../types';
 
 @Component({
   selector: 'ccc-computed-field',

@@ -1,11 +1,11 @@
 import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
 import { inject, Injectable, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthService } from '@cccteam/ccc-lib/src/auth-service';
-import { AlertLevel, BASE_URL } from '@cccteam/ccc-lib/src/types';
-import { UiCoreService } from '@cccteam/ccc-lib/src/ui-core-service';
-import { CUSTOM_HTTP_REQUEST_OPTIONS } from '@cccteam/ccc-lib/src/util-request-options';
 import { catchError, finalize, Observable, throwError } from 'rxjs';
+import { AuthService } from '../auth-service';
+import { AlertLevel, BASE_URL } from '../types';
+import { UiCoreService } from '../ui-core-service';
+import { CUSTOM_HTTP_REQUEST_OPTIONS } from '../util-request-options';
 
 @Injectable()
 export class ApiInterceptor implements HttpInterceptor {

@@ -2,17 +2,12 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { inject, Injectable, Injector, ResourceRef, signal, Signal, untracked } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import {
-  AlertLevel,
-  API_URL,
-  CreateNotificationMessage,
-  FieldSort,
-  NotificationService,
-  Operation,
-  RecordData,
-  Resource,
-} from '@cccteam/ccc-lib';
 import { catchError, Observable, of, tap } from 'rxjs';
+import type { FieldSort, RecordData, Resource } from '../internal-types';
+import { AlertLevel, API_URL } from '../internal-types';
+import { CreateNotificationMessage } from '../types';
+import { NotificationService } from '../ui-notification-service/notification.service';
+import { Operation } from './resources-helpers';
 
 @Injectable()
 export class ResourceCacheService {

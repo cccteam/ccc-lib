@@ -4,7 +4,7 @@ import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansi
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ListViewConfig, RecordData, RootConfig } from '@cccteam/ccc-lib/src/types';
+import { ListViewConfig, RecordData, RootConfig } from '../../types';
 import { ResourceCacheService } from '../resource-cache.service';
 import { ResourceCreateComponent } from '../resource-create/resource-create.component';
 import { ResourceListComponent } from '../resource-list/resource-list.component';

@@ -22,24 +22,22 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { filter, tap } from 'rxjs';
+import { sparseFormData } from '../../auth-forms';
 import {
   AlertLevel,
-  NotificationService,
-  Resource,
-  RESOURCE_META,
-  ResourceMeta,
-  sparseFormData,
-} from '@cccteam/ccc-lib';
-import {
   DataType,
   FieldElement,
   ListViewConfig,
   RecordData,
+  Resource,
+  RESOURCE_META,
+  ResourceMeta,
   RootConfig,
   RPCConfig,
   ViewConfig,
-} from '@cccteam/ccc-lib/src/types';
-import { filter, tap } from 'rxjs';
+} from '../../types';
+import { NotificationService } from '../../ui-notification-service';
 import { FormStateService } from '../form-state.service';
 import { civildateCoercion, flattenElements } from '../gui-constants';
 import { ResourceCacheService } from '../resource-cache.service';

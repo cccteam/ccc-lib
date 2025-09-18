@@ -1,10 +1,10 @@
 import { inject, ModelSignal } from '@angular/core';
 import { AbstractControl, FormArray, FormControl, FormGroup, ValidatorFn } from '@angular/forms';
 import { Route } from '@angular/router';
-import { Resource, RESOURCE_META } from '@cccteam/ccc-lib';
-import { dirtyFormDeactivateGuard } from '@cccteam/ccc-lib/src/ccc-resource/can-deactivate.guard';
-import { civildateCoercion, flattenElements } from '@cccteam/ccc-lib/src/ccc-resource/gui-constants';
-import { ResourceBaseComponent } from '@cccteam/ccc-lib/src/ccc-resource/resource-base/resource-base.component';
+import { format, isValid } from 'date-fns';
+import type { Resource } from '../internal-types';
+import { RESOURCE_META } from '../internal-types';
+import { dirtyFormDeactivateGuard, ResourceBaseComponent } from '../public-api';
 import {
   ConfigElement,
   DataType,
@@ -19,8 +19,8 @@ import {
   RouteResourceData,
   RPCRecordData,
   ViewConfig,
-} from '@cccteam/ccc-lib/src/types';
-import { format, isValid } from 'date-fns';
+} from '../types';
+import { civildateCoercion, flattenElements } from './gui-constants';
 
 /**
  * Recursively cleans a FormGroup or FormArray, removing controls with empty string values.

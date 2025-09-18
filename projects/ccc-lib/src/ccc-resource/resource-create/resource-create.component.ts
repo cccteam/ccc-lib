@@ -18,17 +18,20 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Data, Router, RouterModule } from '@angular/router';
-import { NotificationService, Resource, RESOURCE_META, ResourceMeta } from '@cccteam/ccc-lib';
+import { tap } from 'rxjs';
 import {
   ChildResourceConfig,
   DataType,
   FieldElement,
   ListViewConfig,
   RecordData,
+  Resource,
+  RESOURCE_META,
+  ResourceMeta,
   RootConfig,
   ViewConfig,
-} from '@cccteam/ccc-lib/src/types';
-import { tap } from 'rxjs';
+} from '../../types';
+import { NotificationService } from '../../ui-notification-service';
 import { CamelCaseToTitlePipe } from '../camel-case-to-title.pipe';
 import { FormStateService } from '../form-state.service';
 import { flattenElements } from '../gui-constants';
