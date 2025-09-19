@@ -1,5 +1,7 @@
+import { NgComponentOutlet } from '@angular/common';
 import {
   Component,
+  ComponentRef,
   computed,
   effect,
   inject,
@@ -15,7 +17,6 @@ import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansi
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ArrayConfig, ColumnConfig, RecordData, RESOURCE_META, ViewConfig } from '../../types';
-import { CompoundResourceComponent } from '../compound-resource/compound-resource.component';
 import { ResourceCacheService } from '../resource-cache.service';
 import { ResourceCreateComponent } from '../resource-create/resource-create.component';
 import { ResourceStore } from '../resource-store.service';
@@ -30,7 +31,7 @@ import { ResourceStore } from '../resource-store.service';
     MatIconModule,
     MatTooltipModule,
     ResourceCreateComponent,
-    CompoundResourceComponent,
+    NgComponentOutlet,
   ],
   providers: [ResourceStore],
 })
@@ -47,6 +48,7 @@ export class ResourceArrayViewComponent implements OnInit {
   emptyOneToOne = output<boolean>();
 
   createMode = signal(false);
+  compoundResourceComponent = input.required<ComponentRef<any>>();
 
   showCreateButton = computed(() => {
     const list = this.store.listData();

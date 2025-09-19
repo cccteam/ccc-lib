@@ -40,6 +40,7 @@ import { ResourceViewComponent } from '../resource-view/resource-view.component'
   providers: [ResourceStore],
 })
 export class CompoundResourceComponent implements OnInit {
+  readonly classRef = CompoundResourceComponent;
   location = inject(Location);
   route = inject(ActivatedRoute);
   store = inject(ResourceStore);

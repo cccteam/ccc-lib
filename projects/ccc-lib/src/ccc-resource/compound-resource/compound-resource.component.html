@@ -35,7 +35,11 @@
             [parentId]="primaryConfigParentId()">
           </ccc-resource-list-create>
         } @else if (config.type === 'Array') {
-          <ccc-resource-array-view [resourceConfig]="config" [parentData]="store.viewData()"> </ccc-resource-array-view>
+          <ccc-resource-array-view
+            [resourceConfig]="config"
+            [parentData]="store.viewData()"
+            [compoundResourceComponent]="classRef">
+          </ccc-resource-array-view>
         } @else if (config.type === 'View') {
           <ccc-resource-view
             [uuid]="primaryConfigParentId()"
