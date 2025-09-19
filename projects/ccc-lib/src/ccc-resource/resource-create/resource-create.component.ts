@@ -18,7 +18,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Data, Router, RouterModule } from '@angular/router';
-import { tap } from 'rxjs';
+import { CamelCaseToTitlePipe } from '@cccteam/ccc-lib/src/ccc-camel-case-to-title';
 import {
   ChildResourceConfig,
   DataType,
@@ -30,9 +30,9 @@ import {
   ResourceMeta,
   RootConfig,
   ViewConfig,
-} from '../../types';
-import { NotificationService } from '../../ui-notification-service';
-import { CamelCaseToTitlePipe } from '../camel-case-to-title.pipe';
+} from '@cccteam/ccc-lib/src/types';
+import { NotificationService } from '@cccteam/ccc-lib/src/ui-notification-service';
+import { tap } from 'rxjs';
 import { FormStateService } from '../form-state.service';
 import { flattenElements } from '../gui-constants';
 import { CreateOperation } from '../operation-types';

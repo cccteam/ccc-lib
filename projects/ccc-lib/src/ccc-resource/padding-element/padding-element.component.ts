@@ -1,5 +1,5 @@
 import { Component, HostBinding, input, OnInit } from '@angular/core';
-import { PaddingElement } from '../../types';
+import { PaddingElement } from '@cccteam/ccc-lib/src/types';
 
 @Component({
   selector: 'ccc-padding-element',

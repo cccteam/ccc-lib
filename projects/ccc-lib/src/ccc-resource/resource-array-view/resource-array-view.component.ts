@@ -16,7 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { ArrayConfig, ColumnConfig, RecordData, RESOURCE_META, ViewConfig } from '../../types';
+import { ArrayConfig, ColumnConfig, RecordData, RESOURCE_META, ViewConfig } from '@cccteam/ccc-lib/src/types';
 import { ResourceCacheService } from '../resource-cache.service';
 import { ResourceCreateComponent } from '../resource-create/resource-create.component';
 import { ResourceStore } from '../resource-store.service';

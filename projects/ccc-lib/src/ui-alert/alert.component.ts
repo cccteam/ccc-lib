@@ -3,8 +3,8 @@ import { Component, EventEmitter, Input, OnInit, Output, inject } from '@angular
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterModule } from '@angular/router';
-import { NotificationMessage } from '../types';
-import { NotificationService } from '../ui-notification-service';
+import { NotificationMessage } from '@cccteam/ccc-lib/src/types';
+import { NotificationService } from '@cccteam/ccc-lib/src/ui-notification-service';
 
 @Component({
   selector: 'ccc-alert',

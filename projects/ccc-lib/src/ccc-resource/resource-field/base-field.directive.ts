@@ -1,7 +1,6 @@
 import { computed, Directive, inject, Injector, input, signal } from '@angular/core';
 import { FormGroup } from '@angular/forms';
-import { Meta } from '@angular/platform-browser';
-import { DataType, FieldElement, FieldMeta, RecordData, RESOURCE_META, RPCFieldMeta } from '../../types';
+import { DataType, FieldElement, FieldMeta, Meta, RecordData, RESOURCE_META, RPCFieldMeta } from '@cccteam/ccc-lib/src/types';
 import { ResourceCacheService } from '../resource-cache.service';
 import { isUUID } from '../resources-helpers';
 

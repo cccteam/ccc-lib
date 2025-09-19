@@ -2,6 +2,7 @@ import { CommonModule, Location } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  ComponentRef,
   computed,
   effect,
   inject,
@@ -13,7 +14,7 @@ import {
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-import { ChildResourceConfig, ParentResourceConfig, RecordData, Resource, RESOURCE_META, RootConfig } from '../../types';
+import { ChildResourceConfig, ParentResourceConfig, RecordData, Resource, RESOURCE_META, RootConfig } from '@cccteam/ccc-lib/src/types';
 import { ResourceArrayViewComponent } from '../resource-array-view/resource-array-view.component';
 import { ResourceListCreateComponent } from '../resource-list-create/resource-list-create.component';
 import { ResourceResolverComponent } from '../resource-resolver/resource-resolver.component';
@@ -40,11 +41,11 @@ import { ResourceViewComponent } from '../resource-view/resource-view.component'
   providers: [ResourceStore],
 })
 export class CompoundResourceComponent implements OnInit {
-  readonly classRef = CompoundResourceComponent;
   location = inject(Location);
   route = inject(ActivatedRoute);
   store = inject(ResourceStore);
   injector = inject(Injector);
+  componentRef = this.injector.get(ComponentRef<CompoundResourceComponent>);
   resourceMeta = inject(RESOURCE_META);
 
   resourceConfig = input<ParentResourceConfig | ChildResourceConfig>();

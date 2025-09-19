@@ -1,4 +1,3 @@
-export type ConcatFn = 'space-concat' | 'hyphen-concat' | 'space-hyphen-concat' | 'hyphen-space-concat';
 export const concatFunctions = {
   'space-concat': spaceConcat,
   'hyphen-concat': hyphenConcat,

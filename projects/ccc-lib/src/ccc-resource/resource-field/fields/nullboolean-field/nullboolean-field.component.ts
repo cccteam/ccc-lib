@@ -10,7 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterModule } from '@angular/router';
-import { NullBoolean } from '../../../resources-helpers';
+import { NullBoolean } from '@cccteam/ccc-lib/src/types';
 import { BaseInputComponent } from '../../base-field.directive';
 
 @Component({

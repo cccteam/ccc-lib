@@ -1,6 +1,6 @@
 import { computed, inject, Signal } from '@angular/core';
 import { ActivatedRouteSnapshot, Router } from '@angular/router';
-import { AuthService } from '../auth-service';
+import { AuthService } from '@cccteam/ccc-lib/src/auth-service';
 
 export const AuthorizationGuard = (route: ActivatedRouteSnapshot): Signal<boolean> => {
   const router = inject(Router);

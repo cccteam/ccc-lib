@@ -1,5 +1,5 @@
+import { FormatType } from '@cccteam/ccc-lib/src/types';
 import { format, isValid, parseISO } from 'date-fns';
-import { FormatType } from '../types';
 
 export type FormatterFn = (value: string) => string;
 

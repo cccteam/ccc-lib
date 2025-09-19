@@ -38,7 +38,7 @@
           <ccc-resource-array-view
             [resourceConfig]="config"
             [parentData]="store.viewData()"
-            [compoundResourceComponent]="classRef">
+            [compoundResourceComponent]="componentRef">
           </ccc-resource-array-view>
         } @else if (config.type === 'View') {
           <ccc-resource-view
@@ -46,7 +46,10 @@
             [config]="config"
             [relatedData]="resolvedData()"></ccc-resource-view>
         } @else if (config.type === 'Component') {
-          <ccc-resource-resolver [parentData]="resolvedData()" [resourceConfig]="config"> </ccc-resource-resolver>
+          <ccc-resource-resolver 
+            [parentData]="resolvedData()" 
+            [resourceConfig]="config" 
+            [compoundResourceComponent]="componentRef"> </ccc-resource-resolver>
         }
       }
     </div>

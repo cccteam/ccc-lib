@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { FormGroup, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { DataType, FieldElement, FieldMeta, Meta, RecordData, ValidDisplayTypes } from '../../types';
+import { DataType, FieldElement, FieldMeta, Meta, RecordData, ValidDisplayTypes } from '@cccteam/ccc-lib/src/types';
 import { EmptyReadonlyFieldComponent } from '../empty-readonly-field/empty-readonly-field.component';
 import { validatorsPresent } from '../gui-constants';
 import { BooleanFieldComponent } from './fields/boolean-field/boolean-field.component';

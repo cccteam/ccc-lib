@@ -35,8 +35,10 @@ export * from '@cccteam/ccc-lib/src/ui-interceptor';
 export * from '@cccteam/ccc-lib/src/ui-notification-service';
 
 // Resources
-
 export * from '@cccteam/ccc-lib/src/ccc-resource';
+
+// Camel case pipe
+export * from '@cccteam/ccc-lib/src/ccc-camel-case-to-title';
 
 // Grid
 export * from '@cccteam/ccc-lib/src/ccc-grid';

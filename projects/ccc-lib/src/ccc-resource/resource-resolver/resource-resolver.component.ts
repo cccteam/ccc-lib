@@ -1,6 +1,6 @@
 import { Component, ComponentRef, computed, effect, input, untracked, viewChild, ViewContainerRef } from '@angular/core';
+import { ChildResourceConfig, ComponentConfig, FieldName, RecordData } from '@cccteam/ccc-lib/src/types';
 import { ResourceStore } from '../../ccc-resource/resource-store.service';
-import { ChildResourceConfig, ComponentConfig, FieldName, RecordData } from '../../types';
 
 @Component({
   selector: 'ccc-resource-resolver',

@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { CreateNotificationMessage } from '../types';
-import { NotificationService } from '../ui-notification-service';
+import { CreateNotificationMessage } from '@cccteam/ccc-lib/src/types';
+import { NotificationService } from '@cccteam/ccc-lib/src/ui-notification-service';
 
 @Injectable({
   providedIn: 'root',

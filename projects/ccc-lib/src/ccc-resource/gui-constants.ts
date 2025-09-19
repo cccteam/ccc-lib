@@ -1,8 +1,8 @@
 import { AbstractControl, ValidationErrors, Validators } from '@angular/forms';
+import { ConfigElement, ResourceValidatorFn } from '@cccteam/ccc-lib/src/types';
 import { isDate } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { isNumber } from 'lodash-es';
-import { ConfigElement, ResourceValidatorFn } from '../types';
 import { createResourceValidator } from './utils/validator-utils';
 
 export const maxConfigElementRecursionDepth = 240;

@@ -1,9 +1,8 @@
 import { inject, ModelSignal } from '@angular/core';
 import { AbstractControl, FormArray, FormControl, FormGroup } from '@angular/forms';
 import { Route } from '@angular/router';
-import { format, isValid } from 'date-fns';
-import type { Resource } from '../internal-types';
-import { RESOURCE_META } from '../internal-types';
+import type { Resource } from '@cccteam/ccc-lib/src/internal-types';
+import { RESOURCE_META } from '@cccteam/ccc-lib/src/internal-types';
 import {
   ConfigElement,
   DataType,
@@ -17,7 +16,8 @@ import {
   RouteResourceData,
   RPCRecordData,
   ViewConfig,
-} from '../types';
+} from '@cccteam/ccc-lib/src/types';
+import { format, isValid } from 'date-fns';
 import { dirtyFormDeactivateGuard } from './can-deactivate.guard';
 import { civildateCoercion, flattenElements } from './gui-constants';
 import { ResourceBaseComponent } from './resource-base/resource-base.component';

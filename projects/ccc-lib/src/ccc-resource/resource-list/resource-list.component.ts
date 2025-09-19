@@ -18,10 +18,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { AppGridComponent } from '../../ccc-grid/ccc-grid.component';
-import { RESOURCE_META } from '../../types';
-import { ChildResourceConfig, ColumnConfig, ListViewConfig, RecordData, RootConfig } from '../../types/configs';
-import { FieldName, Resource } from '../../types/permissions';
+import { AppGridComponent } from '@cccteam/ccc-lib/src/ccc-grid';
+import { ChildResourceConfig, ColumnConfig, FieldName, ListViewConfig, RecordData, Resource, RESOURCE_META, RootConfig } from '@cccteam/ccc-lib/src/types';
 import {
   hyphenConcatWithoutResource,
   hyphenSpaceConcatWithoutResource,

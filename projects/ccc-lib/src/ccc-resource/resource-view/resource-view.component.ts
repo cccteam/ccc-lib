@@ -22,8 +22,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { filter, tap } from 'rxjs';
-import { sparseFormData } from '../../auth-forms';
+import { sparseFormData } from '@cccteam/ccc-lib/src/auth-forms';
 import {
   AlertLevel,
   DataType,
@@ -36,8 +35,9 @@ import {
   RootConfig,
   RPCConfig,
   ViewConfig,
-} from '../../types';
-import { NotificationService } from '../../ui-notification-service';
+} from '@cccteam/ccc-lib/src/types';
+import { NotificationService } from '@cccteam/ccc-lib/src/ui-notification-service';
+import { filter, tap } from 'rxjs';
 import { FormStateService } from '../form-state.service';
 import { civildateCoercion, flattenElements } from '../gui-constants';
 import { DeleteOperation, UpdateOperation } from '../operation-types';

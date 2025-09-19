@@ -1,6 +1,6 @@
 import { Directive, Input, TemplateRef, ViewContainerRef, effect, inject, signal } from '@angular/core';
-import { AuthService } from '../auth-service';
-import { PermissionScope } from '../types';
+import { AuthService } from '@cccteam/ccc-lib/src/auth-service';
+import { PermissionScope } from '@cccteam/ccc-lib/src/types';
 
 @Directive({
   selector: '[cccHasPermission]',

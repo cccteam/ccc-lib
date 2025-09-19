@@ -1,7 +1,6 @@
 import { computed, inject, Injectable, ResourceRef, signal } from '@angular/core';
-import { ColumnConfig, FieldSort, RecordData, ResourceMeta } from '../types/configs';
-import { FieldName, Resource } from '../types/permissions';
-import { NotificationService } from '../ui-notification-service/notification.service';
+import { ColumnConfig, FieldName, FieldSort, RecordData, Resource, ResourceMeta } from '@cccteam/ccc-lib/src/types';
+import { NotificationService } from '@cccteam/ccc-lib/src/ui-notification-service';
 import { ResourceCacheService } from './resource-cache.service';
 
 @Injectable()

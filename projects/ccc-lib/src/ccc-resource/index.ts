@@ -1,4 +1,3 @@
-export * from './camel-case-to-title.pipe';
 export * from './can-deactivate.guard';
 export * from './compound-resource/compound-resource.component';
 export * from './concat-fns';
@@ -21,3 +20,4 @@ export * from './resource-resolver/resource-resolver.component';
 export * from './resource-store.service';
 export * from './resource-view/resource-view.component';
 export * from './resources-helpers';
+
