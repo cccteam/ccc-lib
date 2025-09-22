@@ -10,6 +10,7 @@ import { ResourceStore } from '../../ccc-resource/resource-store.service';
   providers: [ResourceStore],
 })
 export class ResourceResolverComponent {
+  /* eslint-disable  @typescript-eslint/no-explicit-any */
   compoundResourceComponent = input.required<ComponentRef<any>>();
   resourceConfig = input<ChildResourceConfig>();
 

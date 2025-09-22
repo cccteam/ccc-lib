@@ -3,7 +3,6 @@
   "workspaces": [
     "projects/*"
   ],
-  "private": true,
   "dependencies": {
     "@progress/kendo-angular-buttons": "19.1.2",
     "@progress/kendo-angular-common": "19.1.2",
@@ -71,7 +70,7 @@
     "typescript": "~5.8.3",
     "typescript-eslint": "8.16.0"
   },
-  "version": "0.0.1",
+  "version": "0.0.15",
   "scripts": {
     "lint": "ng lint",
     "build": "ng build ccc-lib"
