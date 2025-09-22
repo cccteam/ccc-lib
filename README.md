@@ -1,64 +1,49 @@
-# CCC-Lib
+# ccc-lib
 
-## Overview
+**ccc-lib** is a comprehensive Angular library developed by the [cccteam](https://cloudcomputingconsultants.com/). It is designed to provide a consistent and configurable foundation for building enterprise-level data-driven applications. By defining a configuration, you can dynamically generate entire application pages.
 
-**CCC-Lib** provides a collection of reusable UI components, authentication functions, utility functions, and type definitions.
+## Core Features
 
-## Features
+*   **Dynamic Page Generation**: Define a `resourceConfig` to dynamically render components and build complex layouts. For example, the `resource-resolver` can switch between components based on your data.
+*   **Authentication & Authorization**: A set of services and guards for managing user authentication and permissions.
+*   **Rich UI Components**: A collection of UI components, including a grid wrapper for Kendo UI, alert services, and more.
+*   **Utility Functions**: A set of helper functions for various tasks, such as data manipulation and request customization. Also included are tools for handling PATCH requests per the JSON Patch standard [RFC 6902](https://tools.ietf.org/html/rfc6902).
 
-- **Components**: A set of reusable UI components
-- **Authentication Functions**: Authentication and authorization guards
-- **Utilities**: Utility functions for patching, cleaning forms, and customizing requests
-- **Type Definitions**: Types for allowing permissions and
+## Getting Started
 
-## Installation
-
-You can install **CCC-Lib** via npm:
+To install **ccc-lib** in your project, run the following command:
 
 ```bash
 npm install ccc-lib
 ```
 
-## Building the Library
+## Core Concepts
 
-To build **CCC-Lib**, use the Angular CLI:
+The central concept of **ccc-lib** is the `resourceConfig`. This configuration object defines the structure and behavior of a page or a part of a page. It specifies which components to render, how they are connected, and how they interact with data.
+
+The `compound-component` component is the engine that brings the `resourceConfig` to life. It dynamically creates and configures components based on the provided configuration, allowing for highly flexible and data-driven UIs.
+
+## Modules Overview
+
+*   **`ccc-resource`**: The core module of the library. It contains the components and services related to dynamic page generation and data management.
+*   **`auth`**: This module provides authentication and authorization, including login forms, route guards, and permission directives.
+*   **`ui`**: This module contains UI components and services, such as alerts, notifications, and sidenav components. It also includes the `ccc-grid` component, a wrapper for the Kendo UI grid that allows for dynamic configuration.
+*   **`utils`**: A collection of utility pipes and functions for various purposes.
+
+## Development
+
+### Building the Library
+
+To build the library locally, use the Angular CLI:
 
 ```bash
 ng build ccc-lib
 ```
 
-This command compiles the library and outputs the build artifacts to the `dist/ccc-lib` directory.
+### Running Tests
 
-## Packaging
-
-After building the library, navigate to the distribution folder and create a package:
+To run the library's tests, use the following command:
 
 ```bash
-cd dist/ccc-lib
-npm pack
+ng test ccc-lib
 ```
-
-This will generate a `.tgz` file that can be published to the npm registry or used locally.
-
-## Publishing
-
-Before publishing, ensure that you have updated the version number in `package.json` following [Semantic Versioning](https://semver.org/).
-
-To publish **CCC-Lib** to the npm registry:
-
-1. **Bump the Version**
-
-   Update the version number in `dist/ccc-lib/package.json`:
-
-   ```bash
-   cd dist/ccc-lib
-   npm version patch # or minor, major
-   ```
-
-2. **Publish to npm**
-
-   ```bash
-   npm publish
-   ```
-
-   > **Note:** Ensure you have the necessary permissions and are logged in to your npm account using `npm login`.
