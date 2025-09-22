@@ -1,0 +1,133 @@
+@if (useExpansionPanel()) {
+  <div class="resource-view">
+    <mat-expansion-panel [@.disabled]="true" [disabled]="!config().collapsible" [expanded]="!config().collapsible">
+      @if (config().title) {
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <h1 class="title">
+              {{ config().title }}
+            </h1>
+          </mat-panel-title>
+        </mat-expansion-panel-header>
+      } @else {
+        <div class="no-title-exp-panel-padding"></div>
+      }
+      <div class="header-container">
+        <div class="state-buttons">
+          @if (editMode() === 'view') {
+            <div class="edit-button">
+              <button mat-raised-button color="accent" (click)="setEditMode('edit')">
+                <div class="button-text">
+                  <mat-icon>edit</mat-icon>
+                  <span class="mode-text"> Edit </span>
+                </div>
+              </button>
+            </div>
+          }
+          @if (editMode() === 'edit') {
+            @if (form().dirty) {
+              <div class="unsaved message">You have unsaved changes!</div>
+            }
+            @if (shouldShowDelete()) {
+              <button mat-raised-button color="primary" (click)="deleteResource()">Delete</button>
+            }
+            @if (displayFormInvalidMessage()) {
+              <div class="invalid message">Please complete or fix required fields.</div>
+            }
+            <button mat-raised-button color="primary" (click)="resetForm()">Cancel</button>
+            <button mat-raised-button color="accent" (click)="saveForm()" [disabled]="form().pristine">Save</button>
+          }
+        </div>
+      </div>
+      <div class="resource-container" [class.form-edit-mode]="editMode() === 'edit'">
+        <form [formGroup]="form()">
+          <div class="resource row">
+            @for (element of config().elements; track element) {
+              @if (element.type === 'section' || element.type === 'computedDisplayField') {
+                <ccc-resource-layout-template
+                  [element]="element"
+                  [meta]="store.resourceMeta()"
+                  [fieldClass]="config().fieldClass"
+                  [editMode]="editMode()"
+                  [relatedData]="relatedData()"
+                  [form]="form()">
+                </ccc-resource-layout-template>
+              } @else if (element.type === 'field') {
+                <ccc-resource-layout-template
+                  [element]="element"
+                  [meta]="store.resourceMeta()"
+                  [fieldClass]="config().fieldClass"
+                  [pristineValue]="pristineFormValues[element.name]"
+                  [editMode]="editMode()"
+                  [relatedData]="relatedData()"
+                  [form]="form()">
+                </ccc-resource-layout-template>
+              }
+            }
+          </div>
+        </form>
+      </div>
+      <ng-template #createSlot></ng-template>
+      <ng-template #primarySlot></ng-template>
+    </mat-expansion-panel>
+  </div>
+} @else {
+  <div class="page-container">
+    <div class="header-container">
+      <div class="state-buttons">
+        @if (editMode() === 'view') {
+          <div class="edit-button">
+            <button mat-raised-button color="accent" (click)="setEditMode('edit')">
+              <div class="button-text">
+                <mat-icon>edit</mat-icon>
+                <span class="mode-text"> Edit </span>
+              </div>
+            </button>
+          </div>
+        }
+        @if (editMode() === 'edit') {
+          @if (form().dirty) {
+            <div class="unsaved message">You have unsaved changes!</div>
+          }
+          @if (shouldShowDelete()) {
+            <button mat-raised-button color="primary" (click)="deleteResource()">Delete</button>
+          }
+          @if (!form().valid && displayFormInvalidMessage()) {
+            <div class="invalid message">Please complete or fix required fields.</div>
+          }
+          <button mat-raised-button color="primary" (click)="resetForm()">Cancel</button>
+          <button mat-raised-button color="accent" (click)="saveForm()" [disabled]="form().pristine">Save</button>
+        }
+      </div>
+    </div>
+
+    <div class="resource-container base-container-bg" [class.form-edit-mode]="editMode() === 'edit'">
+      <form [formGroup]="form()">
+        <div class="resource row">
+          @for (element of config().elements; track element) {
+            @if (element.type === 'section' || element.type === 'computedDisplayField' || element.type === 'padding') {
+              <ccc-resource-layout-template
+                [element]="element"
+                [meta]="store.resourceMeta()"
+                [fieldClass]="config().fieldClass"
+                [editMode]="editMode()"
+                [relatedData]="relatedData()"
+                [form]="form()">
+              </ccc-resource-layout-template>
+            } @else {
+              <ccc-resource-layout-template
+                [element]="element"
+                [meta]="store.resourceMeta()"
+                [fieldClass]="config().fieldClass"
+                [pristineValue]="pristineFormValues[element.name]"
+                [editMode]="editMode()"
+                [relatedData]="relatedData()"
+                [form]="form()">
+              </ccc-resource-layout-template>
+            }
+          }
+        </div>
+      </form>
+    </div>
+  </div>
+}

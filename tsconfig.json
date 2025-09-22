@@ -6,7 +6,7 @@
     "baseUrl": "./",
     "paths": {
       "@cccteam/ccc-lib/*": ["projects/ccc-lib/*"],
-      "@cccteam/ccc-lib": ["projects/ccc-lib/src/public-api.ts"]
+      "@cccteam/ccc-lib": ["projects/ccc-lib/src/index.ts"]
     },
     "outDir": "./dist/out-tsc",
     "strict": true,

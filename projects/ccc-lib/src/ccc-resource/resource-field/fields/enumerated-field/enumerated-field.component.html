@@ -1,0 +1,71 @@
+<ng-container [formGroup]="form()">
+  @if (showField()) {
+    @let options = availableEnumOptions();
+    @if (editMode() === 'edit') {
+      <div class="enumerated-field-container">
+        <mat-form-field class="field {{ fieldClass() }}" [subscriptSizing]="'dynamic'">
+          <mat-label>{{ fieldConfig().label }}</mat-label>
+          @if (fieldConfig().enumeratedConfig.searchable) {
+            <input
+              #input
+              type="text"
+              placeholder="Search"
+              matInput
+              [matAutocomplete]="auto"
+              [formControlName]="fieldConfig().name"
+              (input)="search(input.value)" />
+            <mat-autocomplete
+              (optionSelected)="select($event.option.value)"
+              #auto="matAutocomplete"
+              [displayWith]="getDisplayText">
+              @for (option of options; track option.id) {
+                <mat-option [value]="option.id">{{ option?.display }}</mat-option>
+              }
+            </mat-autocomplete>
+          } @else {
+            <mat-select
+              [formControlName]="fieldConfig().name"
+              (keydown.enter)="$event.preventDefault()"
+              (selectionChange)="select($event.value)"
+              [ariaReadOnly]="editMode() === 'view'">
+              @for (option of options; track option.id) {
+                @if (option?.id === form().get(this.fieldConfig().name)?.value) {
+                  <mat-option [value]="option?.id" selected>{{ option?.display }}</mat-option>
+                } @else {
+                  <mat-option [value]="option?.id">{{ option?.display }}</mat-option>
+                }
+              }
+            </mat-select>
+          }
+        </mat-form-field>
+      </div>
+    } @else {
+      <div class="enumerated-field-container readonly-field">
+        <mat-form-field class="field {{ fieldClass() }}" [subscriptSizing]="'dynamic'">
+          <mat-label>{{ fieldConfig().label }}</mat-label>
+          <input
+            id="{{ fieldConfig().name }}-readonly-input-text"
+            matInput
+            (keydown.enter)="$event.preventDefault()"
+            [readonly]="true"
+            type="text"
+            [required]="hasRequiredValidator()"
+            [value]="singleEnumDisplayText()" />
+        </mat-form-field>
+        @if (viewDetails()) {
+          <a
+            mat-icon-button
+            color="accent"
+            [matTooltip]="tooltipMessage()"
+            matTooltipPosition="below"
+            [routerLink]="['/', route(), form().get(this.fieldConfig().name)?.value]">
+            <mat-icon>arrow_forward</mat-icon>
+          </a>
+        }
+      </div>
+      <input class="display-none" [formControlName]="fieldConfig().name" />
+    }
+  } @else {
+    <input class="display-none" [formControlName]="fieldConfig().name" />
+  }
+</ng-container>

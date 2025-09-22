@@ -1,0 +1,81 @@
+@if (resourceConfig().title !== '') {
+  <div class="resource-array-view">
+    <mat-expansion-panel
+      #expPanel
+      [@.disabled]="true"
+      [disabled]="!resourceConfig().collapsible"
+      [expanded]="!resourceConfig().collapsible">
+      <mat-expansion-panel-header>
+        @if (resourceConfig().title) {
+          <mat-panel-title>
+            <h1 class="title">
+              {{ resourceConfig().title }}
+            </h1>
+          </mat-panel-title>
+        }
+        @if (showCreateButton()) {
+          <button
+            mat-icon-button
+            class="exp-panel-add-element-btn"
+            color="accent"
+            (click)="createResource($event)"
+            [matTooltip]="resourceConfig().createButtonLabel"
+            matTooltipPosition="above">
+            <mat-icon color="accent">add_circle</mat-icon>
+          </button>
+        }
+      </mat-expansion-panel-header>
+
+      @if (!resourceConfig().collapsible && !resourceConfig().title) {
+        <div class="no-title-exp-panel-padding"></div>
+      }
+
+      @if (createMode()) {
+        <ccc-resource-create
+          [resourceConfig]="createConfig()"
+          [parentData]="parentData()"
+          (complete)="onCreateCompleted()">
+        </ccc-resource-create>
+      }
+      @for (resource of store.listData(); track resource['id']; let i = $index) {
+        @let resourceId = (resource[resourceConfig().connectorField] || resource['id']) + '';
+
+        @if (parentData() && resourceConfig().iteratedConfig && resourceId && i + 1 <= resourceConfig().limit) {
+        <ng-container *ngComponentOutlet="compoundResourceComponent().componentType;
+          inputs: { 
+            uuid: resourceId, 
+            parentData: parentData(), 
+            isArrayChild: true, 
+            resourceConfig: resourceConfig().iteratedConfig 
+          }">
+        </ng-container>
+        }
+      }
+
+      @if (store.listData().length === 0) {
+        <div>No records found</div>
+      }
+    </mat-expansion-panel>
+  </div>
+} @else {
+  @if (createMode()) {
+    <ccc-resource-create [resourceConfig]="createConfig()" [parentData]="parentData()" (complete)="onCreateCompleted()">
+    </ccc-resource-create>
+  }
+  @for (resource of store.listData(); track resource['id']; let i = $index) {
+    @if (parentData() && resourceConfig().iteratedConfig && resource['id'] && i + 1 <= resourceConfig().limit) {
+      <ng-container *ngComponentOutlet="compoundResourceComponent().componentType;
+        inputs: { 
+          uuid: resource['id'] + '', 
+          parentData: parentData(), 
+          isArrayChild: true, 
+          resourceConfig: resourceConfig().iteratedConfig 
+        }">
+      </ng-container>
+    }
+  }
+
+  @if (store.listData().length === 0) {
+    <div>No records found</div>
+  }
+}
