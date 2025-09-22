@@ -48,6 +48,7 @@ export class ResourceArrayViewComponent implements OnInit {
   emptyOneToOne = output<boolean>();
 
   createMode = signal(false);
+  /* eslint-disable  @typescript-eslint/no-explicit-any */
   compoundResourceComponent = input.required<ComponentRef<any>>();
 
   showCreateButton = computed(() => {
