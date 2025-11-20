@@ -8,10 +8,12 @@ export const CUSTOM_HTTP_REQUEST_OPTIONS = new HttpContextToken<CustomHttpReques
   suppressGlobalError: false,
 }));
 
-export function errorOptions(suppressGlobalError: boolean | undefined): { context: HttpContext } {
-  return {
-    context: new HttpContext().set(CUSTOM_HTTP_REQUEST_OPTIONS, {
-      suppressGlobalError: suppressGlobalError ?? false,
-    }),
-  };
+export interface CustomHttpRequestOptions {
+  suppressGlobalError: boolean;
+}
+
+export function errorOptions(suppressGlobalError: boolean = false): { context: HttpContext } {
+  const context = new HttpContext();
+  context.set(CUSTOM_HTTP_REQUEST_OPTIONS, { suppressGlobalError });
+  return { context };
 }
