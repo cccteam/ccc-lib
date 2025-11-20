@@ -2,6 +2,27 @@ import { FormArray, FormGroup } from '@angular/forms';
 import { isEqual } from 'lodash-es';
 
 /**
+ * Compares two objects and returns a sparse object containing only the differing key-value pairs
+ * @param data - object to compare
+ * @param compareData - object to compare against
+ * @returns Partial<T>
+ * @example sparseData<UserCreate>(this.user, initUser)
+ */
+export function sparseData<T extends Record<string, any>>(data: T,  compareData: T): Partial<T> {
+  const sparseData: Partial<T> = {};
+
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      if (!isEqual(data[key], compareData[key])) {
+        sparseData[key] = data[key];
+      }
+    }
+  }
+
+  return sparseData;
+}
+
+/**
  * Accepts a FormGroup and compares it to an object to return the dirty form values
  * as a sparse object
  * @param form - FormGroup
