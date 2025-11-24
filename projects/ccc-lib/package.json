@@ -6,8 +6,8 @@
     "url": "git://github.com/cccteam/ccc-lib.git"
   },
   "peerDependencies": {
-    "@angular/common": "^20.0.0",
-    "@angular/core": "^20.0.0"
+    "@angular/common": "^21.0.0",
+    "@angular/core": "^21.0.0"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
