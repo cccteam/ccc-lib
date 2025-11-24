@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import {
   API_URL,
   Permission,
@@ -20,6 +20,8 @@ const routes = {
   providedIn: 'root',
 })
 export class AuthService {
+  private apiUrl = inject(API_URL);
+
   http = inject(HttpClient);
   private authenticatedSignal = signal(false);
   private sessionInfoSignal = signal({} as SessionInfo);
@@ -28,7 +30,7 @@ export class AuthService {
   authenticated = this.authenticatedSignal.asReadonly();
   sessionInfo = this.sessionInfoSignal.asReadonly();
 
-  constructor(@Inject(API_URL) private apiUrl: string) {
+  constructor() {
     this.initializePermissionFn();
   }
 
