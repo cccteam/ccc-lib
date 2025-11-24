@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, computed, input, output, TemplateRef } from '@angular/core';
 import { MatIconButton } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,14 +14,13 @@ import { TableButtonComponent } from './table-button/table-button.component';
   standalone: true,
   imports: [
     GridModule,
-    CommonModule,
     TableButtonComponent,
     CamelCaseToTitlePipe,
     RouterModule,
     MatIconButton,
     MatIconModule,
-    MatTooltipModule,
-  ],
+    MatTooltipModule
+],
   template: `
     <kendo-grid
       [kendoGridBinding]="rowData()"

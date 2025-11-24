@@ -1,4 +1,4 @@
-import { CommonModule, Location } from '@angular/common';
+import { Location } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -35,9 +35,8 @@ import { ResourceViewComponent } from '../resource-view/resource-view.component'
     ResourceListCreateComponent,
     ResourceArrayViewComponent,
     ResourceResolverComponent,
-    CommonModule,
-    RouterModule,
-  ],
+    RouterModule
+],
   providers: [ResourceStore],
 })
 export class CompoundResourceComponent implements OnInit {
