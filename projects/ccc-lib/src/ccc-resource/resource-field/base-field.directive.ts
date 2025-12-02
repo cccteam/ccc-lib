@@ -1,13 +1,13 @@
 import { computed, Directive, inject, Injector, input, ResourceRef, signal } from '@angular/core';
 import { FormGroup } from '@angular/forms';
 import {
-    DataType,
-    FieldElement,
-    FieldMeta,
-    Meta,
-    RecordData,
-    RESOURCE_META,
-    RPCFieldMeta,
+  DataType,
+  FieldElement,
+  FieldMeta,
+  Meta,
+  RecordData,
+  RESOURCE_META,
+  RPCFieldMeta,
 } from '@cccteam/ccc-lib/src/types';
 import { ResourceStore } from '../resource-store.service';
 import { isUUID } from '../resources-helpers';
@@ -50,9 +50,13 @@ export abstract class BaseInputComponent {
       if (typeof prefix === 'string') {
         builtPrefix += prefix;
       } else if ('resource' in prefix) {
-        if (!relatedData || !relatedData[prefix.id]) return;
+        if (!relatedData || !relatedData[prefix.id]) {
+          return;
+        }
         const id = relatedData[prefix.id];
-        if (typeof id !== 'string' || !id || !isUUID(id)) return;
+        if (typeof id !== 'string' || !id || !isUUID(id)) {
+          return;
+        }
 
         const cacheKey = `${prefix.resource}-${id}`;
         let resourceRef = this.affixResources.get(cacheKey);
@@ -84,9 +88,13 @@ export abstract class BaseInputComponent {
       if (typeof suffix === 'string') {
         builtSuffix += suffix;
       } else if ('resource' in suffix) {
-        if (!relatedData || !relatedData[suffix.id]) return;
+        if (!relatedData || !relatedData[suffix.id]) {
+          return;
+        }
         const id = relatedData[suffix.id];
-        if (typeof id !== 'string' || !id || !isUUID(id)) return;
+        if (typeof id !== 'string' || !id || !isUUID(id)) {
+          return;
+        }
 
         const cacheKey = `${suffix.resource}-${id}`;
         let resourceRef = this.affixResources.get(cacheKey);
