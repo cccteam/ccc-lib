@@ -1,0 +1,39 @@
+<div class="menu">
+  @for (item of menuData; track item.route + item.label) {
+    <a class="menu-link" [routerLink]="item.route">
+      <div class="menu-item">
+        <div class="menu-label">
+          {{ item.label }}
+          @if (item.children) {
+            <span class="menu-icon">▼</span>
+          }
+        </div>
+        @if (item.children && item.children.length) {
+          <div class="submenu">
+            <ng-container *ngTemplateOutlet="menuTemplate; context: { items: item.children }"></ng-container>
+          </div>
+        }
+      </div>
+    </a>
+  }
+</div>
+
+<ng-template #menuTemplate let-items="items">
+  @for (item of items; track item) {
+    <a [routerLink]="item.route" class="menu-link">
+      <div class="menu-item" [routerLink]="item.route">
+        <div class="menu-label">
+          {{ item.label }}
+          @if (item.children) {
+            <span class="menu-icon">►</span>
+          }
+        </div>
+        @if (item.children && item.children.length) {
+          <div class="submenu">
+            <ng-container *ngTemplateOutlet="menuTemplate; context: { items: item.children }"></ng-container>
+          </div>
+        }
+      </div>
+    </a>
+  }
+</ng-template>

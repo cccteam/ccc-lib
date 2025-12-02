@@ -1,0 +1,43 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run server in Debug Mode",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/main.go",
+      "args": [],
+      "buildFlags": "--tags=skipAuth"
+    },
+    {
+      "name": "Run Resource Generator in Debug Mode",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/generate/resourcegenerator/main.go",
+      "args": []
+    },
+    {
+      "name": "Run TS Generator in Debug Mode",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/generate/typescriptgenerator/main.go",
+      "args": [],
+      "buildFlags": "--tags=collect_resource_permissions"
+    },
+    {
+      "name": "Run bootstrap in Debug Mode",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/cmd/bootstrap/main.go",
+      "args": [],
+      "buildFlags": "--tags=collect_resource_permissions"
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 <div [class]="linkCreateType() ? 'page-container hide' : 'page-container'">
   <div class="header-container" [class.show-background]="!config().collapsible" [class.indent]="indentTitle()">
     <h1 class="title">{{ listTitle() }}</h1>
-    @if (showCreateButton()) {
+    <action-access-control-wrapper [actionContext]="createButtonContext()">
       <div class="create-button">
         <button mat-raised-button color="accent" (click)="createResource($event)">
           <div class="edit-text">
@@ -10,7 +10,7 @@
           </div>
         </button>
       </div>
-    }
+    </action-access-control-wrapper>
   </div>
   <div class="resource-container">
     @if (config().searchable) {
@@ -22,6 +22,25 @@
         <mat-icon matPrefix>search</mat-icon>
       </mat-form-field>
     }
-    <ccc-grid [rowData]="processedRowData()" [columnDefs]="columns()"></ccc-grid>
+    <ccc-grid
+      [rowData]="processedRowData()"
+      [columnDefs]="columns()"
+      [enableRowExpansion]="config().enableRowExpansion"
+      [detailTemplate]="expandedRowTemplate">
+    </ccc-grid>
   </div>
 </div>
+
+<ng-template #expandedRowTemplate let-rowData>
+  <ng-container
+    *ngComponentOutlet="
+      compoundResourceComponent();
+      inputs: {
+        uuid: rowData.id,
+        navAfterDelete: false,
+        deleted: store.reloadListData.bind(store),
+        resourceConfig: expansionConfig(),
+      }
+    ">
+  </ng-container>
+</ng-template>

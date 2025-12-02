@@ -28,44 +28,34 @@
         <div class="no-title-exp-panel-padding"></div>
       }
 
-      @if (create()) {
-        <ccc-resource-create
-          [resourceConfig]="createConfig()"
-          [parentData]="parentData()"
-          [loadCreatedResource]="config().createType === 'link'"
-          (complete)="makeCreatePatches()">
-        </ccc-resource-create>
-      }
-
-      <ccc-resource-list
-        [viewRoute]="rootConfig().routeData.route"
-        [resourceConfig]="config()"
-        [filter]="filter()"
-        [hideCreateButton]="create()"
-        [relatedData]="parentData()"
-        [parentId]="parentId()"
-        [linkCreateType]="createLinkType()"
-        [isRootList]="isRootList()"
-        (createMode)="create.set($event)"></ccc-resource-list>
+      <ng-container *ngTemplateOutlet="resourceComponents"></ng-container>
     </mat-expansion-panel>
   </div>
 } @else {
+  <ng-container *ngTemplateOutlet="resourceComponents"></ng-container>
+}
+
+<ng-template #resourceComponents>
   @if (create()) {
     <ccc-resource-create
       [resourceConfig]="createConfig()"
       [parentData]="parentData()"
-      [loadCreatedResource]="config().createType === 'link'"
+      [loadCreatedResource]="config().loadCreatedResource"
       (complete)="makeCreatePatches()">
     </ccc-resource-create>
   }
+
   <ccc-resource-list
+    #list
     [viewRoute]="rootConfig().routeData.route"
     [resourceConfig]="config()"
     [filter]="filter()"
     [hideCreateButton]="create()"
     [relatedData]="parentData()"
     [parentId]="parentId()"
-    (createMode)="create.set($event)"
+    [linkCreateType]="createLinkType()"
     [isRootList]="isRootList()"
-    [linkCreateType]="createLinkType()"></ccc-resource-list>
-}
+    (createMode)="create.set($event)"
+    [compoundResourceComponent]="compoundResourceComponent()">
+  </ccc-resource-list>
+</ng-template>

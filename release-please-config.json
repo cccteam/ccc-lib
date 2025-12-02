@@ -23,7 +23,7 @@
     { "type": "upgrade", "section": "Code Upgrade" }
   ],
   "packages": {
-    "projects/ccc-ui": {
+    "projects/ccc-lib": {
       "changelog-path": "CHANGELOG.md",
       "release-type": "node",
       "bump-minor-pre-major": false,

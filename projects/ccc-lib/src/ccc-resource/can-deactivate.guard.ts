@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { CanDeactivateFn, UrlTree } from '@angular/router';
+import { AuthService } from '@cccteam/ccc-lib/src/auth-service';
 import { firstValueFrom, Observable, tap } from 'rxjs';
 import { FormStateService } from './form-state.service';
 import { LeavePageConfirmationModalComponent } from './leave-page-confirmation-modal/leave-page-confirmation-modal.component';
@@ -11,11 +12,12 @@ export interface CanComponentDeactivate {
   canDeactivate: () => CanDeactivateType;
 }
 
-export const dirtyFormDeactivateGuard: CanDeactivateFn<CanComponentDeactivate> = async (_, __, ___, nextState) => {
+export const canDeactivateGuard: CanDeactivateFn<CanComponentDeactivate> = async (_, __, ___, nextState) => {
+  const auth = inject(AuthService);
   const dialog = inject(MatDialog);
   const formStateService = inject(FormStateService);
 
-  if (nextState?.url === '/login') {
+  if (nextState?.url.includes(auth.loginRoute())) {
     return true;
   }
 

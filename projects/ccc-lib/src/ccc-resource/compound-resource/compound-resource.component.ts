@@ -1,20 +1,31 @@
-import { CommonModule, Location } from '@angular/common';
+import { Location } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  ComponentRef,
   computed,
   effect,
   inject,
   Injector,
   input,
   OnInit,
-  signal
+  output,
+  signal,
+  Type,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, RouterModule } from '@angular/router';
-import { ChildResourceConfig, ParentResourceConfig, RecordData, Resource, RESOURCE_META, RootConfig } from '@cccteam/ccc-lib/src/types';
+import {
+  ChildResourceConfig,
+  ParentResourceConfig,
+  RecordData,
+  Resource,
+  RESOURCE_META,
+  RootConfig,
+} from '@cccteam/ccc-lib/src/types';
+import { ActionAccessControlWrapperComponent } from '../actions/action-button-smart/action-access-control-wrapper.component';
+import { ActionButtonContext } from '../actions/actions.interface';
+import { RpcButtonComponent } from '../actions/rpc-button/rpc-button.component';
 import { ResourceArrayViewComponent } from '../resource-array-view/resource-array-view.component';
 import { ResourceListCreateComponent } from '../resource-list-create/resource-list-create.component';
 import { ResourceResolverComponent } from '../resource-resolver/resource-resolver.component';
@@ -22,7 +33,7 @@ import { ResourceStore } from '../resource-store.service';
 import { ResourceViewComponent } from '../resource-view/resource-view.component';
 
 @Component({
-  selector: 'ccc-compound-resource',
+  selector: 'compound-resource',
   templateUrl: './compound-resource.component.html',
   styleUrl: './compound-resource.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -31,11 +42,12 @@ import { ResourceViewComponent } from '../resource-view/resource-view.component'
     MatIconModule,
     RouterModule,
     MatButtonModule,
+    RpcButtonComponent,
     ResourceViewComponent,
     ResourceListCreateComponent,
     ResourceArrayViewComponent,
     ResourceResolverComponent,
-    CommonModule,
+    ActionAccessControlWrapperComponent,
     RouterModule,
   ],
   providers: [ResourceStore],
@@ -45,7 +57,8 @@ export class CompoundResourceComponent implements OnInit {
   route = inject(ActivatedRoute);
   store = inject(ResourceStore);
   injector = inject(Injector);
-  componentRef = this.injector.get(ComponentRef<CompoundResourceComponent>);
+  /* eslint-disable  @typescript-eslint/no-explicit-any */
+  componentRef: Type<any> = CompoundResourceComponent;
   resourceMeta = inject(RESOURCE_META);
 
   resourceConfig = input<ParentResourceConfig | ChildResourceConfig>();
@@ -56,6 +69,15 @@ export class CompoundResourceComponent implements OnInit {
   rootConfig = computed(() => this.route.snapshot.data['config'] as RootConfig);
 
   emptyOneToOne = signal(false);
+  missingRoot = input(false);
+  resourceCreate = output();
+  deleted = output<boolean>();
+  navAfterDelete = input<boolean>(true);
+  navAfterDeleteConsideringRoot = computed(() => {
+    const navAfterDeleteInput = this.navAfterDelete();
+    if (navAfterDeleteInput === undefined) return true;
+    return false;
+  });
 
   hasElements = computed(() => {
     const config = this.primaryConfig();
@@ -113,11 +135,31 @@ export class CompoundResourceComponent implements OnInit {
     return [];
   });
 
-  rpcConfigs = computed(() => (this.isRootConfig() ? this.rootConfig().rpcConfigs : undefined));
+  rpcConfigs = computed(() => {
+    const isRootConfig = this.isRootConfig();
+    const rootConfig = this.rootConfig();
+
+    if (isRootConfig === undefined || rootConfig === undefined) {
+      return [];
+    }
+
+    if (!isRootConfig || rootConfig.rpcConfigs === undefined) {
+      return [];
+    }
+
+    return rootConfig.rpcConfigs?.map((config) => ({
+      config,
+      context: {
+        actionType: 'rpc',
+        shouldRender: config.shouldRender,
+        resourceData: this.resolvedData(),
+      } satisfies ActionButtonContext,
+    }));
+  });
   hasRpcConfigs = computed(() => !!this.rpcConfigs() && this.rpcConfigs()!.length > 0);
 
   resolvedData = computed(() => {
-    if (this.store.viewData()) {
+    if (Object.keys(this.store.viewData()).length > 0) {
       return this.store.viewData() as RecordData;
     }
 
@@ -139,17 +181,14 @@ export class CompoundResourceComponent implements OnInit {
       this.store.uuid.set(this.primaryConfigParentId());
 
       const c = this.primaryConfig();
+      if (this.missingRoot()) return;
       if (c.type === 'View') {
-        this.store.resetResourceView();
+        this.store.buildStoreViewData();
       } else if (c.type === 'ListView') {
-        this.store.resetResourceList();
-        this.store.resetResourceView();
+        this.store.buildStoreListData();
+        this.store.buildStoreViewData();
       }
     });
-  }
-
-  handleEmptyOneToOne(value: boolean): void {
-    this.emptyOneToOne.set(value);
   }
 
   goBack(): void {

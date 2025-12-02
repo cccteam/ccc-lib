@@ -1,23 +1,25 @@
 import { NgComponentOutlet } from '@angular/common';
 import {
-  Component,
-  ComponentRef,
-  computed,
-  effect,
-  inject,
-  Injector,
-  input,
-  OnInit,
-  output,
-  signal,
-  viewChild
+    Component,
+    computed,
+    effect,
+    inject,
+    Injector,
+    input,
+    OnInit,
+    output,
+    Signal,
+    signal,
+    Type,
+    viewChild
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ArrayConfig, ColumnConfig, RecordData, RESOURCE_META, ViewConfig } from '@cccteam/ccc-lib/src/types';
-import { ResourceCacheService } from '../resource-cache.service';
+import { ActionAccessControlWrapperComponent } from '../actions/action-button-smart/action-access-control-wrapper.component';
+import { ActionButtonContext } from '../actions/actions.interface';
 import { ResourceCreateComponent } from '../resource-create/resource-create.component';
 import { ResourceStore } from '../resource-store.service';
 
@@ -31,15 +33,15 @@ import { ResourceStore } from '../resource-store.service';
     MatIconModule,
     MatTooltipModule,
     ResourceCreateComponent,
+    ActionAccessControlWrapperComponent,
     NgComponentOutlet,
   ],
   providers: [ResourceStore],
 })
 export class ResourceArrayViewComponent implements OnInit {
-  store = inject(ResourceStore);
-  cache = inject(ResourceCacheService);
-  injector = inject(Injector);
   resourceMeta = inject(RESOURCE_META);
+  store = inject(ResourceStore);
+  injector = inject(Injector);
 
   resourceConfig = input.required<ArrayConfig>();
   parentData = input<RecordData>({});
@@ -48,8 +50,8 @@ export class ResourceArrayViewComponent implements OnInit {
   emptyOneToOne = output<boolean>();
 
   createMode = signal(false);
-  /* eslint-disable  @typescript-eslint/no-explicit-any */
-  compoundResourceComponent = input.required<ComponentRef<any>>();
+/* eslint-disable  @typescript-eslint/no-explicit-any */
+  compoundResourceComponent = input.required<Type<any>>();
 
   showCreateButton = computed(() => {
     const list = this.store.listData();
@@ -63,6 +65,23 @@ export class ResourceArrayViewComponent implements OnInit {
       return true;
     }
     return false;
+  });
+
+  createActionConfig: Signal<ActionButtonContext | undefined> = computed(() => {
+    const config = this.resourceConfig();
+    const showCreate = this.showCreateButton();
+    const meta = this.store.resourceMeta();
+
+    if (config === undefined || showCreate === undefined || meta === undefined) {
+      return undefined;
+    }
+
+    return {
+      actionType: 'create',
+      meta: this.store.resourceMeta(),
+      shouldRender: () => (showCreate && config.shouldRenderActions?.create?.(this.parentData())) ?? false,
+      resourceData: this.parentData(),
+    };
   });
 
   createConfig = computed(() => {
@@ -113,7 +132,8 @@ export class ResourceArrayViewComponent implements OnInit {
         const filter = resourceConfig.listFilter(parentData);
 
         this.store.filter.set(filter);
-        this.store.resetResourceList();
+        this.store.disableCacheForFilterPii.set(resourceConfig.disableCacheForFilterPii);
+        this.store.buildStoreListData();
       }
     });
   }
@@ -137,8 +157,7 @@ export class ResourceArrayViewComponent implements OnInit {
   }
 
   onCreateCompleted(): void {
-    this.cache.updateResourceInCache(this.store.resourceName(), 'list');
-
+    this.store.reloadListData();
     this.setCreateMode(false);
   }
 }

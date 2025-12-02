@@ -15,24 +15,26 @@
           [uuid]="uuid()"
           [config]="primaryConfigRef"
           [relatedData]="resolvedData()"
-          [compoundResourceView]="true">
+          [showCreateForm]="missingRoot()"
+          [compoundResourceView]="true"
+          [navAfterDelete]="navAfterDeleteConsideringRoot()"
+          (createChange)="resourceCreate.emit()"
+          (deleted)="deleted.emit(true)">
         </ccc-resource-view>
       }
 
       @for (config of configs(); track config) {
         @let hasrelatedConfigs = 'relatedConfigs' in config && config.relatedConfigs.length > 0;
         @if (hasrelatedConfigs) {
-          <ccc-compound-resource
-            [uuid]="primaryConfigParentId()"
-            [parentData]="resolvedData()"
-            [resourceConfig]="config">
-          </ccc-compound-resource>
+          <compound-resource [uuid]="primaryConfigParentId()" [parentData]="resolvedData()" [resourceConfig]="config">
+          </compound-resource>
         } @else if (config.type === 'ListView') {
           <ccc-resource-list-create
             [resourceConfig]="config"
             [parentData]="resolvedData()"
             [isRootList]="false"
-            [parentId]="primaryConfigParentId()">
+            [parentId]="primaryConfigParentId()"
+            [compoundResourceComponent]="componentRef">
           </ccc-resource-list-create>
         } @else if (config.type === 'Array') {
           <ccc-resource-array-view
@@ -41,16 +43,34 @@
             [compoundResourceComponent]="componentRef">
           </ccc-resource-array-view>
         } @else if (config.type === 'View') {
-          <ccc-resource-view
-            [uuid]="primaryConfigParentId()"
-            [config]="config"
-            [relatedData]="resolvedData()"></ccc-resource-view>
+          @let relatedId = resolvedData()[config.parentRelation.parentKey] || primaryConfigParentId();
+          @if (relatedId) {
+            <ccc-resource-view
+              [navAfterDelete]="navAfterDeleteConsideringRoot()"
+              [uuid]="relatedId + ''"
+              [config]="config"
+              [relatedData]="resolvedData()"></ccc-resource-view>
+          }
         } @else if (config.type === 'Component') {
-          <ccc-resource-resolver 
-            [parentData]="resolvedData()" 
-            [resourceConfig]="config" 
-            [compoundResourceComponent]="componentRef"> </ccc-resource-resolver>
+          <ccc-resource-resolver
+            [parentData]="resolvedData()"
+            [resourceConfig]="config"
+            [compoundResourceComponent]="componentRef">
+          </ccc-resource-resolver>
         }
+      }
+      @if (hasRpcConfigs()) {
+        <div class="rpc-buttons-container">
+          @for (rpc of rpcConfigs(); track rpc.config.label) {
+            <action-access-control-wrapper [actionContext]="rpc.context">
+              <ccc-rpc-button
+                [rpcConfig]="rpc.config"
+                [relatedData]="resolvedData()"
+                [primaryResource]="primaryConfig().primaryResource">
+              </ccc-rpc-button>
+            </action-access-control-wrapper>
+          }
+        </div>
       }
     </div>
   }

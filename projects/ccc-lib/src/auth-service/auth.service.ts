@@ -1,25 +1,26 @@
 import { HttpClient } from '@angular/common/http';
-import { inject, Inject, Injectable, signal } from '@angular/core';
+import { inject, Injectable, signal } from '@angular/core';
 import {
   API_URL,
+  FRONTEND_LOGIN_PATH,
   Permission,
   PERMISSION_REQUIRED,
   PermissionScope,
   Resource,
-  SessionInfo,
+  SESSION_PATH,
+  SessionInfo
 } from '@cccteam/ccc-lib/src/types';
 import { errorOptions } from '@cccteam/ccc-lib/src/util-request-options';
 import { map, Observable, tap } from 'rxjs';
-
-const routes = {
-  login: (rootUrl: string): string => `${rootUrl}/user/login`,
-  session: (rootUrl: string): string => `${rootUrl}/user/session`,
-};
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
+  private apiUrl = inject(API_URL);
+  private loginUrl = inject(FRONTEND_LOGIN_PATH);
+  private sessionUrl = inject(SESSION_PATH);
+
   http = inject(HttpClient);
   private authenticatedSignal = signal(false);
   private sessionInfoSignal = signal({} as SessionInfo);
@@ -28,7 +29,7 @@ export class AuthService {
   authenticated = this.authenticatedSignal.asReadonly();
   sessionInfo = this.sessionInfoSignal.asReadonly();
 
-  constructor(@Inject(API_URL) private apiUrl: string) {
+  constructor() {
     this.initializePermissionFn();
   }
 
@@ -62,7 +63,7 @@ export class AuthService {
    */
   logout(): Observable<boolean> {
     return this.http
-      .delete(routes.session(this.apiUrl), errorOptions(false))
+      .delete(`${this.apiUrl}/${this.sessionUrl}`, errorOptions(false))
       .pipe(map(() => true))
       .pipe(
         tap(() => {
@@ -78,7 +79,7 @@ export class AuthService {
    * @returns Observable with the user session info
    */
   checkUserSession(): Observable<SessionInfo> {
-    return this.http.get<SessionInfo>(routes.session(this.apiUrl), errorOptions(false)).pipe(
+    return this.http.get<SessionInfo>(`${this.apiUrl}/${this.sessionUrl}`, errorOptions(false)).pipe(
       tap((sessionInfo) => {
         this.authenticatedSignal.set(!!sessionInfo?.authenticated);
         this.sessionInfoSignal.set(sessionInfo);
@@ -87,6 +88,6 @@ export class AuthService {
   }
 
   loginRoute(): string {
-    return routes.login(this.apiUrl);
+    return this.loginUrl;
   }
 }

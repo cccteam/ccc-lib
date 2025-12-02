@@ -1,0 +1,73 @@
+# Host name of the web server
+export APP_HOST=localhost
+
+# Port the web server is running on
+export APP_PORT='<YOUR_WEB_PORT>'
+
+# Port the angular server is running on
+export APP_NG_SERVE_PORT='<YOUR_NG_PORT>'
+
+# App idle session settings
+export APP_SESSION_DURATION='1200'  # 20 minutes
+export APP_WARNING_DURATION='30'    # 30 seconds
+export APP_KEEP_ALIVE_DURATION='60' # 1 minute
+
+# Project Environment Settings
+export GOOGLE_CLOUD_PROJECT="development-project"
+# export GOOGLE_CLOUD_SPANNER_PROJECT=${GOOGLE_CLOUD_PROJECT} # Defaults to GOOGLE_CLOUD_PROJECT, can only be set via env
+export GOOGLE_CLOUD_SPANNER_INSTANCE_ID=test-instance         # Can only be set via env
+export GOOGLE_CLOUD_SPANNER_DATABASE_NAME=test-database       # Can only be set via env
+# export GOOGLE_CLOUD_LOGGING_PROJECT=${GOOGLE_CLOUD_PROJECT} # Defaults to GOOGLE_CLOUD_PROJECT, can only be set via env
+
+export SPANNER_EMULATOR_PORT='<YOUR_SPANNER_PORT>'
+export SPANNER_EMULATOR_HOST="127.0.0.1:${SPANNER_EMULATOR_PORT}"
+
+# spanner-cli configuration
+export SPANNER_PROJECT_ID=${GOOGLE_CLOUD_SPANNER_PROJECT}
+export SPANNER_INSTANCE_ID=${GOOGLE_CLOUD_SPANNER_INSTANCE_ID}
+export SPANNER_DATABASE_ID=${GOOGLE_CLOUD_SPANNER_DATABASE_NAME}
+
+# ***********************************************************************************************************
+# The following APP_OIDC_ env vars are applicable for production (when NOT using the 'skipAuth' build tag)
+
+# URL of the OIDC Issuer to use for authentication (e.g., https://login.microsoftonline.com/{tentantID}/v2.0)
+export APP_OIDC_ISSUER_URL='<insert issuer url here>'
+
+# The app's ID to use for OIDC auth
+export APP_OIDC_CLIENT_ID='<insert client id here>'
+
+# The app's Secret to use for OIDC auth
+export APP_OIDC_CLIENT_SECRET='<insert oidc client secret here>'
+
+# ***********************************************************************************************************
+# APP_OIDC_REDIRECT_URL env var is used in all build environments
+
+# The app's redirect url to use for OIDC auth (e.g., http://localhost:{port}/api/user/callback)
+# NOTE: When serving the app via separate angular and go servers, target the angular server here.
+export APP_OIDC_REDIRECT_URL="http://localhost:${APP_NG_SERVE_PORT}/api/user/callback"
+# ***********************************************************************************************************
+
+# ************************************************************************************************
+# APP_USERNAME & APP_ROLES are applicable for development (when using the 'skipAuth' build tag)
+
+# The application username to use following a (simulated) successful login
+export APP_USERNAME='<insert username here>'
+
+# The roles to assign to user <APP_USERNAME> following a (simulated) successful login
+export APP_ROLES='<insert comma-separated roles here>'
+# ************************************************************************************************
+
+# Session Timeout
+export APP_SESSION_TIMEOUT='10m'
+
+# Session Cookie Name
+#export APP_COOKIE_KEY='<insert cookie key here>'
+
+# APP_BUILD_FLAGS_LOCAL_DEV is used to configure the build flags during local development (e.g.: '-tags dev,skipAuth,collect_resource_permissions')
+export APP_BUILD_FLAGS_LOCAL_DEV='<insert build flags here>'
+
+# APP_BOOTSTRAP_ROLE_PATH is used to configure the path to the role definitions file
+export APP_BOOTSTRAP_ROLE_PATH='<insert path here>'
+
+# APP_BOOTSTRAP_DATA_PATH should point to a folder containing migration scripts to bootstrap data into the database
+export APP_BOOTSTRAP_DATA_PATH='schema/bootstrap'

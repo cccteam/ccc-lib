@@ -1,9 +1,8 @@
 import { AbstractControl, ValidationErrors, Validators } from '@angular/forms';
-import { ConfigElement, ResourceValidatorFn } from '@cccteam/ccc-lib/src/types';
+import { ConfigElement, createResourceValidator } from '@cccteam/ccc-lib/src/types';
 import { isDate } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import { isNumber } from 'lodash-es';
-import { createResourceValidator } from './utils/validator-utils';
 
 export const maxConfigElementRecursionDepth = 240;
 export const maxLayoutNestingDepth = 48;
@@ -50,7 +49,7 @@ const currentOrFutureDateValidator = (control: AbstractControl): ValidationError
     return null;
   }
 
-  return { errorMsg: 'Date must be greater than or equal to the current date' };
+  return { errorMsg: 'Past date not allowed' };
 };
 
 const positiveNumberValidator = (control: AbstractControl): ValidationErrors | null => {
@@ -65,6 +64,40 @@ const positiveNumberValidator = (control: AbstractControl): ValidationErrors | n
   return { errorMsg: 'Value must be a positive number' };
 };
 
+const notFutureDateValidator = (control: AbstractControl): ValidationErrors | null => {
+  if (!control.value) {
+    return null; // Let "REQUIRED" validator handle empty values
+  }
+
+  if (!isDate(control.value)) {
+    return { errorMsg: 'Value must be a valid date' };
+  }
+
+  const selectedDate = new Date(control.value);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  if (selectedDate <= today) {
+    return null;
+  }
+
+  return { errorMsg: 'Future date not allowed' };
+};
+
+const valueInRangeInclusive = (min: number, max: number) => {
+  return (control: AbstractControl): ValidationErrors | null => {
+    if (!control.value && control.value !== 0) {
+      return null; // Let "REQUIRED" validator handle "empty" values
+    }
+
+    if (isNumber(control.value) && control.value >= min && control.value <= max) {
+      return null;
+    }
+
+    return { errorMsg: `Value must be in the range [${min}, ${max}]` };
+  };
+};
+
 /**
  * This object stores every possible validator used across the application
  * Add all validators that are used in configs to this object
@@ -77,12 +110,11 @@ export const resourceValidators = Object.freeze({
   EMAIL: createResourceValidator(Validators.email),
   CURRENT_OR_FUTURE_DATE: createResourceValidator(currentOrFutureDateValidator),
   POSITIVE_NUMBER: createResourceValidator(positiveNumberValidator),
+  NOT_FUTURE_DATE: createResourceValidator(notFutureDateValidator),
+  VALUE_IN_RANGE_INCLUSIVE: (min: number, max: number) => createResourceValidator(valueInRangeInclusive(min, max)),
+  MAX_LENGTH: (maxLength: number) => createResourceValidator(Validators.maxLength(maxLength)),
 
   // Add any additional validators here. They may be defined in
   // a different file if they are too large. E.g.:
   // MIN_LENGTH_3: createResourceValidator(Validators.minLength(3)),
 });
-
-export const validatorsPresent = (control: AbstractControl, validatorResources: ResourceValidatorFn[]): boolean => {
-  return validatorResources.every((validator) => control.hasValidator(validator));
-};

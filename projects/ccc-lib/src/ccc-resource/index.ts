@@ -1,6 +1,10 @@
+export * from './actions/action-button-smart/action-access-control-wrapper.component';
+export * from './actions/rpc-button/rpc-button.component';
+export * from './base-rpc-modal/base-rpc-modal.component';
 export * from './can-deactivate.guard';
 export * from './compound-resource/compound-resource.component';
 export * from './concat-fns';
+export * from './delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
 export * from './empty-readonly-field/empty-readonly-field.component';
 export * from './form-state.service';
 export * from './format-fns';
@@ -8,8 +12,6 @@ export * from './gui-constants';
 export * from './leave-page-confirmation-modal/leave-page-confirmation-modal.component';
 export * from './padding-element/padding-element.component';
 export * from './resource-array-view/resource-array-view.component';
-export * from './resource-base/resource-base.component';
-export * from './resource-cache.service';
 export * from './resource-create/resource-create.component';
 export * from './resource-field/base-field.directive';
 export * from './resource-field/resource-field.component';
@@ -20,4 +22,3 @@ export * from './resource-resolver/resource-resolver.component';
 export * from './resource-store.service';
 export * from './resource-view/resource-view.component';
 export * from './resources-helpers';
-

@@ -1,7 +1,7 @@
 <div class="page-container">
   <div class="header-container">
     <div class="title" [class.indent]="indentTitle()">
-      <h1>{{ config().title }}</h1>
+      <h1>Create {{ config().title }}</h1>
     </div>
 
     <div class="state-buttons">
@@ -9,7 +9,7 @@
         <div class="invalid message">Please complete or fix required fields.</div>
       }
       <button mat-raised-button color="primary" (click)="cancelForm()">Cancel</button>
-      <button mat-raised-button color="accent" (click)="saveForm()" [disabled]="form().pristine">Save</button>
+      <button mat-raised-button color="accent" (click)="saveForm()" [disabled]="form().pristine">Create</button>
     </div>
   </div>
 

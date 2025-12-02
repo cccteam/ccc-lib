@@ -1,15 +1,17 @@
+import { NgComponentOutlet } from '@angular/common';
 import {
-  Component,
-  computed,
-  effect,
-  inject,
-  Injector,
-  input,
-  OnInit,
-  output,
-  ResourceRef,
-  runInInjectionContext,
-  signal,
+    Component,
+    computed,
+    effect,
+    inject,
+    Injector,
+    input,
+    OnInit,
+    output,
+    ResourceRef,
+    runInInjectionContext,
+    signal,
+    Type,
 } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,16 +21,26 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AppGridComponent } from '@cccteam/ccc-lib/src/ccc-grid';
-import { ChildResourceConfig, ColumnConfig, FieldName, ListViewConfig, RecordData, Resource, RESOURCE_META, RootConfig } from '@cccteam/ccc-lib/src/types';
 import {
-  hyphenConcatWithoutResource,
-  hyphenSpaceConcatWithoutResource,
-  noSpaceConcatWithoutResource,
-  spaceConcatWithoutResource,
-  spaceHyphenConcatWithoutResource,
+    ChildResourceConfig,
+    ColumnConfig,
+    FieldName,
+    ListViewConfig,
+    RecordData,
+    Resource,
+    RESOURCE_META,
+    RootConfig,
+} from '@cccteam/ccc-lib/src/types';
+import { ActionAccessControlWrapperComponent } from '../actions/action-button-smart/action-access-control-wrapper.component';
+import { ActionButtonContext } from '../actions/actions.interface';
+import {
+    hyphenConcatWithoutResource,
+    hyphenSpaceConcatWithoutResource,
+    noSpaceConcatWithoutResource,
+    spaceConcatWithoutResource,
+    spaceHyphenConcatWithoutResource,
 } from '../concat-fns';
 import { applyFormatting, formatDateString } from '../format-fns';
-import { ResourceCacheService } from '../resource-cache.service';
 import { ResourceStore } from '../resource-store.service';
 
 @Component({
@@ -42,6 +54,8 @@ import { ResourceStore } from '../resource-store.service';
     MatTooltipModule,
     ReactiveFormsModule,
     MatInputModule,
+    ActionAccessControlWrapperComponent,
+    NgComponentOutlet,
   ],
   selector: 'ccc-resource-list',
   templateUrl: './resource-list.component.html',
@@ -49,12 +63,14 @@ import { ResourceStore } from '../resource-store.service';
   providers: [ResourceStore],
 })
 export class ResourceListComponent implements OnInit {
+  /* eslint-disable  @typescript-eslint/no-explicit-any */
+  compoundResourceComponent = input.required<Type<any>>();
+
+  resourceMeta = inject(RESOURCE_META);
   router = inject(Router);
   store = inject(ResourceStore);
   injector = inject(Injector);
   activatedRoute = inject(ActivatedRoute);
-  cache = inject(ResourceCacheService);
-  resourceMeta = inject(RESOURCE_META);
 
   hideCreateButton = input<boolean>(true);
   createMode = output<boolean>();
@@ -75,6 +91,26 @@ export class ResourceListComponent implements OnInit {
     return false;
   });
 
+  createButtonContext = computed(() => {
+    const config = this.resourceConfig();
+    const showCreate = this.showCreateButton();
+
+    if (config === undefined || showCreate === undefined) {
+      return undefined;
+    }
+
+    if (config.shouldRenderActions === undefined) {
+      return undefined;
+    }
+
+    return {
+      actionType: 'create',
+      meta: this.meta(),
+      shouldRender: (data: RecordData): boolean => showCreate && config.shouldRenderActions.create(data),
+      resourceData: this.relatedData() ?? {},
+    } satisfies ActionButtonContext;
+  });
+
   searchableFields = computed(() => {
     const meta = this.meta();
     if (!meta) return '';
@@ -92,6 +128,14 @@ export class ResourceListComponent implements OnInit {
 
   config = computed(() => {
     return this.resourceConfig() as ListViewConfig;
+  });
+
+  expansionConfig = computed(() => {
+    const config = this.config().rowExpansionConfig;
+    if (config.type !== 'Component' && config.type !== 'Array') {
+      config.showBackButton = false;
+    }
+    return config;
   });
 
   viewRouteFallback = computed(() => {
@@ -123,7 +167,7 @@ export class ResourceListComponent implements OnInit {
     const config = this.config();
     return this.resourceMeta(config.overrideResource || config.primaryResource);
   });
-  resourceWatchList: ResourceRef<RecordData[]>[] = [];
+  resourceRefMap = signal(new Map<Resource, ResourceRef<RecordData[]>>());
   primaryKeys = computed(() => {
     const meta = this.meta();
     if (!meta) {
@@ -131,7 +175,7 @@ export class ResourceListComponent implements OnInit {
     }
     return meta.fields.filter((field) => field.primaryKey !== undefined);
   });
-  columns = computed(() => {
+  rootColumns = computed(() => {
     const config = this.config();
     const idCols = [];
     for (const pk of this.primaryKeys()) {
@@ -143,25 +187,24 @@ export class ResourceListComponent implements OnInit {
         hidden: true,
       });
     }
+    for (const col of config.listColumns) {
+      if (!('additionalIds' in col)) continue;
+      for (const additionalCol of col.additionalIds) {
+        if (additionalCol.resource !== undefined) continue;
+        idCols.push({
+          id: additionalCol.id as FieldName,
+          hidden: true,
+        });
+      }
+    }
 
-    const cols = [...idCols, ...config.listColumns];
+    return [...new Set([...idCols, ...config.listColumns])];
+  });
+  columns = computed(() => {
+    const refmap = this.resourceRefMap();
+    const cols = this.rootColumns();
     const columns: ColumnConfig[] = [];
     const usedIds = new Set<string>();
-
-    // preset all resource list caches so a value is available for the valueGetter
-    for (const col of cols) {
-      if (!('additionalIds' in col)) {
-        continue;
-      }
-      col.additionalIds.forEach((id) => {
-        if (id.resource === undefined) {
-          return;
-        }
-        const resource = signal(id.resource as Resource);
-        const ref = this.cache.registerList(resource, resource);
-        if (!this.resourceWatchList.includes(ref)) this.resourceWatchList.push(ref);
-      });
-    }
 
     for (const col of cols) {
       const indexId = this.getUniqueId(col.id, usedIds) as FieldName;
@@ -185,9 +228,11 @@ export class ResourceListComponent implements OnInit {
                 concatArray.push(data[additionalCol.id]);
               } else {
                 const resource = signal(additionalCol.resource as Resource);
-                const resourceRef = this.cache.registerList(resource, resource);
-                for (const res of resourceRef.value()) {
-                  if (res[additionalCol.id] === data[col.id] && res['id'] !== undefined && additionalCol.field) {
+                const resourceRef = refmap.get(resource());
+                const resData = resourceRef?.value();
+                if (!resData) return;
+                for (const res of resData) {
+                  if (res[additionalCol.id] === data[col.id] && additionalCol.field) {
                     const value = res[additionalCol.field];
                     if (col.formatType && typeof value === 'string') {
                       concatArray.push(formatDateString(col.formatType, value));
@@ -270,10 +315,13 @@ export class ResourceListComponent implements OnInit {
     return columns;
   });
 
+  reloadListData(): void {
+    this.store.reloadListData();
+  }
+
   processedRowData = computed(() => {
-    for (const ref of this.resourceWatchList) {
-      ref.value();
-    }
+    this.filter();
+    this.relatedData();
     const data = this.store.listData();
     if (!data) return [];
     const columns = this.columns();
@@ -281,7 +329,7 @@ export class ResourceListComponent implements OnInit {
     return data.map((row) => {
       const updatedRow = { ...row };
       for (const col of columns) {
-        if (typeof col.valueGetter === 'function') {
+        if (col.valueGetter) {
           updatedRow[col.id] = col.valueGetter(row);
         } else {
           updatedRow[col.id] = row[col.id];
@@ -351,6 +399,9 @@ export class ResourceListComponent implements OnInit {
       this.store.sorts.set(this.config().sorts || []);
     }
 
+    this.store.filter.set(this.filters());
+    this.store.disableCacheForFilterPii.set(this.config().disableCacheForFilterPii);
+
     runInInjectionContext(this.injector, () => {
       this.config().listColumns.forEach((element) => {
         if (!('additionalIds' in element)) return;
@@ -360,8 +411,11 @@ export class ResourceListComponent implements OnInit {
           if (meta === undefined) return;
           const route = signal(meta.route);
           const resource = signal(id.resource);
-          const ref = this.cache.registerList(route, resource);
-          this.resourceWatchList.push(ref);
+          if (!this.resourceRefMap().has(resource())) {
+            const ref = this.store.resourceList(route);
+            if (ref === undefined) return;
+            this.resourceRefMap.set(this.resourceRefMap().set(resource(), ref));
+          }
         });
       });
 
@@ -369,7 +423,8 @@ export class ResourceListComponent implements OnInit {
         this.filter();
         this.relatedData();
         this.store.filter.set(this.filters());
-        this.store.resetResourceList();
+        this.store.disableCacheForFilterPii.set(this.config().disableCacheForFilterPii);
+        this.store.buildStoreListData();
       });
     });
   }

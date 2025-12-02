@@ -29,5 +29,18 @@
   "rest-client.enableTelemetry": false,
   "rest-client.previewOption": "exchange",
   "rest-client.requestNameAsResponseTabTitle": true,
-  "rest-client.showResponseInDifferentTab": true
+  "rest-client.showResponseInDifferentTab": true,
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "driver": "Google Cloud Spanner Driver",
+      "name": "Spanner Emulator",
+      "project": "development-project",
+      "instance": "test-instance",
+      "database": "test-database",
+      "connectToEmulator": true,
+      "emulatorHost": "localhost",
+      "emulatorPort": "${SPANNER_EMULATOR_PORT}"
+    }
+  ]
 }

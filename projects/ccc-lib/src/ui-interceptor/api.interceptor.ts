@@ -23,7 +23,7 @@ export class ApiInterceptor implements HttpInterceptor {
         if (error.status === 401) {
           this.ngZone.run(() => {
             this.auth.redirectUrl.set(this.baseUrl + this.router.url);
-            this.router.navigate(['/login']);
+            this.router.navigate([this.auth.loginRoute()]);
           });
         }
         if (!request.context.get(CUSTOM_HTTP_REQUEST_OPTIONS).suppressGlobalError) {

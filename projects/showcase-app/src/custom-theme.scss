@@ -1,0 +1,155 @@
+// Custom Theming for Angular Material
+// For more information: https://material.angular.io/guide/theming
+@use '@angular/material' as mat;
+@include mat.elevation-classes();
+@include mat.app-background();
+// Plus imports for other components in your app.
+$primary: (
+  50: #f9e8e5,
+  100: #f1c6bd,
+  200: #e8a092,
+  300: #df7a66,
+  400: #d85e45,
+  500: #d14124,
+  600: #cc3b20,
+  700: #c6321b,
+  800: #c02a16,
+  900: #b51c0d,
+  A100: #ffe4e2,
+  A200: #ffb4af,
+  A400: #ff857c,
+  A700: #ff6d63,
+  contrast: (
+    50: #000000,
+    100: #000000,
+    200: #000000,
+    300: #000000,
+    400: #ffffff,
+    500: #ffffff,
+    600: #ffffff,
+    700: #ffffff,
+    800: #ffffff,
+    900: #ffffff,
+    A100: #000000,
+    A200: #000000,
+    A400: #000000,
+    A700: #000000,
+  ),
+);
+
+$secondary: (
+  50: #e0e7e9,
+  100: #b3c4c8,
+  200: #809da4,
+  300: #4d7680,
+  400: #265864,
+  500: #003b49,
+  600: #003542,
+  700: #002d39,
+  800: #002631,
+  900: #001921,
+  A100: #5dc6ff,
+  A200: #2ab5ff,
+  A400: #00a0f6,
+  A700: #0090dd,
+  contrast: (
+    50: #000000,
+    100: #000000,
+    200: #000000,
+    300: #ffffff,
+    400: #ffffff,
+    500: #ffffff,
+    600: #ffffff,
+    700: #ffffff,
+    800: #ffffff,
+    900: #ffffff,
+    A100: #000000,
+    A200: #000000,
+    A400: #ffffff,
+    A700: #ffffff,
+  ),
+);
+
+// Define the palettes for your theme using the Material Design palettes available in palette.scss
+// (imported above). For each palette, you can optionally specify a default, lighter, and darker
+// hue. Available color palettes: https://material.io/design/color/
+$gui-primary: mat.m2-define-palette($primary);
+$gui-accent: mat.m2-define-palette($secondary);
+
+// The warn palette is optional (defaults to red).
+$gui-warn: mat.m2-define-palette(mat.$m2-red-palette);
+
+$gui-typography: mat.m2-define-typography-config(
+  $font-family: 'Roboto, sans-serif',
+);
+@include mat.typography-hierarchy($gui-typography);
+
+// Create the theme object. A theme consists of configurations for individual
+// theming systems such as "color" or "typography".
+$gui-theme: mat.m2-define-light-theme(
+  (
+    color: (
+      primary: $gui-primary,
+      accent: $gui-accent,
+      warn: $gui-warn,
+    ),
+    typography: $gui-typography,
+  )
+);
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin: 0px !important;
+  padding: 0px !important;
+  color: #003b49;
+}
+
+table {
+  font-size: 0.9em;
+}
+
+* {
+  box-sizing: border-box;
+}
+// Include theme styles for core and each component used in your app.
+// Alternatively, you can import and @include the theme mixins for each component
+// that you are using.
+@include mat.all-component-themes($gui-theme);
+
+.dense-1 {
+  @include mat.all-component-densities(-1);
+}
+
+.dense-2 {
+  @include mat.all-component-densities(-2);
+}
+
+.dense-3 {
+  @include mat.all-component-densities(-3);
+}
+
+.ag-theme-material {
+  --ag-cell-horizontal-padding: 5px;
+  .ag-header-cell,
+  .ag-header-group-cell {
+    padding: 15px;
+    border-right: 1px solid var(--light-gray);
+  }
+
+  .ag-header {
+    background-color: var(--light-gray);
+  }
+}
+
+:root {
+  --light-gray: rgba(0, 0, 0, 0.1);
+}
+
+.ag-center-cols-viewport {
+  min-height: 50px !important;
+}
