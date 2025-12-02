@@ -684,7 +684,7 @@ export interface BaseConfig {
 }
 
 // Available components for a component config
-export type AvailableComponents = 'SwitchResolver' | 'SsnChange' | 'SsnTransfer' | 'ReassignClaim';
+export type AvailableComponents = 'SwitchResolver';
 
 // Available param types for a component config
 export type ConfigParam = SwitchConfigParam;
