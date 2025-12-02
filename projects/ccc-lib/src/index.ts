@@ -3,42 +3,48 @@
  */
 
 // Auth service
-export * from '@cccteam/ccc-lib/src/auth-service';
+export * from './auth-service';
 
 // UI Core service
-export * from '@cccteam/ccc-lib/src/ui-core-service';
+export * from './ui-core-service';
 
 // Auth directives
-export * from '@cccteam/ccc-lib/src/auth-has-permission';
+export * from './auth-has-permission';
 
 // Auth forms
-export * from '@cccteam/ccc-lib/src/auth-forms';
+export * from './auth-forms';
 
 // Auth guards
-export * from '@cccteam/ccc-lib/src/auth-authentication-guard';
-export * from '@cccteam/ccc-lib/src/auth-authorization-guard';
+export * from './auth-authentication-guard';
+export * from './auth-authorization-guard';
 
 // Util
-export * from '@cccteam/ccc-lib/src/util-request-options';
+export * from './util-request-options';
 
 // Types
-export * from '@cccteam/ccc-lib/src/types';
+export * from './types';
 
 // Ui components
-export * from '@cccteam/ccc-lib/src/ui-alert';
-export * from '@cccteam/ccc-lib/src/ui-sidenav';
+export * from './ui-alert';
+export * from './ui-sidenav';
 
 // Ui interceptor
-export * from '@cccteam/ccc-lib/src/ui-interceptor';
+export * from './ui-interceptor';
 
 // Ui services
-export * from '@cccteam/ccc-lib/src/ui-notification-service';
+export * from './ui-notification-service';
 
 // Resources
-export * from '@cccteam/ccc-lib/src/ccc-resource';
+export * from './ccc-resource';
 
 // Camel case pipe
-export * from '@cccteam/ccc-lib/src/ccc-camel-case-to-title';
+export * from './ccc-camel-case-to-title';
 
 // Grid
-export * from '@cccteam/ccc-lib/src/ccc-grid';
+export * from './ccc-grid';
+
+// Idle
+export * from './ui-idle-service';
+
+// Forms
+export * from './forms';

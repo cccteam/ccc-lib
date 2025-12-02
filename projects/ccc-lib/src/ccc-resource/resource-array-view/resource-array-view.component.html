@@ -13,7 +13,7 @@
             </h1>
           </mat-panel-title>
         }
-        @if (showCreateButton()) {
+        <action-access-control-wrapper [actionContext]="createActionConfig()">
           <button
             mat-icon-button
             class="exp-panel-add-element-btn"
@@ -23,7 +23,7 @@
             matTooltipPosition="above">
             <mat-icon color="accent">add_circle</mat-icon>
           </button>
-        }
+        </action-access-control-wrapper>
       </mat-expansion-panel-header>
 
       @if (!resourceConfig().collapsible && !resourceConfig().title) {
@@ -37,19 +37,25 @@
           (complete)="onCreateCompleted()">
         </ccc-resource-create>
       }
-      @for (resource of store.listData(); track resource['id']; let i = $index) {
-        @let resourceId = (resource[resourceConfig().connectorField] || resource['id']) + '';
+      @if (store.listStatus() === 'resolved') {
+        @for (resource of store.listData(); track resource['id']; let i = $index) {
+          @let resourceId = (resource[resourceConfig().connectorField] || resource['id']) + '';
 
-        @if (parentData() && resourceConfig().iteratedConfig && resourceId && i + 1 <= resourceConfig().limit) {
-        <ng-container *ngComponentOutlet="compoundResourceComponent().componentType;
-          inputs: { 
-            uuid: resourceId, 
-            parentData: parentData(), 
-            isArrayChild: true, 
-            resourceConfig: resourceConfig().iteratedConfig 
-          }">
-        </ng-container>
+          @if (parentData() && resourceConfig().iteratedConfig && resourceId && i + 1 <= resourceConfig().limit) {
+            <ng-container *ngComponentOutlet="compoundResourceComponent();
+              inputs: { 
+                uuid: resourceId, 
+                parentData: parentData(), 
+                isArrayChild: true, 
+                resourceConfig: resourceConfig().iteratedConfig 
+              }">
+            </ng-container>
+          }
         }
+      } @else {
+        <div class="resource-container empty">
+          <div class="resource row"></div>
+        </div>
       }
 
       @if (store.listData().length === 0) {
@@ -62,9 +68,10 @@
     <ccc-resource-create [resourceConfig]="createConfig()" [parentData]="parentData()" (complete)="onCreateCompleted()">
     </ccc-resource-create>
   }
-  @for (resource of store.listData(); track resource['id']; let i = $index) {
-    @if (parentData() && resourceConfig().iteratedConfig && resource['id'] && i + 1 <= resourceConfig().limit) {
-      <ng-container *ngComponentOutlet="compoundResourceComponent().componentType;
+  @if (store.listStatus() === 'resolved') {
+    @for (resource of store.listData(); track resource['id']; let i = $index) {
+      @if (parentData() && resourceConfig().iteratedConfig && resource['id'] && i + 1 <= resourceConfig().limit) {
+      <ng-container *ngComponentOutlet="compoundResourceComponent();
         inputs: { 
           uuid: resource['id'] + '', 
           parentData: parentData(), 
@@ -72,7 +79,12 @@
           resourceConfig: resourceConfig().iteratedConfig 
         }">
       </ng-container>
+      }
     }
+  } @else {
+    <div class="resource-container empty">
+      <div class="resource row"></div>
+    </div>
   }
 
   @if (store.listData().length === 0) {

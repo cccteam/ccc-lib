@@ -7,7 +7,6 @@
       "projectType": "library",
       "root": "projects/ccc-lib",
       "sourceRoot": "projects/ccc-lib/src",
-      "prefix": "ccc",
       "architect": {
         "build": {
           "builder": "@angular/build:ng-packagr",
@@ -28,20 +27,99 @@
           "builder": "@angular/build:karma",
           "options": {
             "tsConfig": "projects/ccc-lib/tsconfig.spec.json",
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing"
-            ]
+            "polyfills": ["zone.js", "zone.js/testing", "@angular/localize/init"]
           }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
-            "lintFilePatterns": [
-              "projects/ccc-lib/**/*.ts",
-              "projects/ccc-lib/**/*.html"
-            ],
+            "lintFilePatterns": ["projects/ccc-lib/**/*.ts", "projects/ccc-lib/**/*.html"],
             "eslintConfig": "projects/ccc-lib/eslint.config.js"
+          }
+        }
+      }
+    },
+    "showcase-app": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:component": {
+          "style": "scss"
+        }
+      },
+      "root": "projects/showcase-app",
+      "sourceRoot": "projects/showcase-app/src",
+      "prefix": "app",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "projects/showcase-app/src/main.ts",
+            "tsConfig": "projects/showcase-app/tsconfig.app.json",
+            "inlineStyleLanguage": "scss",
+            "polyfills": ["zone.js", "@angular/localize/init"],
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "projects/showcase-app/public"
+              }
+            ],
+            "styles": [
+              "projects/showcase-app/src/styles.scss",
+              {
+                "input": "node_modules/@progress/kendo-theme-default/dist/all.css"
+              },
+              "projects/showcase-app/src/custom-theme.scss",
+              "projects/showcase-app/src/styles.scss"
+            ]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "500kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "servePath": "/",
+            "proxyConfig": "proxy.conf.js"
+          },
+          "configurations": {
+            "production": {
+              "buildTarget": "showcase-app:build:production"
+            },
+            "development": {
+              "buildTarget": "showcase-app:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test"
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": ["projects/showcase-app/**/*.ts", "projects/showcase-app/**/*.html"],
+            "eslintConfig": "projects/showcase-app/eslint.config.js"
           }
         }
       }
@@ -49,9 +127,7 @@
   },
   "cli": {
     "analytics": false,
-    "schematicCollections": [
-      "@angular-eslint/schematics"
-    ]
+    "schematicCollections": ["@angular-eslint/schematics"]
   },
   "schematics": {
     "@schematics/angular:component": {

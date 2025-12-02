@@ -1,0 +1,72 @@
+// NOTE: Build tags of 'skipAuth' and 'insecurecookie' must be set for local testing to work
+@host = {{process.env.APP_HOST}}:{{process.env.APP_PORT}}
+
+###
+# @name OIDC_COOKIE
+# @no-redirect
+GET http://{{host}}/api/user/login
+
+###
+// Script to harvest the XSRF-TOKEN, needed for request header
+{{+after
+  const setCookieHeaders = response.headers['set-cookie'];
+  if (setCookieHeaders) {
+    const cookies = Array.isArray(setCookieHeaders) ? setCookieHeaders : [setCookieHeaders];
+    for (const cookie of cookies) {
+      const [cookieNameValue, ...cookieAttributes] = cookie.split(';');
+      const separatorIndex = cookieNameValue.indexOf('=');
+      const name = cookieNameValue.slice(0, separatorIndex).trim();
+      const value = cookieNameValue.slice(separatorIndex + 1).trim();
+      if (name === 'XSRF-TOKEN') {
+        $global.xsrftoken = value;
+        break;
+      }
+    }
+  }
+}}
+
+### Authenticate
+# @name Authenticate
+# @forceRef OIDC_COOKIE
+# @no-redirect
+GET http://{{host}}/api/user/callback
+
+### Login
+# @name Authenticated
+# @forceRef Authenticate
+GET http://{{host}}/api/user/session
+
+###
+# @name Logout
+DELETE http://{{host}}/api/user/session
+
+###
+GET http://{{host}}/api/users?filter=username:eq:larryBarrel
+
+###
+GET http://{{host}}/api/users/264c6baa-23f2-46a0-b5a1-850ccedfd363
+
+###
+PATCH http://{{host}}/api/resources
+X-XSRF-TOKEN: {{$global.xsrftoken}}
+
+[
+  {
+    "op": "add",
+    "path": "users",
+    "value": {
+        "username": "officeMan"
+    }
+  },
+  {
+    "op": "patch",
+    "path": "/264c6baa-23f2-46a0-b5a1-850ccedfd363",
+    "value": {
+      "username": "larryBarrelUpdated"
+    }
+  },
+    {
+    "op": "remove",
+    "path": "/264c6baa-23f2-46a0-b5a1-850ccedfd363",
+  }
+]

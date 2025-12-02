@@ -1,19 +1,18 @@
 import { NgTemplateOutlet } from '@angular/common';
 import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  effect,
-  HostBinding,
-  input,
-  Signal,
-  untracked,
+    ChangeDetectionStrategy,
+    Component,
+    computed,
+    effect,
+    HostBinding,
+    input,
+    Signal,
+    untracked,
 } from '@angular/core';
 import { FormGroup, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { DataType, FieldElement, FieldMeta, Meta, RecordData, ValidDisplayTypes } from '@cccteam/ccc-lib/src/types';
+import { DataType, FieldElement, FieldMeta, Meta, RecordData, validatorsPresent, ValidDisplayTypes } from '@cccteam/ccc-lib/src/types';
 import { EmptyReadonlyFieldComponent } from '../empty-readonly-field/empty-readonly-field.component';
-import { validatorsPresent } from '../gui-constants';
 import { BooleanFieldComponent } from './fields/boolean-field/boolean-field.component';
 import { DateFieldComponent } from './fields/date-field/date-field.component';
 import { EnumeratedFieldComponent } from './fields/enumerated-field/enumerated-field.component';
@@ -130,8 +129,6 @@ export class ResourceFieldComponent {
     }
 
     const value = form.get(config.name)?.value;
-    // TODO: In phase 3 of visual updates, allow control of which
-    // values can trigger the empty field display on a per field basis
     if (value === null || value === '') {
       return true;
     }
@@ -166,6 +163,8 @@ export class ResourceFieldComponent {
     return 'boolean';
   });
 
+  previousValidatorCount = 0;
+
   constructor() {
     effect(() => {
       this.class = this.showField() ? 'col-' + this.fieldConfig()?.cols : 'hidden-field';
@@ -196,12 +195,14 @@ export class ResourceFieldComponent {
           throw new Error(`Control with name ${this.fieldConfig().name} not found during forceRequired calculation`);
         }
 
-        const addValidators = !validatorsPresent(control, newValidators);
+        const addValidators = !validatorsPresent(control, newValidators, this.previousValidatorCount);
 
         if (addValidators) {
           control.setValidators(newValidators);
           control.updateValueAndValidity();
         }
+
+        this.previousValidatorCount = newValidators.length;
       } catch (e) {
         console.error('Failed to calculate value for forceRequired function for field: ', this.fieldConfig().name);
         console.error(e);

@@ -10,8 +10,8 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { defaultEmptyFieldValue, EnumeratedConfig, FieldElement, Resource } from '@cccteam/ccc-lib/src/types';
-import { concatFunctions, hyphenConcat } from '../../../concat-fns';
+import { defaultEmptyFieldValue, EnumeratedConfig, FieldElement, Resource, RootConfig } from '@cccteam/ccc-lib/src/types';
+import { concatFunctions, hyphenConcat } from '../../../../ccc-resource/concat-fns';
 import { BaseInputComponent } from '../../base-field.directive';
 
 @Component({
@@ -78,20 +78,31 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     const fieldValue = this.form().get(this.fieldConfig().name)?.value;
 
     if (fieldValue && route && resource) {
-      return untracked(() => this.cache.registerView(this.route, this.resource, signal(fieldValue)));
+      return untracked(() => this.store.resourceView(this.route, signal(fieldValue)));
     }
     return undefined;
+  });
+
+  rootResourceRef = computed(() => {
+    const rootConfig = this.activatedRoute.snapshot.data['config'] as RootConfig;
+    const uuid = (this.activatedRoute.snapshot.params['uuid'] || '') as string;
+    const rootMeta = this.resourceMeta(rootConfig.parentConfig.primaryResource);
+    return this.store.resourceView(signal(rootMeta.route), signal(uuid));
   });
 
   enumResourceRef = computed(() => {
     if (this.showField() === false) return undefined;
     const enumeratedMeta = this.resourceMeta(this.resource() as Resource);
-    const filter = this.fieldConfig().enumeratedConfig?.filter?.(this.relatedData()) || '';
-    return this.cache.registerList(
+    const config = this.fieldConfig().enumeratedConfig;
+    const filter =
+      config.filterType === 'rootResource'
+        ? config?.filter?.(this.rootResourceRef()?.value() || {})
+        : config?.filter?.(this.relatedData() || {});
+    return this.store.resourceList(
       signal(enumeratedMeta.route),
-      this.resource,
       signal(filter),
       signal([]),
+      signal(config.disableCacheForFilterPii),
       this.query,
       this.sorts,
     );
@@ -199,7 +210,7 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
   }
 
   select(value: string): void {
-    this.form().patchValue({ name: this.fieldConfig().name, value });
+    this.form().patchValue({ [this.fieldConfig().name]: value });
     this.form().markAsDirty();
     this.form().markAsTouched();
     this.reloadSignal.update((prev) => !prev);

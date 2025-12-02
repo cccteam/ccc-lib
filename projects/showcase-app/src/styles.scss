@@ -1,0 +1,234 @@
+:root {
+  --default-blue: rgb(8, 84, 111);
+  --light-mode-background-color: #ffffff; // Light mode - white background color
+
+  // Visual updates variables
+  --underline-fields-on: block;
+  --underline-fields-off: none;
+
+  --sticky-headers-on: sticky;
+  --sticky-headers-off: static;
+
+  --layout-label-background-white: #ffffff;
+  --layout-label-background-off-white: #fafafa;
+  --layout-label-background-grey: #bdbdbd;
+  --layout-label-background-blue: var(--default-blue);
+
+  --form-edit-mode-bg-transparent: transparent;
+  --form-edit-mode-bg-visible: var(--mat-form-field-filled-container-color);
+
+  // Default assignments
+  --underline-fields: var(--underline-fields-on);
+  --sticky-headers: var(--sticky-headers-off);
+  --layout-label-background-color: var(--layout-label-background-white);
+  --form-edit-mode-bg: var(--form-edit-mode-bg-transparent);
+  --app-background-color: var(--light-mode-background-color);
+}
+
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font-family: 'Noto Sans Display', sans-serif;
+}
+
+mat-sidenav[style] {
+  visibility: visible !important;
+}
+
+.muted {
+  color: rgba(0, 0, 0, 0.38);
+}
+
+// Resource config classes
+
+// Variables
+$columns: 12;
+$gutter: 16px;
+
+.resource {
+  display: flex;
+  flex-direction: row;
+}
+
+.field {
+  width: 100%;
+  margin-bottom: 5px;
+}
+
+.row {
+  flex-wrap: wrap;
+}
+
+$columns: 12;
+$gutter: 16px;
+$tablet-breakpoint: 768px;
+$mobile-breakpoint: 480px;
+
+@for $i from 1 through $columns {
+  .col-#{$i} {
+    flex: 0 0 calc(100% / #{$columns} * #{$i});
+    max-width: calc(100% / #{$columns} * #{$i});
+    padding-left: calc($gutter / 2);
+    padding-right: calc($gutter / 2);
+    box-sizing: border-box;
+
+    @media (max-width: $tablet-breakpoint) {
+      @if $i <= calc($columns / 2) {
+        flex: 0 0 50%;
+        max-width: 50%;
+      } @else {
+        flex: 0 0 100%;
+        max-width: 100%;
+      }
+    }
+
+    @media (max-width: $mobile-breakpoint) {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+  }
+}
+
+@for $j from 1 through 20 {
+  .row-height-#{$j*4} {
+    height: $j * 4px;
+  }
+}
+
+.hidden-field {
+  display: none;
+}
+
+.k-grid .k-table-group-row:hover > td {
+  background-color: color-mix(in srgb, var(--kendo-color-on-app-surface) 1%, transparent);
+}
+
+.readonly-field {
+  .mat-mdc-form-field {
+    .mat-mdc-text-field-wrapper {
+      background: transparent;
+
+      &::before,
+      &::after {
+        display: none;
+      }
+    }
+
+    .mat-mdc-input-element {
+      background: transparent;
+      border: none;
+
+      &:focus {
+        outline: none;
+        border-bottom-color: #e0e0e0;
+        box-shadow: none;
+      }
+    }
+
+    .mdc-line-ripple {
+      display: var(--underline-display, block);
+    }
+    .mat-mdc-form-field-focus-overlay {
+      display: none;
+    }
+
+    .mat-mdc-floating-label {
+      opacity: 1 !important;
+    }
+  }
+
+  .mat-mdc-checkbox {
+    pointer-events: none;
+
+    .mdc-checkbox__ripple,
+    .mat-ripple,
+    .mat-mdc-checkbox-ripple {
+      display: var(--underline-fields);
+    }
+
+    .mdc-checkbox__background {
+      border-color: #e0e0e0;
+    }
+  }
+}
+
+.resource-container {
+  margin-top: 8px;
+  background-color: transparent;
+  border: 2px solid transparent;
+  box-shadow: none;
+
+  transition:
+    background-color 0.3s ease-in-out,
+    border-color 0.3s ease-in-out,
+    box-shadow 0.3s ease-in-out;
+}
+
+.form-edit-mode {
+  border: 2px solid var(--default-blue) !important;
+  border-radius: 10px;
+
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.06);
+
+  .mat-mdc-form-field {
+    .mat-mdc-text-field-wrapper {
+      background: var(--form-edit-mode-bg);
+
+      &.mdc-text-field--filled {
+        &.mdc-text-field--focused::before {
+          display: block;
+          border-bottom-color: var(--default-blue);
+        }
+      }
+    }
+
+    .mat-mdc-form-field-focus-overlay {
+      display: block !important;
+    }
+  }
+}
+
+//#region sticky container headers
+.header-container {
+  position: var(--sticky-headers);
+}
+
+// Issue with Angular material accordion: https://github.com/angular/components/issues/21914
+// Prevents sticky scrolling for elements within expansion panels
+// This hack fixes the sticky issue, but causes the page to expand and have excess height/whitespace
+// at the bottom
+.sticky-headers-hack {
+  mat-expansion-panel {
+    overflow: visible !important;
+    .mat-expansion-panel-content {
+      overflow: visible !important;
+      &.ng-animating {
+        overflow: hidden !important;
+      }
+    }
+  }
+}
+//#endregion sticky container headers
+
+//#region resource layout borders
+.resource-layout-container {
+  border: 1px solid #8e8e8e;
+  border-radius: 5px;
+  position: relative;
+  margin-bottom: 20px;
+  padding-top: 10px;
+}
+//#endregion
+
+.cdk-overlay-pane.mat-mdc-dialog-panel {
+  max-width: none;
+}
+
+.mat-expansion-panel-body {
+  padding: 0 !important;
+}

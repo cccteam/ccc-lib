@@ -1,16 +1,17 @@
-import { Location } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import {
-  Component,
-  computed,
-  DestroyRef,
-  effect,
-  inject,
-  Injector,
-  input,
-  OnInit,
-  output,
-  signal,
-  WritableSignal,
+    Component,
+    computed,
+    DestroyRef,
+    effect,
+    inject,
+    Injector,
+    input,
+    model,
+    OnInit,
+    output,
+    signal,
+    WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -22,29 +23,31 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { sparseFormData } from '@cccteam/ccc-lib/src/auth-forms';
+import { sparseFormData } from '@cccteam/ccc-lib/src/forms';
 import {
-  AlertLevel,
-  DataType,
-  FieldElement,
-  ListViewConfig,
-  RecordData,
-  Resource,
-  RESOURCE_META,
-  ResourceMeta,
-  RootConfig,
-  RPCConfig,
-  ViewConfig,
+    AlertLevel,
+    DataType,
+    FieldElement,
+    ListViewConfig,
+    RecordData,
+    Resource,
+    RESOURCE_META,
+    RootConfig,
+    RPCConfig,
+    ViewConfig,
 } from '@cccteam/ccc-lib/src/types';
 import { NotificationService } from '@cccteam/ccc-lib/src/ui-notification-service';
 import { filter, tap } from 'rxjs';
+import { ActionAccessControlWrapperComponent } from '../actions/action-button-smart/action-access-control-wrapper.component';
+import { ActionButtonContext } from '../actions/actions.interface';
+import { RpcButtonComponent } from '../actions/rpc-button/rpc-button.component';
+import { DeleteResourceConfirmationModalComponent } from '../delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
 import { FormStateService } from '../form-state.service';
 import { civildateCoercion, flattenElements } from '../gui-constants';
-import { DeleteOperation, UpdateOperation } from '../operation-types';
-import { ResourceCacheService } from '../resource-cache.service';
+import { ResourceCreateComponent } from '../resource-create/resource-create.component';
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
 import { ResourceStore } from '../resource-store.service';
-import { metadataTypeCoercion } from '../resources-helpers';
+import { DeleteOperation, metadataTypeCoercion, UpdateOperation } from '../resources-helpers';
 
 @Component({
   selector: 'ccc-resource-view',
@@ -61,18 +64,22 @@ import { metadataTypeCoercion } from '../resources-helpers';
     MatExpansionPanel,
     MatExpansionPanelHeader,
     MatExpansionPanelTitle,
+    RpcButtonComponent,
+    CommonModule,
+    ActionAccessControlWrapperComponent,
+    ResourceCreateComponent,
   ],
   templateUrl: './resource-view.component.html',
   styleUrl: './resource-view.component.scss',
   providers: [ResourceStore],
 })
 export class ResourceViewComponent implements OnInit {
+  resourceMeta = inject(RESOURCE_META);
   location = inject(Location);
   router = inject(Router);
   activatedRoute = inject(ActivatedRoute);
   notifications = inject(NotificationService);
   store = inject(ResourceStore);
-  cache = inject(ResourceCacheService);
   injector = inject(Injector);
   destroyRef = inject(DestroyRef);
   formState = inject(FormStateService);
@@ -87,35 +94,116 @@ export class ResourceViewComponent implements OnInit {
 
   displayFormInvalidMessage = signal<boolean>(false);
   deleted = output<boolean>();
+  navAfterDelete = input(true);
 
-  resourceMeta = inject(RESOURCE_META);
+  showCreateForm = model(false);
+  createConfig = computed(() => {
+    if (Object.keys(this.config().createConfig || {}).length > 0) {
+      return this.config().createConfig;
+    }
+    return this.config();
+  });
 
   rootConfig = computed(() => {
     return this.activatedRoute.snapshot.data['config'] as RootConfig;
   });
 
-  shouldShowDelete = computed(() => {
+  showCloseButton = computed(() => {
     const config = this.config();
+    const showBackButton = config.showBackButton ?? true;
     if (config) {
-      return config.primaryResource !== this.rootConfig().parentConfig.primaryResource;
+      return showBackButton && config.primaryResource === this.rootConfig().parentConfig.primaryResource;
     }
-    return config === undefined;
+    return showBackButton;
+  });
+
+  commonButtonConfig = computed(() => {
+    const config = this.config();
+
+    if (config === undefined) {
+      return undefined;
+    }
+
+    if (config.shouldRenderActions === undefined) {
+      return undefined;
+    }
+
+    return {
+      meta: this.store.resourceMeta(),
+      resourceData: this.relatedData(),
+      config,
+    };
+  });
+
+  editButtonContext = computed(() => {
+    const commonConfig = this.commonButtonConfig();
+
+    if (commonConfig === undefined) {
+      return undefined;
+    }
+
+    return {
+      actionType: 'edit',
+      meta: commonConfig.meta,
+      resourceData: commonConfig.resourceData,
+      shouldRender: commonConfig.config.shouldRenderActions.edit,
+    } satisfies ActionButtonContext;
+  });
+
+  deleteButtonContext = computed(() => {
+    const commonConfig = this.commonButtonConfig();
+
+    if (commonConfig === undefined) {
+      return undefined;
+    }
+
+    return {
+      actionType: 'delete',
+      meta: commonConfig.meta,
+      resourceData: commonConfig.resourceData,
+      shouldRender: (data: RecordData): boolean => commonConfig.config.shouldRenderActions.delete(data),
+    } satisfies ActionButtonContext;
   });
 
   inlineRpcConfigs = computed(() => {
     const config = this.config();
-    if (config) {
-      return config.rpcConfigs?.filter((rpc: RPCConfig) => rpc.placement === 'inline');
+    if (config === undefined) {
+      return [];
     }
-    return [];
+
+    const rpcConfigs = config.rpcConfigs?.filter((rpc: RPCConfig) => rpc.placement === 'inline');
+
+    return rpcConfigs?.map((config) => {
+      return {
+        config,
+        context: {
+          actionType: 'rpc',
+          shouldRender: config.shouldRender,
+          resourceData: this.relatedData(),
+        } satisfies ActionButtonContext,
+      };
+    });
   });
 
   endRpcConfigs = computed(() => {
     const config = this.config();
-    if (config) {
-      return config.rpcConfigs?.filter((rpc: RPCConfig) => rpc.placement === 'end');
+
+    if (config === undefined) {
+      return [];
     }
-    return [];
+
+    const rpcConfigs = config.rpcConfigs?.filter((rpc: RPCConfig) => rpc.placement === 'end');
+
+    return rpcConfigs?.map((config) => {
+      return {
+        config,
+        context: {
+          actionType: 'rpc',
+          shouldRender: config.shouldRender,
+          resourceData: this.relatedData(),
+        } satisfies ActionButtonContext,
+      };
+    });
   });
 
   useExpansionPanel = computed(() => {
@@ -195,7 +283,7 @@ export class ResourceViewComponent implements OnInit {
   });
 
   primaryKeys = computed(() => {
-    const meta = this.store.resourceMeta() as ResourceMeta;
+    const meta = this.store.resourceMeta();
     if (!meta) return [];
     return meta.fields
       .filter((field) => field.primaryKey)
@@ -224,8 +312,6 @@ export class ResourceViewComponent implements OnInit {
       this.store.resourceMeta.set(this.resourceMeta(this.config().primaryResource as Resource));
     }
 
-    this.store.uuid.set(this.relatedId());
-    this.store.resetResourceView();
     this.inlineRpcConfigs();
     this.endRpcConfigs();
   }
@@ -271,14 +357,14 @@ export class ResourceViewComponent implements OnInit {
     this.pristineFormValues = this.form().getRawValue();
 
     if (Object.keys(coercedSparseData).length === 0) return;
-    this.cache
+    this.store
       .makePatches([updatePatch], this.route(), this.store.resourceName())
       .pipe(
         tap(() => {
           this.form().markAsPristine();
           this.setEditMode('view');
           this.formState.decrementDirtyForms();
-          this.store.reloadResourceView();
+          this.store.reloadViewData();
         }),
       )
       .subscribe();
@@ -293,6 +379,27 @@ export class ResourceViewComponent implements OnInit {
     }
   }
 
+  confirmDeleteResource(): void {
+    const existingDialog = this.dialog.openDialogs.find(
+      (d) => d.componentInstance instanceof DeleteResourceConfirmationModalComponent,
+    );
+
+    const dialogRef =
+      existingDialog ?? this.dialog.open(DeleteResourceConfirmationModalComponent, { delayFocusTrap: false });
+
+    const result = dialogRef.afterClosed().pipe(
+      tap((value) => {
+        if (value === true) {
+          console.debug('Deleting resource | ', this.config().title, '|', this.relatedId());
+          this.deleteResource();
+        }
+      }),
+      takeUntilDestroyed(this.destroyRef),
+    );
+
+    result.subscribe();
+  }
+
   deleteResource(): void {
     const deletePatch: DeleteOperation = {
       op: 'remove',
@@ -300,28 +407,33 @@ export class ResourceViewComponent implements OnInit {
       path: this.primaryKeyPath(),
     };
 
-    this.cache
+    this.store
       .makePatches([deletePatch], this.route(), this.store.resourceName())
       .pipe(
         tap(() => {
-          this.cache.updateResourceInCache(this.store.resourceName(), 'list');
           this.deleted.emit(true);
         }),
         filter(() => this.compoundResourceView()),
         tap(() => {
-          this.location.back();
+          const navAfterDelete = this.navAfterDelete() !== false;
+          if (navAfterDelete) {
+            this.location.back();
+          } else {
+            this.showCreateForm.set(true);
+          }
         }),
       )
       .subscribe();
   }
 
   relatedId(): string {
+    const uuid = this.uuid();
     const relatedData = this.relatedData();
     const config = this.config();
     if (config.parentRelation?.parentKey) {
       return String(relatedData[config.parentRelation.parentKey]);
     }
-    return this.uuid();
+    return uuid;
   }
 
   constructor() {
@@ -347,8 +459,17 @@ export class ResourceViewComponent implements OnInit {
     });
 
     effect(() => {
-      this.uuid();
-      this.store.uuid.set(this.relatedId());
+      const id = this.relatedId();
+      const create = this.showCreateForm();
+      this.store.uuid.set(id);
+      if (!create) {
+        this.store.buildStoreViewData();
+      }
     });
+  }
+
+  createResource(): void {
+    this.showCreateForm.set(false);
+    this.store.buildStoreViewData();
   }
 }

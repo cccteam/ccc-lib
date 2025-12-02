@@ -1,0 +1,24 @@
+{
+  "name": "gui",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "ng",
+    "prestart": "npx --yes tsx ./src/environments/initialize-env.ts",
+    "start": "ng serve --no-hmr",
+    "prebuild": "npx --yes tsx ./src/environments/initialize-env.ts",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development",
+    "test": "ng test",
+    "lint": "ng lint"
+  },
+  "private": true,
+  "peerDependencies": {
+    "@angular/common": "^21.0.0",
+    "@angular/core": "^21.0.0"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "tslib": "^2.3.0"
+  }
+}

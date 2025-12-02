@@ -24,7 +24,7 @@ import { TableButtonComponent } from './table-button/table-button.component';
   ],
   template: `
     <kendo-grid
-      [kendoGridBinding]="rowData()"
+      [data]="rowData()"
       filterable="menu"
       [sortable]="true"
       scrollable="none"
@@ -88,6 +88,11 @@ import { TableButtonComponent } from './table-button/table-button.component';
           }
         }
       }
+      @if (enableRowExpansion() && detailTemplate()) {
+        <ng-template kendoGridDetailTemplate let-dataItem>
+          <ng-container *ngTemplateOutlet="detailTemplate()!; context: { $implicit: dataItem }"></ng-container>
+        </ng-template>
+      }
       <ng-template kendoGridNoRecordsTemplate>
         <div style="text-align: center; padding: 20px;">No records found</div>
       </ng-template>
@@ -105,7 +110,7 @@ import { TableButtonComponent } from './table-button/table-button.component';
       .col-header {
         font-weight: bold;
       }
-      ccc-table-button {
+      app-table-button {
         position: relative;
         z-index: 10;
       }
@@ -117,6 +122,9 @@ import { TableButtonComponent } from './table-button/table-button.component';
         overflow-x: auto; /* Allow horizontal scrolling */
         overflow-y: hidden; /* Keep vertical behavior as needed */
       }
+      ::ng-deep .k-grid .k-detail-cell {
+        padding: 16px;
+      }
     `,
   ],
 })
@@ -124,7 +132,7 @@ export class AppGridComponent {
   /* eslint-disable  @typescript-eslint/no-explicit-any */
   rowData = input<any[]>([]);
   columnDefs = input<ColumnConfig[]>([]);
-  masterDetail = input<boolean>(false);
+  enableRowExpansion = input<boolean>(false);
   detailTemplate = input<TemplateRef<unknown>>();
   selectionType = input<'multiple' | 'single' | 'none'>('none');
   selectedRows = output<RecordData[]>();

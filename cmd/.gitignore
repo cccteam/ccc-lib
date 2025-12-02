@@ -1,0 +1,12 @@
+/tmp
+schema/migrations/000000_*.sql
+**/node_modules
+**.angular
+.envrc
+*.exe
+demo-app
+go.work*
+gui/src/environments/env.ts
+gui/public/manifest.webmanifest
+gui/telerik-license.txt
+.ccc-cache/*

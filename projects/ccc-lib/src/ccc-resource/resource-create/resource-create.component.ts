@@ -1,45 +1,44 @@
 import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  DestroyRef,
-  effect,
-  inject,
-  input,
-  OnInit,
-  output,
-  signal,
+    ChangeDetectionStrategy,
+    Component,
+    computed,
+    DestroyRef,
+    effect,
+    inject,
+    input,
+    OnInit,
+    output,
+    signal,
 } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { ActivatedRoute, Data, Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CamelCaseToTitlePipe } from '@cccteam/ccc-lib/src/ccc-camel-case-to-title';
+import { cleanStringForm } from '@cccteam/ccc-lib/src/forms';
 import {
-  ChildResourceConfig,
-  DataType,
-  FieldElement,
-  ListViewConfig,
-  RecordData,
-  Resource,
-  RESOURCE_META,
-  ResourceMeta,
-  RootConfig,
-  ViewConfig,
+    ChildResourceConfig,
+    DataType,
+    FieldElement,
+    ListViewConfig,
+    RecordData,
+    Resource,
+    RESOURCE_META,
+    RootConfig,
+    ViewConfig,
 } from '@cccteam/ccc-lib/src/types';
 import { NotificationService } from '@cccteam/ccc-lib/src/ui-notification-service';
+import { camelCase } from 'lodash-es';
 import { tap } from 'rxjs';
 import { FormStateService } from '../form-state.service';
 import { flattenElements } from '../gui-constants';
-import { CreateOperation } from '../operation-types';
-import { ResourceCacheService } from '../resource-cache.service';
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
 import { ResourceStore } from '../resource-store.service';
-import { cleanStringForm, metadataTypeCoercion } from '../resources-helpers';
+import { CreateOperation, metadataTypeCoercion } from '../resources-helpers';
 
 @Component({
   selector: 'ccc-resource-create',
@@ -60,16 +59,13 @@ import { cleanStringForm, metadataTypeCoercion } from '../resources-helpers';
   providers: [ResourceStore],
 })
 export class ResourceCreateComponent implements OnInit {
+  resourceMeta = inject(RESOURCE_META);
   activatedRoute = inject(ActivatedRoute);
   notifications = inject(NotificationService);
   store = inject(ResourceStore);
-  cache = inject(ResourceCacheService);
   router = inject(Router);
   destroyRef = inject(DestroyRef);
   formState = inject(FormStateService);
-  resourceMeta = inject(RESOURCE_META);
-
-  routeData = toSignal<Data>(this.activatedRoute.data);
 
   isDirty = signal(false);
   submitted = signal<boolean>(false);
@@ -142,12 +138,13 @@ export class ResourceCreateComponent implements OnInit {
         }
       }
 
+      control.setValidators([]);
       if (fieldConfig.validators.length > 0) {
-        control.setValidators(fieldConfig.validators);
+        control.addValidators(fieldConfig.validators);
       }
 
       if (field.required && !control.hasValidator(Validators.required)) {
-        control.setValidators([Validators.required]);
+        control.addValidators(Validators.required);
       }
       fg.addControl(field.fieldName, control);
     }
@@ -161,7 +158,7 @@ export class ResourceCreateComponent implements OnInit {
   });
 
   primaryKeys = computed(() => {
-    const meta = this.store.resourceMeta() as ResourceMeta;
+    const meta = this.store.resourceMeta();
     if (!meta) return [];
     return meta.fields
       .filter((field) => field.primaryKey)
@@ -169,7 +166,7 @@ export class ResourceCreateComponent implements OnInit {
   });
 
   hasRequiredPrimaryKey = computed(() => {
-    const meta = this.store.resourceMeta() as ResourceMeta;
+    const meta = this.store.resourceMeta();
     if (!meta) {
       return false;
     }
@@ -237,7 +234,7 @@ export class ResourceCreateComponent implements OnInit {
       path: this.primaryKeyPath(),
     };
 
-    this.cache
+    this.store
       .createPatch(createPatch, this.route(), this.store.resourceName())
       .pipe(
         tap((response) => {
@@ -247,13 +244,22 @@ export class ResourceCreateComponent implements OnInit {
             this.complete.emit(true);
             return;
           }
-          const navigationRoutes = this.config().createNavigation;
-          const createIds = (response[this.store.resourceRoute()] as string[]) || [];
+
+          let createIds: string[] = [];
+          if (resourceMeta.consolidatedRoute) {
+            const resourceName = camelCase(this.store.resourceName());
+            createIds = (response[resourceName] as string[]) || [];
+          } else {
+            createIds = (response['iDs'] || []) as string[];
+          }
+
           if (this.loadCreatedResource() && createIds.length === 1) {
             let route = this.rootConfig().routeData.route;
             if (this.parentData() || !route) {
               route = resourceMeta.route;
             }
+
+            const navigationRoutes = this.config().createNavigation;
             if (navigationRoutes.length === 0) {
               this.router.navigate([route, createIds[0]]);
             } else {

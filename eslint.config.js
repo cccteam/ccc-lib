@@ -22,22 +22,6 @@ module.exports = tseslint.config(
     rules: {
       ...boundaries.configs.recommended.rules,
       'import/no-cycle': ['error', { maxDepth: 1 }],
-      '@angular-eslint/directive-selector': [
-        'error',
-        {
-          type: 'attribute',
-          prefix: 'ccc',
-          style: 'camelCase',
-        },
-      ],
-      '@angular-eslint/component-selector': [
-        'error',
-        {
-          type: 'element',
-          prefix: 'ccc',
-          style: 'kebab-case',
-        },
-      ],
       'boundaries/element-types': [
         2,
         {

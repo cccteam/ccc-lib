@@ -1,0 +1,22 @@
+.progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1001;
+}
+
+.alert-container {
+  position: fixed;
+  width: 450px;
+  top: 30px;
+  left: calc(50% - 225px);
+  right: 0;
+  z-index: 1000;
+}
+
+.alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}

@@ -1,55 +1,36 @@
-import { inject, ModelSignal } from '@angular/core';
-import { AbstractControl, FormArray, FormControl, FormGroup } from '@angular/forms';
+import { ModelSignal } from '@angular/core';
+import { FormControl, FormGroup } from '@angular/forms';
 import { Route } from '@angular/router';
-import type { Resource } from '@cccteam/ccc-lib/src/internal-types';
-import { RESOURCE_META } from '@cccteam/ccc-lib/src/internal-types';
 import {
   ConfigElement,
   DataType,
   FieldElement,
   MenuItem,
   MethodMeta,
-  PristineData,
   RecordData,
+  Resource,
   ResourceMeta,
   RootConfig,
   RouteResourceData,
   RPCRecordData,
-  ViewConfig,
+  ViewConfig
 } from '@cccteam/ccc-lib/src/types';
 import { format, isValid } from 'date-fns';
-import { dirtyFormDeactivateGuard } from './can-deactivate.guard';
+import { canDeactivateGuard } from './can-deactivate.guard';
 import { civildateCoercion, flattenElements } from './gui-constants';
-import { ResourceBaseComponent } from './resource-base/resource-base.component';
 
-/**
- * Recursively cleans a FormGroup or FormArray, removing controls with empty string values.
- * Similar to sparseFormData, but doesn't compare to an initial state
- * @param control - The FormGroup or FormArray to clean.
- * @returns A cleaned object with non-empty values.
- */
-export function cleanStringForm<T>(control: AbstractControl): T | undefined {
-  if (control instanceof FormGroup) {
-    const cleanedGroup: Record<string, unknown> = {};
-    for (const key of Object.keys(control.controls)) {
-      const childControl = control.get(key);
-      if (childControl) {
-        const cleanedValue = cleanStringForm(childControl);
-        if (cleanedValue !== undefined && cleanedValue !== null && cleanedValue !== '') {
-          cleanedGroup[key] = cleanedValue;
-        }
-      }
-    }
-    return cleanedGroup as T;
-  } else if (control instanceof FormArray) {
-    const cleanedArray = control.controls
-      .map((childControl) => cleanStringForm(childControl))
-      .filter((item) => item !== undefined && item !== null && item !== '');
-    return cleanedArray as unknown as T;
-  } else {
-    return control.value !== '' ? control.value : undefined;
-  }
+export const generatedNavItems = [] as MenuItem[];
+export const generatedNavGroups = [] as string[];
+
+export interface Link {
+  id: string;
+  resource: Resource;
+  text: string;
 }
+
+export type ResourceMap = Record<Resource, ResourceMeta>;
+
+export type PristineData = Record<string, DataType | null>;
 
 export const createFormGroup = (
   meta: ResourceMeta,
@@ -97,7 +78,7 @@ export const createFormGroup = (
   // todo: swap this with a manual subscription where the form data is subscribed to and
   // is dstroyed once the form is destroyed, similar to gui/src/app/components/Resource/resource-view/resource-view.component.ts
   // constructor effect
-  console.log(formDataState);
+  console.debug(formDataState);
   // formDataState && formDataState.set(pristineValues);
 
   return {
@@ -106,14 +87,13 @@ export const createFormGroup = (
   };
 };
 
-export const resourceRoutes = (config: RootConfig): Route => {
-  const resourceMeta = inject(RESOURCE_META);
+export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Resource) => ResourceMeta): Route => {
   const meta = resourceMeta(config.parentConfig.primaryResource as Resource);
   if (!meta) {
     return {} as Route;
   }
 
-  if (config.nav) {
+  if (config.nav.group) {
     if (config.routeData.route) {
       addToNavItems(config.nav, config.routeData.route);
     } else {
@@ -125,24 +105,19 @@ export const resourceRoutes = (config: RootConfig): Route => {
     const baseRoute: Route = {
       path: config.routeData.route,
       data: { config: config } satisfies RouteResourceData,
-      component: ResourceBaseComponent,
       children: [
         {
           path: '',
-          loadComponent: () =>
-            import(`./resource-list-create/resource-list-create.component`).then(
-              (mod) => mod.ResourceListCreateComponent,
-            ),
-          canDeactivate: [dirtyFormDeactivateGuard],
+          loadComponent: () => import('./resource-list-create/resource-list-create.component').then((mod) => mod.ResourceListCreateComponent),
+          canDeactivate: [canDeactivateGuard],
         },
       ],
     };
     if (config.routeData.hasViewRoute !== false) {
       baseRoute.children?.push({
         path: ':uuid',
-        loadComponent: () =>
-          import(`./compound-resource/compound-resource.component`).then((mod) => mod.CompoundResourceComponent),
-        canDeactivate: [dirtyFormDeactivateGuard],
+        loadComponent: () => import('./compound-resource/compound-resource.component').then((mod) => mod.CompoundResourceComponent),
+        canDeactivate: [canDeactivateGuard],
       });
       return baseRoute;
     }
@@ -151,28 +126,20 @@ export const resourceRoutes = (config: RootConfig): Route => {
   return {
     path: meta.route,
     data: { config: config } as RouteResourceData,
-    component: ResourceBaseComponent,
     children: [
       {
         path: ':uuid',
-        loadComponent: () =>
-          import(`./compound-resource/compound-resource.component`).then((mod) => mod.CompoundResourceComponent),
-        canDeactivate: [dirtyFormDeactivateGuard],
+        loadComponent: () => import('./compound-resource/compound-resource.component').then((mod) => mod.CompoundResourceComponent),
+        canDeactivate: [canDeactivateGuard],
       },
       {
         path: '',
-        loadComponent: () =>
-          import(`./resource-list-create/resource-list-create.component`).then(
-            (mod) => mod.ResourceListCreateComponent,
-          ),
-        canDeactivate: [dirtyFormDeactivateGuard],
+        loadComponent: () => import('./resource-list-create/resource-list-create.component').then((mod) => mod.ResourceListCreateComponent),
+        canDeactivate: [canDeactivateGuard],
       },
     ],
   } satisfies Route;
 };
-
-export const generatedNavItems = [] as MenuItem[];
-export const generatedNavGroups = [] as string[];
 
 function addToNavItems(
   nav: {
@@ -220,6 +187,26 @@ export function extractFieldNames(elements: ConfigElement[]): string[] {
     }
   }
   return fields;
+}
+
+export type PatchOperation = 'add' | 'patch' | 'remove';
+
+export interface Operation {
+  op: PatchOperation;
+  value?: Record<string, unknown>;
+  path: string;
+}
+
+export interface CreateOperation extends Operation {
+  op: 'add';
+}
+
+export interface UpdateOperation extends Operation {
+  op: 'patch';
+}
+
+export interface DeleteOperation extends Operation {
+  op: 'remove';
 }
 
 /**

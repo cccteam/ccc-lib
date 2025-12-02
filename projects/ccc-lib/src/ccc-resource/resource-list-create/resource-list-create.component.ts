@@ -1,15 +1,17 @@
-import { Component, computed, inject, Injector, input, signal, viewChild } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, computed, inject, Injector, input, signal, Type, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ListViewConfig, RecordData, RootConfig } from '@cccteam/ccc-lib/src/types';
-import { ResourceCacheService } from '../resource-cache.service';
 import { ResourceCreateComponent } from '../resource-create/resource-create.component';
 import { ResourceListComponent } from '../resource-list/resource-list.component';
+import { ResourceStore } from '../resource-store.service';
 
 @Component({
+  standalone: true,
   selector: 'ccc-resource-list-create',
   templateUrl: './resource-list-create.component.html',
   styleUrl: './resource-list-create.component.scss',
@@ -20,11 +22,17 @@ import { ResourceListComponent } from '../resource-list/resource-list.component'
     MatButtonModule,
     ResourceCreateComponent,
     ResourceListComponent,
+    NgTemplateOutlet,
   ],
+  providers: [ResourceStore],
 })
 export class ResourceListCreateComponent {
+  /* eslint-disable  @typescript-eslint/no-explicit-any */
+  compoundResourceComponent = input.required<Type<any>>();
+
   injector = inject(Injector);
-  cache = inject(ResourceCacheService);
+  store = inject(ResourceStore);
+  listChild = viewChild<ResourceListComponent, ResourceListComponent>('list', { read: ResourceListComponent });
 
   route = inject(ActivatedRoute);
   router = inject(Router);
@@ -73,7 +81,7 @@ export class ResourceListCreateComponent {
   });
 
   createLinkType = computed(() => {
-    return this.config().createType === 'link' && this.create();
+    return this.config().loadCreatedResource && this.create();
   });
 
   createConfig = computed(() => {
@@ -95,8 +103,7 @@ export class ResourceListCreateComponent {
 
   makeCreatePatches(): void {
     if (this.create()) {
-      const resource = this.config().primaryResource;
-      this.cache.updateResourceInCache(resource, 'list');
+      this.listChild()?.reloadListData();
       this.create.set(false);
     }
   }

@@ -1,0 +1,42 @@
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "git.autofetch": true,
+  "go.lintOnSave": "workspace",
+  "go.toolsManagement.autoUpdate": true,
+  "go.useLanguageServer": true,
+  "gopls": {
+    "formatting.gofumpt": true
+  },
+  "[go]": {
+    "editor.defaultFormatter": "golang.go"
+  },
+  "go.testTimeout": "300s",
+  "go.generateTestsFlags": ["-parallel"],
+  "editor.renderWhitespace": "all",
+  "go.addTags": {
+    "transform": "camelcase"
+  },
+  "eslint.workingDirectories": ["./gui"],
+  "eslint.enable": true,
+  "eslint.lintTask.enable": true,
+  "eslint.validate": ["javascript", "typescript"],
+  "eslint.useFlatConfig": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "sqltools.connections": [
+    {
+      "previewLimit": 50,
+      "driver": "Google Cloud Spanner Driver",
+      "name": "Demo Application Emulator",
+      "project": "development-project",
+      "instance": "test-instance",
+      "database": "test-database",
+      "connectToEmulator": true,
+      "emulatorHost": "localhost",
+      "emulatorPort": "${SPANNER_EMULATOR_PORT}"
+    }
+  ]
+}

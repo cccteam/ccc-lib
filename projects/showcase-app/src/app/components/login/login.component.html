@@ -1,0 +1,17 @@
+<div class="login-page-container">
+  <div class="login-area">
+    <div class="logo">
+      <img src="logo.png" alt="CCC Demo App" />
+    </div>
+    <app-pane>
+      <div class="login-button-container">
+        <button mat-raised-button #login color="primary" (click)="authenticate(); login.disabled = true">
+          Login
+          @if (login.disabled) {
+            <mat-spinner class="loading-spinner" diameter="20" strokeWidth="2"></mat-spinner>
+          }
+        </button>
+      </div>
+    </app-pane>
+  </div>
+</div>

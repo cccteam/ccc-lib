@@ -1,79 +1,17 @@
-import { ValidatorFn } from '@angular/forms';
 import { TooltipPosition } from '@angular/material/tooltip';
-import { defaultEmptyFieldValue } from './constants';
 import { FieldName, Method, Resource } from './permissions';
-export type ConcatFn = 'space-concat' | 'hyphen-concat' | 'space-hyphen-concat' | 'hyphen-space-concat';
+import { ConcatFn, defaultEmptyFieldValue, NullBoolean } from './resource-types';
+import { ResourceValidatorFn } from './validators';
 
-declare const __singletonValidatorBrand: unique symbol;
-export type ResourceValidatorFn = ValidatorFn & {
-  readonly [__singletonValidatorBrand]: true;
-};
+export interface FieldPointer {
+  field: FieldName;
+}
 
 export interface MenuItem {
   label: string;
   route?: string[];
   children?: MenuItem[];
 }
-
-export type NullBoolean = null | true | false;
-export type ValidDisplayTypes =
-  | 'boolean'
-  | 'nullboolean'
-  | 'number'
-  | 'string'
-  | 'date'
-  | 'enumerated'
-  | 'link'
-  | 'uuid'
-  | 'civildate';
-export type ValidRPCTypes = ValidDisplayTypes | `${ValidDisplayTypes}[]`;
-
-export type PristineData = Record<string, DataType | null>;
-
-export interface FieldMeta {
-  fieldName: string;
-  /** Indicates whether the field is required and only applies during resource creation.
-   * Use the validators config parameter in all other contexts
-   */
-  required: boolean;
-  primaryKey?: { ordinalPosition: number };
-  displayType: ValidDisplayTypes;
-  enumeratedResource?: Resource;
-  isIndex: boolean;
-}
-
-export interface RPCFieldMeta {
-  fieldName: string;
-  displayType: ValidRPCTypes;
-  enumeratedResource?: Resource;
-}
-
-export interface MethodMeta {
-  route: string;
-  fields?: RPCFieldMeta[];
-}
-
-export interface ResourceMeta {
-  route: string;
-  consolidatedRoute?: string;
-  listDisabled?: boolean;
-  readDisabled?: boolean;
-  createDisabled?: boolean;
-  updateDisabled?: boolean;
-  deleteDisabled?: boolean;
-  substringSearchParameter?: string;
-  fields: FieldMeta[];
-}
-
-export type Meta = MethodMeta | ResourceMeta;
-
-export interface Link {
-  id: string;
-  resource: Resource;
-  text: string;
-}
-
-export type ResourceMap = Record<Resource, ResourceMeta>;
 
 export interface RouteResourceData {
   config: RootConfig;
@@ -84,6 +22,7 @@ export type RecordData = Record<string, DataType | null>;
 
 export type RPCDataType = string | number | string[] | number[] | boolean | Date;
 export type RPCRecordData = Record<string, RPCDataType>;
+export type RpcMethod = Record<string, DataType>;
 
 export type ParentResourceConfig = ListViewConfig | ViewConfig | ArrayConfig;
 export type ChildResourceConfig = ListViewConfig | ViewConfig | ComponentConfig | ArrayConfig;
@@ -264,8 +203,24 @@ export const fieldSortDefaults = {
 export interface EnumeratedConfigOptions {
   // primaryResource comes from the metadata
   overrideResource?: Resource;
+  /* A function to filter the list of enumerated options.
+   * The `parentResource` argument contains the data of the resource that this enumerated field is part of.
+   * It will be an object with the current form values, which can be empty during resource creation.
+   */
   /* eslint-disable  @typescript-eslint/no-explicit-any */
-  filter?: (parentResource: any) => string;
+  filter?: (resource: any) => string;
+  /**
+   * Set disableCacheForFilterPii to `true` to promote the GET to a POST when PII is used in the filter
+   * POST requests cannot be cached
+   */
+  disableCacheForFilterPii?: boolean;
+  /**
+   * Specifies which resource data to pass to the filter function:
+   * - 'rootResource': Pass in the root resource data
+   * - 'parentResource': Pass in the parent resource data
+   * @default 'parentResource'
+   */
+  filterType?: FilterType;
   sorts?: FieldSort[];
   listDisplay?: FieldName[];
   viewDisplay: FieldName[];
@@ -274,9 +229,13 @@ export interface EnumeratedConfigOptions {
   viewDetails?: boolean;
   searchable?: boolean;
 }
+
+type FilterType = 'parentResource' | 'rootResource';
 export interface EnumeratedConfig {
   overrideResource: Resource;
-  filter: (parentResource: any) => string;
+  filter: (resource: any) => string;
+  disableCacheForFilterPii: boolean;
+  filterType: FilterType;
   sorts: FieldSort[];
   listDisplay: FieldName[];
   viewDisplay: FieldName[];
@@ -294,6 +253,8 @@ export function enumeratedConfig(config: EnumeratedConfigOptions): EnumeratedCon
 export const enumeratedConfigDefaults = {
   overrideResource: '' as Resource,
   filter: (): string => '',
+  disableCacheForFilterPii: false,
+  filterType: 'parentResource' as FilterType,
   sorts: [] as FieldSort[],
   listDisplay: [] as FieldName[],
   viewDisplay: [] as FieldName[],
@@ -593,7 +554,7 @@ export interface RPCConfigOptions {
     field: FieldName;
     matchValues: string[];
   }[];
-  methodBodyTemplate?: unknown;
+  methodBodyTemplate?: any;
   successMessage?: string;
   elements?: ConfigElement[];
   placement?: RPCPlacement;
@@ -601,6 +562,7 @@ export interface RPCConfigOptions {
   customComponent?: ComponentConfig;
   refreshResources?: Resource[];
   defaultModalWidth?: string;
+  shouldRender?: () => boolean;
 }
 export interface RPCConfig {
   label: string;
@@ -609,7 +571,7 @@ export interface RPCConfig {
     field: FieldName;
     matchValues: string[];
   }[];
-  methodBodyTemplate: unknown;
+  methodBodyTemplate: any;
   method: Method;
   successMessage: string;
   elements: ConfigElement[];
@@ -617,6 +579,7 @@ export interface RPCConfig {
   customComponent: ComponentConfig;
   refreshResources: Resource[];
   defaultModalWidth: string;
+  shouldRender: () => boolean;
 }
 export function rpcConfig(config: RPCConfigOptions): RPCConfig {
   return {
@@ -631,7 +594,7 @@ export const rpcConfigDefaults = {
     field: FieldName;
     matchValues: string[];
   }[],
-  methodBodyTemplate: {} as unknown,
+  methodBodyTemplate: {} as any,
   successMessage: '',
   elements: [] as ConfigElement[],
   placement: 'end' as RPCPlacement,
@@ -639,6 +602,7 @@ export const rpcConfigDefaults = {
   customComponent: {} as ComponentConfig,
   refreshResources: [] as Resource[],
   defaultModalWidth: '',
+  shouldRender: (): boolean => true,
 } satisfies RPCConfig;
 
 export interface RPCBaseFormData {
@@ -694,7 +658,6 @@ export interface BaseConfigOptions {
   parentClass?: string;
   fieldClass?: string;
   elements: ConfigElement[];
-  ignoreFields?: FieldName[];
   createConfig?: ConfigType;
   parentRelation?: {
     parentKey: FieldName;
@@ -711,7 +674,6 @@ export interface BaseConfig {
   parentClass: string;
   fieldClass: string;
   elements: ConfigElement[];
-  ignoreFields: FieldName[];
   createConfig: ConfigType;
   parentRelation: {
     parentKey: FieldName;
@@ -722,7 +684,7 @@ export interface BaseConfig {
 }
 
 // Available components for a component config
-export type AvailableComponents = 'SwitchResolver' | 'SsnChange' | 'ReassignClaim';
+export type AvailableComponents = 'SwitchResolver' | 'SsnChange' | 'SsnTransfer' | 'ReassignClaim';
 
 // Available param types for a component config
 export type ConfigParam = SwitchConfigParam;
@@ -734,6 +696,7 @@ export interface ComponentConfigOptions {
   component: AvailableComponents;
   params?: ConfigParam;
   relatedConfig?: ParentResourceConfig[];
+  shouldRenderActions?: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
 }
 export interface ComponentConfig {
   type: 'Component';
@@ -741,6 +704,7 @@ export interface ComponentConfig {
   component: AvailableComponents;
   params: ConfigParam;
   relatedConfig: ParentResourceConfig[];
+  shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
 }
 export function componentConfig(config: ComponentConfigOptions): ComponentConfig {
   return {
@@ -756,6 +720,11 @@ export const componentConfigDefaults = {
     cases: [],
   } satisfies ConfigParam,
   relatedConfig: [] as ParentResourceConfig[],
+  shouldRenderActions: {
+    create: (): boolean => true,
+    edit: (): boolean => true,
+    delete: (): boolean => true,
+  },
 } satisfies ComponentConfig;
 
 // A switch is a component type that allows for conditional rendering of child components based on the value of a parent field
@@ -784,10 +753,12 @@ export const switchParamsDefaults = {
 
 export interface ListViewConfigOptions extends BaseConfigOptions {
   showViewButton?: boolean;
-  createType?: 'inline' | 'link';
+  loadCreatedResource?: boolean;
   collapsible?: boolean;
   overrideResource?: Resource;
   searchable?: boolean;
+  enableRowExpansion?: boolean;
+  rowExpansionConfig?: ChildResourceConfig;
   requireSearchToDisplayResults?: boolean;
   listColumns: ColumnConfig[];
   relatedConfigs?: ChildResourceConfig[];
@@ -795,16 +766,20 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
   actionType?: ActionType;
   /* eslint-disable  @typescript-eslint/no-explicit-any */
   filter?: (parentResource: any) => string;
+  disableCacheForFilterPii?: boolean;
   rpcConfigs?: RPCConfig[];
   sorts?: FieldSort[];
+  shouldRenderActions?: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
 }
 export interface ListViewConfig extends BaseConfig {
   type: 'ListView';
   showViewButton: boolean;
-  createType: 'inline' | 'link';
+  loadCreatedResource: boolean;
   collapsible: boolean;
   overrideResource: Resource;
   searchable: boolean;
+  enableRowExpansion: boolean;
+  rowExpansionConfig: ChildResourceConfig;
   requireSearchToDisplayResults: boolean;
   listColumns: ColumnConfig[];
   relatedConfigs: ChildResourceConfig[];
@@ -812,8 +787,10 @@ export interface ListViewConfig extends BaseConfig {
   actionType: ActionType;
   /* eslint-disable  @typescript-eslint/no-explicit-any */
   filter: (parentResource: any) => string;
+  disableCacheForFilterPii: boolean;
   rpcConfigs?: RPCConfig[];
   sorts: FieldSort[];
+  shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
 }
 
 export function listViewConfig(config: ListViewConfigOptions): ListViewConfig {
@@ -828,12 +805,11 @@ export const listViewConfigDefaults = {
   type: 'ListView',
   createTitle: '',
   createButtonLabel: 'Create',
-  createType: 'inline',
+  loadCreatedResource: false,
   showViewButton: true,
   collapsible: false,
   listColumns: [],
   elements: [],
-  ignoreFields: [],
   parentClass: '',
   fieldClass: '',
   createConfig: {} as ListViewConfig,
@@ -845,13 +821,21 @@ export const listViewConfigDefaults = {
   },
   overrideResource: '' as Resource,
   searchable: false,
+  enableRowExpansion: false,
+  rowExpansionConfig: {} as ChildResourceConfig,
   requireSearchToDisplayResults: false,
   showBackButton: true,
   filter: (): string => '',
+  disableCacheForFilterPii: false,
   sorts: [] as FieldSort[],
   viewResource: '' as Resource,
   actionType: 'function' as ActionType,
   rpcConfigs: [],
+  shouldRenderActions: {
+    create: (): boolean => true,
+    edit: (): boolean => true,
+    delete: (): boolean => true,
+  },
 } satisfies ListViewConfig;
 
 export type ViewType = 'OneToOne' | 'OneToMany';
@@ -861,14 +845,24 @@ export interface ViewConfigOptions extends BaseConfigOptions {
   connectorResource?: Resource;
   relatedConfigs?: ChildResourceConfig[];
   rpcConfigs?: RPCConfig[];
+  shouldRenderActions?: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
 }
 export interface ViewConfig extends BaseConfig {
   type: 'View';
   collapsible: boolean;
   // todo: remove this comment once full documentation has been added. Populate this value when a database view resource is used to connect the ViewConfig's parent resource to its primary resource
   connectorResource: Resource;
-  relatedConfigs: ChildResourceConfig[];
   rpcConfigs?: RPCConfig[];
+  relatedConfigs: ChildResourceConfig[];
+  /** A set of functions that allows for
+   * conditional display of non-RPC
+   * actions based on the pristine state of the resource
+   * (if such a state is applicable. Creation for example won't
+   * have such data)
+   * This is separate from ABAC control which takes
+   * precedence and is based on a user's attributes
+   */
+  shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
 }
 
 export function viewConfig(config: ViewConfigOptions): ViewConfig {
@@ -886,11 +880,15 @@ export const viewConfigDefaults = {
   parentClass: '',
   fieldClass: '',
   elements: [],
-  ignoreFields: [],
   collapsible: true,
   connectorResource: '' as Resource,
   relatedConfigs: [],
   createConfig: {} as ViewConfig,
+  shouldRenderActions: {
+    create: (): boolean => true,
+    edit: (): boolean => true,
+    delete: (): boolean => true,
+  },
   createNavigation: [],
   parentRelation: {
     parentKey: '' as FieldName,
@@ -909,10 +907,12 @@ export interface arrayConfigOptions {
   connectorField?: FieldName;
   primaryResource: Resource;
   listFilter: (parentResource: any) => string;
+  disableCacheForFilterPii?: boolean;
   sorts?: FieldSort[];
   title?: string;
   createButtonLabel?: string;
   limit?: number;
+  shouldRenderActions?: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
 }
 export interface ArrayConfig {
   type: 'Array';
@@ -924,9 +924,11 @@ export interface ArrayConfig {
   connectorField: FieldName;
   primaryResource: Resource;
   listFilter: (parentResource: any) => string;
+  disableCacheForFilterPii: boolean;
   sorts: FieldSort[];
   title: string;
   createButtonLabel: string;
+  shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
   limit: number;
 }
 export function arrayConfig(config: arrayConfigOptions): ArrayConfig {
@@ -945,8 +947,14 @@ export const arrayConfigDefaults = {
   connectorField: '' as FieldName,
   primaryResource: '' as Resource,
   listFilter: (): string => '',
+  disableCacheForFilterPii: false,
   sorts: [] as FieldSort[],
   title: '',
   createButtonLabel: 'Create',
   limit: Infinity,
+  shouldRenderActions: {
+    create: (): boolean => true,
+    edit: (): boolean => true,
+    delete: (): boolean => true,
+  },
 } satisfies ArrayConfig;
