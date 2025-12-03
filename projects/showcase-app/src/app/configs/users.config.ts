@@ -1,4 +1,5 @@
-import { arrayConfig, field, listViewConfig, rootConfig, section, viewConfig } from '@cccteam/ccc-lib';
+import { arrayConfig, componentConfig, field, listViewConfig, rootConfig, section, viewConfig } from '@cccteam/ccc-lib';
+import { CustomConfigWidgetComponent } from '../components/shared/custom-config-widget/custom-config-widget.component';
 import { Resources, Users } from '../core/generated/zz_gen_constants';
 import { Users as UsersResource } from '../core/generated/zz_gen_resources';
 
@@ -45,6 +46,10 @@ export const usersConfig = rootConfig({
     ],
   }),
   relatedConfigs: [
+    componentConfig({
+      primaryResource: Resources.Users,
+      component: CustomConfigWidgetComponent,
+    }),
     arrayConfig({
       title: 'All Other Users',
       listFilter: (user: UsersResource) => `${Users.fieldName.id}:ne:${user.id}`,
