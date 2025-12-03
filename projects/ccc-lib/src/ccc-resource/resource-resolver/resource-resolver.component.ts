@@ -1,23 +1,6 @@
-import {
-  Component,
-  computed,
-  Directive,
-  effect,
-  input,
-  Type,
-  untracked,
-  viewChild,
-  ViewContainerRef,
-} from '@angular/core';
+import { Component, computed, effect, input, Type, untracked, viewChild, ViewContainerRef } from '@angular/core';
 import { ChildResourceConfig, ComponentConfig, FieldName, RecordData } from '@cccteam/ccc-lib/src/types';
 import { ResourceStore } from '../resource-store.service';
-
-@Directive()
-export abstract class CustomConfigComponent {
-  uuid = input<string>();
-  parentData = input<RecordData>();
-  config = input<ComponentConfig>();
-}
 
 @Component({
   selector: 'ccc-resource-resolver',

@@ -1,6 +1,5 @@
-import { Type } from '@angular/core';
+import { Directive, input, Type } from '@angular/core';
 import { TooltipPosition } from '@angular/material/tooltip';
-import { CustomConfigComponent } from '../ccc-resource';
 import { FieldName, Method, Resource } from './permissions';
 import { ConcatFn, defaultEmptyFieldValue, NullBoolean } from './resource-types';
 import { ResourceValidatorFn } from './validators';
@@ -683,6 +682,13 @@ export interface BaseConfig {
   };
   showBackButton: boolean;
   createNavigation: string[];
+}
+
+@Directive()
+export abstract class CustomConfigComponent {
+  uuid = input<string>();
+  parentData = input<RecordData>();
+  config = input<ComponentConfig>();
 }
 
 // Available param types for a component config
