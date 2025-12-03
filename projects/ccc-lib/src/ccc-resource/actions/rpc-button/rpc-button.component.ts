@@ -3,19 +3,19 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
-    AlertLevel,
-    FieldPointer,
-    ListViewConfig,
-    METHOD_META,
-    RecordData,
-    Resource,
-    RootConfig,
-    RPCConfig,
-    rpcConfigDefaults,
-    RPCFieldMeta,
-    RpcMethod,
-    RPCRecordData,
-    ViewConfig,
+  AlertLevel,
+  FieldPointer,
+  ListViewConfig,
+  METHOD_META,
+  RecordData,
+  Resource,
+  RootConfig,
+  RPCConfig,
+  rpcConfigDefaults,
+  RPCFieldMeta,
+  RpcMethod,
+  RPCRecordData,
+  ViewConfig,
 } from '@cccteam/ccc-lib/src/types';
 import { NotificationService } from '@cccteam/ccc-lib/src/ui-notification-service';
 import { filter, tap } from 'rxjs';
@@ -142,9 +142,13 @@ export class RpcButtonComponent {
       method.fields.forEach((methodField: RPCFieldMeta) => {
         const key = methodField.fieldName;
         if (submitBody[key] === undefined || submitBody[key] === null || submitBody[key] === '') {
-          if (!method.fields) return;
+          if (!method.fields) {
+            return;
+          }
           const value = rpcConfig.methodBodyTemplate[key as keyof RpcMethod] as string | FieldPointer;
-          if (value == undefined) return;
+          if (value == undefined) {
+            return;
+          }
           if (typeof value !== 'string') {
             const returnValue = this.relatedData()[value.field];
             if (returnValue === undefined) {

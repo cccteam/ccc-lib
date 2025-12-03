@@ -87,7 +87,9 @@ export class ResourceStore {
   buildStoreListData(): void {
     const route = this.route();
     const name = this.resourceName();
-    if (!route || name === '') return;
+    if (!route || name === '') {
+      return;
+    }
     const columnIds = this.listColumns().flatMap((col) => {
       return [col.id];
     });
@@ -112,7 +114,9 @@ export class ResourceStore {
   buildStoreViewData(): void {
     const route = this.route();
     const uuid = this.uuid();
-    if (!route || !uuid || uuid === 'undefined') return;
+    if (!route || !uuid || uuid === 'undefined') {
+      return;
+    }
 
     const ref = this.resourceView(this.route, this.uuid);
     this.resourceViewRef.set(ref);
@@ -166,7 +170,9 @@ export class ResourceStore {
           }),
           stream: ({ params }) => {
             if (!params.route() || !params.uuid() || params.uuid() === 'undefined') return of({} as RecordData);
-            return this.http.get<RecordData>(this.routes.resource(this.apiUrl, String(params.route()), params.uuid() || ''));
+            return this.http.get<RecordData>(
+              this.routes.resource(this.apiUrl, String(params.route()), params.uuid() || ''),
+            );
           },
         }) as ResourceRef<RecordData>,
     );

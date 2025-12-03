@@ -27,7 +27,9 @@ export class ResourceResolverComponent {
       const parentData = this.parentData();
       const config = this.config();
       const params = config?.params;
-      if (params === undefined || config === undefined) return;
+      if (params === undefined || config === undefined) {
+        return;
+      }
 
       untracked(() => {
         this.dynamicSlot().clear();
@@ -50,13 +52,15 @@ export class ResourceResolverComponent {
               }
             }
 
-            if (uuid == '') return;
+            if (uuid == '') {
+              return;
+            }
 
             // Use dynamic import to avoid circular dependency
             const primaryComponentRef = this.dynamicSlot().createComponent(this.compoundResourceComponent());
-              primaryComponentRef.setInput('resourceConfig', caseConfig);
-              primaryComponentRef.setInput('uuid', uuid);
-              primaryComponentRef.setInput('parentData', parentData);
+            primaryComponentRef.setInput('resourceConfig', caseConfig);
+            primaryComponentRef.setInput('uuid', uuid);
+            primaryComponentRef.setInput('parentData', parentData);
             break;
           }
           default:
