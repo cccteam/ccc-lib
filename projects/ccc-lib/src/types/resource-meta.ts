@@ -12,9 +12,11 @@ export type ValidDisplayTypes =
   | 'enumerated'
   | 'link'
   | 'uuid'
-  | 'civildate';
+  | 'civildate'
+  | 'string[]'
+  | 'customtypes.document';
 
-export type ValidRPCTypes = ValidDisplayTypes | `${ValidDisplayTypes}[]`;
+export type ValidRPCTypes = ValidDisplayTypes | `${Exclude<ValidDisplayTypes, 'string[]'>}[]`;
 
 export interface RPCFieldMeta {
   fieldName: string;
@@ -52,3 +54,10 @@ export interface ResourceMeta {
 }
 
 export type Meta = MethodMeta | ResourceMeta;
+
+export namespace CustomTypes {
+  export interface Document {
+    // todo/fixme: implement the actual rich text document interface here
+    placeholder: string;
+  }
+}
