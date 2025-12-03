@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.17](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.16...ccc-lib/v0.0.17) (2025-12-03)
+
+
+### Features
+
+* Add custom types ([#26](https://github.com/cccteam/ccc-lib/issues/26)) ([93a4c52](https://github.com/cccteam/ccc-lib/commit/93a4c524bcd012c0a452ae5842ae9896294d0d79))
+
 ## [0.0.16](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.15...ccc-lib/v0.0.16) (2025-12-03)
 
 
