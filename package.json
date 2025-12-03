@@ -1,5 +1,5 @@
 {
-  "name": "ccc-lib",
+  "name": "@cccteam/ccc-lib",
   "workspaces": [
     "projects/*"
   ],
