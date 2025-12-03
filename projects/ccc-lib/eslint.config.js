@@ -6,6 +6,9 @@ module.exports = tseslint.config(
   ...rootConfig,
   {
     files: ['**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-namespace': 'off',
+    },
   },
   {
     files: ['**/*.html'],

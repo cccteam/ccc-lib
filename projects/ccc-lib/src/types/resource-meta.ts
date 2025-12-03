@@ -55,7 +55,6 @@ export interface ResourceMeta {
 
 export type Meta = MethodMeta | ResourceMeta;
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace CustomTypes {
   export interface Document {
     // todo/fixme: implement the actual rich text document interface here
