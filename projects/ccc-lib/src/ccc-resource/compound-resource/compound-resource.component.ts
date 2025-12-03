@@ -181,7 +181,9 @@ export class CompoundResourceComponent implements OnInit {
       this.store.uuid.set(this.primaryConfigParentId());
 
       const c = this.primaryConfig();
-      if (this.missingRoot()) return;
+      if (this.missingRoot()) {
+        return;
+      }
       if (c.type === 'View') {
         this.store.buildStoreViewData();
       } else if (c.type === 'ListView') {

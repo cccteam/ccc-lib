@@ -1,14 +1,14 @@
 import {
-    ChangeDetectionStrategy,
-    Component,
-    computed,
-    DestroyRef,
-    effect,
-    inject,
-    input,
-    OnInit,
-    output,
-    signal,
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  input,
+  OnInit,
+  output,
+  signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -21,15 +21,15 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CamelCaseToTitlePipe } from '@cccteam/ccc-lib/src/ccc-camel-case-to-title';
 import { cleanStringForm } from '@cccteam/ccc-lib/src/forms';
 import {
-    ChildResourceConfig,
-    DataType,
-    FieldElement,
-    ListViewConfig,
-    RecordData,
-    Resource,
-    RESOURCE_META,
-    RootConfig,
-    ViewConfig,
+  ChildResourceConfig,
+  DataType,
+  FieldElement,
+  ListViewConfig,
+  RecordData,
+  Resource,
+  RESOURCE_META,
+  RootConfig,
+  ViewConfig,
 } from '@cccteam/ccc-lib/src/types';
 import { NotificationService } from '@cccteam/ccc-lib/src/ui-notification-service';
 import { camelCase } from 'lodash-es';
@@ -214,8 +214,9 @@ export class ResourceCreateComponent implements OnInit {
     }
 
     const resourceMeta = this.store.resourceMeta();
-    if (!resourceMeta) return;
-
+    if (!resourceMeta) {
+      return;
+    }
     const cleanedForm = cleanStringForm<Record<string, string>>(this.form());
     if (cleanedForm === undefined || cleanedForm === null) {
       return;

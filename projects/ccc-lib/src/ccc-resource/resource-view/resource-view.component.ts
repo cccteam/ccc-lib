@@ -1,17 +1,17 @@
 import { CommonModule, Location } from '@angular/common';
 import {
-    Component,
-    computed,
-    DestroyRef,
-    effect,
-    inject,
-    Injector,
-    input,
-    model,
-    OnInit,
-    output,
-    signal,
-    WritableSignal,
+  Component,
+  computed,
+  DestroyRef,
+  effect,
+  inject,
+  Injector,
+  input,
+  model,
+  OnInit,
+  output,
+  signal,
+  WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -25,16 +25,16 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { sparseFormData } from '@cccteam/ccc-lib/src/forms';
 import {
-    AlertLevel,
-    DataType,
-    FieldElement,
-    ListViewConfig,
-    RecordData,
-    Resource,
-    RESOURCE_META,
-    RootConfig,
-    RPCConfig,
-    ViewConfig,
+  AlertLevel,
+  DataType,
+  FieldElement,
+  ListViewConfig,
+  RecordData,
+  Resource,
+  RESOURCE_META,
+  RootConfig,
+  RPCConfig,
+  ViewConfig,
 } from '@cccteam/ccc-lib/src/types';
 import { NotificationService } from '@cccteam/ccc-lib/src/ui-notification-service';
 import { filter, tap } from 'rxjs';
@@ -343,7 +343,9 @@ export class ResourceViewComponent implements OnInit {
     this.displayFormInvalidMessage.set(false);
 
     const resourceMeta = this.store.resourceMeta();
-    if (!resourceMeta) return;
+    if (!resourceMeta) {
+      return;
+    }
 
     const sparseData = sparseFormData(this.form(), this.pristineFormValues);
     const coercedSparseData = metadataTypeCoercion(sparseData, resourceMeta);
@@ -356,7 +358,9 @@ export class ResourceViewComponent implements OnInit {
 
     this.pristineFormValues = this.form().getRawValue();
 
-    if (Object.keys(coercedSparseData).length === 0) return;
+    if (Object.keys(coercedSparseData).length === 0) {
+      return;
+    }
     this.store
       .makePatches([updatePatch], this.route(), this.store.resourceName())
       .pipe(

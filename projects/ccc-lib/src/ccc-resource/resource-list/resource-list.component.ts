@@ -1,17 +1,17 @@
 import { NgComponentOutlet } from '@angular/common';
 import {
-    Component,
-    computed,
-    effect,
-    inject,
-    Injector,
-    input,
-    OnInit,
-    output,
-    ResourceRef,
-    runInInjectionContext,
-    signal,
-    Type,
+  Component,
+  computed,
+  effect,
+  inject,
+  Injector,
+  input,
+  OnInit,
+  output,
+  ResourceRef,
+  runInInjectionContext,
+  signal,
+  Type,
 } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -22,23 +22,23 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AppGridComponent } from '@cccteam/ccc-lib/src/ccc-grid';
 import {
-    ChildResourceConfig,
-    ColumnConfig,
-    FieldName,
-    ListViewConfig,
-    RecordData,
-    Resource,
-    RESOURCE_META,
-    RootConfig,
+  ChildResourceConfig,
+  ColumnConfig,
+  FieldName,
+  ListViewConfig,
+  RecordData,
+  Resource,
+  RESOURCE_META,
+  RootConfig,
 } from '@cccteam/ccc-lib/src/types';
 import { ActionAccessControlWrapperComponent } from '../actions/action-button-smart/action-access-control-wrapper.component';
 import { ActionButtonContext } from '../actions/actions.interface';
 import {
-    hyphenConcatWithoutResource,
-    hyphenSpaceConcatWithoutResource,
-    noSpaceConcatWithoutResource,
-    spaceConcatWithoutResource,
-    spaceHyphenConcatWithoutResource,
+  hyphenConcatWithoutResource,
+  hyphenSpaceConcatWithoutResource,
+  noSpaceConcatWithoutResource,
+  spaceConcatWithoutResource,
+  spaceHyphenConcatWithoutResource,
 } from '../concat-fns';
 import { applyFormatting, formatDateString } from '../format-fns';
 import { ResourceStore } from '../resource-store.service';
@@ -230,7 +230,9 @@ export class ResourceListComponent implements OnInit {
                 const resource = signal(additionalCol.resource as Resource);
                 const resourceRef = refmap.get(resource());
                 const resData = resourceRef?.value();
-                if (!resData) return;
+                if (!resData) {
+                  return;
+                }
                 for (const res of resData) {
                   if (res[additionalCol.id] === data[col.id] && additionalCol.field) {
                     const value = res[additionalCol.field];
@@ -404,16 +406,24 @@ export class ResourceListComponent implements OnInit {
 
     runInInjectionContext(this.injector, () => {
       this.config().listColumns.forEach((element) => {
-        if (!('additionalIds' in element)) return;
+        if (!('additionalIds' in element)) {
+          return;
+        }
         element.additionalIds.forEach((id) => {
-          if (id.resource === undefined) return;
+          if (id.resource === undefined) {
+            return;
+          }
           const meta = this.resourceMeta(id.resource);
-          if (meta === undefined) return;
+          if (meta === undefined) {
+            return;
+          }
           const route = signal(meta.route);
           const resource = signal(id.resource);
           if (!this.resourceRefMap().has(resource())) {
             const ref = this.store.resourceList(route);
-            if (ref === undefined) return;
+            if (ref === undefined) {
+              return;
+            }
             this.resourceRefMap.set(this.resourceRefMap().set(resource(), ref));
           }
         });
