@@ -2,8 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Router, RouterOutlet } from '@angular/router';
-import { IdleService } from '@cccteam/ccc-lib';
-import { AlertComponent, AuthService, NotificationService, UiCoreService } from '@cccteam/ccc-lib';
+import { AlertComponent, AuthService, IdleService, NotificationService, UiCoreService } from '@cccteam/ccc-lib';
 import { tap } from 'rxjs';
 
 @Component({
