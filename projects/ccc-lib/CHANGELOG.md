@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.18](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.17...ccc-lib/v0.0.18) (2025-12-04)
+
+
+### Features
+
+* Custom components ([#28](https://github.com/cccteam/ccc-lib/issues/28)) ([3692329](https://github.com/cccteam/ccc-lib/commit/36923290bb744dd2811a4a02efcf8189f50aabb4))
+
 ## [0.0.17](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.16...ccc-lib/v0.0.17) (2025-12-03)
 
 
