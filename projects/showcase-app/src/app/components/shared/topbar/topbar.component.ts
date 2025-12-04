@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { RouterModule } from '@angular/router';
-import { generatedNavItems } from '@cccteam/ccc-lib/src';
+import { generatedNavItems } from '@cccteam/ccc-lib';
 
 export interface MenuItem {
   label: string;

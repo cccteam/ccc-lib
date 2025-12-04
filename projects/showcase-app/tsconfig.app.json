@@ -4,12 +4,8 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "esModuleInterop": true,
-    "composite": true,
     "outDir": "../../out-tsc/app",
-    "types": [
-      "node",
-      "@angular/localize"
-    ]
+    "types": ["node", "@angular/localize"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.spec.ts"]
