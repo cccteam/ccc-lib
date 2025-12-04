@@ -34,39 +34,37 @@ export class ResourceResolverComponent {
       untracked(() => {
         this.dynamicSlot().clear();
         const component = config.component;
-        switch (component) {
-          case 'SwitchResolver': {
-            let uuid = '';
-            let caseConfig = {} as ChildResourceConfig;
-            for (const c of params.cases) {
-              if (parentData) {
-                if (parentData[c.parentField] === c.caseId) {
-                  uuid = String(parentData[c.childId]);
-                  caseConfig = c.config;
-                  if ('parentRelation' in caseConfig) {
-                    caseConfig.parentRelation.childKey = '' as FieldName;
-                    caseConfig.parentRelation.parentKey = '' as FieldName;
-                  }
-                  break;
+        if (component === 'SwitchResolver') {
+          let uuid = '';
+          let caseConfig = {} as ChildResourceConfig;
+          for (const c of params.cases) {
+            if (parentData) {
+              if (parentData[c.parentField] === c.caseId) {
+                uuid = String(parentData[c.childId]);
+                caseConfig = c.config;
+                if ('parentRelation' in caseConfig) {
+                  caseConfig.parentRelation.childKey = '' as FieldName;
+                  caseConfig.parentRelation.parentKey = '' as FieldName;
                 }
+                break;
               }
             }
-
-            if (uuid == '') {
-              return;
-            }
-
-            // Use dynamic import to avoid circular dependency
-            const primaryComponentRef = this.dynamicSlot().createComponent(this.compoundResourceComponent());
-            primaryComponentRef.setInput('resourceConfig', caseConfig);
-            primaryComponentRef.setInput('uuid', uuid);
-            primaryComponentRef.setInput('parentData', parentData);
-            break;
           }
-          default:
-            console.warn('Component not found', component);
-            // add default component to dynamic slot
-            break;
+
+          if (uuid == '') {
+            return;
+          }
+
+          // Use dynamic import to avoid circular dependency
+          const primaryComponentRef = this.dynamicSlot().createComponent(this.compoundResourceComponent());
+          primaryComponentRef.setInput('resourceConfig', caseConfig);
+          primaryComponentRef.setInput('uuid', uuid);
+          primaryComponentRef.setInput('parentData', parentData);
+        } else if (typeof component === 'function') {
+          const primaryComponentRef = this.dynamicSlot().createComponent(component);
+          primaryComponentRef.setInput('uuid', parentData['uuid'] || '');
+          primaryComponentRef.setInput('config', config);
+          primaryComponentRef.setInput('parentData', parentData);
         }
       });
     });

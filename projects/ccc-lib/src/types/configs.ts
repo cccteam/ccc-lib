@@ -1,3 +1,4 @@
+import { Directive, input, Type } from '@angular/core';
 import { TooltipPosition } from '@angular/material/tooltip';
 import { FieldName, Method, Resource } from './permissions';
 import { ConcatFn, defaultEmptyFieldValue, NullBoolean } from './resource-types';
@@ -683,8 +684,12 @@ export interface BaseConfig {
   createNavigation: string[];
 }
 
-// Available components for a component config
-export type AvailableComponents = 'SwitchResolver';
+@Directive()
+export abstract class CustomConfigComponent {
+  uuid = input<string>();
+  parentData = input<RecordData>();
+  config = input<ComponentConfig>();
+}
 
 // Available param types for a component config
 export type ConfigParam = SwitchConfigParam;
@@ -693,7 +698,7 @@ export type ConfigParam = SwitchConfigParam;
 export interface ComponentConfigOptions {
   // todo: it's weird that we have a primary resource here. Would be nice to remove but this adds a null check to all other configs
   primaryResource: Resource;
-  component: AvailableComponents;
+  component: Type<CustomConfigComponent> | 'SwitchResolver';
   params?: ConfigParam;
   relatedConfig?: ParentResourceConfig[];
   shouldRenderActions?: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
@@ -701,7 +706,7 @@ export interface ComponentConfigOptions {
 export interface ComponentConfig {
   type: 'Component';
   primaryResource: Resource;
-  component: AvailableComponents;
+  component: Type<CustomConfigComponent> | 'SwitchResolver';
   params: ConfigParam;
   relatedConfig: ParentResourceConfig[];
   shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
@@ -715,7 +720,7 @@ export function componentConfig(config: ComponentConfigOptions): ComponentConfig
 export const componentConfigDefaults = {
   type: 'Component',
   primaryResource: '' as Resource,
-  component: 'SwitchResolver' as AvailableComponents,
+  component: 'SwitchResolver',
   params: {
     cases: [],
   } satisfies ConfigParam,

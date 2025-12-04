@@ -23,7 +23,7 @@ export class LoginComponent implements OnDestroy {
 
   sessionPath = inject(SESSION_PATH);
   baseUrl = inject(BASE_URL);
-  apiUrl = inject(API_URL)
+  apiUrl = inject(API_URL);
 
   constructor() {
     this.dialog.closeAll();
@@ -44,7 +44,6 @@ export class LoginComponent implements OnDestroy {
 
   authenticate(): void {
     const encodedUrl = encodeURIComponent(this.getAndResetRedirectUrl());
-    console.log('Redirecting to login', `${this.apiUrl}/${this.sessionPath}?returnUrl=${encodedUrl}`);
     window.location.href = `/api/user/login?returnUrl=${encodedUrl}`;
   }
 
