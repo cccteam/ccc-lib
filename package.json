@@ -3,7 +3,7 @@
   "workspaces": [
     "projects/*"
   ],
-  "dependencies": {
+  "peerDependencies": {
     "@angular/animations": "^21.0.0",
     "@angular/common": "^21.0.0",
     "@angular/compiler": "^21.0.0",
@@ -45,8 +45,10 @@
     "date-fns-tz": "^3.2.0",
     "lodash-es": "^4.17.21",
     "rxjs": "~7.8.0",
-    "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@angular/build": "^21.0.0",
