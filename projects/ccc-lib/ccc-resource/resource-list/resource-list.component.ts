@@ -31,8 +31,10 @@ import {
   RESOURCE_META,
   RootConfig,
 } from '@cccteam/ccc-lib/types';
-import { ActionAccessControlWrapperComponent } from '../actions/action-button-smart/action-access-control-wrapper.component';
-import { ActionButtonContext } from '../actions/actions.interface';
+import {
+  ActionAccessControlWrapperComponent,
+  ActionButtonContext,
+} from '../actions/action-button-smart/action-access-control-wrapper.component';
 import {
   hyphenConcatWithoutResource,
   hyphenSpaceConcatWithoutResource,

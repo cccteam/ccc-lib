@@ -23,8 +23,10 @@ import {
   RESOURCE_META,
   RootConfig,
 } from '@cccteam/ccc-lib/types';
-import { ActionAccessControlWrapperComponent } from '../actions/action-button-smart/action-access-control-wrapper.component';
-import { ActionButtonContext } from '../actions/actions.interface';
+import {
+  ActionAccessControlWrapperComponent,
+  ActionButtonContext,
+} from '../actions/action-button-smart/action-access-control-wrapper.component';
 import { RpcButtonComponent } from '../actions/rpc-button/rpc-button.component';
 import { ResourceArrayViewComponent } from '../resource-array-view/resource-array-view.component';
 import { ResourceListCreateComponent } from '../resource-list-create/resource-list-create.component';
