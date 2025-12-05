@@ -38,8 +38,10 @@ import {
 } from '@cccteam/ccc-lib/types';
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
 import { filter, tap } from 'rxjs';
-import { ActionAccessControlWrapperComponent } from '../actions/action-button-smart/action-access-control-wrapper.component';
-import { ActionButtonContext } from '../actions/actions.interface';
+import {
+  ActionAccessControlWrapperComponent,
+  ActionButtonContext,
+} from '../actions/action-button-smart/action-access-control-wrapper.component';
 import { RpcButtonComponent } from '../actions/rpc-button/rpc-button.component';
 import { DeleteResourceConfirmationModalComponent } from '../delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
 import { FormStateService } from '../form-state.service';

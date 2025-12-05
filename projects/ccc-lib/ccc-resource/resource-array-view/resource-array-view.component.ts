@@ -18,8 +18,10 @@ import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansi
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ArrayConfig, ColumnConfig, RecordData, RESOURCE_META, ViewConfig } from '@cccteam/ccc-lib/types';
-import { ActionAccessControlWrapperComponent } from '../actions/action-button-smart/action-access-control-wrapper.component';
-import { ActionButtonContext } from '../actions/actions.interface';
+import {
+  ActionAccessControlWrapperComponent,
+  ActionButtonContext,
+} from '../actions/action-button-smart/action-access-control-wrapper.component';
 import { ResourceCreateComponent } from '../resource-create/resource-create.component';
 import { ResourceStore } from '../resource-store.service';
 
