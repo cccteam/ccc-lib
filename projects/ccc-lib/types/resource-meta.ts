@@ -1,6 +1,3 @@
-// Meta interfaces for resources and methods
-// This file exists to break circular dependencies between types and ccc-resource
-
 import { Resource } from './permissions';
 
 export type ValidDisplayTypes =

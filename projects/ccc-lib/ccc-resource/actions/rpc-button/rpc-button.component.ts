@@ -186,7 +186,6 @@ export class RpcButtonComponent {
   }
 
   reloadDependentResources(): void {
-    // TODO: this does not work. We need to invalidate the cache via resource names.
     for (const ref of this.dependentResources()) {
       ref.reload();
     }

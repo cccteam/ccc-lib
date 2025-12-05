@@ -276,20 +276,6 @@ export interface NullBooleanConfig {
    * on the screen for each
    */
   displayValues: Record<'null' | 'true' | 'false', { label: string; value: NullBoolean }>;
-
-  /** TODO: In FUTURE PHASES once field change history is implemented
-   * When this field is first displayed on screen, set the
-   * value to null based on the value present in it.
-   * Useful if the database doesn't have support nulling but you want
-   * users to make a conscious selection, but the database
-   * will either contain a true or false. Will need to check the
-   * 'last edited' on the field to ensure that we don't repeatedly spam
-   * users with this though
-   */
-  // nullOnEdit: {
-  //   nullIfTrue: boolean;
-  //   nullIfFalse: boolean;
-  // };
 }
 export function nullBooleanConfig(config: NullBooleanConfigOptions): NullBooleanConfig {
   return {

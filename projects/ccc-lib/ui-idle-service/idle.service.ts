@@ -29,7 +29,7 @@ export class IdleService implements OnDestroy {
 
   public readonly isActive = signal(false);
   private lastActivityTimestamp: WritableSignal<number> = signal(0);
-  private tick = signal(Date.now()); // A signal to represent the current time
+  private tick = signal(Date.now());
 
   public readonly secondsIdle = computed(() => {
     if (!this.isActive() || this.lastActivityTimestamp() === 0) {

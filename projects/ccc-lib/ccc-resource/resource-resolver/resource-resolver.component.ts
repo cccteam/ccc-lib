@@ -55,7 +55,6 @@ export class ResourceResolverComponent {
             return;
           }
 
-          // Use dynamic import to avoid circular dependency
           const primaryComponentRef = this.dynamicSlot().createComponent(this.compoundResourceComponent());
           primaryComponentRef.setInput('resourceConfig', caseConfig);
           primaryComponentRef.setInput('uuid', uuid);
