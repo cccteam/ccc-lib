@@ -7,7 +7,6 @@ import { provideRouter, withComponentInputBinding, withRouterConfig } from '@ang
 import { provideServiceWorker } from '@angular/service-worker';
 import {
   API_URL,
-  ApiInterceptor,
   BASE_URL,
   FRONTEND_LOGIN_PATH,
   IDLE_KEEPALIVE_DURATION,
@@ -17,7 +16,8 @@ import {
   PERMISSION_REQUIRED,
   RESOURCE_META,
   SESSION_PATH,
-} from '@cccteam/ccc-lib';
+} from '@cccteam/ccc-lib/types';
+import { ApiInterceptor } from '@cccteam/ccc-lib/ui-interceptor';
 import { envVars } from '../environments/env';
 import { environment } from '../environments/environment';
 import { routes } from './app.routes';

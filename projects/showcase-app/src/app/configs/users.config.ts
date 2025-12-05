@@ -1,4 +1,12 @@
-import { arrayConfig, componentConfig, field, listViewConfig, rootConfig, section, viewConfig } from '@cccteam/ccc-lib';
+import {
+  arrayConfig,
+  componentConfig,
+  field,
+  listViewConfig,
+  rootConfig,
+  section,
+  viewConfig,
+} from '@cccteam/ccc-lib/types';
 import { CustomConfigWidgetComponent } from '../components/shared/custom-config-widget/custom-config-widget.component';
 import { Resources, Users } from '../core/generated/zz_gen_constants';
 import { Users as UsersResource } from '../core/generated/zz_gen_resources';

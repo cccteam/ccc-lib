@@ -4,7 +4,10 @@ import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute } from '@angular/router';
-import { AlertLevel, API_URL, AuthService, BASE_URL, IdleService, SESSION_PATH, UiCoreService } from '@cccteam/ccc-lib';
+import { AuthService } from '@cccteam/ccc-lib/auth-service';
+import { AlertLevel, API_URL, BASE_URL, SESSION_PATH } from '@cccteam/ccc-lib/types';
+import { UiCoreService } from '@cccteam/ccc-lib/ui-core-service';
+import { IdleService } from '@cccteam/ccc-lib/ui-idle-service';
 import { PaneComponent } from '../shared/pane/pane.component';
 
 @Component({

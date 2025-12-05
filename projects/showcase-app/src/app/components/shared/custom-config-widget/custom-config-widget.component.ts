@@ -1,6 +1,6 @@
 import { JsonPipe } from '@angular/common';
 import { Component } from '@angular/core';
-import { CustomConfigComponent } from '@cccteam/ccc-lib';
+import { CustomConfigComponent } from '@cccteam/ccc-lib/types';
 
 @Component({
   selector: 'app-custom-config-widget',
