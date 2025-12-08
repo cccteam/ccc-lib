@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.21](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.20...ccc-lib/v0.0.21) (2025-12-08)
+
+
+### Features
+
+* Move guards and generators to new package ([39d40b9](https://github.com/cccteam/ccc-lib/commit/39d40b9218c09febda85075eef32eefc43db77fe))
+
 ## [0.0.20](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.19...ccc-lib/v0.0.20) (2025-12-05)
 
 
