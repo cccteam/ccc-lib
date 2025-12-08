@@ -19,6 +19,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { CamelCaseToTitlePipe } from '@cccteam/ccc-lib/ccc-camel-case-to-title';
+import { FormStateService } from '@cccteam/ccc-lib/ccc-resource-services';
 import { cleanStringForm } from '@cccteam/ccc-lib/forms';
 import {
   ChildResourceConfig,
@@ -32,9 +33,8 @@ import {
   ViewConfig,
 } from '@cccteam/ccc-lib/types';
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
-import { camelCase } from 'lodash-es';
 import { tap } from 'rxjs';
-import { FormStateService } from '../form-state.service';
+import { camelCase } from '../concat-fns';
 import { flattenElements } from '../gui-constants';
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
 import { ResourceStore } from '../resource-store.service';

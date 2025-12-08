@@ -23,6 +23,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { FormStateService } from '@cccteam/ccc-lib/ccc-resource-services';
 import { sparseFormData } from '@cccteam/ccc-lib/forms';
 import {
   AlertLevel,
@@ -44,7 +45,6 @@ import {
 } from '../actions/action-button-smart/action-access-control-wrapper.component';
 import { RpcButtonComponent } from '../actions/rpc-button/rpc-button.component';
 import { DeleteResourceConfirmationModalComponent } from '../delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
-import { FormStateService } from '../form-state.service';
 import { civildateCoercion, flattenElements } from '../gui-constants';
 import { ResourceCreateComponent } from '../resource-create/resource-create.component';
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
