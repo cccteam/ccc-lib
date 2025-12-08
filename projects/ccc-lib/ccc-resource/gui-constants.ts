@@ -2,7 +2,13 @@ import { AbstractControl, ValidationErrors, Validators } from '@angular/forms';
 import { ConfigElement, createResourceValidator } from '@cccteam/ccc-lib/types';
 import { isDate } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
-import { isNumber } from 'lodash-es';
+
+/**
+ * Checks if a value is a number (not NaN).
+ */
+function isNumber(value: unknown): value is number {
+  return typeof value === 'number' && !Number.isNaN(value);
+}
 
 export const maxConfigElementRecursionDepth = 240;
 export const maxLayoutNestingDepth = 48;

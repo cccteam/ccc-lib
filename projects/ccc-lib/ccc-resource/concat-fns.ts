@@ -160,3 +160,16 @@ export function noSpaceConcatWithoutResource(args: string[]): string {
   if (args.length === 1) return args[0] || '';
   return args.join('');
 }
+
+/**
+ * Converts a string to camelCase.
+ * @param str The string to convert.
+ * @returns The camelCase version of the string.
+ * @example camelCase('hello-world') => 'helloWorld'
+ * @example camelCase('HelloWorld') => 'helloWorld'
+ * @example camelCase('hello_world') => 'helloWorld'
+ */
+export function camelCase(str: string): string {
+  if (!str) return '';
+  return str.replace(/[-_\s]+(.)?/g, (_, c) => (c ? c.toUpperCase() : '')).replace(/^[A-Z]/, (c) => c.toLowerCase());
+}
