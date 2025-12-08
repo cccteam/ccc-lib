@@ -1,9 +1,9 @@
 import { inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { CanDeactivateFn, UrlTree } from '@angular/router';
-import { AuthService } from '@cccteam/ccc-lib/auth-service';
 import { LeavePageConfirmationModalComponent } from '@cccteam/ccc-lib/ccc-resource-modals';
 import { FormStateService } from '@cccteam/ccc-lib/ccc-resource-services';
+import { FRONTEND_LOGIN_PATH } from '@cccteam/ccc-lib/types';
 import { firstValueFrom, Observable, tap } from 'rxjs';
 
 export type CanDeactivateType = Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree;
@@ -13,11 +13,11 @@ export interface CanComponentDeactivate {
 }
 
 export const canDeactivateGuard: CanDeactivateFn<CanComponentDeactivate> = async (_, __, ___, nextState) => {
-  const auth = inject(AuthService);
   const dialog = inject(MatDialog);
   const formStateService = inject(FormStateService);
+  const loginPath = inject(FRONTEND_LOGIN_PATH);
 
-  if (nextState?.url.includes(auth.loginRoute())) {
+  if (nextState?.url.includes(loginPath)) {
     return true;
   }
 

@@ -2,7 +2,7 @@ import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest
 import { inject, Injectable, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@cccteam/ccc-lib/auth-service';
-import { AlertLevel, BASE_URL } from '@cccteam/ccc-lib/types';
+import { AlertLevel, BASE_URL, FRONTEND_LOGIN_PATH } from '@cccteam/ccc-lib/types';
 import { UiCoreService } from '@cccteam/ccc-lib/ui-core-service';
 import { CUSTOM_HTTP_REQUEST_OPTIONS } from '@cccteam/ccc-lib/util-request-options';
 import { catchError, finalize, Observable, throwError } from 'rxjs';
@@ -14,6 +14,7 @@ export class ApiInterceptor implements HttpInterceptor {
   private router = inject(Router);
   private ngZone = inject(NgZone);
   private baseUrl = inject(BASE_URL);
+  private loginPath = inject(FRONTEND_LOGIN_PATH);
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
     this.ui.beginActivity(request.method + ' ' + request.url);
@@ -23,7 +24,7 @@ export class ApiInterceptor implements HttpInterceptor {
         if (error.status === 401) {
           this.ngZone.run(() => {
             this.auth.redirectUrl.set(this.baseUrl + this.router.url);
-            this.router.navigate([this.auth.loginRoute()]);
+            this.router.navigate([this.loginPath]);
           });
         }
         if (!request.context.get(CUSTOM_HTTP_REQUEST_OPTIONS).suppressGlobalError) {
