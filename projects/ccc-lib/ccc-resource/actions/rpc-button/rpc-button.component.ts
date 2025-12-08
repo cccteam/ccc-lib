@@ -2,6 +2,7 @@ import { Component, computed, inject, input, ResourceRef } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
+import { FormStateService } from '@cccteam/ccc-lib/ccc-resource-services';
 import {
   AlertLevel,
   FieldPointer,
@@ -20,7 +21,6 @@ import {
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
 import { filter, tap } from 'rxjs';
 import { BaseRPCModalComponent } from '../../base-rpc-modal/base-rpc-modal.component';
-import { FormStateService } from '../../form-state.service';
 import { ResourceStore } from '../../resource-store.service';
 import { metadataTypeCoercion } from '../../resources-helpers';
 

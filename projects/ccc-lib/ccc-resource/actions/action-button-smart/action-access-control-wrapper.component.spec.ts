@@ -1,17 +1,17 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ActionAccessControlWrapper } from './action-access-control-wrapper.component';
+import { ActionAccessControlWrapperComponent } from './action-access-control-wrapper.component';
 
-describe('ActionAccessControlWrapper', () => {
-  let component: ActionAccessControlWrapper;
-  let fixture: ComponentFixture<ActionAccessControlWrapper>;
+describe('ActionAccessControlWrapperComponent', () => {
+  let component: ActionAccessControlWrapperComponent;
+  let fixture: ComponentFixture<ActionAccessControlWrapperComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ActionAccessControlWrapper],
+      imports: [ActionAccessControlWrapperComponent],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(ActionAccessControlWrapper);
+    fixture = TestBed.createComponent(ActionAccessControlWrapperComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });
