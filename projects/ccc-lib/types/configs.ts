@@ -1,8 +1,11 @@
 import { Directive, input, Type } from '@angular/core';
 import { TooltipPosition } from '@angular/material/tooltip';
 import { FieldName, Method, Resource } from './permissions';
+import { ResourceMeta } from './resource-meta';
 import { ConcatFn, defaultEmptyFieldValue, NullBoolean } from './resource-types';
 import { ResourceValidatorFn } from './validators';
+
+export type ResourceMap = Record<Resource, ResourceMeta>;
 
 export interface FieldPointer {
   field: FieldName;
