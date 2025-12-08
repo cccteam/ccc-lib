@@ -3,8 +3,8 @@ import { MatDialog } from '@angular/material/dialog';
 import { CanDeactivateFn, UrlTree } from '@angular/router';
 import { LeavePageConfirmationModalComponent } from '@cccteam/ccc-lib/ccc-resource-modals';
 import { FormStateService } from '@cccteam/ccc-lib/ccc-resource-services';
+import { FRONTEND_LOGIN_PATH } from '@cccteam/ccc-lib/types';
 import { firstValueFrom, Observable, tap } from 'rxjs';
-import { FRONTEND_LOGIN_PATH } from '../types';
 
 export type CanDeactivateType = Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree;
 
