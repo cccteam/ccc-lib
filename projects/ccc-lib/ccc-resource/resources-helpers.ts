@@ -1,34 +1,24 @@
 import { ModelSignal } from '@angular/core';
 import { FormControl, FormGroup } from '@angular/forms';
-import { Route } from '@angular/router';
 import {
   ConfigElement,
   DataType,
   FieldElement,
-  MenuItem,
   MethodMeta,
   RecordData,
   Resource,
   ResourceMeta,
-  RootConfig,
-  RouteResourceData,
   RPCRecordData,
   ViewConfig,
 } from '@cccteam/ccc-lib/types';
 import { format, isValid } from 'date-fns';
-import { canDeactivateGuard } from './can-deactivate.guard';
 import { civildateCoercion, flattenElements } from './gui-constants';
-
-export const generatedNavItems = [] as MenuItem[];
-export const generatedNavGroups = [] as string[];
 
 export interface Link {
   id: string;
   resource: Resource;
   text: string;
 }
-
-export type ResourceMap = Record<Resource, ResourceMeta>;
 
 export type PristineData = Record<string, DataType | null>;
 
@@ -75,11 +65,7 @@ export const createFormGroup = (
     fg.addControl(field.fieldName, control);
     pristineValues[field.fieldName] = value;
   }
-  // todo: swap this with a manual subscription where the form data is subscribed to and
-  // is dstroyed once the form is destroyed, similar to gui/src/app/components/Resource/resource-view/resource-view.component.ts
-  // constructor effect
   console.debug(formDataState);
-  // formDataState && formDataState.set(pristineValues);
 
   return {
     formGroup: fg,
@@ -87,104 +73,6 @@ export const createFormGroup = (
   };
 };
 
-export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Resource) => ResourceMeta): Route => {
-  const meta = resourceMeta(config.parentConfig.primaryResource as Resource);
-  if (!meta) {
-    return {} as Route;
-  }
-
-  if (config.nav.group) {
-    if (config.routeData.route) {
-      addToNavItems(config.nav, config.routeData.route);
-    } else {
-      addToNavItems(config.nav, meta.route);
-    }
-  }
-
-  if (config.routeData.route) {
-    const baseRoute: Route = {
-      path: config.routeData.route,
-      data: { config: config } satisfies RouteResourceData,
-      children: [
-        {
-          path: '',
-          loadComponent: () =>
-            import('./resource-list-create/resource-list-create.component').then(
-              (mod) => mod.ResourceListCreateComponent,
-            ),
-          canDeactivate: [canDeactivateGuard],
-        },
-      ],
-    };
-    if (config.routeData.hasViewRoute !== false) {
-      baseRoute.children?.push({
-        path: ':uuid',
-        loadComponent: () =>
-          import('./compound-resource/compound-resource.component').then((mod) => mod.CompoundResourceComponent),
-        canDeactivate: [canDeactivateGuard],
-      });
-      return baseRoute;
-    }
-  }
-
-  return {
-    path: meta.route,
-    data: { config: config } as RouteResourceData,
-    children: [
-      {
-        path: ':uuid',
-        loadComponent: () =>
-          import('./compound-resource/compound-resource.component').then((mod) => mod.CompoundResourceComponent),
-        canDeactivate: [canDeactivateGuard],
-      },
-      {
-        path: '',
-        loadComponent: () =>
-          import('./resource-list-create/resource-list-create.component').then(
-            (mod) => mod.ResourceListCreateComponent,
-          ),
-        canDeactivate: [canDeactivateGuard],
-      },
-    ],
-  } satisfies Route;
-};
-
-function addToNavItems(
-  nav: {
-    navItem: MenuItem;
-    group?: string;
-  },
-  route: string,
-): void {
-  nav.navItem.route = [route];
-
-  if (!nav.group) {
-    generatedNavItems.push(nav.navItem);
-    return;
-  }
-
-  if (!generatedNavGroups.includes(nav.group)) {
-    generatedNavGroups.push(nav.group);
-  }
-
-  let groupItem = generatedNavItems.find((item) => item.label === nav.group);
-
-  if (!groupItem) {
-    groupItem = { label: nav.group, children: [] };
-    generatedNavItems.push(groupItem);
-  }
-
-  groupItem.children = groupItem.children || [];
-  groupItem.children.push(nav.navItem);
-
-  generatedNavItems.sort((a, b) => (a.label > b.label ? -1 : 1));
-}
-
-/**
- * Recursive function to extract nested field names from a config.
- * @param elements - The elements to extract field names from.
- * @returns - An array of field names.
- */
 export function extractFieldNames(elements: ConfigElement[]): string[] {
   const fields: string[] = [];
   for (const element of elements) {
@@ -217,24 +105,11 @@ export interface DeleteOperation extends Operation {
   op: 'remove';
 }
 
-/**
- * Checks if a string is a valid UUID (versions 1-5) according to RFC 4122.
- *
- * @param str - The string to validate.
- * @returns `true` if the string is a valid UUID, otherwise `false`.
- */
 export function isUUID(str: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(str);
 }
 
-/**
- * Coerces metadata types in a record according to the metadata.
- *
- * @param record - The record to coerce.
- * @param meta - The metadata (resource or method).
- * @returns The coerced record.
- */
 export function metadataTypeCoercion(record: RecordData, meta: ResourceMeta): RecordData;
 export function metadataTypeCoercion(record: RPCRecordData, meta: MethodMeta): RPCRecordData;
 export function metadataTypeCoercion(

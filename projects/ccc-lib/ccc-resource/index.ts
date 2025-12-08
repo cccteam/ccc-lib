@@ -1,7 +1,6 @@
 export * from './actions/action-button-smart/action-access-control-wrapper.component';
 export * from './actions/rpc-button/rpc-button.component';
 export * from './base-rpc-modal/base-rpc-modal.component';
-export * from './can-deactivate.guard';
 export * from './compound-resource/compound-resource.component';
 export * from './concat-fns';
 export * from './delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
