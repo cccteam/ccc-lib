@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.22](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.21...ccc-lib/v0.0.22) (2025-12-08)
+
+
+### Features
+
+* Further package breakouts to reduce build size ([#38](https://github.com/cccteam/ccc-lib/issues/38)) ([d6b578b](https://github.com/cccteam/ccc-lib/commit/d6b578b8adb0d1202ab59a34a7a8dff04394b99f))
+
 ## [0.0.21](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.20...ccc-lib/v0.0.21) (2025-12-08)
 
 
