@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.23](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.22...ccc-lib/v0.0.23) (2025-12-08)
+
+
+### Bug Fixes
+
+* Fix login behavior after reverting auth changes ([#40](https://github.com/cccteam/ccc-lib/issues/40)) ([52cfe23](https://github.com/cccteam/ccc-lib/commit/52cfe2328d53185c112aa7a3cf5e0de721df541f))
+
 ## [0.0.22](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.21...ccc-lib/v0.0.22) (2025-12-08)
 
 
