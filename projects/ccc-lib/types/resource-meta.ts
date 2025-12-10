@@ -1,3 +1,4 @@
+import { Document } from '@contentful/rich-text-types';
 import { Resource } from './permissions';
 
 export type ValidDisplayTypes =
@@ -11,7 +12,7 @@ export type ValidDisplayTypes =
   | 'uuid'
   | 'civildate'
   | 'string[]'
-  | 'customtypes.document';
+  | 'customtypes.contentfuldocument';
 
 export type ValidRPCTypes = ValidDisplayTypes | `${Exclude<ValidDisplayTypes, 'string[]'>}[]`;
 
@@ -53,8 +54,5 @@ export interface ResourceMeta {
 export type Meta = MethodMeta | ResourceMeta;
 
 export namespace CustomTypes {
-  export interface Document {
-    // todo/fixme: implement the actual rich text document interface here
-    placeholder: string;
-  }
+  export type ContentfulDocument = Document;
 }
