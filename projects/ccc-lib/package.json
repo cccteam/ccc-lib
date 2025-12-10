@@ -10,11 +10,6 @@
     "@angular/core": "^21.0.0",
     "@contentful/rich-text-types": "^17.2.5"
   },
-  "peerDependenciesMeta": {
-    "@contentful/rich-text-types": {
-      "optional": true
-    }
-  },
   "dependencies": {
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
