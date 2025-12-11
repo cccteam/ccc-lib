@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.24](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.23...ccc-lib/v0.0.24) (2025-12-11)
+
+
+### Features
+
+* Add login authentication guard ([#44](https://github.com/cccteam/ccc-lib/issues/44)) ([9a73031](https://github.com/cccteam/ccc-lib/commit/9a73031012ccc665b819c0fb871e29ce14ca1028))
+* Support Contentful's Document type for resource fields ([#42](https://github.com/cccteam/ccc-lib/issues/42)) ([57b643d](https://github.com/cccteam/ccc-lib/commit/57b643d64109f8f66e8c5a87dc7522121544b751))
+
 ## [0.0.23](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.22...ccc-lib/v0.0.23) (2025-12-08)
 
 
