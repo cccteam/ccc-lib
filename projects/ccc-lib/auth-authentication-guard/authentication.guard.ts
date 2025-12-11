@@ -1,12 +1,19 @@
 import { inject } from '@angular/core';
-import { ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
+import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
 import { AuthService } from '@cccteam/ccc-lib/auth-service';
 import { API_URL, BASE_URL } from '@cccteam/ccc-lib/types';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
-export const AuthenticationGuard = (
-  route: ActivatedRouteSnapshot,
+/**
+ * Route guard that protects routes using OIDC (OpenID Connect) authentication.
+ *
+ * If the user is not authenticated, they are redirected to the external OIDC
+ * login endpoint with the current URL encoded as a return URL parameter.
+ *
+ */
+export const OIDCAuthenticationGuard = (
+  _: ActivatedRouteSnapshot,
   routerState: RouterStateSnapshot,
 ): Observable<boolean> => {
   const authService = inject(AuthService);
@@ -18,6 +25,46 @@ export const AuthenticationGuard = (
     const absoluteUrl = baseUrl + (!url.toString().startsWith('/') ? '/' + url : url);
     const encodedUrl = encodeURIComponent(absoluteUrl);
     window.location.href = `${apiUrl}/user/login?returnUrl=${encodedUrl}`;
+  };
+
+  if (authService.authenticated()) {
+    return of(true);
+  }
+
+  return authService.checkUserSession().pipe(
+    map((sessionInfo) => {
+      if (sessionInfo?.authenticated) {
+        return true;
+      }
+
+      authenticate();
+      return false;
+    }),
+    catchError(() => {
+      authenticate();
+      return of(false);
+    }),
+  );
+};
+
+/**
+ * Route guard that protects routes using internal login-based authentication.
+ *
+ * If the user is not authenticated, they are redirected to the application's
+ * internal FRONTEND_LOGIN_PATH route. The attempted URL is stored in the AuthService so the
+ * user can be redirected back after successful login.
+ *
+ */
+export const LoginAuthenticationGuard = (
+  _: ActivatedRouteSnapshot,
+  routerState: RouterStateSnapshot,
+): Observable<boolean> => {
+  const router = inject(Router);
+  const authService = inject(AuthService);
+
+  const authenticate = (): void => {
+    authService.redirectUrl.set(routerState.url);
+    router.navigate([authService.loginRoute()]);
   };
 
   if (authService.authenticated()) {
