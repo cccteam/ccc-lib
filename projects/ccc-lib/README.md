@@ -47,3 +47,7 @@ To run the library's tests, use the following command:
 ```bash
 ng test ccc-lib
 ```
+
+### Known Issues
+
+- **Contentful Dependency**: The library currently has a hard dependency on `@contentful/rich-text-types` due to the `CustomTypes.ContentfulDocument` type definition in the resource metadata. This means consumers of the library must have this package installed, even if they are not using this custom type.
