@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { AuthenticationGuard } from '@cccteam/ccc-lib/auth-authentication-guard';
+import { OIDCAuthenticationGuard } from '@cccteam/ccc-lib/auth-authentication-guard';
 import { resourceRoutes } from '@cccteam/ccc-lib/resource-route-generator';
 import { UiComponent } from './components/ui/ui.component';
 import { usersConfig } from './configs/users.config';
@@ -13,7 +13,7 @@ export const routes: Routes = [
   {
     path: '',
     component: UiComponent,
-    canActivate: [AuthenticationGuard],
+    canActivate: [OIDCAuthenticationGuard],
     children: [
       {
         path: 'dashboard',
