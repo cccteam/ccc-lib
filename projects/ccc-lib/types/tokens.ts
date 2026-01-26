@@ -41,3 +41,4 @@ export const METHOD_META = new InjectionToken<(method: string) => MethodMeta>('M
 export const IDLE_SESSION_DURATION = new InjectionToken<number>('IDLE_SESSION_DURATION');
 export const IDLE_WARNING_DURATION = new InjectionToken<number>('IDLE_WARNING_DURATION');
 export const IDLE_KEEPALIVE_DURATION = new InjectionToken<number>('IDLE_KEEPALIVE_DURATION');
+export const IDLE_LOGOUT_ACTION = new InjectionToken<() => void>('IDLE_LOGOUT_ACTION');
