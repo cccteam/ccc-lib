@@ -69,7 +69,11 @@ export class AuthService {
       .pipe(map(() => true))
       .pipe(
         tap(() => {
-          this.logoutAction();
+          try {
+            this.logoutAction();
+          } catch (error) {
+            console.error('Error during logout action (LOGOUT_ACTION token):', error);
+          }
           this.authenticatedSignal.set(false);
           this.sessionInfoSignal.set({} as SessionInfo);
         }),

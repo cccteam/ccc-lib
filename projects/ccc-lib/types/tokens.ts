@@ -35,11 +35,39 @@ export const AVAILABLE_PERMISSIONS = new InjectionToken<{
 }>('AVAILABLE_PERMISSIONS');
 export const AVAILABLE_DOMAINS = new InjectionToken<Record<string, Domain>[]>('AVAILABLE_DOMAINS');
 
+/**
+ * The generated resourceMeta from the output of the [ccc package](https://github.com/cccteam/ccc) typescript generator
+ * Required to work with generated routes and resource metadata
+ */
 export const RESOURCE_META = new InjectionToken<(resource: Resource) => ResourceMeta>('RESOURCE_META');
+
+/**
+ * The generated methodMeta from the output of the [ccc package](https://github.com/cccteam/ccc) typescript generator
+ * Required to work with generated method data
+ */
 export const METHOD_META = new InjectionToken<(method: string) => MethodMeta>('METHOD_META');
 
+/**
+ * The duration in seconds for the session to be considered idle.
+ */
 export const IDLE_SESSION_DURATION = new InjectionToken<number>('IDLE_SESSION_DURATION');
+
+/**
+ * The duration in seconds for the warning to be shown to the user before the session times out due to inactivity.
+ */
 export const IDLE_WARNING_DURATION = new InjectionToken<number>('IDLE_WARNING_DURATION');
+
+/**
+ * The duration in seconds for the keepalive ping to be sent to the server to keep the session alive.
+ */
 export const IDLE_KEEPALIVE_DURATION = new InjectionToken<number>('IDLE_KEEPALIVE_DURATION');
+
+/**
+ * A function to be called when the user logs out.
+ */
 export const LOGOUT_ACTION = new InjectionToken<() => void>('LOGOUT_ACTION');
+
+/**
+ * A function to be called when the user is logged out due to inactivity.
+ */
 export const IDLE_LOGOUT_ACTION = new InjectionToken<() => void>('IDLE_LOGOUT_ACTION');

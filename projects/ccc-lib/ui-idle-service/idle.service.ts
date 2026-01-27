@@ -94,7 +94,11 @@ export class IdleService implements OnDestroy {
    * Logs out the user due to inactivity, calls the configured logout action, and stops the service.
    */
   logoutAndStop(): void {
-    this.logoutAction();
+    try {
+      this.logoutAction();
+    } catch (error) {
+      console.error('Error during idle logout action (IDLE_LOGOUT_ACTION token):', error);
+    }
     this.stop();
 
     this.router.navigate([this.loginPath]);
