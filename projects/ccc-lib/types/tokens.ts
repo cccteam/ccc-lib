@@ -26,11 +26,19 @@ export const SESSION_PATH = new InjectionToken<string>('SESSION_PATH', { factory
  */
 export const API_URL = new InjectionToken<string>('API_URL', { factory: () => '/api' });
 
+/**
+ * A function to determine if a specific permission is required for a given resource.
+ * @default: a function that always returns false
+ */
 export const PERMISSION_REQUIRED = new InjectionToken<(resource: Resource, permission: Permission) => boolean>(
   'PERMISSION_REQUIRED',
   { factory: () => () => false },
 );
 
+/**
+ * The available permissions in the system.
+ * @default: an empty array
+ */
 export const AVAILABLE_PERMISSIONS = new InjectionToken<{
   Create: Permission;
   Delete: Permission;
