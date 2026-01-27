@@ -165,10 +165,16 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
   });
 
   availableEnumOptions = computed(() => {
-    if (this.editMode() === 'edit') {
-      return this.listEnumValues();
+    const editMode = this.editMode() === 'edit';
+    const options = editMode ? this.listEnumValues() : this.singleEnumValue();
+    const meta = this.fieldMeta();
+    const metaRequired = 'required' in meta && meta.required;
+
+    if (editMode && !this.hasRequiredValidator() && options && options.length > 0 && !metaRequired) {
+      return [{ id: null, display: defaultEmptyFieldValue }, ...options];
     }
-    return this.singleEnumValue();
+
+    return options;
   });
 
   toEnumerated(resource: Record<string, string>, element: FieldElement): { id: string; display: string } {
@@ -195,7 +201,9 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
 
     if (typeof value === 'string') {
       const option = this.availableEnumOptions()?.find((o) => o.id === value);
-      return option ? option['display'] || this.formatDisplay(option) : '';
+      if (!option) return '';
+
+      return option['display'] || (option.id !== null ? this.formatDisplay(option) : '');
     }
 
     return value['display'] || this.formatDisplay(value);
