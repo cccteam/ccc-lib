@@ -91,7 +91,7 @@ export class IdleService implements OnDestroy {
   }
 
   /**
-   * Logs out the user due to inactivity and stops the service.
+   * Logs out the user due to inactivity, calls the configured logout action, and stops the service.
    */
   logoutAndStop(): void {
     this.logoutAction();

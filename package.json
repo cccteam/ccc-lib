@@ -54,7 +54,6 @@
     "typescript-eslint": "^8.33.1",
     "vitest": "^4.0.8"
   },
-  "version": "0.0.15",
   "scripts": {
     "lint": "ng lint",
     "build": "ng build ccc-lib"

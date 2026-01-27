@@ -3,6 +3,7 @@ import { inject, Injectable, signal } from '@angular/core';
 import {
   API_URL,
   FRONTEND_LOGIN_PATH,
+  LOGOUT_ACTION,
   Permission,
   PERMISSION_REQUIRED,
   PermissionScope,
@@ -20,6 +21,7 @@ export class AuthService {
   private apiUrl = inject(API_URL);
   private loginUrl = inject(FRONTEND_LOGIN_PATH);
   private sessionUrl = inject(SESSION_PATH);
+  private logoutAction = inject(LOGOUT_ACTION);
 
   http = inject(HttpClient);
   private authenticatedSignal = signal(false);
@@ -57,7 +59,7 @@ export class AuthService {
   }
 
   /**
-   * Logs a user out.
+   * Logs a user out and calls the configured logout action.
    *
    * @returns Observable with a boolean indicating whether they were logged out.
    */
@@ -67,6 +69,7 @@ export class AuthService {
       .pipe(map(() => true))
       .pipe(
         tap(() => {
+          this.logoutAction();
           this.authenticatedSignal.set(false);
           this.sessionInfoSignal.set({} as SessionInfo);
         }),
