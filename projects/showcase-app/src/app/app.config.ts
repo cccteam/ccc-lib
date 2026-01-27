@@ -10,8 +10,10 @@ import {
   BASE_URL,
   FRONTEND_LOGIN_PATH,
   IDLE_KEEPALIVE_DURATION,
+  IDLE_LOGOUT_ACTION,
   IDLE_SESSION_DURATION,
   IDLE_WARNING_DURATION,
+  LOGOUT_ACTION,
   METHOD_META,
   PERMISSION_REQUIRED,
   RESOURCE_META,
@@ -41,6 +43,18 @@ export const appConfig: ApplicationConfig = {
     {
       provide: SESSION_PATH,
       useValue: 'user/session',
+    },
+    {
+      provide: IDLE_LOGOUT_ACTION,
+      useValue: () => {
+        console.log('User has idled too long and logged out!');
+      },
+    },
+    {
+      provide: LOGOUT_ACTION,
+      useValue: () => {
+        console.log('User has logged out!');
+      },
     },
     {
       provide: RESOURCE_META,

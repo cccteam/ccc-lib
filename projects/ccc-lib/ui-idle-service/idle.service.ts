@@ -6,6 +6,7 @@ import {
   AlertLevel,
   FRONTEND_LOGIN_PATH,
   IDLE_KEEPALIVE_DURATION,
+  IDLE_LOGOUT_ACTION,
   IDLE_SESSION_DURATION,
   IDLE_WARNING_DURATION,
 } from '@cccteam/ccc-lib/types';
@@ -24,6 +25,7 @@ export class IdleService implements OnDestroy {
   private readonly loginPath = inject(FRONTEND_LOGIN_PATH);
 
   private readonly sessionDuration = inject(IDLE_SESSION_DURATION);
+  private readonly logoutAction = inject(IDLE_LOGOUT_ACTION);
   private readonly warningDuration = inject(IDLE_WARNING_DURATION);
   private readonly keepAliveDuration = inject(IDLE_KEEPALIVE_DURATION);
   private readonly idleCheckFrequency = 1000;
@@ -89,9 +91,14 @@ export class IdleService implements OnDestroy {
   }
 
   /**
-   * Logs out the user due to inactivity and stops the service.
+   * Logs out the user due to inactivity, calls the configured logout action, and stops the service.
    */
   logoutAndStop(): void {
+    try {
+      this.logoutAction();
+    } catch (error) {
+      console.error('Error during idle logout action (IDLE_LOGOUT_ACTION token):', error);
+    }
     this.stop();
 
     this.router.navigate([this.loginPath]);
