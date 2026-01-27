@@ -167,8 +167,10 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
   availableEnumOptions = computed(() => {
     const editMode = this.editMode() === 'edit';
     const options = editMode ? this.listEnumValues() : this.singleEnumValue();
+    const meta = this.fieldMeta();
+    const metaRequired = 'required' in meta && meta.required;
 
-    if (editMode && !this.hasRequiredValidator() && options && options.length > 0) {
+    if (editMode && !this.hasRequiredValidator() && options && options.length > 0 && !metaRequired) {
       return [{ id: null, display: defaultEmptyFieldValue }, ...options];
     }
 
