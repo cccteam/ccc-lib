@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.25](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.24...ccc-lib/v0.0.25) (2026-01-27)
+
+
+### Features
+
+* Add logout function tokens ([#46](https://github.com/cccteam/ccc-lib/issues/46)) ([ba37eb7](https://github.com/cccteam/ccc-lib/commit/ba37eb7daf3da8d8cfc0de886d5a6093f73f467d))
+* Add null value to select options when the resource is not required ([#45](https://github.com/cccteam/ccc-lib/issues/45)) ([07cd2c2](https://github.com/cccteam/ccc-lib/commit/07cd2c27eddb21ed6f07b15b05031b28c43771e3))
+
 ## [0.0.24](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.23...ccc-lib/v0.0.24) (2025-12-11)
 
 
