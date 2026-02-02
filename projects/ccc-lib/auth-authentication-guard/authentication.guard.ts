@@ -75,7 +75,6 @@ export const LoginAuthenticationGuard: CanActivateFn = (
       return setRedirectAndGetLoginUrlTree(authService, router, routerState.url);
     }),
     catchError(() => {
-      authService.redirectUrl.set(routerState.url);
       return setRedirectAndGetLoginUrlTree(authService, router, routerState.url);
     }),
   );
@@ -91,19 +90,3 @@ const setRedirectAndGetLoginUrlTree = (authService: AuthService, router: Router,
   authService.redirectUrl.set(redirectUrl);
   return of(router.createUrlTree([authService.loginRoute()]));
 };
-
-// TODO [This PR]: Decide between that helper function and writing those two lines twice
-// return authService.checkUserSession().pipe(
-//     switchMap((sessionInfo) => {
-//       if (sessionInfo?.authenticated) {
-//         return of(true);
-//       }
-
-//       authService.redirectUrl.set(routerState.url);
-//       return of(router.createUrlTree([authService.loginRoute()]));
-//     }),
-//     catchError(() => {
-//       authService.redirectUrl.set(routerState.url);
-//       return of(router.createUrlTree([authService.loginRoute()]));
-//     }),
-//   );
