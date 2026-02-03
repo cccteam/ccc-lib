@@ -102,7 +102,7 @@ export const IDLE_LOGOUT_ACTION = new InjectionToken<() => void>('IDLE_LOGOUT_AC
 
 /**
  * The default limit for query results when not explicitly specified in the request.
- * This value overrides the backend default of 50.
+ * This value overrides the backend default of 50 only for GET requests.
  * @defaultValue null (no default limit added by interceptor)
  */
 export const DEFAULT_QUERY_LIMIT = new InjectionToken<number | null>('DEFAULT_QUERY_LIMIT', {
