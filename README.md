@@ -17,6 +17,12 @@ To install **ccc-lib** in your project, run the following command:
 npm install ccc-lib
 ```
 
+To run a full test environment, use [overmind](https://github.com/DarthSim/overmind):
+
+```bash
+overmind s
+```
+
 ## Core Concepts
 
 The central concept of **ccc-lib** is the `resourceConfig`. This configuration object defines the structure and behavior of a page or a part of a page. It specifies which components to render, how they are connected, and how they interact with data.
