@@ -21,7 +21,7 @@ export class ApiInterceptor implements HttpInterceptor {
     this.ui.beginActivity(request.method + ' ' + request.url);
 
     let modifiedRequest = request;
-    if (this.defaultQueryLimit !== null && !request.params.has('limit')) {
+    if (request.method === 'GET' && this.defaultQueryLimit !== null && !request.params.has('limit')) {
       modifiedRequest = request.clone({
         params: request.params.set('limit', this.defaultQueryLimit.toString()),
       });
