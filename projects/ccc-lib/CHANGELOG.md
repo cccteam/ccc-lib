@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.26](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.25...ccc-lib/v0.0.26) (2026-02-03)
+
+
+### Features
+
+* Add limit to `listViewConfig` ([#54](https://github.com/cccteam/ccc-lib/issues/54)) ([ee39a81](https://github.com/cccteam/ccc-lib/commit/ee39a811930b31cd4a58eda4477684b8ab143ddc))
+
 ## [0.0.25](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.24...ccc-lib/v0.0.25) (2026-01-27)
 
 
