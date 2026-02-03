@@ -99,3 +99,12 @@ export const LOGOUT_ACTION = new InjectionToken<() => void>('LOGOUT_ACTION', { f
 export const IDLE_LOGOUT_ACTION = new InjectionToken<() => void>('IDLE_LOGOUT_ACTION', {
   factory: () => () => 0,
 });
+
+/**
+ * The default limit for query results when not explicitly specified in the request.
+ * This value overrides the backend default of 50.
+ * @defaultValue null (no default limit added by interceptor)
+ */
+export const DEFAULT_QUERY_LIMIT = new InjectionToken<number | null>('DEFAULT_QUERY_LIMIT', {
+  factory: () => null,
+});
