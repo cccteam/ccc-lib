@@ -28,6 +28,7 @@ export class ResourceStore {
   searchTokens = signal<string>('');
   sorts = signal<FieldSort[]>([]);
   listColumns = signal<ColumnConfig[]>([]);
+  limit = signal<number | undefined>(undefined);
   requireSearchToDisplayResults = signal(false);
   uuid = signal<string>('');
   error = signal<string>('');
@@ -106,6 +107,7 @@ export class ResourceStore {
       this.disableCacheForFilterPii,
       this.searchTokens,
       this.sorts,
+      this.limit,
     );
     this.resourceListRef.set(ref);
     this.reloadListData();
@@ -185,6 +187,7 @@ export class ResourceStore {
     disableCacheForFilterPii: Signal<boolean> = signal(false),
     searchTokens: Signal<string> = signal(''),
     sorts: Signal<FieldSort[]> = signal([]),
+    limit: Signal<number | undefined> = signal(undefined),
     defaultEmpty = false,
   ): ResourceRef<RecordData[]> {
     return untracked(() => {
@@ -197,6 +200,7 @@ export class ResourceStore {
           columns: columns(),
           searchTokens: searchTokens(),
           sorts: sorts(),
+          limit: limit(),
         }),
         stream: ({ params }) => {
           if (!params.route) return of([] as RecordData[]);
@@ -210,6 +214,7 @@ export class ResourceStore {
             params.columns,
             params.searchTokens,
             params.sorts,
+            params.limit,
           );
         },
       }) as ResourceRef<RecordData[]>;
@@ -223,9 +228,11 @@ export class ResourceStore {
     columns?: string[],
     searchTokens?: string,
     sort?: FieldSort[],
+    limit?: number,
   ): Observable<T[]> {
     const paramsObj: Record<string, string> = {};
     if (filter && filter.trim() !== '') paramsObj['filter'] = filter;
+    if (limit && limit > 0) paramsObj['limit'] = String(limit);
     if (columns && columns.length > 0) paramsObj['columns'] = columns.join(',');
     if (searchTokens && searchTokens.trim() !== '') paramsObj['SearchTokens'] = searchTokens;
     if (sort && sort.length > 0) {

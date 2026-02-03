@@ -763,6 +763,7 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
   disableCacheForFilterPii?: boolean;
   rpcConfigs?: RPCConfig[];
   sorts?: FieldSort[];
+  limit?: number;
   shouldRenderActions?: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
 }
 export interface ListViewConfig extends BaseConfig {
@@ -784,6 +785,7 @@ export interface ListViewConfig extends BaseConfig {
   disableCacheForFilterPii: boolean;
   rpcConfigs?: RPCConfig[];
   sorts: FieldSort[];
+  limit?: number;
   shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
 }
 
@@ -822,6 +824,7 @@ export const listViewConfigDefaults = {
   filter: (): string => '',
   disableCacheForFilterPii: false,
   sorts: [] as FieldSort[],
+  limit: undefined,
   viewResource: '' as Resource,
   actionType: 'function' as ActionType,
   rpcConfigs: [],
