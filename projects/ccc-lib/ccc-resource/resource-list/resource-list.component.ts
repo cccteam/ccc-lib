@@ -401,6 +401,7 @@ export class ResourceListComponent implements OnInit {
       this.store.listColumns.set(this.config().listColumns || []);
       this.store.requireSearchToDisplayResults.set(this.config().requireSearchToDisplayResults || false);
       this.store.sorts.set(this.config().sorts || []);
+      this.store.limit.set(this.config().limit);
     }
 
     this.store.filter.set(this.filters());

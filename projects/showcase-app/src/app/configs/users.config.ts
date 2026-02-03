@@ -21,6 +21,7 @@ export const usersConfig = rootConfig({
   parentConfig: listViewConfig({
     title: 'Users',
     createTitle: 'Create User',
+    limit: 2,
     createConfig: viewConfig({
       primaryResource: Resources.Users,
       elements: [
