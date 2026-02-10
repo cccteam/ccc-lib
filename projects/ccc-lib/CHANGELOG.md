@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.27](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.26...ccc-lib/v0.0.27) (2026-02-10)
+
+
+### Features
+
+* Allow filtering and sorting ([#56](https://github.com/cccteam/ccc-lib/issues/56)) ([8431901](https://github.com/cccteam/ccc-lib/commit/84319014c0c5474ac22e810578275e6826aa378f))
+
 ## [0.0.26](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.25...ccc-lib/v0.0.26) (2026-02-03)
 
 
