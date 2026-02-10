@@ -24,7 +24,7 @@ import { TableButtonComponent } from './table-button/table-button.component';
   ],
   template: `
     <kendo-grid
-      [data]="rowData()"
+      [kendoGridBinding]="rowData()"
       filterable="menu"
       [sortable]="true"
       scrollable="none"
