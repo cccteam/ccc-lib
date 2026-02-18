@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.28](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.27...ccc-lib/v0.0.28) (2026-02-18)
+
+
+### Bug Fixes
+
+* Fix validatorsPresent utility func ([#59](https://github.com/cccteam/ccc-lib/issues/59)) ([d319d6d](https://github.com/cccteam/ccc-lib/commit/d319d6dd1a0e41c768e906d04d51af4763c76eac))
+
 ## [0.0.27](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.26...ccc-lib/v0.0.27) (2026-02-10)
 
 
