@@ -5,18 +5,11 @@ export const validatorsPresent = (
   validators: ValidatorFn[],
   previousValidatorCount: number,
 ): boolean => {
-  if (validators.length === previousValidatorCount) {
-    return true;
+  if (previousValidatorCount !== validators.length) {
+    return false;
   }
 
-  let hasAllValidators = true;
-  for (const validator of validators) {
-    if (!control.hasValidator(validator)) {
-      hasAllValidators = false;
-      break;
-    }
-  }
-  return hasAllValidators;
+  return validators.every((validator) => control.hasValidator(validator));
 };
 
 export const requiredIf = (predicate: () => boolean, validator: ValidatorFn) => {
