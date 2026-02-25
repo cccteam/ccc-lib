@@ -3,7 +3,7 @@ import { computed, inject, Injectable, Injector, ResourceRef, Signal, signal, un
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import {
-  AlertLevel,
+  AlertType,
   API_URL,
   ColumnConfig,
   CreateNotificationMessage,
@@ -136,7 +136,7 @@ export class ResourceStore {
       tap(() => {
         this.notifications.addGlobalNotification({
           message: `${resource} updated successfully`,
-          level: AlertLevel.SUCCESS,
+          type: AlertType.SUCCESS,
           duration: 5000,
           link: '',
         } satisfies CreateNotificationMessage);
@@ -149,7 +149,7 @@ export class ResourceStore {
       tap(() => {
         this.notifications.addGlobalNotification({
           message: `${resource} created successfully`,
-          level: AlertLevel.SUCCESS,
+          type: AlertType.SUCCESS,
           duration: 5000,
           link: '',
         } satisfies CreateNotificationMessage);
@@ -262,7 +262,7 @@ export class ResourceStore {
       tap(() => {
         this.notifications.addGlobalNotification({
           message: rpcConfig.successMessage ? rpcConfig.successMessage : `${rpcConfig.method} called successfully`,
-          level: AlertLevel.SUCCESS,
+          type: AlertType.SUCCESS,
           duration: 5000,
           link: '',
         } satisfies CreateNotificationMessage);

@@ -8,7 +8,7 @@ export const envVars = {
   keepAliveDuration: ${proc.env['APP_KEEP_ALIVE_DURATION'] || 60},
 };`;
 
-fs.writeFileSync('./src/environments/env.ts', envContent);
+fs.writeFileSync('./projects/showcase-app/src/environments/env.ts', envContent);
 
 const manifestContent = `{
   "id": "/",
@@ -93,4 +93,4 @@ const manifestContent = `{
 }
 `;
 
-fs.writeFileSync('./public/manifest.webmanifest', manifestContent);
+fs.writeFileSync('./projects/showcase-app/public/manifest.webmanifest', manifestContent);

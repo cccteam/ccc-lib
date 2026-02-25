@@ -2,7 +2,7 @@ import { HttpErrorResponse, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest
 import { inject, Injectable, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@cccteam/ccc-lib/auth-service';
-import { AlertLevel, BASE_URL, FRONTEND_LOGIN_PATH } from '@cccteam/ccc-lib/types';
+import { AlertType, BASE_URL, FRONTEND_LOGIN_PATH } from '@cccteam/ccc-lib/types';
 import { UiCoreService } from '@cccteam/ccc-lib/ui-core-service';
 import { CUSTOM_HTTP_REQUEST_OPTIONS } from '@cccteam/ccc-lib/util-request-options';
 import { catchError, finalize, Observable, throwError } from 'rxjs';
@@ -31,7 +31,7 @@ export class ApiInterceptor implements HttpInterceptor {
           const message = error.error?.message ?? error.message ?? error.error;
           this.ui.publishError({
             message: message,
-            level: AlertLevel.ERROR,
+            type: AlertType.ERROR,
             link: '',
           });
         }

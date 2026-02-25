@@ -26,7 +26,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormStateService } from '@cccteam/ccc-lib/ccc-resource-services';
 import { sparseFormData } from '@cccteam/ccc-lib/forms';
 import {
-  AlertLevel,
+  AlertType,
   DataType,
   FieldElement,
   ListViewConfig,
@@ -325,7 +325,7 @@ export class ResourceViewComponent implements OnInit {
         this.notifications.addGlobalNotification({
           message: 'You have unsaved changes.',
           link: '',
-          level: AlertLevel.ERROR,
+          type: AlertType.ERROR,
         });
         return;
       }

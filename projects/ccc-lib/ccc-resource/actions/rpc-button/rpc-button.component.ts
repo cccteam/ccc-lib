@@ -4,7 +4,7 @@ import { MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormStateService } from '@cccteam/ccc-lib/ccc-resource-services';
 import {
-  AlertLevel,
+  AlertType,
   FieldPointer,
   ListViewConfig,
   METHOD_META,
@@ -155,7 +155,7 @@ export class RpcButtonComponent {
               this.notifications.addGlobalNotification({
                 message: 'Value not found for field: ' + value.field,
                 link: '',
-                level: AlertLevel.ERROR,
+                type: AlertType.ERROR,
               });
               canSubmitRPC = false;
               return;

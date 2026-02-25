@@ -1,5 +1,6 @@
-export enum AlertLevel {
+export enum AlertType {
   ERROR = 'warn',
+  IDLE = 'idle',
   INFO = 'accent',
   SUCCESS = 'success',
 }
@@ -8,7 +9,7 @@ export interface CreateNotificationMessage {
   duration?: number;
   message: string;
   link: string;
-  level: AlertLevel;
+  type: AlertType;
 }
 
 export interface NotificationMessage {
@@ -16,5 +17,5 @@ export interface NotificationMessage {
   duration?: number;
   message: string;
   link: string;
-  level: AlertLevel;
+  type: AlertType;
 }

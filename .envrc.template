@@ -51,10 +51,10 @@ export APP_OIDC_REDIRECT_URL="http://localhost:${APP_NG_SERVE_PORT}/api/user/cal
 # APP_USERNAME & APP_ROLES are applicable for development (when using the 'skipAuth' build tag)
 
 # The application username to use following a (simulated) successful login
-export APP_USERNAME='<insert username here>'
+export APP_USERNAME='dev'
 
 # The roles to assign to user <APP_USERNAME> following a (simulated) successful login
-export APP_ROLES='<insert comma-separated roles here>'
+export APP_ROLES='Administrator'
 # ************************************************************************************************
 
 # Session Timeout
@@ -64,10 +64,10 @@ export APP_SESSION_TIMEOUT='10m'
 #export APP_COOKIE_KEY='<insert cookie key here>'
 
 # APP_BUILD_FLAGS_LOCAL_DEV is used to configure the build flags during local development (e.g.: '-tags dev,skipAuth,collect_resource_permissions')
-export APP_BUILD_FLAGS_LOCAL_DEV='<insert build flags here>'
+export APP_BUILD_FLAGS_LOCAL_DEV='-tags dev,skipAuth'
 
 # APP_BOOTSTRAP_ROLE_PATH is used to configure the path to the role definitions file
 export APP_BOOTSTRAP_ROLE_PATH='<insert path here>'
 
 # APP_BOOTSTRAP_DATA_PATH should point to a folder containing migration scripts to bootstrap data into the database
-export APP_BOOTSTRAP_DATA_PATH='schema/bootstrap'
+export APP_BOOTSTRAP_ROLE_PATH='cmd/deployment/migrate/roles.json'
