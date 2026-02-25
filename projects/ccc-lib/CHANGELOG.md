@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.29](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.28...ccc-lib/v0.0.29) (2026-02-25)
+
+
+### Features
+
+* Separate idle alert type ([#61](https://github.com/cccteam/ccc-lib/issues/61)) ([27c0678](https://github.com/cccteam/ccc-lib/commit/27c06786e49ecaa615835b1967d43db898037193))
+
 ## [0.0.28](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.27...ccc-lib/v0.0.28) (2026-02-18)
 
 
