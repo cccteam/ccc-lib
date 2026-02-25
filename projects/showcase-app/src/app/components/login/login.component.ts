@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '@cccteam/ccc-lib/auth-service';
-import { AlertLevel, API_URL, BASE_URL, SESSION_PATH } from '@cccteam/ccc-lib/types';
+import { AlertType, API_URL, BASE_URL, SESSION_PATH } from '@cccteam/ccc-lib/types';
 import { UiCoreService } from '@cccteam/ccc-lib/ui-core-service';
 import { IdleService } from '@cccteam/ccc-lib/ui-idle-service';
 import { PaneComponent } from '../shared/pane/pane.component';
@@ -33,7 +33,7 @@ export class LoginComponent implements OnDestroy {
 
     this.route.queryParams.subscribe((params) => {
       if (params['message']) {
-        this.ui.publishError({ message: params['message'], level: AlertLevel.ERROR, link: '' });
+        this.ui.publishError({ message: params['message'], type: AlertType.ERROR, link: '' });
       }
     });
     this.authService.logout().subscribe();

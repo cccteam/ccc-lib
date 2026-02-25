@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { AuthService } from '@cccteam/ccc-lib/auth-service';
 import {
-  AlertLevel,
+  AlertType,
   FRONTEND_LOGIN_PATH,
   IDLE_KEEPALIVE_DURATION,
   IDLE_LOGOUT_ACTION,
@@ -104,7 +104,7 @@ export class IdleService implements OnDestroy {
     this.router.navigate([this.loginPath]);
     this.core.publishError({
       message: 'You have been logged out due to inactivity.',
-      level: AlertLevel.INFO,
+      type: AlertType.IDLE,
       link: '',
     });
   }
@@ -158,11 +158,11 @@ export class IdleService implements OnDestroy {
   private showOrUpdateWarningAlert(countdown: number): void {
     const message = `You will be logged out in ${countdown} seconds due to inactivity.`;
     if (this.alertId !== undefined) {
-      this.notifications.updateNotification({ id: this.alertId, level: AlertLevel.INFO, link: '', message });
+      this.notifications.updateNotification({ id: this.alertId, type: AlertType.IDLE, link: '', message });
     } else {
       this.alertId = this.notifications.addGlobalNotification({
         message,
-        level: AlertLevel.INFO,
+        type: AlertType.IDLE,
         link: '',
       });
     }
