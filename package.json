@@ -55,6 +55,8 @@
     "vitest": "^4.0.8"
   },
   "scripts": {
+    "prestart": "npx --yes tsx ./projects/showcase-app/src/environments/initialize-env.ts",
+    "start": "ng serve --no-hmr",
     "lint": "ng lint",
     "build": "ng build ccc-lib"
   }
