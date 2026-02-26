@@ -1,9 +1,9 @@
 import { inject } from '@angular/core';
-import { ActivatedRouteSnapshot, Router, RouterStateSnapshot } from '@angular/router';
+import { ActivatedRouteSnapshot, CanActivateFn, Router, RouterStateSnapshot } from '@angular/router';
 import { AuthService } from '@cccteam/ccc-lib/auth-service';
 import { API_URL, BASE_URL } from '@cccteam/ccc-lib/types';
 import { Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { catchError, map, switchMap } from 'rxjs/operators';
 
 /**
  * Route guard that protects routes using OIDC (OpenID Connect) authentication.
@@ -55,34 +55,38 @@ export const OIDCAuthenticationGuard = (
  * user can be redirected back after successful login.
  *
  */
-export const LoginAuthenticationGuard = (
+export const LoginAuthenticationGuard: CanActivateFn = (
   _: ActivatedRouteSnapshot,
   routerState: RouterStateSnapshot,
-): Observable<boolean> => {
+) => {
   const router = inject(Router);
   const authService = inject(AuthService);
-
-  const authenticate = (): void => {
-    authService.redirectUrl.set(routerState.url);
-    router.navigate([authService.loginRoute()]);
-  };
 
   if (authService.authenticated()) {
     return of(true);
   }
 
   return authService.checkUserSession().pipe(
-    map((sessionInfo) => {
+    switchMap((sessionInfo) => {
       if (sessionInfo?.authenticated) {
-        return true;
+        return of(true);
       }
 
-      authenticate();
-      return false;
+      return setRedirectAndGetLoginUrlTree(authService, router, routerState.url);
     }),
     catchError(() => {
-      authenticate();
-      return of(false);
+      return setRedirectAndGetLoginUrlTree(authService, router, routerState.url);
     }),
   );
+};
+
+/**
+ * Impure function used to handle redirecting user to login
+ *
+ * Has the side effect of storing the url the user wished to access
+ * in AuthService
+ */
+const setRedirectAndGetLoginUrlTree = (authService: AuthService, router: Router, redirectUrl: string) => {
+  authService.redirectUrl.set(redirectUrl);
+  return of(router.createUrlTree([authService.loginRoute()]));
 };
