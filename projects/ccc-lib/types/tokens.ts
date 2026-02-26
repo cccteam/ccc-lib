@@ -99,3 +99,13 @@ export const LOGOUT_ACTION = new InjectionToken<() => void>('LOGOUT_ACTION', { f
 export const IDLE_LOGOUT_ACTION = new InjectionToken<() => void>('IDLE_LOGOUT_ACTION', {
   factory: () => () => 0,
 });
+
+/**
+ * When true, user activity (mouse movement, keypress, etc.) will NOT reset the idle timer once the warning is shown.
+ * The user must explicitly call `stayLoggedIn()` (e.g. via a modal button) to reset the timer.
+ * When false (default), any activity resets the idle timer as usual.
+ * @defaultValue false
+ */
+export const IDLE_TIMEOUT_REQUIRE_CONFIRMATION = new InjectionToken<boolean>('IDLE_TIMEOUT_REQUIRE_CONFIRMATION', {
+  factory: () => false,
+});

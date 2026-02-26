@@ -6,6 +6,7 @@ export const envVars = {
   sessionDuration: ${proc.env['APP_SESSION_DURATION'] || 1200},
   warningDuration: ${proc.env['APP_WARNING_DURATION'] || 30},
   keepAliveDuration: ${proc.env['APP_KEEP_ALIVE_DURATION'] || 60},
+  timeoutRequireConfirmation: ${proc.env['APP_TIMEOUT_REQUIRE_CONFIRMATION'] === 'true'},
 };`;
 
 fs.writeFileSync('./projects/showcase-app/src/environments/env.ts', envContent);

@@ -12,6 +12,7 @@ import {
   IDLE_KEEPALIVE_DURATION,
   IDLE_LOGOUT_ACTION,
   IDLE_SESSION_DURATION,
+  IDLE_TIMEOUT_REQUIRE_CONFIRMATION,
   IDLE_WARNING_DURATION,
   LOGOUT_ACTION,
   METHOD_META,
@@ -75,6 +76,10 @@ export const appConfig: ApplicationConfig = {
     {
       provide: IDLE_KEEPALIVE_DURATION,
       useValue: envVars.keepAliveDuration,
+    },
+    {
+      provide: IDLE_TIMEOUT_REQUIRE_CONFIRMATION,
+      useValue: envVars.timeoutRequireConfirmation,
     },
     {
       provide: HTTP_INTERCEPTORS,
