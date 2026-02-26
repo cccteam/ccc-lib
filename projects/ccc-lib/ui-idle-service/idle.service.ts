@@ -8,6 +8,7 @@ import {
   IDLE_KEEPALIVE_DURATION,
   IDLE_LOGOUT_ACTION,
   IDLE_SESSION_DURATION,
+  IDLE_TIMEOUT_REQUIRE_CONFIRMATION,
   IDLE_WARNING_DURATION,
 } from '@cccteam/ccc-lib/types';
 import { UiCoreService } from '@cccteam/ccc-lib/ui-core-service';
@@ -28,6 +29,7 @@ export class IdleService implements OnDestroy {
   private readonly logoutAction = inject(IDLE_LOGOUT_ACTION);
   private readonly warningDuration = inject(IDLE_WARNING_DURATION);
   private readonly keepAliveDuration = inject(IDLE_KEEPALIVE_DURATION);
+  private readonly timeoutRequireConfirmation = inject(IDLE_TIMEOUT_REQUIRE_CONFIRMATION);
   private readonly idleCheckFrequency = 1000;
   private readonly warningThreshold = this.sessionDuration - this.warningDuration;
 
@@ -119,6 +121,9 @@ export class IdleService implements OnDestroy {
       }
 
       if (this.isWarning()) {
+        if (this.timeoutRequireConfirmation) {
+          this.removeActivityListeners();
+        }
         this.showOrUpdateWarningAlert(this.countdown());
       } else {
         this.dismissWarningAlert();
@@ -135,6 +140,19 @@ export class IdleService implements OnDestroy {
           }
         },
       });
+    }
+  }
+
+  /**
+   * Explicitly resets the idle timer and dismisses the warning alert.
+   * Use this as the handler for a "Stay Logged In" button when `IDLE_TIMEOUT_REQUIRE_CONFIRMATION` is true.
+   * Also works in the default mode.
+   */
+  stayLoggedIn(): void {
+    this.setLastActivity();
+    this.dismissWarningAlert();
+    if (this.timeoutRequireConfirmation) {
+      this.addActivityListeners();
     }
   }
 
