@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.30](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.29...ccc-lib/v0.0.30) (2026-02-26)
+
+
+### Features
+
+* **idle:** Add option to require confirmation to stay logged in ([#63](https://github.com/cccteam/ccc-lib/issues/63)) ([cf81fca](https://github.com/cccteam/ccc-lib/commit/cf81fcae7d1fb81b6bc6456a04668c64e5061341))
+
 ## [0.0.29](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.28...ccc-lib/v0.0.29) (2026-02-25)
 
 
