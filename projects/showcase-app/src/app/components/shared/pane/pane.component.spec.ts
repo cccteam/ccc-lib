@@ -2,6 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { PaneComponent } from './pane.component';
 
+const xdescribe = (describe as unknown as { skip?: typeof describe }).skip ?? describe;
+
 xdescribe('PaneComponent', () => {
   let component: PaneComponent;
   let fixture: ComponentFixture<PaneComponent>;

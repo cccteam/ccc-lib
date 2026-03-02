@@ -2,6 +2,8 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { UiComponent } from './ui.component';
 
+const xdescribe = (describe as unknown as { skip?: typeof describe }).skip ?? describe;
+
 xdescribe('UiComponent', () => {
   let component: UiComponent;
   let fixture: ComponentFixture<UiComponent>;

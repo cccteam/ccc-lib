@@ -1,6 +1,13 @@
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { ResourceResolverComponent } from './resource-resolver.component';
+
+@Component({
+  template: '',
+  standalone: true,
+})
+class DummyComponent {}
 
 describe('ResourceResolverComponent', () => {
   let component: ResourceResolverComponent;
@@ -13,6 +20,8 @@ describe('ResourceResolverComponent', () => {
 
     fixture = TestBed.createComponent(ResourceResolverComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('compoundResourceComponent', DummyComponent);
+    fixture.componentRef.setInput('parentData', {});
     fixture.detectChanges();
   });
 

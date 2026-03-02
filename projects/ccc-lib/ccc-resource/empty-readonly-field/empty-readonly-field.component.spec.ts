@@ -8,12 +8,12 @@ describe('EmptyReadonlyFieldComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [EmptyReadonlyFieldComponent]
-    })
-    .compileComponents();
+      imports: [EmptyReadonlyFieldComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(EmptyReadonlyFieldComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('label', 'Test Label');
     fixture.detectChanges();
   });
 
