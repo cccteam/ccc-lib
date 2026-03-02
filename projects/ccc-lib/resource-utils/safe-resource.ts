@@ -10,22 +10,23 @@ export interface SafeResourceRef<T> {
 export function safeHttpResource<T>(
   url: () => string | undefined,
   options?: HttpResourceOptions<T, unknown> | undefined,
+  defaultValue?: T,
 ): SafeResourceRef<T> {
   const resource = httpResource<T>(url, options);
   const safeValue = computed(() => {
     if (!resource.hasValue()) {
-      return undefined;
+      return defaultValue;
     }
     return resource.value();
   });
   return { safeValue, resource: resource as HttpResourceRef<T | undefined> };
 }
 
-export function safeRxResource<T, A = unknown>(options: RxResourceOptions<T, A>): SafeResourceRef<T> {
+export function safeRxResource<T, A = unknown>(options: RxResourceOptions<T, A>, defaultValue?: T): SafeResourceRef<T> {
   const resource = rxResource<T, A>(options);
   const safeValue = computed(() => {
     if (!resource.hasValue()) {
-      return undefined;
+      return defaultValue;
     }
     return resource.value();
   });
