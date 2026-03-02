@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.32](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.31...ccc-lib/v0.0.32) (2026-03-02)
+
+
+### Bug Fixes
+
+* Add entrypoint to new util ([#67](https://github.com/cccteam/ccc-lib/issues/67)) ([6274bf0](https://github.com/cccteam/ccc-lib/commit/6274bf028e3ba3318c11dba4defbf6f190cfaf78))
+
 ## [0.0.31](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.30...ccc-lib/v0.0.31) (2026-03-02)
 
 
