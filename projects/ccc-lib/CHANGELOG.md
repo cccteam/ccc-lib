@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.31](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.30...ccc-lib/v0.0.31) (2026-03-02)
+
+
+### Features
+
+* Safe resource util ([#65](https://github.com/cccteam/ccc-lib/issues/65)) ([b11ee18](https://github.com/cccteam/ccc-lib/commit/b11ee18a8c728076e585c3f6277c0b2fdbe70c5e))
+
 ## [0.0.30](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.29...ccc-lib/v0.0.30) (2026-02-26)
 
 
