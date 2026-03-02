@@ -8,12 +8,19 @@ describe('ComputedFieldComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ComputedFieldComponent]
-    })
-    .compileComponents();
+      imports: [ComputedFieldComponent],
+    }).compileComponents();
 
     fixture = TestBed.createComponent(ComputedFieldComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('fieldConfig', {
+      type: 'computedDisplayField',
+      name: 'computed',
+      label: 'Computed',
+      cols: 12,
+      shouldRender: true,
+      calculatedValue: () => 'value',
+    });
     fixture.detectChanges();
   });
 

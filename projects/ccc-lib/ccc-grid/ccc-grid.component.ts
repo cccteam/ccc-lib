@@ -39,12 +39,7 @@ import { TableButtonComponent } from './table-button/table-button.component';
       }
       @for (col of columnDefs(); track col.id + col.header) {
         @if (col.buttonConfig) {
-          <kendo-grid-column
-            [field]="col.id"
-            [filterable]="false"
-            [sortable]="false"
-            [width]="66"
-            [resizable]="col.resizable ?? true">
+          <kendo-grid-column [field]="col.id" [width]="66" [resizable]="col.resizable ?? true">
             <ng-template kendoGridHeaderTemplate> </ng-template>
             <ng-template kendoGridCellTemplate let-dataItem>
               @if (col.buttonConfig.actionType === 'link' && col.buttonConfig.viewRoute) {

@@ -13,6 +13,13 @@ describe('AlertComponent', () => {
 
     fixture = TestBed.createComponent(AlertComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('error', {
+      id: 1,
+      message: 'Test notification',
+      link: '',
+      level: 'info',
+      duration: 1,
+    });
     fixture.detectChanges();
   });
 

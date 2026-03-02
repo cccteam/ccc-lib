@@ -6,7 +6,7 @@
     "ccc-lib": {
       "projectType": "library",
       "root": "projects/ccc-lib",
-      "sourceRoot": "projects/ccc-lib/src",
+      "sourceRoot": "projects/ccc-lib",
       "architect": {
         "build": {
           "builder": "@angular/build:ng-packagr",

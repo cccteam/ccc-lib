@@ -13,6 +13,7 @@ describe('PaddingElementComponent', () => {
 
     fixture = TestBed.createComponent(PaddingElementComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('paddingElement', { type: 'padding', cols: 6 });
     fixture.detectChanges();
   });
 
