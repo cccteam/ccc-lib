@@ -70,14 +70,15 @@ export function staleHttpResource<T>(
   options?: HttpResourceOptions<T, unknown> | undefined,
   defaultValue?: T,
 ): SafeResourceRef<T> {
-  const resource = withPreviousValue(httpResource<T>(url, options));
+  const original = httpResource<T>(url, options);
+  const wrapped = withPreviousValue(original);
   const safeValue = computed(() => {
-    if (!resource.hasValue()) {
+    if (!wrapped.hasValue()) {
       return defaultValue;
     }
-    return resource.value();
+    return wrapped.value();
   });
-  return { safeValue, resource: resource as ResourceRef<T | undefined> };
+  return { safeValue, resource: original as ResourceRef<T | undefined> };
 }
 
 /**
@@ -91,14 +92,15 @@ export function staleRxResource<T, A = unknown>(
   options: RxResourceOptions<T, A>,
   defaultValue?: T,
 ): SafeResourceRef<T> {
-  const resource = withPreviousValue(rxResource<T, A>(options));
+  const original = rxResource<T, A>(options);
+  const wrapped = withPreviousValue(original);
   const safeValue = computed(() => {
-    if (!resource.hasValue()) {
+    if (!wrapped.hasValue()) {
       return defaultValue;
     }
-    return resource.value();
+    return wrapped.value();
   });
-  return { safeValue, resource: resource as ResourceRef<T | undefined> };
+  return { safeValue, resource: original as ResourceRef<T | undefined> };
 }
 
 /**
