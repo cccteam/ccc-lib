@@ -28,6 +28,8 @@ import { TableButtonComponent } from './table-button/table-button.component';
       filterable="menu"
       [sortable]="true"
       scrollable="none"
+      [pageable]="!!pageSize()"
+      [pageSize]="pageSize() || 0"
       [selectable]="selectionMode()"
       [selectedKeys]="selectedKeys"
       kendoGridSelectBy="id"
@@ -130,6 +132,7 @@ export class AppGridComponent {
   enableRowExpansion = input<boolean>(false);
   detailTemplate = input<TemplateRef<unknown>>();
   selectionType = input<'multiple' | 'single' | 'none'>('none');
+  pageSize = input<number | undefined>(undefined);
   selectedRows = output<RecordData[]>();
 
   public selectedKeys: number[] = [];

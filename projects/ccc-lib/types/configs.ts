@@ -765,6 +765,8 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
   sorts?: FieldSort[];
   limit?: number;
   shouldRenderActions?: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
+  showRowCount?: boolean;
+  pageSize?: number;
 }
 export interface ListViewConfig extends BaseConfig {
   type: 'ListView';
@@ -787,6 +789,8 @@ export interface ListViewConfig extends BaseConfig {
   sorts: FieldSort[];
   limit?: number;
   shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
+  showRowCount: boolean;
+  pageSize?: number;
 }
 
 export function listViewConfig(config: ListViewConfigOptions): ListViewConfig {
@@ -833,6 +837,7 @@ export const listViewConfigDefaults = {
     edit: (): boolean => true,
     delete: (): boolean => true,
   },
+  showRowCount: true,
 } satisfies ListViewConfig;
 
 export type ViewType = 'OneToOne' | 'OneToMany';
