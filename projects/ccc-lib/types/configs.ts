@@ -1,6 +1,5 @@
 import { Directive, input, Type } from '@angular/core';
 import { TooltipPosition } from '@angular/material/tooltip';
-import { ScrollMode } from '@progress/kendo-angular-grid';
 import { FieldName, Method, Resource } from './permissions';
 import { ResourceMeta } from './resource-meta';
 import { ConcatFn, defaultEmptyFieldValue, NullBoolean } from './resource-types';
@@ -28,6 +27,9 @@ export type RecordData = Record<string, DataType | null>;
 export type RPCDataType = string | number | string[] | number[] | boolean | Date;
 export type RPCRecordData = Record<string, RPCDataType>;
 export type RpcMethod = Record<string, DataType>;
+
+// Library-owned scroll mode type to avoid leaking Kendo's ScrollMode
+export type ScrollMode = 'none' | 'scrollable' | 'virtual';
 
 export type ParentResourceConfig = ListViewConfig | ViewConfig | ArrayConfig;
 export type ChildResourceConfig = ListViewConfig | ViewConfig | ComponentConfig | ArrayConfig;
