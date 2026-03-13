@@ -22,7 +22,7 @@ export const usersConfig = rootConfig({
     title: 'Users',
     createTitle: 'Create User',
     limit: 8,
-    scrollMode: 'virtual',
+    pageSize: 3,
     createConfig: viewConfig({
       primaryResource: Resources.Users,
       elements: [
