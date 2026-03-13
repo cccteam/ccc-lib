@@ -70,4 +70,4 @@ export APP_BUILD_FLAGS_LOCAL_DEV='-tags dev,skipAuth'
 export APP_BOOTSTRAP_ROLE_PATH='<insert path here>'
 
 # APP_BOOTSTRAP_DATA_PATH should point to a folder containing migration scripts to bootstrap data into the database
-export APP_BOOTSTRAP_ROLE_PATH='cmd/deployment/migrate/roles.json'
+export APP_BOOTSTRAP_DATA_PATH='<insert path here>'
