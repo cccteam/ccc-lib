@@ -1,5 +1,6 @@
 import { Directive, input, Type } from '@angular/core';
 import { TooltipPosition } from '@angular/material/tooltip';
+import { ScrollMode } from '@progress/kendo-angular-grid';
 import { FieldName, Method, Resource } from './permissions';
 import { ResourceMeta } from './resource-meta';
 import { ConcatFn, defaultEmptyFieldValue, NullBoolean } from './resource-types';
@@ -765,6 +766,7 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
   sorts?: FieldSort[];
   limit?: number;
   shouldRenderActions?: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
+  scrollMode?: ScrollMode;
 }
 export interface ListViewConfig extends BaseConfig {
   type: 'ListView';
@@ -787,6 +789,7 @@ export interface ListViewConfig extends BaseConfig {
   sorts: FieldSort[];
   limit?: number;
   shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
+  scrollMode: ScrollMode;
 }
 
 export function listViewConfig(config: ListViewConfigOptions): ListViewConfig {
@@ -833,6 +836,7 @@ export const listViewConfigDefaults = {
     edit: (): boolean => true,
     delete: (): boolean => true,
   },
+  scrollMode: 'none',
 } satisfies ListViewConfig;
 
 export type ViewType = 'OneToOne' | 'OneToMany';

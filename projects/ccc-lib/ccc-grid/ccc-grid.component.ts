@@ -6,7 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterModule } from '@angular/router';
 import { CamelCaseToTitlePipe } from '@cccteam/ccc-lib/ccc-camel-case-to-title';
 import { ColumnConfig, RecordData } from '@cccteam/ccc-lib/types';
-import { GridModule, SelectableMode, SelectableSettings } from '@progress/kendo-angular-grid';
+import { GridModule, ScrollMode, SelectableMode, SelectableSettings } from '@progress/kendo-angular-grid';
 import { TableButtonComponent } from './table-button/table-button.component';
 
 @Component({
@@ -27,7 +27,7 @@ import { TableButtonComponent } from './table-button/table-button.component';
       [kendoGridBinding]="rowData()"
       filterable="menu"
       [sortable]="true"
-      scrollable="none"
+      [scrollable]="scrollable()"
       [selectable]="selectionMode()"
       [selectedKeys]="selectedKeys"
       kendoGridSelectBy="id"
@@ -130,6 +130,7 @@ export class AppGridComponent {
   enableRowExpansion = input<boolean>(false);
   detailTemplate = input<TemplateRef<unknown>>();
   selectionType = input<'multiple' | 'single' | 'none'>('none');
+  scrollable = input<ScrollMode>('none');
   selectedRows = output<RecordData[]>();
 
   public selectedKeys: number[] = [];
