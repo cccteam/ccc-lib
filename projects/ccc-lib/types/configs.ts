@@ -28,9 +28,6 @@ export type RPCDataType = string | number | string[] | number[] | boolean | Date
 export type RPCRecordData = Record<string, RPCDataType>;
 export type RpcMethod = Record<string, DataType>;
 
-// Library-owned scroll mode type to avoid leaking Kendo's ScrollMode
-export type ScrollMode = 'none' | 'scrollable' | 'virtual';
-
 export type ParentResourceConfig = ListViewConfig | ViewConfig | ArrayConfig;
 export type ChildResourceConfig = ListViewConfig | ViewConfig | ComponentConfig | ArrayConfig;
 
@@ -769,7 +766,7 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
   limit?: number;
   shouldRenderActions?: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
   showRowCount?: boolean;
-  scrollMode?: ScrollMode;
+  pageSize?: number;
 }
 export interface ListViewConfig extends BaseConfig {
   type: 'ListView';
@@ -793,7 +790,7 @@ export interface ListViewConfig extends BaseConfig {
   limit?: number;
   shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
   showRowCount: boolean;
-  scrollMode: ScrollMode;
+  pageSize?: number;
 }
 
 export function listViewConfig(config: ListViewConfigOptions): ListViewConfig {
@@ -841,7 +838,6 @@ export const listViewConfigDefaults = {
     delete: (): boolean => true,
   },
   showRowCount: true,
-  scrollMode: 'none',
 } satisfies ListViewConfig;
 
 export type ViewType = 'OneToOne' | 'OneToMany';
