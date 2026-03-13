@@ -31,7 +31,8 @@ import { TableButtonComponent } from './table-button/table-button.component';
       [selectable]="selectionMode()"
       [selectedKeys]="selectedKeys"
       kendoGridSelectBy="id"
-      (selectedKeysChange)="onSelectedKeysChange($event)">
+      (selectedKeysChange)="onSelectedKeysChange($event)"
+      [height]="200">
       @if (selectionMode() !== false) {
         <kendo-grid-checkbox-column
           [width]="40"
