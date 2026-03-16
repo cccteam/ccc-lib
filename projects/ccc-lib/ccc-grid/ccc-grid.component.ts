@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterModule } from '@angular/router';
 import { CamelCaseToTitlePipe } from '@cccteam/ccc-lib/ccc-camel-case-to-title';
-import { ColumnConfig, RecordData } from '@cccteam/ccc-lib/types';
+import { ColumnConfig, RecordData, ScrollMode } from '@cccteam/ccc-lib/types';
 import { GridModule, SelectableMode, SelectableSettings } from '@progress/kendo-angular-grid';
 import { TableButtonComponent } from './table-button/table-button.component';
 
@@ -27,7 +27,7 @@ import { TableButtonComponent } from './table-button/table-button.component';
       [kendoGridBinding]="rowData()"
       filterable="menu"
       [sortable]="true"
-      scrollable="none"
+      [scrollable]="scrollable()"
       [pageable]="!!pageSize()"
       [pageSize]="pageSize() || 0"
       [selectable]="selectionMode()"
@@ -132,6 +132,7 @@ export class AppGridComponent {
   enableRowExpansion = input<boolean>(false);
   detailTemplate = input<TemplateRef<unknown>>();
   selectionType = input<'multiple' | 'single' | 'none'>('none');
+  scrollable = input<ScrollMode>('none');
   pageSize = input<number | undefined>(undefined);
   selectedRows = output<RecordData[]>();
 
