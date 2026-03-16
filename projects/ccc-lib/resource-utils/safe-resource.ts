@@ -1,13 +1,5 @@
 import { httpResource, HttpResourceOptions, HttpResourceRef } from '@angular/common/http';
-import {
-  computed,
-  linkedSignal,
-  Resource,
-  resourceFromSnapshots,
-  ResourceRef,
-  ResourceSnapshot,
-  Signal,
-} from '@angular/core';
+import { computed, linkedSignal, ResourceRef, ResourceSnapshot, Signal } from '@angular/core';
 import { rxResource, RxResourceOptions } from '@angular/core/rxjs-interop';
 
 export interface SafeResourceRef<T> {
@@ -70,15 +62,21 @@ export function staleHttpResource<T>(
   options?: HttpResourceOptions<T, unknown> | undefined,
   defaultValue?: T,
 ): SafeResourceRef<T> {
-  const original = httpResource<T>(url, options);
-  const wrapped = withPreviousValue(original);
-  const safeValue = computed(() => {
-    if (!wrapped.hasValue()) {
+  const resource = httpResource<T>(url, options);
+  const safeValue = linkedSignal<ResourceSnapshot<T | undefined>, T | undefined>({
+    source: resource.snapshot as Signal<ResourceSnapshot<T | undefined>>,
+    computation: (snap, previous) => {
+      if (snap.status === 'resolved' || snap.status === 'local') {
+        return (snap.value as T) ?? defaultValue;
+      }
+      // Hold the last good value (SWR)
+      if (snap.status === 'loading' || snap.status === 'reloading') {
+        return previous?.value ?? defaultValue;
+      }
       return defaultValue;
-    }
-    return wrapped.value();
+    },
   });
-  return { safeValue, resource: original as HttpResourceRef<T | undefined> };
+  return { safeValue, resource: resource as HttpResourceRef<T | undefined> };
 }
 
 /**
@@ -92,35 +90,20 @@ export function staleRxResource<T, A = unknown>(
   options: RxResourceOptions<T, A>,
   defaultValue?: T,
 ): SafeResourceRef<T> {
-  const original = rxResource<T, A>(options);
-  const wrapped = withPreviousValue(original);
-  const safeValue = computed(() => {
-    if (!wrapped.hasValue()) {
-      return defaultValue;
-    }
-    return wrapped.value();
-  });
-  return { safeValue, resource: original as ResourceRef<T | undefined> };
-}
+  const resource = rxResource<T, A>(options);
 
-/**
- * This utility function comes from the angular docs: https://angular.dev/guide/signals/resource#composing-resources-with-snapshots
- *
- * It takes a resource definition and provides a new resource that behaves the same as the input resource, but when the input
- * resource enters a loading state, it keeps the value from its previous state, if any.
- */
-function withPreviousValue<T>(input: Resource<T>): Resource<T> {
-  const derived = linkedSignal<ResourceSnapshot<T>, ResourceSnapshot<T>>({
-    source: input.snapshot,
+  const safeValue = linkedSignal<ResourceSnapshot<T | undefined>, T | undefined>({
+    source: resource.snapshot as Signal<ResourceSnapshot<T | undefined>>,
     computation: (snap, previous) => {
-      if (snap.status === 'loading' && previous && previous.value.status !== 'error') {
-        // When the input resource enters loading state, we keep the value
-        // from its previous state, if any.
-        return { status: 'loading' as const, value: previous.value.value };
+      if (snap.status === 'resolved' || snap.status === 'local') {
+        return (snap.value as T) ?? defaultValue;
       }
-      // Otherwise we simply forward the state of the input resource.
-      return snap;
+      // Hold the last good value (SWR)
+      if (snap.status === 'loading' || snap.status === 'reloading') {
+        return previous?.value ?? defaultValue;
+      }
+      return defaultValue;
     },
   });
-  return resourceFromSnapshots(derived);
+  return { safeValue, resource: resource as ResourceRef<T | undefined> };
 }

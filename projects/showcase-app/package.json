@@ -13,8 +13,8 @@
   },
   "private": true,
   "peerDependencies": {
-    "@angular/common": "^21.0.0",
-    "@angular/core": "^21.0.0"
+    "@angular/common": "^21.2.4",
+    "@angular/core": "^21.2.4"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
