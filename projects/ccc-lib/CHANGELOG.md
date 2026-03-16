@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.34](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.33...ccc-lib/v0.0.34) (2026-03-16)
+
+
+### Bug Fixes
+
+* Clean up stale resources ([#72](https://github.com/cccteam/ccc-lib/issues/72)) ([5e37090](https://github.com/cccteam/ccc-lib/commit/5e370905e6d3fda42214b289657cb7b88b78a0e0))
+
 ## [0.0.33](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.32...ccc-lib/v0.0.33) (2026-03-16)
 
 
