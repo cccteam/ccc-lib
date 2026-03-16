@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.33](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.32...ccc-lib/v0.0.33) (2026-03-16)
+
+
+### Features
+
+* Stale resource ([#69](https://github.com/cccteam/ccc-lib/issues/69)) ([eddae2a](https://github.com/cccteam/ccc-lib/commit/eddae2a2b0934158d96917d5498341a828c538ca))
+
 ## [0.0.32](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.31...ccc-lib/v0.0.32) (2026-03-02)
 
 
