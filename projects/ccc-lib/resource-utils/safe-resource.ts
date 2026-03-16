@@ -78,7 +78,7 @@ export function staleHttpResource<T>(
     }
     return wrapped.value();
   });
-  return { safeValue, resource: original as ResourceRef<T | undefined> };
+  return { safeValue, resource: original as HttpResourceRef<T | undefined> };
 }
 
 /**
