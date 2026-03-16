@@ -800,9 +800,9 @@ export interface ListViewConfig extends BaseConfig {
 
 export function listViewConfig(config: ListViewConfigOptions): ListViewConfig {
   // if pageSize is set, scrollmode must be set to 'none' because they are incompatible
-  const conditionalValues = config;
-  if (config.pageSize && config.scrollMode == 'virtual') {
-    console.error('pagination cannot be used with virtual scrolling - config:', config.title);
+  const conditionalValues = { ...config };
+  if (conditionalValues.pageSize && conditionalValues.scrollMode === 'virtual') {
+    console.error('pagination cannot be used with virtual scrolling - config:', conditionalValues.title);
     conditionalValues.scrollMode = 'none';
   }
   return {
