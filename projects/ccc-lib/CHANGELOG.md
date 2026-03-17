@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.35](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.34...ccc-lib/v0.0.35) (2026-03-17)
+
+
+### Features
+
+* Add pageSize & showRowCount options for List Views ([#70](https://github.com/cccteam/ccc-lib/issues/70)) ([5447176](https://github.com/cccteam/ccc-lib/commit/54471768166af009f27ca583241651feb72561db))
+
 ## [0.0.34](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.33...ccc-lib/v0.0.34) (2026-03-16)
 
 
