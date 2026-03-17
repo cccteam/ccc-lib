@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.36](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.35...ccc-lib/v0.0.36) (2026-03-17)
+
+
+### Features
+
+* Indicate loading state for ListView data ([#76](https://github.com/cccteam/ccc-lib/issues/76)) ([94caf5d](https://github.com/cccteam/ccc-lib/commit/94caf5d4cb7d7bbb90241ab549cd8741b2c5ef0e))
+
 ## [0.0.35](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.34...ccc-lib/v0.0.35) (2026-03-17)
 
 
