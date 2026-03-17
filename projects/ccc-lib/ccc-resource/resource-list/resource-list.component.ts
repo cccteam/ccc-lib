@@ -353,6 +353,10 @@ export class ResourceListComponent implements OnInit {
     });
   });
 
+  loadingRowData = computed(() => {
+    return this.store.listStatus() === 'loading' || this.store.listStatus() === 'reloading';
+  });
+
   filters = computed(() => {
     const configFilter = this.config().filter?.(this.relatedData()) || '';
     const inputFilter = this.filter();

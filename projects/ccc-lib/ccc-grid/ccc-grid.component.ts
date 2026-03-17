@@ -33,6 +33,7 @@ import { TableButtonComponent } from './table-button/table-button.component';
       [selectable]="selectionMode()"
       [selectedKeys]="selectedKeys"
       kendoGridSelectBy="id"
+      [loading]="loading()"
       (selectedKeysChange)="onSelectedKeysChange($event)">
       @if (selectionMode() !== false) {
         <kendo-grid-checkbox-column
@@ -134,6 +135,7 @@ export class AppGridComponent {
   selectionType = input<'multiple' | 'single' | 'none'>('none');
   pageSize = input<number | undefined>(undefined);
   selectedRows = output<RecordData[]>();
+  loading = input<boolean>(false);
 
   public selectedKeys: number[] = [];
 

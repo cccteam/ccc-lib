@@ -27,7 +27,8 @@
       [columnDefs]="columns()"
       [enableRowExpansion]="config().enableRowExpansion"
       [detailTemplate]="expandedRowTemplate"
-      [pageSize]="config().pageSize">
+      [pageSize]="config().pageSize"
+      [loading]="loadingRowData()">
     </ccc-grid>
   </div>
 </div>
