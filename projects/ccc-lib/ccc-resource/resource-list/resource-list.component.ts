@@ -150,7 +150,13 @@ export class ResourceListComponent implements OnInit {
 
   listTitle = computed(() => {
     if (this.config()?.collapsible) return '';
-    return this.config().title || '';
+
+    const title = this.config().title || '';
+    if (!title) return '';
+
+    if (!this.config().showRowCount) return title;
+    const count = this.processedRowData().length;
+    return count > 0 ? `${title} (${count})` : title;
   });
 
   indentTitle = computed(() => {
