@@ -131,9 +131,9 @@ export function swrHttpResource<T>(
 ): SafeResourceRef<T> {
   const cache = inject(SwrCacheService);
   const resource = httpResource<T>(urlFn, options);
-  const url = urlFn();
 
   const safeValue = computed(() => {
+    const url = urlFn();
     if (url === undefined) {
       return defaultValue;
     }
