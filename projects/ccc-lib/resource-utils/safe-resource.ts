@@ -1,6 +1,7 @@
 import { httpResource, HttpResourceOptions, HttpResourceRef } from '@angular/common/http';
-import { computed, linkedSignal, ResourceRef, ResourceSnapshot, Signal } from '@angular/core';
+import { computed, inject, linkedSignal, ResourceRef, ResourceSnapshot, Signal, untracked } from '@angular/core';
 import { rxResource, RxResourceOptions } from '@angular/core/rxjs-interop';
+import { SwrCacheService } from './swr-cache.service';
 
 export interface SafeResourceRef<T> {
   safeValue: Signal<T | undefined>;
@@ -8,7 +9,7 @@ export interface SafeResourceRef<T> {
 }
 
 /**
- * Creates a `SafeResourceRef` that wraps an HTTP resource.
+ * Creates a {@link SafeResourceRef} that wraps an HTTP resource.
  *
  *
  * The purpose of this utility function is to prevent the resource from dropping the entire application
@@ -32,7 +33,7 @@ export function safeHttpResource<T>(
 }
 
 /**
- * Creates a `SafeResourceRef` that wraps an RxJS resource.
+ * Creates a {@link SafeResourceRef} that wraps an RxJS resource.
  *
  * The purpose of this utility function is to prevent the resource from dropping the entire application
  * into an exception state when the resource.value() is read after it fails to load.
@@ -51,7 +52,7 @@ export function safeRxResource<T, A = unknown>(options: RxResourceOptions<T, A>,
 }
 
 /**
- * Creates a `SafeResourceRef` that wraps an HTTP resource and preserves its previous value when it enters a loading state.
+ * Creates a {@link SafeResourceRef} that wraps an HTTP resource and preserves its previous value when it enters a loading state.
  *
  * The purpose of this utility function is to prevent the resource from dropping the entire application
  * into an exception state when the resource.value() is read after it fails to load, while also preserving the previous value during loading.
@@ -80,7 +81,7 @@ export function staleHttpResource<T>(
 }
 
 /**
- * Creates a `SafeResourceRef` that wraps an RxJS resource and preserves its previous value when it enters a loading state.
+ * Creates a {@link SafeResourceRef} that wraps an RxJS resource and preserves its previous value when it enters a loading state.
  *
  * The purpose of this utility function is to prevent the resource from dropping the entire application
  * into an exception state when the resource.value() is read after it fails to load, while also preserving the previous value during loading.
@@ -106,4 +107,49 @@ export function staleRxResource<T, A = unknown>(
     },
   });
   return { safeValue, resource: resource as ResourceRef<T | undefined> };
+}
+
+/**
+ * Creates a {@link SafeResourceRef} that wraps an HTTP resource and implements a
+ * 'stale while revalidate' caching strategy
+ *
+ * This wrapper exhibits the following behaviors
+ *
+ * When the primary resource's `hasValue()` is false
+ * - If the global cache service contains this resource's data, the cached data is immediately returned.
+ * - If not in cache, the input `defaultValue` is returned (may be `undefined`)
+ *
+ * When the primary resource's `hasValue()` is true
+ * Once the HTTP resource has data, the `safeValue` signal updates with
+ * the new value. Any consumers of the `safeValue` computed() will receive fresh data.
+ * A side effect updates the global cache with the fresh value
+ */
+export function swrHttpResource<T>(
+  urlFn: () => string | undefined,
+  options?: HttpResourceOptions<T, unknown> | undefined,
+  defaultValue?: T,
+): SafeResourceRef<T> {
+  const cache = inject(SwrCacheService);
+  const resource = httpResource<T>(urlFn, options);
+  const url = urlFn();
+
+  const safeValue = computed(() => {
+    if (url === undefined) {
+      return defaultValue;
+    }
+
+    const cached = cache.get(url) as T | undefined;
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    if (resource.hasValue()) {
+      untracked(() => cache.set(url, resource.value()));
+      return resource.value();
+    }
+
+    return defaultValue;
+  });
+
+  return { safeValue, resource: resource as HttpResourceRef<T | undefined> };
 }
