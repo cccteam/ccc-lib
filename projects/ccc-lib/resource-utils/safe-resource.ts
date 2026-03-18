@@ -138,14 +138,15 @@ export function swrHttpResource<T>(
       return defaultValue;
     }
 
+    if (resource.hasValue()) {
+      const value = resource.value();
+      untracked(() => cache.set(url, value));
+      return value;
+    }
+
     const cached = cache.get(url) as T | undefined;
     if (cached !== undefined) {
       return cached;
-    }
-
-    if (resource.hasValue()) {
-      untracked(() => cache.set(url, resource.value()));
-      return resource.value();
     }
 
     return defaultValue;
