@@ -18,17 +18,16 @@ export class SwrCacheService {
    */
   set<T>(key: string, value: T): void {
     if (this.cache.has(key)) {
-      // Delete and re-insert to move this entry to 'front' of cache
+      // Moves the entry to 'front' of cache when set
       this.cache.delete(key);
-      this.cache.set(key, value);
-      return;
     }
 
     if (this.cache.size >= this.MAX_CACHE_SIZE) {
-      // Delete 'oldest' entry to limit cache size
+      // Deletes 'oldest' entry
       this.cache.delete(this.cache.keys().next().value!);
-      this.cache.set(key, value);
     }
+
+    this.cache.set(key, value);
   }
 
   delete(key: string): void {
