@@ -275,4 +275,40 @@ describe('safe-resource', () => {
       expect(staleRef.safeValue()).toBe('default');
     }));
   });
+
+  //TODO: Need to determine how many tests needed
+  describe('swrHttpResource', () => {
+    it('returns undefined before the HTTP response the response value afterwards, and saves to cache', fakeAsync(() => {
+      const safeRef = TestBed.runInInjectionContext(() => safeHttpResource<string>(() => '/api/test'));
+
+      expect(safeRef.safeValue()).toBeUndefined();
+
+      safeRef.resource.reload();
+      tick();
+
+      const httpTestingController = TestBed.inject(HttpTestingController);
+      const request = httpTestingController.expectOne('/api/test');
+      request.flush('ok');
+      tick();
+
+      expect(safeRef.safeValue()).toBe('ok');
+      expect(safeRef.resource.value()).toBe('ok');
+    }));
+
+    it('returns undefined after the HTTP response returns an error', fakeAsync(() => {
+      const safeRef = TestBed.runInInjectionContext(() => safeHttpResource<string>(() => '/api/test'));
+
+      expect(safeRef.safeValue()).toBeUndefined();
+
+      safeRef.resource.reload();
+      tick();
+
+      const httpTestingController = TestBed.inject(HttpTestingController);
+      const request = httpTestingController.expectOne('/api/test');
+      request.flush('error', { status: 500, statusText: 'Server Error' });
+      tick();
+
+      expect(safeRef.safeValue()).toBeUndefined();
+    }));
+  });
 });
