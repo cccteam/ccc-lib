@@ -1,5 +1,14 @@
 import { httpResource, HttpResourceOptions, HttpResourceRef } from '@angular/common/http';
-import { computed, inject, linkedSignal, ResourceRef, ResourceSnapshot, Signal, untracked } from '@angular/core';
+import {
+  computed,
+  effect,
+  inject,
+  linkedSignal,
+  ResourceRef,
+  ResourceSnapshot,
+  Signal,
+  untracked,
+} from '@angular/core';
 import { rxResource, RxResourceOptions } from '@angular/core/rxjs-interop';
 import { SwrCacheService } from './swr-cache.service';
 
@@ -132,6 +141,14 @@ export function swrHttpResource<T>(
   const cache = inject(SwrCacheService);
   const resource = httpResource<T>(urlFn, options);
 
+  effect(() => {
+    const url = urlFn();
+    if (url !== undefined && resource.hasValue()) {
+      const value = resource.value();
+      untracked(() => cache.set(url, value));
+    }
+  });
+
   const safeValue = computed(() => {
     const url = urlFn();
     if (url === undefined) {
@@ -139,9 +156,7 @@ export function swrHttpResource<T>(
     }
 
     if (resource.hasValue()) {
-      const value = resource.value();
-      untracked(() => cache.set(url, value));
-      return value;
+      return resource.value();
     }
 
     const cached = cache.get(url) as T | undefined;
@@ -151,6 +166,5 @@ export function swrHttpResource<T>(
 
     return defaultValue;
   });
-
   return { safeValue, resource: resource as HttpResourceRef<T | undefined> };
 }
