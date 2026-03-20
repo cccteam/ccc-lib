@@ -170,15 +170,33 @@ export function swrHttpResource<T>(
   return { safeValue, resource: resource as HttpResourceRef<T | undefined> };
 }
 
-// TODO: Need equivalent for swrRxResource
-export function swrRxResource<T, A = unknown>(options: RxResourceOptions<T, A>, defaultValue?: T): SafeResourceRef<T> {
+/**
+ * Creates a {@link SafeResourceRef} that wraps an RxJS resource and implements a
+ * 'stale while revalidate' caching strategy
+ *
+ * This wrapper exhibits the following behaviors
+ *
+ * When the primary resource's `hasValue()` is false
+ * - If the global cache service contains this resource's data, the cached data is immediately returned.
+ * - If not in cache, the input `defaultValue` is returned (may be `undefined`)
+ *
+ * When the primary resource's `hasValue()` is true
+ * Once the HTTP resource has data, the `safeValue` signal updates with
+ * the new value. Any consumers of the `safeValue` computed() will receive fresh data.
+ * A side effect updates the global cache with the fresh value
+ */
+export function swrRxResource<T, A = unknown>(
+  cacheKey: string,
+  options: RxResourceOptions<T, A>,
+  defaultValue?: T,
+): SafeResourceRef<T> {
   const cache = inject(SwrCacheService);
   const resource = rxResource<T, A>(options);
 
   effect(() => {
     if (resource.hasValue()) {
       const value = resource.value();
-      untracked(() => cache.setRx(resource, value));
+      untracked(() => cache.set(cacheKey, value));
     }
   });
 
@@ -187,7 +205,7 @@ export function swrRxResource<T, A = unknown>(options: RxResourceOptions<T, A>, 
       return resource.value();
     }
 
-    const cached = cache.getRx(resource) as T | undefined;
+    const cached = cache.get(cacheKey) as T | undefined;
     if (cached !== undefined) {
       return cached;
     }
