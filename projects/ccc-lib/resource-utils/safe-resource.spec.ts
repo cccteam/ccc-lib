@@ -4,6 +4,7 @@ import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { Subject } from 'rxjs';
 
 import { safeHttpResource, safeRxResource, staleHttpResource, staleRxResource } from './safe-resource';
+import { SwrCacheService } from './swr-cache.service';
 
 describe('safe-resource', () => {
   beforeEach(() => {
@@ -273,6 +274,60 @@ describe('safe-resource', () => {
       tick();
 
       expect(staleRef.safeValue()).toBe('default');
+    }));
+  });
+
+  describe('swrHttpResource', () => {
+    it('returns undefined before the HTTP response the response value afterwards, and saves to swr cache', fakeAsync(() => {
+      const safeRef = TestBed.runInInjectionContext(() => safeHttpResource<string>(() => '/api/test'));
+      const swr = TestBed.inject(SwrCacheService);
+
+      expect(safeRef.safeValue()).toBeUndefined();
+
+      safeRef.resource.reload();
+      tick();
+
+      const httpTestingController = TestBed.inject(HttpTestingController);
+      const request = httpTestingController.expectOne('/api/test');
+      request.flush('ok');
+      tick();
+
+      expect(safeRef.safeValue()).toBe('ok');
+      expect(safeRef.resource.value()).toBe('ok');
+
+      expect(swr.get('/api/test')).toBe('ok');
+    }));
+
+    it('returns undefined after the HTTP response returns an error', fakeAsync(() => {
+      const safeRef = TestBed.runInInjectionContext(() => safeHttpResource<string>(() => '/api/test'));
+
+      expect(safeRef.safeValue()).toBeUndefined();
+
+      safeRef.resource.reload();
+      tick();
+
+      const httpTestingController = TestBed.inject(HttpTestingController);
+      const request = httpTestingController.expectOne('/api/test');
+      request.flush('error', { status: 500, statusText: 'Server Error' });
+      tick();
+
+      expect(safeRef.safeValue()).toBeUndefined();
+    }));
+
+    it('returns default after the HTTP response returns an error', fakeAsync(() => {
+      const safeRef = TestBed.runInInjectionContext(() => safeHttpResource<string>(() => '/api/test', undefined, 'a'));
+
+      expect(safeRef.safeValue()).toBeUndefined();
+
+      safeRef.resource.reload();
+      tick();
+
+      const httpTestingController = TestBed.inject(HttpTestingController);
+      const request = httpTestingController.expectOne('/api/test');
+      request.flush('error', { status: 500, statusText: 'Server Error' });
+      tick();
+
+      expect(safeRef.safeValue()).toBeUndefined();
     }));
   });
 });
