@@ -51,6 +51,7 @@ export function safeHttpResource<T>(
  */
 export function safeRxResource<T, A = unknown>(options: RxResourceOptions<T, A>, defaultValue?: T): SafeResourceRef<T> {
   const resource = rxResource<T, A>(options);
+
   const safeValue = computed(() => {
     if (!resource.hasValue()) {
       return defaultValue;
@@ -170,3 +171,29 @@ export function swrHttpResource<T>(
 }
 
 // TODO: Need equivalent for swrRxResource
+export function swrRxResource<T, A = unknown>(options: RxResourceOptions<T, A>, defaultValue?: T): SafeResourceRef<T> {
+  const cache = inject(SwrCacheService);
+  const resource = rxResource<T, A>(options);
+
+  effect(() => {
+    if (resource.hasValue()) {
+      const value = resource.value();
+      untracked(() => cache.setRx(resource, value));
+    }
+  });
+
+  const safeValue = computed(() => {
+    if (resource.hasValue()) {
+      return resource.value();
+    }
+
+    const cached = cache.getRx(resource) as T | undefined;
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    return defaultValue;
+  });
+
+  return { safeValue, resource: resource as ResourceRef<T | undefined> };
+}
