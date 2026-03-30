@@ -34,7 +34,8 @@ export class SwrCacheService {
     this.cache.delete(key);
   }
 
+  /** Remove all cache entries */
   clear(): void {
-    this.cache = new Map();
+    this.cache.clear();
   }
 }

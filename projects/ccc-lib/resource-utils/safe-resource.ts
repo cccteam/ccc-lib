@@ -194,11 +194,19 @@ export function swrRxResource<T, A = unknown>(
 ): SafeResourceRef<T> {
   const cache = inject(SwrCacheService);
   const resource = rxResource<T, A>(options);
+  const fullCacheKey = computed(() => {
+    if (options.params) {
+      const params = options.params();
+      return params !== undefined ? cacheKey + JSON.stringify(params) : cacheKey;
+    }
+    return cacheKey;
+  });
 
   effect(() => {
     if (resource.hasValue()) {
+      const key = fullCacheKey();
       const value = resource.value();
-      untracked(() => cache.set(cacheKey, value));
+      untracked(() => cache.set(key, value));
     }
   });
 
@@ -207,7 +215,7 @@ export function swrRxResource<T, A = unknown>(
       return resource.value();
     }
 
-    const cached = cache.get(cacheKey) as T | undefined;
+    const cached = cache.get(fullCacheKey()) as T | undefined;
     if (cached !== undefined) {
       return cached;
     }
