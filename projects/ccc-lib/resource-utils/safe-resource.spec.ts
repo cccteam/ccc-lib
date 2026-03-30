@@ -277,97 +277,96 @@ describe('safe-resource', () => {
     }));
   });
 
-  describe('swrHttpResource', () => {
-    it('returns undefined before the first HTTP response, and saves to swr cache', fakeAsync(() => {
-      const safeRef = TestBed.runInInjectionContext(() => swrHttpResource<string>(() => '/api/test'));
-      const swr = TestBed.inject(SwrCacheService);
+ describe('swrHttpResource', () => {
+  let httpTestingController: HttpTestingController;
 
-      expect(safeRef.safeValue()).toBeUndefined();
-
-      safeRef.resource.reload();
-      tick();
-
-      const httpTestingController = TestBed.inject(HttpTestingController);
-      const request = httpTestingController.expectOne('/api/test');
-      request.flush('first response');
-      tick();
-
-      expect(safeRef.safeValue()).toBe('first response');
-      expect(safeRef.resource.value()).toBe('first response');
-
-      expect(swr.get('/api/test')).toBe('first response');
-    }));
-
-    it('returns default after the first HTTP response returns an error', fakeAsync(() => {
-      const safeRef = TestBed.runInInjectionContext(() =>
-        swrHttpResource<string>(() => '/api/test', undefined, 'initial default'),
-      );
-
-      expect(safeRef.safeValue()).toBeUndefined();
-
-      safeRef.resource.reload();
-      tick();
-
-      const httpTestingController = TestBed.inject(HttpTestingController);
-      const request = httpTestingController.expectOne('/api/test');
-      request.flush('error', { status: 500, statusText: 'Server Error' });
-      tick();
-
-      expect(safeRef.safeValue()).toBe('initial default');
-    }));
-
-    it('returns undefined after the first HTTP response returns an error if no default', fakeAsync(() => {
-      const safeRef = TestBed.runInInjectionContext(() => swrHttpResource<string>(() => '/api/test'));
-
-      expect(safeRef.safeValue()).toBeUndefined();
-
-      safeRef.resource.reload();
-      tick();
-
-      const httpTestingController = TestBed.inject(HttpTestingController);
-      const request = httpTestingController.expectOne('/api/test');
-      request.flush('error', { status: 500, statusText: 'Server Error' });
-      tick();
-
-      expect(safeRef.safeValue()).toBeUndefined();
-    }));
-
-    it('returns the second HTTP response after the second HTTP request, and saves to cache', fakeAsync(() => {
-      const safeRef = TestBed.runInInjectionContext(() => swrHttpResource<string>(() => '/api/test'));
-      const swr = TestBed.inject(SwrCacheService);
-
-      expect(safeRef.safeValue()).toBeUndefined();
-
-      safeRef.resource.reload();
-      tick();
-
-      const httpTestingController = TestBed.inject(HttpTestingController);
-      const firstRequest = httpTestingController.expectOne('/api/test');
-      firstRequest.flush('first response');
-      tick();
-
-      expect(safeRef.safeValue()).toBe('first response');
-      expect(safeRef.resource.value()).toBe('first response');
-
-      expect(swr.get('/api/test')).toBe('first response');
-
-      tick();
-      const secondRequest = httpTestingController.expectOne('/api/test');
-
-      tick();
-      // Ensure stale value is returned while second request is in flight:
-      expect(safeRef.safeValue()).toBe('first response');
-      expect(safeRef.resource.value()).toBe('first response');
-
-      expect(swr.get('/api/test')).toBe('first response');
-
-      secondRequest.flush('second response');
-      tick();
-
-      expect(safeRef.safeValue()).toBe('second response');
-      expect(safeRef.resource.value()).toBe('second response');
-
-      expect(swr.get('/api/test')).toBe('second response');
-    }));
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    httpTestingController = TestBed.inject(HttpTestingController);
   });
+
+  afterEach(() => httpTestingController.verify());
+
+  it('returns undefined before first HTTP response, then saves to cache', fakeAsync(() => {
+    const safeRef = TestBed.runInInjectionContext(() => swrHttpResource<string>(() => '/api/test'));
+    const swr = TestBed.inject(SwrCacheService);
+
+    expect(safeRef.safeValue()).toBeUndefined();
+
+    const request = httpTestingController.expectOne('/api/test');
+    request.flush('first response');
+    TestBed.tick();
+
+    expect(safeRef.safeValue()).toBe('first response');
+    expect(safeRef.resource.value()).toBe('first response');
+    expect(swr.get('/api/test')).toBe('first response');
+  }));
+
+  it('returns defaultValue before first HTTP response', fakeAsync(() => {
+    const safeRef = TestBed.runInInjectionContext(() =>
+      swrHttpResource<string>(() => '/api/test', undefined, 'initial default'),
+    );
+
+    expect(safeRef.safeValue()).toBe('initial default');
+
+    httpTestingController.expectOne('/api/test').flush('response');
+    TestBed.tick();
+
+    expect(safeRef.safeValue()).toBe('response');
+  }));
+
+  it('returns defaultValue when the HTTP response is an error', fakeAsync(() => {
+    const safeRef = TestBed.runInInjectionContext(() =>
+      swrHttpResource<string>(() => '/api/test', undefined, 'initial default'),
+    );
+
+    httpTestingController
+      .expectOne('/api/test')
+      .flush('error', { status: 500, statusText: 'Server Error' });
+    TestBed.tick();
+
+    expect(safeRef.safeValue()).toBe('initial default');
+  }));
+
+  it('returns undefined when the HTTP response is an error and no defaultValue', fakeAsync(() => {
+    const safeRef = TestBed.runInInjectionContext(() => swrHttpResource<string>(() => '/api/test'));
+
+    httpTestingController
+      .expectOne('/api/test')
+      .flush('error', { status: 500, statusText: 'Server Error' });
+    TestBed.tick();
+
+    expect(safeRef.safeValue()).toBeUndefined();
+  }));
+
+  it('returns stale cached value during refetch, then updates on fresh response', fakeAsync(() => {
+    const safeRef = TestBed.runInInjectionContext(() => swrHttpResource<string>(() => '/api/test'));
+    const swr = TestBed.inject(SwrCacheService);
+
+    // Initial fetch
+    httpTestingController.expectOne('/api/test').flush('first response');
+    TestBed.tick();
+
+    expect(safeRef.safeValue()).toBe('first response');
+    expect(swr.get('/api/test')).toBe('first response');
+
+    // Trigger background refetch
+    safeRef.resource.reload();
+    TestBed.tick();
+
+    // Stale value should be served while refetch is in flight
+    expect(safeRef.safeValue()).toBe('first response');
+    expect(swr.get('/api/test')).toBe('first response');
+
+    // Fresh response arrives
+    httpTestingController.expectOne('/api/test').flush('second response');
+    TestBed.tick();
+
+    expect(safeRef.safeValue()).toBe('second response');
+    expect(safeRef.resource.value()).toBe('second response');
+    expect(swr.get('/api/test')).toBe('second response');
+  }));
+});
 });
