@@ -389,7 +389,7 @@ describe('safe-resource', () => {
 
       expect(safeRef.safeValue()).toBe('first response');
       expect(safeRef.resource.value()).toBe('first response');
-      expect(swr.get('test-key' + JSON.stringify('first response'))).toBe('first response');
+      expect(swr.get('test-key' + JSON.stringify({ input: 'first response' }))).toBe('first response');
     }));
 
     it('returns defaultValue before first response', fakeAsync(() => {
@@ -461,7 +461,7 @@ describe('safe-resource', () => {
       tick();
 
       expect(safeRef.safeValue()).toBe('first response');
-      expect(swr.get('test-key' + JSON.stringify('first response'))).toBe('first response');
+      expect(swr.get('test-key' + JSON.stringify({ input: 'first response' }))).toBe('first response');
 
       safeRef.resource.reload();
       tick();
@@ -474,7 +474,7 @@ describe('safe-resource', () => {
 
       expect(safeRef.safeValue()).toBe('second response');
       expect(safeRef.resource.value()).toBe('second response');
-      expect(swr.get('test-key' + JSON.stringify('second response'))).toBe('second response');
+      expect(swr.get('test-key' + JSON.stringify({ input: 'second response' }))).toBe('second response');
     }));
 
     it('appends JSON-stringified params to the cache key', fakeAsync(() => {
@@ -482,7 +482,7 @@ describe('safe-resource', () => {
       const safeRef = TestBed.runInInjectionContext(() =>
         swrRxResource<string, { userId: number } | undefined>('test-key', {
           params: () => params(),
-          stream: ({ params }) => of(`user-${params.userId}`),
+          stream: ({ params }) => of(`user-${params.userId}-details`),
         }),
       );
       const swr = TestBed.inject(SwrCacheService);
@@ -490,16 +490,16 @@ describe('safe-resource', () => {
       params.set({ userId: 67 });
       tick();
 
-      expect(safeRef.safeValue()).toBe('user-67');
+      expect(safeRef.safeValue()).toBe('user-67-details');
       expect(swr.get('test-key')).toBeUndefined();
-      expect(swr.get('test-key' + JSON.stringify({ userId: 67 }))).toBe('user-67');
+      expect(swr.get('test-key' + JSON.stringify({ userId: 67 }))).toBe('user-67-details');
 
       params.set({ userId: 47 });
       tick();
 
-      expect(safeRef.safeValue()).toBe('user-47');
+      expect(safeRef.safeValue()).toBe('user-47-details');
       expect(swr.get('test-key')).toBeUndefined();
-      expect(swr.get('test-key' + JSON.stringify({ userId: 47 }))).toBe('user-47');
+      expect(swr.get('test-key' + JSON.stringify({ userId: 47 }))).toBe('user-47-details');
     }));
   });
 });
