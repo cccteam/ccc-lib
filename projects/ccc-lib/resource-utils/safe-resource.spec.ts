@@ -7,15 +7,16 @@ import { safeHttpResource, safeRxResource, staleHttpResource, staleRxResource, s
 import { SwrCacheService } from './swr-cache.service';
 
 describe('safe-resource', () => {
+  let httpTestingController: HttpTestingController;
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],
     });
+    httpTestingController = TestBed.inject(HttpTestingController);
   });
 
-  afterEach(() => {
-    TestBed.inject(HttpTestingController).verify();
-  });
+  afterEach(() => httpTestingController.verify());
 
   describe('safeHttpResource', () => {
     it('returns undefined before the HTTP response and the response value afterwards', fakeAsync(() => {
@@ -278,58 +279,46 @@ describe('safe-resource', () => {
   });
 
   describe('swrHttpResource', () => {
-    let httpTestingController: HttpTestingController;
-
-    beforeEach(() => {
-      TestBed.configureTestingModule({
-        providers: [provideHttpClient(), provideHttpClientTesting()],
-      });
-      httpTestingController = TestBed.inject(HttpTestingController);
-    });
-
-    afterEach(() => httpTestingController.verify());
-
-    it('returns undefined before first HTTP response, then saves to cache', async () => {
+    it('returns undefined before first HTTP response, then saves to cache', fakeAsync(() => {
       const safeRef = TestBed.runInInjectionContext(() => swrHttpResource<string>(() => '/api/test'));
       const swr = TestBed.inject(SwrCacheService);
 
       expect(safeRef.safeValue()).toBeUndefined();
 
-      await TestBed.tick(); // initiates request
+      tick()
       const request = httpTestingController.expectOne('/api/test');
       request.flush('first response');
       // processes response + effects
-      await TestBed.tick();
-      await TestBed.tick();
+      tick()
 
       expect(safeRef.safeValue()).toBe('first response');
       expect(safeRef.resource.value()).toBe('first response');
       expect(swr.get('/api/test')).toBe('first response');
-    });
+    }));
 
-    it('returns defaultValue before first HTTP response', async () => {
+    it('returns defaultValue before first HTTP response', fakeAsync(() => {
       const safeRef = TestBed.runInInjectionContext(() =>
         swrHttpResource<string>(() => '/api/test', undefined, 'initial default'),
       );
 
       expect(safeRef.safeValue()).toBe('initial default');
 
-      await TestBed.tick();
+      tick()
       httpTestingController.expectOne('/api/test').flush('response');
-      await TestBed.tick(); // resolves resource
-      await TestBed.tick(); // flushes effect
+      // processes response + effects
+      tick() 
 
       expect(safeRef.safeValue()).toBe('response');
-    });
+    }));
 
     it('returns defaultValue when the HTTP response is an error', fakeAsync(() => {
       const safeRef = TestBed.runInInjectionContext(() =>
         swrHttpResource<string>(() => '/api/test', undefined, 'initial default'),
       );
 
-      TestBed.tick();
+      tick()
       httpTestingController.expectOne('/api/test').flush('error', { status: 500, statusText: 'Server Error' });
-      TestBed.tick();
+      tick()
 
       expect(safeRef.safeValue()).toBe('initial default');
     }));
@@ -337,29 +326,27 @@ describe('safe-resource', () => {
     it('returns undefined when the HTTP response is an error and no defaultValue', fakeAsync(() => {
       const safeRef = TestBed.runInInjectionContext(() => swrHttpResource<string>(() => '/api/test'));
 
-      TestBed.tick();
+      tick()
       httpTestingController.expectOne('/api/test').flush('error', { status: 500, statusText: 'Server Error' });
-      TestBed.tick();
+      tick()
 
       expect(safeRef.safeValue()).toBeUndefined();
     }));
 
-    it('returns stale cached value during refetch, then updates on fresh response', async () => {
+    it('returns stale cached value during refetch, then updates on fresh response', fakeAsync(() => {
       const safeRef = TestBed.runInInjectionContext(() => swrHttpResource<string>(() => '/api/test'));
       const swr = TestBed.inject(SwrCacheService);
 
-      // Initial fetch
-      await TestBed.tick();
+      tick()
       httpTestingController.expectOne('/api/test').flush('first response');
-      await TestBed.tick(); // resolves resource
-      await TestBed.tick(); // flushes cache-writing effect
+      // processes response + effects
+      tick()
 
       expect(safeRef.safeValue()).toBe('first response');
       expect(swr.get('/api/test')).toBe('first response');
 
-      // Trigger background refetch
       safeRef.resource.reload();
-      await TestBed.tick(); // initiates second request
+      tick()
 
       // Stale value should be served while refetch is in flight
       expect(safeRef.safeValue()).toBe('first response');
@@ -367,12 +354,12 @@ describe('safe-resource', () => {
 
       // Fresh response arrives
       httpTestingController.expectOne('/api/test').flush('second response');
-      await TestBed.tick(); // resolves resource
-      await TestBed.tick(); // flushes cache-writing effect
+      // processes response + effects
+      tick()
 
       expect(safeRef.safeValue()).toBe('second response');
       expect(safeRef.resource.value()).toBe('second response');
       expect(swr.get('/api/test')).toBe('second response');
-    });
+    }));
   });
 });
