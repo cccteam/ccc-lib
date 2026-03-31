@@ -34,7 +34,6 @@ describe('safe-resource', () => {
       safeRef.resource.reload();
       tick();
 
-      const httpTestingController = TestBed.inject(HttpTestingController);
       const request = httpTestingController.expectOne('/api/test');
       request.flush('ok');
       tick();
@@ -51,7 +50,6 @@ describe('safe-resource', () => {
       safeRef.resource.reload();
       tick();
 
-      const httpTestingController = TestBed.inject(HttpTestingController);
       const request = httpTestingController.expectOne('/api/test');
       request.flush('error', { status: 500, statusText: 'Server Error' });
       tick();
@@ -99,7 +97,6 @@ describe('safe-resource', () => {
       safeRef.resource.reload();
       tick();
 
-      const httpTestingController = TestBed.inject(HttpTestingController);
       const request = httpTestingController.expectOne('/api/test');
       request.flush('error', { status: 500, statusText: 'Server Error' });
       tick();
@@ -112,7 +109,6 @@ describe('safe-resource', () => {
   describe('staleHttpResource', () => {
     it('returns undefined before the first HTTP response and the response value afterwards', fakeAsync(() => {
       const staleRef = TestBed.runInInjectionContext(() => staleHttpResource<string>(() => '/api/test'));
-      const httpTestingController = TestBed.inject(HttpTestingController);
 
       expect(staleRef.safeValue()).toBeUndefined();
 
@@ -128,7 +124,6 @@ describe('safe-resource', () => {
 
     it('preserves the previous value while reloading', fakeAsync(() => {
       const staleRef = TestBed.runInInjectionContext(() => staleHttpResource<string>(() => '/api/test'));
-      const httpTestingController = TestBed.inject(HttpTestingController);
 
       staleRef.resource.reload();
       tick();
@@ -152,7 +147,6 @@ describe('safe-resource', () => {
 
     it('returns undefined while reloading if the previous state was an error', fakeAsync(() => {
       const staleRef = TestBed.runInInjectionContext(() => staleHttpResource<string>(() => '/api/test'));
-      const httpTestingController = TestBed.inject(HttpTestingController);
 
       staleRef.resource.reload();
       tick();
@@ -178,7 +172,6 @@ describe('safe-resource', () => {
       const staleRef = TestBed.runInInjectionContext(() =>
         staleHttpResource<string>(() => '/api/test', undefined, 'default'),
       );
-      const httpTestingController = TestBed.inject(HttpTestingController);
 
       expect(staleRef.safeValue()).toBe('default');
 
@@ -240,7 +233,6 @@ describe('safe-resource', () => {
 
     it('returns undefined while reloading if the previous state was an error', fakeAsync(() => {
       const http = TestBed.inject(HttpClient);
-      const httpTestingController = TestBed.inject(HttpTestingController);
 
       const staleRef = TestBed.runInInjectionContext(() =>
         staleRxResource<string>({ stream: () => http.get<string>('/api/test') }),
@@ -268,7 +260,6 @@ describe('safe-resource', () => {
 
     it('returns the defaultValue before the first load and after an error', fakeAsync(() => {
       const http = TestBed.inject(HttpClient);
-      const httpTestingController = TestBed.inject(HttpTestingController);
 
       const staleRef = TestBed.runInInjectionContext(() =>
         staleRxResource<string>({ stream: () => http.get<string>('/api/test') }, 'default'),
