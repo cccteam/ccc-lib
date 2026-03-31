@@ -1,9 +1,17 @@
 import { HttpClient, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
-import { Subject } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
-import { safeHttpResource, safeRxResource, staleHttpResource, staleRxResource, swrHttpResource } from './safe-resource';
+import { signal } from '@angular/core';
+import {
+  safeHttpResource,
+  safeRxResource,
+  staleHttpResource,
+  staleRxResource,
+  swrHttpResource,
+  swrRxResource,
+} from './safe-resource';
 import { SwrCacheService } from './swr-cache.service';
 
 describe('safe-resource', () => {
@@ -360,6 +368,138 @@ describe('safe-resource', () => {
       expect(safeRef.safeValue()).toBe('second response');
       expect(safeRef.resource.value()).toBe('second response');
       expect(swr.get('/api/test')).toBe('second response');
+    }));
+  });
+
+  describe('swrRxResource', () => {
+    it('returns undefined before first response, then saves to cache', fakeAsync(() => {
+      const params = signal<{ input: string } | undefined>(undefined);
+      const safeRef = TestBed.runInInjectionContext(() =>
+        swrRxResource<string, { input: string } | undefined>('test-key', {
+          params: () => params(),
+          stream: ({ params }) => of(params.input),
+        }),
+      );
+      const swr = TestBed.inject(SwrCacheService);
+
+      expect(safeRef.safeValue()).toBeUndefined();
+
+      params.set({ input: 'first response' });
+      tick();
+
+      expect(safeRef.safeValue()).toBe('first response');
+      expect(safeRef.resource.value()).toBe('first response');
+      expect(swr.get('test-key' + JSON.stringify('first response'))).toBe('first response');
+    }));
+
+    it('returns defaultValue before first response', fakeAsync(() => {
+      const params = signal<{ input: string } | undefined>(undefined);
+      const safeRef = TestBed.runInInjectionContext(() =>
+        swrRxResource<string, { input: string } | undefined>(
+          'test-key',
+          {
+            params: () => params(),
+            stream: ({ params }) => of(params.input),
+          },
+          'initial default',
+        ),
+      );
+
+      expect(safeRef.safeValue()).toBe('initial default');
+
+      params.set({ input: 'response' });
+      tick();
+
+      expect(safeRef.safeValue()).toBe('response');
+    }));
+
+    it('returns defaultValue when the stream errors', fakeAsync(() => {
+      const params = signal<{ input: string } | undefined>(undefined);
+      const safeRef = TestBed.runInInjectionContext(() =>
+        swrRxResource<string, { input: string } | undefined>(
+          'test-key',
+          {
+            params: () => params(),
+            stream: () => throwError(() => new Error('something went wrong')),
+          },
+          'initial default',
+        ),
+      );
+
+      params.set({ input: 'trigger' });
+      tick();
+
+      expect(safeRef.safeValue()).toBe('initial default');
+    }));
+
+    it('returns undefined when the stream errors and no defaultValue', fakeAsync(() => {
+      const params = signal<{ input: string } | undefined>(undefined);
+      const safeRef = TestBed.runInInjectionContext(() =>
+        swrRxResource<string, { input: string } | undefined>('test-key', {
+          params: () => params(),
+          stream: () => throwError(() => new Error('something went wrong')),
+        }),
+      );
+
+      params.set({ input: 'trigger' });
+      tick();
+
+      expect(safeRef.safeValue()).toBeUndefined();
+    }));
+
+    it('returns stale cached value during refetch, then updates on fresh response', fakeAsync(() => {
+      const params = signal<{ input: string } | undefined>(undefined);
+      const safeRef = TestBed.runInInjectionContext(() =>
+        swrRxResource<string, { input: string } | undefined>('test-key', {
+          params: () => params(),
+          stream: ({ params }) => of(params.input),
+        }),
+      );
+      const swr = TestBed.inject(SwrCacheService);
+
+      params.set({ input: 'first response' });
+      tick();
+
+      expect(safeRef.safeValue()).toBe('first response');
+      expect(swr.get('test-key' + JSON.stringify('first response'))).toBe('first response');
+
+      safeRef.resource.reload();
+      tick();
+
+      // Stale value should be served while refetch is in flight
+      expect(safeRef.safeValue()).toBe('first response');
+
+      params.set({ input: 'second response' });
+      tick();
+
+      expect(safeRef.safeValue()).toBe('second response');
+      expect(safeRef.resource.value()).toBe('second response');
+      expect(swr.get('test-key' + JSON.stringify('second response'))).toBe('second response');
+    }));
+
+    it('appends JSON-stringified params to the cache key', fakeAsync(() => {
+      const params = signal<{ userId: number } | undefined>(undefined);
+      const safeRef = TestBed.runInInjectionContext(() =>
+        swrRxResource<string, { userId: number } | undefined>('test-key', {
+          params: () => params(),
+          stream: ({ params }) => of(`user-${params.userId}`),
+        }),
+      );
+      const swr = TestBed.inject(SwrCacheService);
+
+      params.set({ userId: 67 });
+      tick();
+
+      expect(safeRef.safeValue()).toBe('user-67');
+      expect(swr.get('test-key')).toBeUndefined();
+      expect(swr.get('test-key' + JSON.stringify({ userId: 67 }))).toBe('user-67');
+
+      params.set({ userId: 47 });
+      tick();
+
+      expect(safeRef.safeValue()).toBe('user-47');
+      expect(swr.get('test-key')).toBeUndefined();
+      expect(swr.get('test-key' + JSON.stringify({ userId: 47 }))).toBe('user-47');
     }));
   });
 });
