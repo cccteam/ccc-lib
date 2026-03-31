@@ -174,7 +174,7 @@ export function swrHttpResource<T>(
  * Creates a {@link SafeResourceRef} that wraps an RxJS resource and implements a
  * 'stale while revalidate' caching strategy.
  *
- * An input cache key is required since data cannot be inferred from input paramaters alone
+ * An input cache key is required since data cannot be inferred from input parameters alone
  *
  * This wrapper exhibits the following behaviors
  *
