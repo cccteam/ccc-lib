@@ -12,6 +12,8 @@ export type ValidDisplayTypes =
   | 'uuid'
   | 'civildate'
   | 'string[]'
+  | 'customtypes.attachment'
+  | 'customtypes.attachment[]'
   | 'customtypes.contentfuldocument';
 
 export type ValidRPCTypes = ValidDisplayTypes | `${Exclude<ValidDisplayTypes, 'string[]'>}[]`;
@@ -54,5 +56,10 @@ export interface ResourceMeta {
 export type Meta = MethodMeta | ResourceMeta;
 
 export namespace CustomTypes {
+  export interface Attachment {
+    title: string;
+    url: string;
+    contentType: string;
+  }
   export type ContentfulDocument = Document;
 }
