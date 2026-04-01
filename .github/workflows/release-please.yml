@@ -17,3 +17,19 @@ jobs:
     secrets:
       RELEASE_PLEASE_APP_ID: ${{ secrets.RELEASE_PLEASE_APP_ID }}
       RELEASE_PLEASE_APP_PEM: ${{ secrets.RELEASE_PLEASE_APP_PEM }}
+
+  npm-publish:
+    needs: release-please
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+  
+      - run: npm install -g npm@latest
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm publish --access public
+        working-directory: ./dist/ccc-lib
