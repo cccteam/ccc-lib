@@ -18,8 +18,9 @@ import (
 
 func (a *App) PatchResources() http.HandlerFunc {
 	type userRequest struct {
-		Id       ccc.UUID `json:"-"`
-		Username string   `json:"username"`
+		Id          ccc.UUID              `json:"-"`
+		Username    string                `json:"username"`
+		Attachments resources.Attachments `json:"attachments"`
 	}
 	userDecoder := NewDecoder[resources.User, userRequest](a, accesstypes.Create, accesstypes.Update, accesstypes.Delete)
 

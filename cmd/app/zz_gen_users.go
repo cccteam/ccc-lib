@@ -16,8 +16,9 @@ import (
 
 func (a *App) Users() http.HandlerFunc {
 	type user struct {
-		Id       ccc.UUID `json:"id"       index:"true"`
-		Username string   `json:"username"`
+		Id          ccc.UUID              `json:"id"          index:"true"`
+		Username    string                `json:"username"`
+		Attachments resources.Attachments `json:"attachments"`
 	}
 
 	type response []map[string]interface{}
@@ -48,6 +49,8 @@ func (a *App) Users() http.HandlerFunc {
 					rmap["id"] = rec.Id
 				case "Username":
 					rmap["username"] = rec.Username
+				case "Attachments":
+					rmap["attachments"] = rec.Attachments
 				}
 			}
 			resp = append(resp, rmap)
@@ -59,8 +62,9 @@ func (a *App) Users() http.HandlerFunc {
 
 func (a *App) User() http.HandlerFunc {
 	type response struct {
-		Id       ccc.UUID `json:"id"       index:"true"`
-		Username string   `json:"username"`
+		Id          ccc.UUID              `json:"id"          index:"true"`
+		Username    string                `json:"username"`
+		Attachments resources.Attachments `json:"attachments"`
 	}
 
 	decoder := NewQueryDecoder[resources.User, response](a, accesstypes.Read)
@@ -90,6 +94,8 @@ func (a *App) User() http.HandlerFunc {
 				rmap["id"] = rec.Id
 			case "Username":
 				rmap["username"] = rec.Username
+			case "Attachments":
+				rmap["attachments"] = rec.Attachments
 			}
 		}
 
