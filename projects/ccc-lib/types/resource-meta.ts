@@ -12,7 +12,6 @@ export type ValidDisplayTypes =
   | 'uuid'
   | 'civildate'
   | 'string[]'
-  | 'customtypes.attachment'
   | 'customtypes.attachment[]'
   | 'customtypes.contentfuldocument';
 
