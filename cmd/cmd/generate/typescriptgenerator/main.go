@@ -34,7 +34,7 @@ func main() {
 		generation.WithRPC("pkg/rpc"),
 		generation.WithComputedResources("pkg/computedresources"),
 		generation.WithTypescriptOverrides(map[string]string{
-			"resources.Attachments": "customtypes.attachment[]",
+			"resources.Attachment": "customtypes.attachment[]",
 		}),
 		generation.WithSpannerEmulatorVersion("1.5.43"),
 	)

@@ -6,7 +6,7 @@ import { Resources } from './zz_gen_constants';
 export interface Users {
   id: string;
   username: string;
-  attachments: string;
+  attachments: customtypes.attachment[];
 }
 
 export interface Weathers {
@@ -22,7 +22,7 @@ const resourceMap: ResourceMap = {
     fields: [
       { fieldName: 'id', primaryKey: { ordinalPosition: 0 }, displayType: 'uuid', required: false, isIndex: true },
       { fieldName: 'username', displayType: 'string', required: true, isIndex: false },
-      { fieldName: 'attachments', displayType: 'string', required: true, isIndex: false },
+      { fieldName: 'attachments', displayType: 'customtypes.attachment[]', required: true, isIndex: false },
     ],
   },
   [Resources.Weathers]: {
