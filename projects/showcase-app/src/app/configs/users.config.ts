@@ -53,6 +53,16 @@ export const usersConfig = rootConfig({
           }),
         ],
       }),
+      section({
+        label: 'Attachments',
+        children: [
+          field({
+            name: Users.fieldName.attachments,
+            label: 'Attachments',
+            readOnly: true,
+          }),
+        ],
+      }),
     ],
   }),
   relatedConfigs: [

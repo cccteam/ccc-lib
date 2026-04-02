@@ -93,6 +93,7 @@ func (c *UserColumns) All() *UserColumns {
 	c.fields = []accesstypes.Field{
 		"Id",
 		"Username",
+		"Attachments",
 	}
 
 	return c
@@ -106,6 +107,12 @@ func (c *UserColumns) Id() *UserColumns {
 
 func (c *UserColumns) Username() *UserColumns {
 	c.fields = append(c.fields, "Username")
+
+	return c
+}
+
+func (c *UserColumns) Attachments() *UserColumns {
+	c.fields = append(c.fields, "Attachments")
 
 	return c
 }
@@ -200,6 +207,10 @@ func (c *userSort) Username() *UserSort {
 	return c.addField("Username")
 }
 
+func (c *userSort) Attachments() *UserSort {
+	return c.addField("Attachments")
+}
+
 type UserSort struct {
 	*userSort
 }
@@ -255,6 +266,7 @@ func (p *UserCreatePatch) PatchSet() *resource.PatchSet[User] {
 }
 
 func (p *UserCreatePatch) registerDefaultFuncs() {
+	p.patchSet.RegisterDefaultCreateFunc("Attachments", defaultEmptyAttachments)
 }
 
 func (p *UserCreatePatch) Id() ccc.UUID {
@@ -277,6 +289,22 @@ func (p *UserCreatePatch) Username() string {
 
 func (p *UserCreatePatch) UsernameIsSet() bool {
 	return p.patchSet.IsSet("Username")
+}
+
+func (p *UserCreatePatch) SetAttachments(v Attachments) *UserCreatePatch {
+	p.patchSet.Set("Attachments", v)
+
+	return p
+}
+
+func (p *UserCreatePatch) Attachments() Attachments {
+	v, _ := p.patchSet.Get("Attachments").(Attachments)
+
+	return v
+}
+
+func (p *UserCreatePatch) AttachmentsIsSet() bool {
+	return p.patchSet.IsSet("Attachments")
 }
 
 type UserUpdatePatch struct {
@@ -332,6 +360,22 @@ func (p *UserUpdatePatch) Username() string {
 
 func (p *UserUpdatePatch) UsernameIsSet() bool {
 	return p.patchSet.IsSet("Username")
+}
+
+func (p *UserUpdatePatch) SetAttachments(v Attachments) *UserUpdatePatch {
+	p.patchSet.Set("Attachments", v)
+
+	return p
+}
+
+func (p *UserUpdatePatch) Attachments() Attachments {
+	v, _ := p.patchSet.Get("Attachments").(Attachments)
+
+	return v
+}
+
+func (p *UserUpdatePatch) AttachmentsIsSet() bool {
+	return p.patchSet.IsSet("Attachments")
 }
 
 type UserDeletePatch struct {
