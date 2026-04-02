@@ -1,11 +1,13 @@
 package resources
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	"cloud.google.com/go/spanner"
 	"github.com/cccteam/ccc"
+	"github.com/cccteam/ccc/resource"
 )
 
 type (
@@ -21,9 +23,13 @@ type (
 	User struct {
 		Id          ccc.UUID    `spanner:"Id"`
 		Username    string      `spanner:"Username"`
-		Attachments Attachments `spanner:"Attachments"`
+		Attachments Attachments `spanner:"Attachments" default_create_fn:"defaultEmptyAttachments"`
 	}
 )
+
+func defaultEmptyAttachments(_ context.Context, _ resource.ReadWriteTransaction) (any, error) {
+	return Attachments{}, nil
+}
 
 func (a *Attachments) DecodeSpanner(val interface{}) error {
 	strVal, ok := val.(string)

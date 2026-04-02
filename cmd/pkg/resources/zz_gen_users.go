@@ -266,6 +266,7 @@ func (p *UserCreatePatch) PatchSet() *resource.PatchSet[User] {
 }
 
 func (p *UserCreatePatch) registerDefaultFuncs() {
+	p.patchSet.RegisterDefaultCreateFunc("Attachments", defaultEmptyAttachments)
 }
 
 func (p *UserCreatePatch) Id() ccc.UUID {

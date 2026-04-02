@@ -59,6 +59,7 @@ export const usersConfig = rootConfig({
           field({
             name: Users.fieldName.attachments,
             label: 'Attachments',
+            readOnly: true,
           }),
         ],
       }),
