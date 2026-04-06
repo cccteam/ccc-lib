@@ -222,20 +222,6 @@ func (mr *MockHandlersMockRecorder) SecurityHeaders(next any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SecurityHeaders", reflect.TypeOf((*MockHandlers)(nil).SecurityHeaders), next)
 }
 
-// SetSessionTimeout mocks base method.
-func (m *MockHandlers) SetSessionTimeout(next http.Handler) http.Handler {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetSessionTimeout", next)
-	ret0, _ := ret[0].(http.Handler)
-	return ret0
-}
-
-// SetSessionTimeout indicates an expected call of SetSessionTimeout.
-func (mr *MockHandlersMockRecorder) SetSessionTimeout(next any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetSessionTimeout", reflect.TypeOf((*MockHandlers)(nil).SetSessionTimeout), next)
-}
-
 // SetXSRFToken mocks base method.
 func (m *MockHandlers) SetXSRFToken(next http.Handler) http.Handler {
 	m.ctrl.T.Helper()

@@ -14,7 +14,6 @@ import (
 	"github.com/cccteam/demo-app/app"
 	"github.com/cccteam/demo-app/pkg/config"
 	"github.com/cccteam/demo-app/pkg/router"
-	"github.com/cccteam/httpio"
 	"github.com/cccteam/session"
 	"github.com/go-playground/errors/v5"
 	"github.com/golang-migrate/migrate/v4"
@@ -38,7 +37,7 @@ func Main() error {
 	}
 
 	a := &app.App{
-		OIDCAzureSession:   session.NewOIDCAzure(nil, nil, nil, httpio.Log, nil, 0),
+		OIDCAzure:          &session.OIDCAzure{},
 		ResourceCollection: resource.NewCollection(),
 	}
 
@@ -57,15 +56,15 @@ func Main() error {
 }
 
 func runMigrations(ctx context.Context, conf *config.CliConfiguration) error {
-	db, err := initiator.ConnectToSpanner(ctx, conf.SpannerProjectID(), conf.SpannerInstanceID(), conf.SpannerDatabaseName())
+	migrator, err := initiator.NewSpannerMigrator(ctx, conf.SpannerProjectID(), conf.SpannerInstanceID(), conf.SpannerDatabaseName())
 	if err != nil {
 		return errors.Wrapf(err, "failed to connect to database %s", conf.SpannerDatabaseName())
 	}
-	defer db.Close()
+	defer migrator.Close()
 
 	fmt.Printf("Connected to Database %s\n", conf.SpannerDatabaseName())
 
-	if err := db.MigrateUp("file://schema/migrations"); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+	if err := migrator.MigrateUpSchema(ctx, "file://schema/migrations"); err != nil && !errors.Is(err, migrate.ErrNoChange) {
 		return errors.Wrap(err, "failed to failed to run migrations")
 	} else if errors.Is(err, migrate.ErrNoChange) {
 		fmt.Println("No new Migration scripts found. No changes applied.")

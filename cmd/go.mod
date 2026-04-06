@@ -2,7 +2,7 @@ module github.com/cccteam/demo-app
 
 go 1.26.1
 
-replace github.com/golang-migrate/migrate/v4 v4.19.0 => github.com/jtwatson/migrate/v4 v4.19.1-beta.0
+replace github.com/golang-migrate/migrate/v4 v4.19.1 => github.com/jtwatson/migrate/v4 v4.19.1-beta.0
 
 replace github.com/shopspring/decimal v1.4.0 => github.com/jtwatson/decimal v1.4.1-beta.0
 
@@ -22,7 +22,6 @@ require (
 	github.com/go-playground/errors/v5 v5.4.0
 	github.com/go-playground/validator/v10 v10.28.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
-	github.com/gorilla/securecookie v1.1.2
 	github.com/goware/emailx v0.2.0
 	github.com/jtwatson/server v0.2.2
 	github.com/jtwatson/shutdown v0.1.1
@@ -31,7 +30,6 @@ require (
 	github.com/shopspring/decimal v1.4.0
 	go.opentelemetry.io/otel v1.42.0
 	go.uber.org/mock v0.6.0
-	golang.org/x/crypto v0.49.0
 )
 
 require (
@@ -150,6 +148,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.42.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.42.0 // indirect
 	go.opentelemetry.io/otel/trace v1.42.0 // indirect
+	golang.org/x/crypto v0.49.0 // indirect
 	golang.org/x/mod v0.34.0 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect

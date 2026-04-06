@@ -33,53 +33,53 @@ func TestNew(t *testing.T) {
 		},
 		{
 			url: "/does/not/exist/post", method: http.MethodPost,
-			wantMiddleware: map[string]int{"Logger": 1, "SetSessionTimeout": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
+			wantMiddleware: map[string]int{"Logger": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
 			wantError:      true,
 		},
 		{
 			url: "/does/not/exist/patch", method: http.MethodPatch,
-			wantMiddleware: map[string]int{"Logger": 1, "SetSessionTimeout": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
+			wantMiddleware: map[string]int{"Logger": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
 			wantError:      true,
 		},
 		{
 			url: "/does/not/exist/delete", method: http.MethodDelete,
-			wantMiddleware: map[string]int{"Logger": 1, "SetSessionTimeout": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
+			wantMiddleware: map[string]int{"Logger": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
 			wantError:      true,
 		},
 		{
 			url: "/does/not/exist/put", method: http.MethodPut,
-			wantMiddleware: map[string]int{"Logger": 1, "SetSessionTimeout": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
+			wantMiddleware: map[string]int{"Logger": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
 			wantError:      true,
 		},
 		{
 			url: "/api/not/exist/put", method: http.MethodGet,
-			wantMiddleware: map[string]int{"Logger": 1, "SetSessionTimeout": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
+			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
 			wantError:      true,
 		},
 		{
 			url: "/api/user/login", method: http.MethodGet,
 			wantHandler:    "Login",
-			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "SetSessionTimeout": 1, "StartSession": 1, "SetXSRFToken": 1},
+			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
 		},
 		{
 			url: "/api/user/callback", method: http.MethodGet,
 			wantHandler:    "CallbackOIDC",
-			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "SetSessionTimeout": 1, "StartSession": 1, "SetXSRFToken": 1},
+			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
 		},
 		{
 			url: "/api/user/session", method: http.MethodGet,
 			wantHandler:    "Authenticated",
-			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "SetSessionTimeout": 1, "StartSession": 1, "SetXSRFToken": 1},
+			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
 		},
 		{
 			url: "/api/user/session", method: http.MethodDelete,
 			wantHandler:    "Logout",
-			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "SetSessionTimeout": 1, "StartSession": 1, "SetXSRFToken": 1},
+			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
 		},
 		{
 			url: "/api/user/logout", method: http.MethodGet,
 			wantHandler:    "FrontChannelLogout",
-			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "SetSessionTimeout": 1, "StartSession": 1, "SetXSRFToken": 1},
+			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1},
 		},
 	}
 	for _, r := range generatedRouterTests() {
@@ -88,7 +88,7 @@ func TestNew(t *testing.T) {
 			method:         r.method,
 			wantHandler:    r.handlerFunc,
 			wantParameters: r.parameters,
-			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "SetSessionTimeout": 1, "StartSession": 1, "SetXSRFToken": 1, "ValidateSession": 1, "ValidateXSRFToken": 1},
+			wantMiddleware: map[string]int{"Logger": 1, "NoCaching": 1, "CompressionMiddleware": 1, "WithParamsHTTP": 1, "SecurityHeaders": 1, "StartSession": 1, "SetXSRFToken": 1, "ValidateSession": 1, "ValidateXSRFToken": 1},
 		})
 	}
 	for _, tt := range tests {
@@ -104,7 +104,6 @@ func TestNew(t *testing.T) {
 			e.LoggerMiddleware().MinTimes(1).Return(rec.RecordMiddlewareCall("Logger"))
 			e.NoCaching(gomock.Any()).MinTimes(1).DoAndReturn(rec.RecordMiddlewareCall("NoCaching"))
 			e.CompressionMiddleware().Times(1).Return(rec.RecordMiddlewareCall("CompressionMiddleware"))
-			e.SetSessionTimeout(gomock.Any()).MinTimes(1).DoAndReturn(rec.RecordMiddlewareCall("SetSessionTimeout"))
 			e.StartSession(gomock.Any()).MinTimes(1).DoAndReturn(rec.RecordMiddlewareCall("StartSession"))
 			e.ValidateSession(gomock.Any()).MinTimes(1).DoAndReturn(rec.RecordMiddlewareCall("ValidateSession"))
 			e.SetXSRFToken(gomock.Any()).MinTimes(1).DoAndReturn(rec.RecordMiddlewareCall("SetXSRFToken"))

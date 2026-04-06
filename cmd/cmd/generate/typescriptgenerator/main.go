@@ -9,13 +9,12 @@ import (
 	"github.com/cccteam/ccc/resource/generation"
 	"github.com/cccteam/demo-app/app"
 	"github.com/cccteam/demo-app/pkg/router"
-	"github.com/cccteam/httpio"
 	"github.com/cccteam/session"
 )
 
 func main() {
 	a := &app.App{
-		OIDCAzureSession:   session.NewOIDCAzure(nil, nil, nil, httpio.Log, nil, 0),
+		OIDCAzure:          &session.OIDCAzure{},
 		ResourceCollection: resource.NewCollection(),
 	}
 	router.New(a)

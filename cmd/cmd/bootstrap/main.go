@@ -16,7 +16,6 @@ import (
 	"github.com/cccteam/demo-app/app"
 	"github.com/cccteam/demo-app/pkg/config"
 	"github.com/cccteam/demo-app/pkg/router"
-	"github.com/cccteam/httpio"
 	"github.com/cccteam/session"
 	"github.com/go-playground/errors/v5"
 	"github.com/jtwatson/shutdown"
@@ -39,7 +38,7 @@ func Main() error {
 	defer conf.Close()
 
 	a := &app.App{
-		OIDCAzureSession:   session.NewOIDCAzure(nil, nil, nil, httpio.Log, nil, 0),
+		OIDCAzure:          &session.OIDCAzure{},
 		ResourceCollection: resource.NewCollection(),
 	}
 
