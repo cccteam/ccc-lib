@@ -37,8 +37,13 @@ func Main() error {
 	}
 	defer conf.Close()
 
+	oidcSession, err := session.NewOIDCAzure(nil, nil, "", "", "", "", "")
+	if err != nil {
+		return errors.Wrap(err, "session.NewOIDCAzure()")
+	}
+
 	a := &app.App{
-		OIDCAzure:          &session.OIDCAzure{},
+		OIDCAzure:          oidcSession,
 		ResourceCollection: resource.NewCollection(),
 	}
 

@@ -13,8 +13,13 @@ import (
 )
 
 func main() {
+	oidcSession, err := session.NewOIDCAzure(nil, nil, "", "", "", "", "")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	a := &app.App{
-		OIDCAzure:          &session.OIDCAzure{},
+		OIDCAzure:          oidcSession,
 		ResourceCollection: resource.NewCollection(),
 	}
 	router.New(a)
