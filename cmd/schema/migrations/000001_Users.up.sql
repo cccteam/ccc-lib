@@ -2,4 +2,5 @@
 CREATE TABLE Users (
   Id STRING(MAX) NOT NULL,
   Username STRING(MAX) NOT NULL,
+  Attachments JSON NOT NULL,
 ) PRIMARY KEY (Id);

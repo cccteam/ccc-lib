@@ -11,21 +11,21 @@ import (
 	"github.com/cccteam/demo-app/pkg/resources"
 	"github.com/cccteam/demo-app/pkg/router"
 	"github.com/cccteam/httpio"
-	"go.opentelemetry.io/otel"
 )
 
 func (a *App) Users() http.HandlerFunc {
 	type user struct {
-		Id       ccc.UUID `json:"id"       index:"true"`
-		Username string   `json:"username"`
+		Id          ccc.UUID              `json:"id"          index:"true"`
+		Username    string                `json:"username"`
+		Attachments resources.Attachments `json:"attachments"`
 	}
 
-	type response []map[string]interface{}
+	type response []map[string]any
 
 	decoder := NewQueryDecoder[resources.User, user](a, accesstypes.List)
 
 	return httpio.Log(func(w http.ResponseWriter, r *http.Request) error {
-		ctx, span := otel.Tracer(name).Start(r.Context(), "App.Users()")
+		ctx, span := ccc.StartTrace(r.Context())
 		defer span.End()
 
 		querySet, err := decoder.Decode(r, a.UserPermissions(r))
@@ -36,18 +36,20 @@ func (a *App) Users() http.HandlerFunc {
 		res := resources.NewUserQueryFromQuerySet(querySet)
 
 		resp := response{}
-		for r, err := range res.Query().List(ctx, a.ResourceClient()) {
+		for row, err := range res.List(ctx, a.ResourceClient()) {
 			if err != nil {
 				return httpio.NewEncoder(w).ClientMessage(ctx, err)
 			}
-			rec := (*user)(r)
-			rmap := make(map[string]interface{})
+			rec := (*user)(row)
+			rmap := make(map[string]any)
 			for _, field := range querySet.Fields() {
 				switch string(field) {
 				case "Id":
 					rmap["id"] = rec.Id
 				case "Username":
 					rmap["username"] = rec.Username
+				case "Attachments":
+					rmap["attachments"] = rec.Attachments
 				}
 			}
 			resp = append(resp, rmap)
@@ -59,17 +61,18 @@ func (a *App) Users() http.HandlerFunc {
 
 func (a *App) User() http.HandlerFunc {
 	type response struct {
-		Id       ccc.UUID `json:"id"       index:"true"`
-		Username string   `json:"username"`
+		Id          ccc.UUID              `json:"id"          index:"true"`
+		Username    string                `json:"username"`
+		Attachments resources.Attachments `json:"attachments"`
 	}
 
 	decoder := NewQueryDecoder[resources.User, response](a, accesstypes.Read)
 
 	return httpio.Log(func(w http.ResponseWriter, r *http.Request) error {
-		ctx, span := otel.Tracer(name).Start(r.Context(), "App.User()")
+		ctx, span := ccc.StartTrace(r.Context())
 		defer span.End()
 
-		id := httpio.Param[ccc.UUID](r, router.UserID)
+		id := httpio.Param[ccc.UUID](r, router.UserId)
 
 		querySet, err := decoder.Decode(r, a.UserPermissions(r))
 		if err != nil {
@@ -78,18 +81,20 @@ func (a *App) User() http.HandlerFunc {
 
 		res := resources.NewUserQueryFromQuerySet(querySet).SetId(id)
 
-		row, err := res.Query().Read(ctx, a.ResourceClient())
+		row, err := res.Read(ctx, a.ResourceClient())
 		if err != nil {
 			return httpio.NewEncoder(w).ClientMessage(ctx, err)
 		}
 		rec := (*response)(row)
-		rmap := make(map[string]interface{})
+		rmap := make(map[string]any)
 		for _, field := range querySet.Fields() {
 			switch string(field) {
 			case "Id":
 				rmap["id"] = rec.Id
 			case "Username":
 				rmap["username"] = rec.Username
+			case "Attachments":
+				rmap["attachments"] = rec.Attachments
 			}
 		}
 

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/cccteam/ccc"
-	"github.com/cccteam/ccc/accesstypes"
 	"github.com/cccteam/ccc/resource"
 	"github.com/shopspring/decimal"
 )
@@ -20,10 +19,6 @@ type (
 		ID       ccc.UUID
 	}
 )
-
-func (PostPayments) Method() accesstypes.Resource {
-	return "PostPayments"
-}
 
 func (p *PostPayments) Execute(ctx context.Context, db resource.Client, _ *Client) error {
 	ctx, span := ccc.StartTrace(ctx)

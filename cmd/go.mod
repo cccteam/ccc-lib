@@ -12,7 +12,7 @@ require (
 	github.com/cccteam/ccc v0.3.0
 	github.com/cccteam/ccc/accesstypes v0.5.6
 	github.com/cccteam/ccc/pkg v0.1.3
-	github.com/cccteam/ccc/resource v0.9.11
+	github.com/cccteam/ccc/resource v0.9.13
 	github.com/cccteam/db-initiator v0.3.4
 	github.com/cccteam/httpio v0.7.10
 	github.com/cccteam/logger v0.1.16
@@ -22,6 +22,7 @@ require (
 	github.com/go-playground/errors/v5 v5.4.0
 	github.com/go-playground/validator/v10 v10.28.0
 	github.com/golang-migrate/migrate/v4 v4.19.1
+	github.com/google/go-cmp v0.7.0
 	github.com/goware/emailx v0.2.0
 	github.com/jtwatson/server v0.2.2
 	github.com/jtwatson/shutdown v0.1.1
@@ -94,7 +95,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.14 // indirect

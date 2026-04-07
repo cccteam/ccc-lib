@@ -23,16 +23,19 @@ export const Methods = {
   PostPayments: 'PostPayments' as Method,
 };
 
+
 export namespace Users {
   export const fieldName = {
+    attachments: 'attachments' as FieldName,
     id: 'id' as FieldName,
     username: 'username' as FieldName,
   };
   export const resourceName = {
+    attachments: 'Users.attachments' as Resource,
     id: 'Users.id' as Resource,
     username: 'Users.username' as Resource,
   };
-}
+};
 
 export namespace Weathers {
   export const fieldName = {
@@ -47,7 +50,8 @@ export namespace Weathers {
     personAddressId: 'Weathers.personAddressId' as Resource,
     temperature: 'Weathers.temperature' as Resource,
   };
-}
+};
+
 
 export namespace PostPayments {
   export const fieldName = {
@@ -55,7 +59,7 @@ export namespace PostPayments {
     payments: 'payments' as FieldName,
     id: 'id' as FieldName,
   };
-}
+};
 
 type ResourcePermissions = Record<Permission, boolean>;
 type PermissionMappings = Record<Resource, ResourcePermissions>;
@@ -67,6 +71,13 @@ const Mappings: PermissionMappings = {
     [Permissions.List]: true,
     [Permissions.Read]: true,
     [Permissions.Update]: true,
+  },
+  [Users.resourceName.attachments]: {
+    [Permissions.Create]: false,
+    [Permissions.Delete]: false,
+    [Permissions.List]: false,
+    [Permissions.Read]: false,
+    [Permissions.Update]: false,
   },
   [Users.resourceName.id]: {
     [Permissions.Create]: false,
