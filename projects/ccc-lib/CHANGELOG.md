@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.37](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.36...ccc-lib/v0.0.37) (2026-04-07)
+
+
+### Features
+
+* add Contentful attachment type ([#79](https://github.com/cccteam/ccc-lib/issues/79)) ([2c00355](https://github.com/cccteam/ccc-lib/commit/2c00355cf7f5a526bbb95b480998a45898cc451a))
+
 ## [0.0.36](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.35...ccc-lib/v0.0.36) (2026-03-17)
 
 
