@@ -42,7 +42,6 @@ func New(h Handlers) *chi.Mux {
 		r.Use(h.CompressionMiddleware())
 
 		// Configure global session handling
-		r.Use(h.SetSessionTimeout)
 		r.Use(h.StartSession)
 
 		// Set xsrf token

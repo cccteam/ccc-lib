@@ -3,9 +3,6 @@ package config
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
-	"fmt"
 	"time"
 
 	cloudspanner "cloud.google.com/go/spanner"
@@ -17,12 +14,10 @@ import (
 	"github.com/cccteam/demo-app/pkg/spanner"
 	"github.com/cccteam/httpio"
 	"github.com/cccteam/session"
-	"github.com/cccteam/session/oidc"
+	"github.com/cccteam/session/sessionstorage"
 	"github.com/go-playground/errors/v5"
 	"github.com/go-playground/validator/v10"
-	"github.com/gorilla/securecookie"
 	"github.com/sethvargo/go-envconfig"
-	"golang.org/x/crypto/pbkdf2"
 )
 
 type CliConfiguration struct {
@@ -102,7 +97,7 @@ type Configuration struct {
 	*CliConfiguration
 	httpConf       *HTTPConfig
 	validator      *validator.Validate
-	session        *session.OIDCAzureSession
+	session        *session.OIDCAzure
 	rpcClient      *rpc.Client
 	computedClient *computedresources.Client
 }
@@ -122,11 +117,6 @@ func New(ctx context.Context) (conf *Configuration, err error) {
 		return nil, err
 	}
 
-	secureCookie, err := createSecureCookie(envVars.Options.CookieKey)
-	if err != nil {
-		return nil, err
-	}
-
 	validate, err := RegisterValidators()
 	if err != nil {
 		return nil, err
@@ -137,21 +127,26 @@ func New(ctx context.Context) (conf *Configuration, err error) {
 		d = time.Hour
 	}
 
+	sess, err := session.NewOIDCAzure(
+		sessionstorage.NewSpannerOIDC(cliConfig.cloudSpannerClient),
+		cliConfig.Access().UserManager(),
+		envVars.Options.CookieKey,
+		envVars.OIDC.IssuerURL, envVars.OIDC.ClientID, envVars.OIDC.ClientSecret, envVars.OIDC.RedirectURL,
+		session.WithLogHandler(httpio.Log),
+		session.WithSessionTimeout(d),
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "session.NewOIDCAzure()")
+	}
+
 	return &Configuration{
 		CliConfiguration: cliConfig,
 		httpConf: &HTTPConfig{
 			host: envVars.Host,
 			port: envVars.Port,
 		},
-		validator: validate,
-		session: session.NewOIDCAzure(
-			oidc.New(secureCookie, envVars.OIDC.IssuerURL, envVars.OIDC.ClientID, envVars.OIDC.ClientSecret, envVars.OIDC.RedirectURL),
-			session.NewSpannerOIDCSessionStorage(cliConfig.cloudSpannerClient),
-			cliConfig.Access().UserManager(),
-			httpio.Log,
-			secureCookie,
-			d,
-		),
+		validator:      validate,
+		session:        sess,
 		rpcClient:      rpc.NewClient(cliConfig.Access().UserManager()),
 		computedClient: computedresources.NewClient(),
 	}, nil
@@ -165,7 +160,7 @@ func (c *Configuration) Addr() string {
 }
 
 // Session returns a reference to the session management client
-func (c *Configuration) Session() *session.OIDCAzureSession {
+func (c *Configuration) Session() *session.OIDCAzure {
 	return c.session
 }
 
@@ -199,36 +194,6 @@ func RegisterValidators() (*validator.Validate, error) {
 	}
 
 	return val.Validate(), nil
-}
-
-func createSecureCookie(cookieKey string) (*securecookie.SecureCookie, error) {
-	if cookieKey == "" {
-		rKey := securecookie.GenerateRandomKey(96)
-		if rKey == nil {
-			return nil, errors.New("failed to generate random key")
-		}
-		cookieKey = base64.StdEncoding.EncodeToString(rKey)
-
-		fmt.Printf("Using random CookieKey: %s\n", cookieKey)
-	}
-
-	k, err := base64.StdEncoding.DecodeString(cookieKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "base64.StdEncoding.DecodeString()")
-	}
-	if len(k) < 96 {
-		return nil, errors.New("CookieKey to short.  Expect minimum of 96 bytes. (128 bytes when base64 encoded)")
-	}
-
-	hSaltIndex := int(k[55] % 4)
-	hIndex := int(k[7]%4 + 12)
-	saltIndex := int(k[73]%4 + 48)
-	index := int(k[37]%4 + 60)
-
-	return securecookie.New(
-		pbkdf2.Key(k[hIndex:hIndex+32], k[hSaltIndex:hSaltIndex+8], 4356+hIndex*saltIndex, 64, sha256.New),
-		pbkdf2.Key(k[index:index+32], k[saltIndex:saltIndex+8], 4491+(hSaltIndex+1)*index, 32, sha256.New),
-	), nil
 }
 
 type HTTPConfig struct {
