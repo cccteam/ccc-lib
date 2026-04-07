@@ -18,7 +18,7 @@ type generatedRouterTest struct {
 
 func generatedRouteParameters() []string {
 	keys := []string{
-		"userID",
+		"userId",
 		"weatherLoanID",
 	}
 

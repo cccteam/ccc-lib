@@ -4,10 +4,14 @@
 package resources
 
 import (
+	"context"
+	"iter"
+
 	"github.com/cccteam/ccc"
 	"github.com/cccteam/ccc/accesstypes"
 	"github.com/cccteam/ccc/resource"
 	"github.com/go-playground/errors/v5"
+	"github.com/google/go-cmp/cmp"
 )
 
 func (User) Resource() accesstypes.Resource {
@@ -42,8 +46,16 @@ func (q *UserQuery) Id() ccc.UUID {
 	return v
 }
 
-func (q *UserQuery) Query() *resource.QuerySet[User] {
-	return q.qSet
+func (q *UserQuery) Read(ctx context.Context, txn resource.ReadOnlyTransaction) (*User, error) {
+	return q.qSet.Read(ctx, txn)
+}
+
+func (q *UserQuery) List(ctx context.Context, txn resource.ReadOnlyTransaction) iter.Seq2[*User, error] {
+	return q.qSet.List(ctx, txn)
+}
+
+func (q *UserQuery) BatchList(ctx context.Context, client resource.Client, size int) iter.Seq[iter.Seq2[*User, error]] {
+	return q.qSet.BatchList(ctx, client, size)
 }
 
 func (q *UserQuery) AddColumns(c *UserColumns) *UserQuery {
@@ -79,6 +91,11 @@ func (q *UserQuery) Offset(n uint64) *UserQuery {
 	q.qSet.SetOffset(&n)
 
 	return q
+}
+
+// Diff is intended for unit testing, and implements github.com/google/go-cmp/cmp.Diff()
+func (q *UserQuery) Diff(got *UserQuery, opts ...cmp.Option) string {
+	return resource.QuerySetDiff(opts...)(q.qSet, got.qSet)
 }
 
 type UserColumns struct {
@@ -261,8 +278,20 @@ func NewUserCreatePatch() (*UserCreatePatch, error) {
 	return patch, nil
 }
 
-func (p *UserCreatePatch) PatchSet() *resource.PatchSet[User] {
-	return p.patchSet
+func (p *UserCreatePatch) FromStruct(s any) error {
+	return p.patchSet.FromStruct(s)
+}
+
+func (p *UserCreatePatch) ToStruct() *User {
+	return p.patchSet.ToStruct()
+}
+
+func (p *UserCreatePatch) Apply(ctx context.Context, client resource.Client, eventSource ...string) error {
+	return p.patchSet.Apply(ctx, client, eventSource...)
+}
+
+func (p *UserCreatePatch) Buffer(ctx context.Context, txn resource.ReadWriteTransaction, eventSource ...string) error {
+	return p.patchSet.Buffer(ctx, txn, eventSource...)
 }
 
 func (p *UserCreatePatch) registerDefaultFuncs() {
@@ -307,6 +336,11 @@ func (p *UserCreatePatch) AttachmentsIsSet() bool {
 	return p.patchSet.IsSet("Attachments")
 }
 
+// Diff is intended for unit testing, and implements github.com/google/go-cmp/cmp.Diff()
+func (p *UserCreatePatch) Diff(got *UserCreatePatch, opts ...cmp.Option) string {
+	return resource.PatchSetDiff(opts...)(p.patchSet, got.patchSet)
+}
+
 type UserUpdatePatch struct {
 	patchSet *resource.PatchSet[User]
 }
@@ -333,8 +367,20 @@ func NewUserUpdatePatch(id ccc.UUID) *UserUpdatePatch {
 	return patch
 }
 
-func (p *UserUpdatePatch) PatchSet() *resource.PatchSet[User] {
-	return p.patchSet
+func (p *UserUpdatePatch) FromStruct(s any) error {
+	return p.patchSet.FromStruct(s)
+}
+
+func (p *UserUpdatePatch) ToStruct() *User {
+	return p.patchSet.ToStruct()
+}
+
+func (p *UserUpdatePatch) Apply(ctx context.Context, client resource.Client, eventSource ...string) error {
+	return p.patchSet.Apply(ctx, client, eventSource...)
+}
+
+func (p *UserUpdatePatch) Buffer(ctx context.Context, txn resource.ReadWriteTransaction, eventSource ...string) error {
+	return p.patchSet.Buffer(ctx, txn, eventSource...)
 }
 
 func (p *UserUpdatePatch) registerDefaultFuncs() {
@@ -378,6 +424,11 @@ func (p *UserUpdatePatch) AttachmentsIsSet() bool {
 	return p.patchSet.IsSet("Attachments")
 }
 
+// Diff is intended for unit testing, and implements github.com/google/go-cmp/cmp.Diff()
+func (p *UserUpdatePatch) Diff(got *UserUpdatePatch, opts ...cmp.Option) string {
+	return resource.PatchSetDiff(opts...)(p.patchSet, got.patchSet)
+}
+
 type UserDeletePatch struct {
 	patchSet *resource.PatchSet[User]
 }
@@ -398,12 +449,21 @@ func NewUserDeletePatch(id ccc.UUID) *UserDeletePatch {
 	return &UserDeletePatch{patchSet: patchSet}
 }
 
-func (p *UserDeletePatch) PatchSet() *resource.PatchSet[User] {
-	return p.patchSet
+func (p *UserDeletePatch) Apply(ctx context.Context, client resource.Client, eventSource ...string) error {
+	return p.patchSet.Apply(ctx, client, eventSource...)
+}
+
+func (p *UserDeletePatch) Buffer(ctx context.Context, txn resource.ReadWriteTransaction, eventSource ...string) error {
+	return p.patchSet.Buffer(ctx, txn, eventSource...)
 }
 
 func (p *UserDeletePatch) Id() ccc.UUID {
 	v, _ := p.patchSet.Key("Id").(ccc.UUID)
 
 	return v
+}
+
+// Diff is intended for unit testing, and implements github.com/google/go-cmp/cmp.Diff()
+func (p *UserDeletePatch) Diff(got *UserDeletePatch, opts ...cmp.Option) string {
+	return resource.PatchSetDiff(opts...)(p.patchSet, got.patchSet)
 }

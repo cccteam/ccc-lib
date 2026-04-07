@@ -13,7 +13,6 @@ import (
 	"github.com/cccteam/demo-app/pkg/resources"
 	"github.com/cccteam/httpio"
 	"github.com/go-playground/errors/v5"
-	"go.opentelemetry.io/otel"
 )
 
 func (a *App) PatchResources() http.HandlerFunc {
@@ -27,7 +26,7 @@ func (a *App) PatchResources() http.HandlerFunc {
 	type response map[string][]ccc.UUID
 
 	return httpio.Log(func(w http.ResponseWriter, r *http.Request) error {
-		ctx, span := otel.Tracer(name).Start(r.Context(), "App.PatchResources()")
+		ctx, span := ccc.StartTrace(r.Context())
 		defer span.End()
 
 		var (
@@ -65,18 +64,18 @@ func (a *App) PatchResources() http.HandlerFunc {
 						if err != nil {
 							return errors.Wrap(err, "userCreatePatchFromPatchSet()")
 						}
-						if err := patch.PatchSet().Buffer(ctx, txn, eventSource); err != nil {
+						if err := patch.Buffer(ctx, txn, eventSource); err != nil {
 							return errors.Wrap(handleError[resources.User](err), "resources.UserCreatePatch.Buffer()")
 						}
 						resp["users"] = append(resp["users"], patch.Id())
 					case resource.OperationUpdate:
 						id := httpio.Param[ccc.UUID](req, "id")
-						if err := resources.NewUserUpdatePatchFromPatchSet(id, patchSet).PatchSet().Buffer(ctx, txn, eventSource); err != nil {
+						if err := resources.NewUserUpdatePatchFromPatchSet(id, patchSet).Buffer(ctx, txn, eventSource); err != nil {
 							return errors.Wrap(handleError[resources.User](err), "resources.UserUpdatePatch.Buffer()")
 						}
 					case resource.OperationDelete:
 						id := httpio.Param[ccc.UUID](req, "id")
-						if err := resources.NewUserDeletePatchFromPatchSet(id, patchSet).PatchSet().Buffer(ctx, txn, eventSource); err != nil {
+						if err := resources.NewUserDeletePatchFromPatchSet(id, patchSet).Buffer(ctx, txn, eventSource); err != nil {
 							return errors.Wrap(handleError[resources.User](err), "resources.UserDeletePatch.Buffer()")
 						}
 					}

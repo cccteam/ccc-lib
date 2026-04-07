@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	UserID        httpio.ParamType = "userID"
+	UserId        httpio.ParamType = "userID"
 	WeatherLoanID httpio.ParamType = "weatherLoanID"
 )
 

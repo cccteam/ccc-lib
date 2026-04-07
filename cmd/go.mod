@@ -12,7 +12,7 @@ require (
 	github.com/cccteam/ccc v0.3.0
 	github.com/cccteam/ccc/accesstypes v0.5.6
 	github.com/cccteam/ccc/pkg v0.1.3
-	github.com/cccteam/ccc/resource v0.9.11
+	github.com/cccteam/ccc/resource v0.9.12
 	github.com/cccteam/db-initiator v0.3.4
 	github.com/cccteam/httpio v0.7.10
 	github.com/cccteam/logger v0.1.16

@@ -1237,6 +1237,8 @@ github.com/cccteam/ccc/pkg v0.1.3 h1:whMMXzm49yEaXlRPuBApBLkC0K4jKnkZntTSxVPp7No
 github.com/cccteam/ccc/pkg v0.1.3/go.mod h1:+Z7QvAuLVj4WPQo3Or5ssWijdhMg078jNc+f0Plgokc=
 github.com/cccteam/ccc/resource v0.9.11 h1:1Zsy2N/OEewIY+H4jDI4lUASR1ihrWaDrPW65i9y0Zo=
 github.com/cccteam/ccc/resource v0.9.11/go.mod h1:i3PplImcD8NectiHhGln2YETZglSonzUevFh2cZH4d0=
+github.com/cccteam/ccc/resource v0.9.12 h1:DnXXthzE0g5KYz4Py82oBA8Y+lBSX9g9IbJq6NLAnFI=
+github.com/cccteam/ccc/resource v0.9.12/go.mod h1:i3PplImcD8NectiHhGln2YETZglSonzUevFh2cZH4d0=
 github.com/cccteam/ccc/securehash v0.0.10 h1:BQiQAA7EFiLUa3BUI/MJ1UYuqs++NeFZX+CySw6Yn7o=
 github.com/cccteam/ccc/securehash v0.0.10/go.mod h1:3kJ1e19HpFj6vQpT3SSeG5SchogxkU3Gn1ZCSs9KNt8=
 github.com/cccteam/ccc/tracer v0.0.3 h1:2GcKOO3LiKOfGNbqIz85yrJ1yjXHrVbtMCZZL+VDPuc=

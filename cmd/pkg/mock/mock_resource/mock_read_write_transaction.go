@@ -14,7 +14,7 @@ import (
 
 	accesstypes "github.com/cccteam/ccc/accesstypes"
 	resource "github.com/cccteam/ccc/resource"
-	spxscan "github.com/cccteam/spxscan"
+	spxapi "github.com/cccteam/spxscan/spxapi"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -113,10 +113,10 @@ func (mr *MockReadWriteTransactionMockRecorder) PostgresReadOnlyTransaction() *g
 }
 
 // SpannerReadOnlyTransaction mocks base method.
-func (m *MockReadWriteTransaction) SpannerReadOnlyTransaction() spxscan.Querier {
+func (m *MockReadWriteTransaction) SpannerReadOnlyTransaction() spxapi.Querier {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SpannerReadOnlyTransaction")
-	ret0, _ := ret[0].(spxscan.Querier)
+	ret0, _ := ret[0].(spxapi.Querier)
 	return ret0
 }
 
