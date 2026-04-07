@@ -14,7 +14,7 @@ type Configurer interface {
 	Access() access.Controller
 	ResourceClient() resource.Client
 	ResourceCollection() *resource.Collection
-	Session() *session.OIDCAzureSession
+	Session() *session.OIDCAzure
 	RPCClient() *rpc.Client
 	ComputedClient() *computedresources.Client
 	Validator() *validator.Validate

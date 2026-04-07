@@ -48,7 +48,7 @@ var _ http.Handler = &App{}
 type App struct {
 	router *chi.Mux
 	access access.Controller
-	*session.OIDCAzureSession
+	*session.OIDCAzure
 	resourceClient     resource.Client
 	rpcClient          *rpc.Client
 	computedClient     *computedresources.Client
@@ -59,7 +59,7 @@ type App struct {
 func New(cfg Configurer) *App {
 	a := &App{
 		access:             cfg.Access(),
-		OIDCAzureSession:   cfg.Session(),
+		OIDCAzure:          cfg.Session(),
 		resourceClient:     cfg.ResourceClient(),
 		rpcClient:          cfg.RPCClient(),
 		computedClient:     cfg.ComputedClient(),
