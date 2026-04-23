@@ -109,3 +109,26 @@ export const IDLE_LOGOUT_ACTION = new InjectionToken<() => void>('IDLE_LOGOUT_AC
 export const IDLE_TIMEOUT_REQUIRE_CONFIRMATION = new InjectionToken<boolean>('IDLE_TIMEOUT_REQUIRE_CONFIRMATION', {
   factory: () => false,
 });
+
+/**
+ * A map of allowed login error codes to user-facing display messages.
+ * These codes come from the backend's LoginErrorCode constants and are passed
+ * via the `message` query parameter on login redirects.
+ * Only codes present in this map will be displayed. This prevents content injection attacks
+ * where an attacker crafts a URL with an arbitrary message parameter.
+ * Apps can override this token to customize the displayed messages.
+ * @defaultValue maps all backend LoginErrorCode values to user-friendly messages
+ */
+export const LOGIN_ERROR_MESSAGES = new InjectionToken<Record<string, string>>('LOGIN_ERROR_MESSAGES', {
+  factory: () => ({
+    internal_error: 'An internal error occurred. Please try again.',
+    no_oidc_cookie: 'Your session cookie was not found. Please log in again.',
+    invalid_state: 'Login failed due to an invalid state parameter. Please try again.',
+    invalid_pkce: 'Login failed due to an invalid verification parameter. Please try again.',
+    token_exchange_failed: 'Login failed during token exchange. Please try again.',
+    no_id_token: 'Login failed: no identity token received. Please try again.',
+    verify_id_token_failed: 'Login failed: unable to verify your identity token. Please try again.',
+    parse_claims_failed: 'Login failed: unable to read your identity claims. Please try again.',
+    no_roles: 'You do not have any roles assigned. Please contact your administrator.',
+  }),
+});
