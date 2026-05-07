@@ -5,10 +5,10 @@ export type Resource = Brand<string, 'Resource'>;
 export type Domain = Brand<string, 'Domain'>;
 export type FieldName = Brand<string, 'FieldName'>;
 export type Method = Brand<string, 'Method'>;
-export type DomainPermissions = Record<Domain, Record<Resource, Record<Permission, Permissions>>>;
+export type DomainPermissions = Record<Domain, Record<Resource | Method, Record<Resource, Permission>>>;
 
 export interface PermissionScope {
-  resource: Resource;
+  resource: Resource | Method;
   permission: Permission;
   domain: Domain;
 }
