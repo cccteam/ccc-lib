@@ -76,9 +76,7 @@ export class CompoundResourceComponent implements OnInit {
   deleted = output<boolean>();
   navAfterDelete = input<boolean>(true);
   navAfterDeleteConsideringRoot = computed(() => {
-    const navAfterDeleteInput = this.navAfterDelete();
-    if (navAfterDeleteInput === undefined) return true;
-    return false;
+    return this.navAfterDelete();
   });
 
   hasElements = computed(() => {
