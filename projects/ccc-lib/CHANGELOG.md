@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.38](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.37...ccc-lib/v0.0.38) (2026-05-08)
+
+
+### Features
+
+* Add method as a source for permissions ([#85](https://github.com/cccteam/ccc-lib/issues/85)) ([a560eb8](https://github.com/cccteam/ccc-lib/commit/a560eb862d6cf3d067701b08faa0bd346bc67b1a))
+* add new swr http resource wrapper ([#74](https://github.com/cccteam/ccc-lib/issues/74)) ([58c1fb5](https://github.com/cccteam/ccc-lib/commit/58c1fb5f183e571692c8314bea181a129c756b60))
+
 ## [0.0.37](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.36...ccc-lib/v0.0.37) (2026-04-07)
 
 
