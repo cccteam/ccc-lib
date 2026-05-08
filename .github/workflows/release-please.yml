@@ -13,7 +13,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: cccteam/github-workflows/.github/workflows/release-please.yml@1ccb2a0d5c48271b34c23abb3821e365019838be # v5.24.0
+    uses: cccteam/github-workflows/.github/workflows/release-please.yml@952f1cfc7e41019f9afe4b43817aa9dec9d9f92f # v6.1.1
     secrets:
       RELEASE_PLEASE_APP_ID: ${{ secrets.RELEASE_PLEASE_APP_ID }}
       RELEASE_PLEASE_APP_PEM: ${{ secrets.RELEASE_PLEASE_APP_PEM }}
