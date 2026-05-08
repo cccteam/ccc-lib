@@ -27,6 +27,12 @@ export const SESSION_PATH = new InjectionToken<string>('SESSION_PATH', { factory
 export const API_URL = new InjectionToken<string>('API_URL', { factory: () => '/api' });
 
 /**
+ * The URL for additional session data requests (e.g., 'user/session/custom-data').
+ * @defaultValue '/api'
+ */
+export const ADDITIONAL_SESSION_DATA_PATH = new InjectionToken<string>('ADDITIONAL_SESSION_DATA_PATH');
+
+/**
  * A function to determine if a specific permission is required for a given resource.
  * @defaultValue a function that always returns false
  */
