@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.39](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.38...ccc-lib/v0.0.39) (2026-05-08)
+
+
+### Bug Fixes
+
+* Fix extremely minor null check bug ([#88](https://github.com/cccteam/ccc-lib/issues/88)) ([370c205](https://github.com/cccteam/ccc-lib/commit/370c20509a3a11340a3203966d7fc6547b156298))
+
 ## [0.0.38](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.37...ccc-lib/v0.0.38) (2026-05-08)
 
 
