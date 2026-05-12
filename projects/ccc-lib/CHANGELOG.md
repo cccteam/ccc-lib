@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.40](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.39...ccc-lib/v0.0.40) (2026-05-12)
+
+
+### Features
+
+* Add new token for custom session data ([#90](https://github.com/cccteam/ccc-lib/issues/90)) ([edcb978](https://github.com/cccteam/ccc-lib/commit/edcb978a1f1e3b37faadfbc01e1a2fd90ee3f52e))
+
 ## [0.0.39](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.38...ccc-lib/v0.0.39) (2026-05-08)
 
 
