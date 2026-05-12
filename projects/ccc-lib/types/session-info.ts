@@ -1,10 +1,15 @@
-import { DomainPermissions } from './permissions';
+import { RolePermissionCollection, UserPermissionCollection } from './permissions';
 
 /**
  * Session Information for a logged in user
  */
-export interface SessionInfo {
+export interface SessionInfo<TAdditional extends AdditionalSessionData = AdditionalSessionData> {
   authenticated: boolean;
   username: string;
-  permissions: DomainPermissions;
+  permissions: UserPermissionCollection;
+  additionalData?: TAdditional;
+}
+
+export interface AdditionalSessionData {
+  permissions: RolePermissionCollection | UserPermissionCollection;
 }
