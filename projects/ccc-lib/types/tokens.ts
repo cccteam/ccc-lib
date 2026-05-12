@@ -28,7 +28,7 @@ export const API_URL = new InjectionToken<string>('API_URL', { factory: () => '/
 
 /**
  * The URL for additional session data requests (e.g., 'user/session/custom-data').
- * @defaultValue '/api'
+ * Optional token
  */
 export const ADDITIONAL_SESSION_DATA_PATH = new InjectionToken<string>('ADDITIONAL_SESSION_DATA_PATH');
 

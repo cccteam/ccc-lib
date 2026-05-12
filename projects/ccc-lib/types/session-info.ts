@@ -1,17 +1,15 @@
-import { DomainPermissions, Method, Permission, Resource } from './permissions';
+import { RolePermissionCollection, UserPermissionCollection } from './permissions';
 
 /**
  * Session Information for a logged in user
  */
-export interface SessionInfo<TAdditional = unknown> {
+export interface SessionInfo<TAdditional extends AdditionalSessionData = AdditionalSessionData> {
   authenticated: boolean;
   username: string;
-  permissions: DomainPermissions;
-  additionalData?: TAdditional | AdditionalSessionData;
+  permissions: UserPermissionCollection;
+  additionalData?: TAdditional;
 }
 
-export type FlatPermissions = Partial<Record<Permission, (Resource | Method)[]>>;
-
 export interface AdditionalSessionData {
-  permissions?: FlatPermissions;
+  permissions: RolePermissionCollection | UserPermissionCollection;
 }

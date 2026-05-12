@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import {
   ADDITIONAL_SESSION_DATA_PATH,
   AdditionalSessionData,
@@ -10,11 +11,13 @@ import {
   PERMISSION_REQUIRED,
   PermissionScope,
   Resource,
+  RolePermissionCollection,
   SESSION_PATH,
   SessionInfo,
+  UserPermissionCollection,
 } from '@cccteam/ccc-lib/types';
 import { errorOptions } from '@cccteam/ccc-lib/util-request-options';
-import { forkJoin, map, Observable, tap } from 'rxjs';
+import { catchError, forkJoin, map, Observable, of, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -26,6 +29,7 @@ export class AuthService<TAdditional extends AdditionalSessionData = AdditionalS
   private additionalSessionDataUrl = inject(ADDITIONAL_SESSION_DATA_PATH, { optional: true });
   private logoutAction = inject(LOGOUT_ACTION);
 
+  private router = inject(Router);
   http = inject(HttpClient);
   private authenticatedSignal = signal(false);
   private sessionInfoSignal = signal({} as SessionInfo<TAdditional>);
@@ -40,16 +44,28 @@ export class AuthService<TAdditional extends AdditionalSessionData = AdditionalS
 
   private static permissionFn: (resource: Resource, permission: Permission) => boolean;
 
+  private hasUserPermission(permissions: UserPermissionCollection, scope: PermissionScope): boolean {
+    const resourcePermissions = permissions?.[scope.domain]?.[scope.resource];
+    return scope.permission in (resourcePermissions ?? {});
+  }
+
+  private hasRolePermission(permissions: RolePermissionCollection, scope: PermissionScope): boolean {
+    const allowedResources = permissions?.[scope.permission];
+    return allowedResources?.includes(scope.resource) ?? false;
+  }
+
   hasPermission(scope?: PermissionScope): boolean {
     if (!scope) return true;
-    const basePermissions = this.sessionInfo().permissions?.[scope.domain]?.[scope.resource];
-    if (scope.permission in (basePermissions ?? {})) {
+    if (this.hasUserPermission(this.sessionInfo().permissions, scope)) {
       return true;
     }
 
-    const additionalPermissions = this.sessionInfo().additionalData?.permissions?.[scope.permission];
-    const result = additionalPermissions?.includes(scope.resource) ?? false;
-    return result;
+    const additionalPermissions = this.sessionInfo().additionalData?.permissions;
+    if (!additionalPermissions) return false;
+
+    return scope.domain in additionalPermissions
+      ? this.hasUserPermission(additionalPermissions as UserPermissionCollection, scope)
+      : this.hasRolePermission(additionalPermissions as RolePermissionCollection, scope);
   }
 
   static requiresPermission(resource: Resource, permission: Permission): boolean {
@@ -96,8 +112,9 @@ export class AuthService<TAdditional extends AdditionalSessionData = AdditionalS
    */
   checkUserSession(): Observable<SessionInfo<TAdditional>> {
     const session$ = this.http.get<SessionInfo<TAdditional>>(`${this.apiUrl}/${this.sessionUrl}`, errorOptions(false));
+    const shouldFetchAdditional = this.additionalSessionDataUrl && !this.router.url.includes(this.loginUrl);
 
-    if (!this.additionalSessionDataUrl) {
+    if (!shouldFetchAdditional) {
       return session$.pipe(
         tap((sessionInfo) => {
           this.authenticatedSignal.set(!!sessionInfo?.authenticated);
@@ -106,18 +123,22 @@ export class AuthService<TAdditional extends AdditionalSessionData = AdditionalS
       );
     }
 
+    const additionalData$ = this.http
+      .get<TAdditional>(`${this.apiUrl}/${this.additionalSessionDataUrl}`, errorOptions(false))
+      .pipe(catchError(() => of({} as TAdditional)));
+
     return forkJoin({
       sessionInfo: session$,
-      additionalData: this.http.get<TAdditional>(
-        `${this.apiUrl}/${this.additionalSessionDataUrl}`,
-        errorOptions(false),
-      ),
+      additionalData: additionalData$,
     }).pipe(
-      tap(({ sessionInfo, additionalData }) => {
+      map(({ sessionInfo, additionalData }) => ({
+        ...sessionInfo,
+        additionalData,
+      })),
+      tap((sessionInfo) => {
         this.authenticatedSignal.set(!!sessionInfo?.authenticated);
-        this.sessionInfoSignal.set({ ...sessionInfo, additionalData });
+        this.sessionInfoSignal.set(sessionInfo);
       }),
-      map(({ sessionInfo, additionalData }) => ({ ...sessionInfo, additionalData })),
     );
   }
 
