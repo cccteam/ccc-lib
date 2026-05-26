@@ -25,7 +25,17 @@ export interface SafeResourceRef<T> {
  * into an exception state when the resource.value() is read after it fails to load.
  *
  * If it does not have a value, it will return `undefined` (or the provided `defaultValue` if specified).
+ * This setup via function overloading ensures that the returned safeValue will never be undefined if a default is supplied
  */
+export function safeHttpResource<T>(
+  url: () => string | undefined,
+  options: HttpResourceOptions<T, unknown> | undefined,
+  defaultValue: T,
+): SafeResourceRef<T>;
+export function safeHttpResource<T>(
+  url: () => string | undefined,
+  options?: HttpResourceOptions<T, unknown>,
+): SafeResourceRef<T | undefined>;
 export function safeHttpResource<T>(
   url: () => string | undefined,
   options?: HttpResourceOptions<T, unknown> | undefined,
@@ -48,7 +58,10 @@ export function safeHttpResource<T>(
  * into an exception state when the resource.value() is read after it fails to load.
  *
  * If it does not have a value, it will return `undefined` (or the provided `defaultValue` if specified).
+ * This setup via function overloading ensures that the returned safeValue will never be undefined if a default is supplied
  */
+export function safeRxResource<T, A = unknown>(options: RxResourceOptions<T, A>, defaultValue: T): SafeResourceRef<T>;
+export function safeRxResource<T, A = unknown>(options: RxResourceOptions<T, A>): SafeResourceRef<T | undefined>;
 export function safeRxResource<T, A = unknown>(
   options: RxResourceOptions<T, A>,
   defaultValue?: T,
@@ -70,7 +83,17 @@ export function safeRxResource<T, A = unknown>(
  * The purpose of this utility function is to prevent the resource from dropping the entire application
  * into an exception state when the resource.value() is read after it fails to load, while also preserving the previous value during loading.
  *
+ * This setup via function overloading ensures that the returned safeValue will never be undefined if a default is supplied
  */
+export function staleHttpResource<T>(
+  url: () => string | undefined,
+  options: HttpResourceOptions<T, unknown> | undefined,
+  defaultValue: T,
+): SafeResourceRef<T>;
+export function staleHttpResource<T>(
+  url: () => string | undefined,
+  options?: HttpResourceOptions<T, unknown>,
+): SafeResourceRef<T | undefined>;
 export function staleHttpResource<T>(
   url: () => string | undefined,
   options?: HttpResourceOptions<T, unknown> | undefined,
@@ -99,7 +122,10 @@ export function staleHttpResource<T>(
  * The purpose of this utility function is to prevent the resource from dropping the entire application
  * into an exception state when the resource.value() is read after it fails to load, while also preserving the previous value during loading.
  *
+ * This setup via function overloading ensures that the returned safeValue will never be undefined if a default is supplied
  */
+export function staleRxResource<T, A = unknown>(options: RxResourceOptions<T, A>, defaultValue: T): SafeResourceRef<T>;
+export function staleRxResource<T, A = unknown>(options: RxResourceOptions<T, A>): SafeResourceRef<T | undefined>;
 export function staleRxResource<T, A = unknown>(
   options: RxResourceOptions<T, A>,
   defaultValue?: T,
