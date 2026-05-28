@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	UserId        httpio.ParamType = "userID"
-	WeatherLoanID httpio.ParamType = "weatherLoanID"
+	UserId           httpio.ParamType = "userID"
+	WeatherWeatherID httpio.ParamType = "weatherWeatherID"
 )
 
 type GeneratedHandlers interface {
@@ -43,8 +43,8 @@ func generatedRoutes(r chi.Router, h GeneratedHandlers) {
 	r.Post("/api/weathers", weathersHandler)
 
 	weatherHandler := h.Weather()
-	r.Get("/api/weathers/{weatherLoanID}", weatherHandler)
-	r.Post("/api/weathers/{weatherLoanID}", weatherHandler)
+	r.Get("/api/weathers/{weatherWeatherID}", weatherHandler)
+	r.Post("/api/weathers/{weatherWeatherID}", weatherHandler)
 
 	r.Patch("/api/resources", h.PatchResources())
 }
