@@ -1,0 +1,49 @@
+.login-button-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.login-button-container button {
+  width: 100%;
+  margin: 0 16px;
+}
+
+.alert-container {
+  padding-top: 20px;
+  width: 100%;
+  position: absolute;
+  margin: auto;
+}
+
+.login-page-container {
+  width: 100%;
+  margin: auto;
+  padding-top: 100px;
+}
+
+.logo {
+  width: 80%;
+  margin: auto;
+  margin-bottom: 50px;
+  height: 100px;
+}
+
+.logo img {
+  width: 100%;
+}
+
+.login-area {
+  max-width: 320px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.loading-spinner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}

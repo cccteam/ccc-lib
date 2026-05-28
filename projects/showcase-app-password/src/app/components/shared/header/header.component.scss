@@ -1,0 +1,35 @@
+.header {
+  padding: 0 10px;
+  background-color: white;
+  height: 60px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  align-items: center;
+  box-shadow: 0px 0px 8px 2px rgb(226, 226, 226);
+}
+
+.header img {
+  max-width: 140px;
+}
+
+.logout-container {
+  text-align: left;
+}
+
+.logout-container a {
+  margin-left: 30px;
+  cursor: pointer;
+  margin: auto;
+}
+
+.logout-text {
+  font-size: 0.9em;
+}
+
+.toggle-and-logo {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
