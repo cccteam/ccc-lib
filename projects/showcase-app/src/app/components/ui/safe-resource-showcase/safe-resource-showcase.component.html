@@ -38,6 +38,7 @@
         >count: <strong>{{ safeHttpList.safeValue().length }}</strong></span
       >
     </div>
+    <!-- TODO: Need to simulate error state, that is the main advantage of the safeHttpResource -->
     <button (click)="safeHttpList.resource.reload()">Reload</button>
     <pre>{{ safeHttpList.safeValue() | json }}</pre>
   </article>
