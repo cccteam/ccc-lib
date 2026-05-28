@@ -1,0 +1,23 @@
+<div class="header">
+  <div class="toggle-and-logo">
+    <a [routerLink]="['']"><img src="logo.png" alt="CCC Demo App" /></a>
+    @if (isPWA()) {
+      <div>
+        <button mat-icon-button (click)="goBack()">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <button mat-icon-button (click)="goForward()">
+          <mat-icon>arrow_forward</mat-icon>
+        </button>
+      </div>
+    }
+  </div>
+  <app-topbar></app-topbar>
+  <div class="logout-container">
+    <p class="logout-text">
+      <a tabindex="0" role="link" (keyup.enter)="logout()" mat-raised-button color="primary" (click)="logout()"
+        >Logout</a
+      >
+    </p>
+  </div>
+</div>
