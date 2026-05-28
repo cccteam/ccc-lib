@@ -1,0 +1,110 @@
+<section class="showcase">
+  <header>
+    <h1>Resource Wrapper Showcase</h1>
+    <p>Compare <code>safe</code>, <code>stale</code>, and <code>swr</code> behaviors across HTTP and RxJS resources.</p>
+
+    <div class="controls">
+      <label>
+        Weather ID:
+        <input
+          type="text"
+          [value]="weatherId()"
+          (input)="weatherId.set($any($event.target).value)"
+          placeholder="UUID (leave blank to disable detail calls)" />
+      </label>
+      <button (click)="bumpAll()">Reload all</button>
+      <button (click)="showSwrSection.update((v) => !v)">
+        {{ showSwrSection() ? 'Unmount' : 'Remount' }} SWR section
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ SAFE ============ -->
+  <article class="card">
+    <h2>safeHttpResource <small>(list)</small></h2>
+    <p class="desc">Clears to <code>defaultValue</code> (empty array) while loading. No previous value retained.</p>
+    <div class="status">
+      <span
+        >status: <strong>{{ safeHttpList.resource.status() }}</strong></span
+      >
+      <span
+        >hasValue: <strong>{{ safeHttpList.resource.hasValue() }}</strong></span
+      >
+      <span
+        >count: <strong>{{ safeHttpList.safeValue().length }}</strong></span
+      >
+    </div>
+    <button (click)="safeHttpList.resource.reload()">Reload</button>
+    <pre>{{ safeHttpList.safeValue() | json }}</pre>
+  </article>
+
+  <article class="card">
+    <h2>safeRxResource <small>(detail)</small></h2>
+    <p class="desc">No default supplied → <code>safeValue()</code> is typed <code>Weather | undefined</code>.</p>
+    <div class="status">
+      <span
+        >status: <strong>{{ safeRxDetail.resource.status() }}</strong></span
+      >
+      <span
+        >hasValue: <strong>{{ safeRxDetail.resource.hasValue() }}</strong></span
+      >
+      <span
+        >value: <strong>{{ safeRxDetail.safeValue()?.temperature ?? '—' }}</strong></span
+      >
+    </div>
+    <button (click)="safeRxDetail.resource.reload()" [disabled]="!weatherId()">Reload</button>
+    <pre>{{ safeRxDetail.safeValue() | json }}</pre>
+  </article>
+
+  <!-- ============ STALE ============ -->
+  <article class="card">
+    <h2>staleHttpResource <small>(list)</small></h2>
+    <p class="desc">
+      Holds previous value during reload. Watch the count stay stable while status flips to <code>reloading</code>.
+    </p>
+    <div class="status">
+      <span
+        >status: <strong>{{ staleHttpList.resource.status() }}</strong></span
+      >
+      <span
+        >hasValue: <strong>{{ staleHttpList.resource.hasValue() }}</strong></span
+      >
+      <span
+        >count: <strong>{{ staleHttpList.safeValue().length }}</strong></span
+      >
+    </div>
+    <button (click)="staleHttpList.resource.reload()">Reload</button>
+    <pre>{{ staleHttpList.safeValue() | json }}</pre>
+  </article>
+
+  <article class="card">
+    <h2>staleRxResource <small>(detail)</small></h2>
+    <p class="desc">
+      Same as above but via <code>rxResource</code>. No default → typed <code>Weather | undefined</code>.
+    </p>
+    <div class="status">
+      <span
+        >status: <strong>{{ staleRxDetail.resource.status() }}</strong></span
+      >
+      <span
+        >hasValue: <strong>{{ staleRxDetail.resource.hasValue() }}</strong></span
+      >
+      <span
+        >value: <strong>{{ staleRxDetail.safeValue()?.temperature ?? '—' }}</strong></span
+      >
+    </div>
+    <button (click)="staleRxDetail.resource.reload()" [disabled]="!weatherId()">Reload</button>
+    <pre>{{ staleRxDetail.safeValue() | json }}</pre>
+  </article>
+
+  <!-- ============ SWR (mountable) ============ -->
+  @if (showSwrSection()) {
+    <app-swr-section [weatherId]="weatherId()" />
+  } @else {
+    <article class="card unmounted">
+      <p>
+        SWR section unmounted. Click "Remount SWR section" to bring it back — values should appear instantly from cache.
+      </p>
+    </article>
+  }
+</section>

@@ -1,0 +1,55 @@
+.showcase {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+.card {
+  padding: 1rem;
+  border: 1px solid var(--mat-sys-outline-variant, #ddd);
+  border-radius: 0.5rem;
+}
+.card.unmounted {
+  opacity: 0.6;
+  font-style: italic;
+}
+.controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-block: 0.5rem;
+}
+.controls input {
+  padding: 0.25rem 0.5rem;
+}
+.status {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-block: 0.5rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+.desc {
+  font-size: 0.9rem;
+  color: var(--mat-sys-on-surface-variant, #555);
+  margin-block: 0.25rem 0.75rem;
+}
+pre {
+  background: var(--mat-sys-surface-container, #f5f5f5);
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  max-height: 12rem;
+  overflow: auto;
+  font-size: 0.75rem;
+}
+h2 {
+  margin: 0;
+}
+h2 small {
+  font-weight: normal;
+  color: #777;
+  font-size: 0.85rem;
+}
