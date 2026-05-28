@@ -7,7 +7,7 @@ import {
   staleHttpResource,
   staleRxResource,
 } from '@cccteam/ccc-lib/resource-utils/safe-resource';
-import { Weathers } from '../../../core/generated/zz_gen_resources';
+import { Users } from '../../../core/generated/zz_gen_resources';
 import { SwrSectionComponent } from './swr-section.component';
 
 @Component({
@@ -20,33 +20,29 @@ import { SwrSectionComponent } from './swr-section.component';
 export class SafeResourceShowcaseComponent {
   private readonly http = inject(HttpClient);
 
-  readonly weatherId = signal('');
+  readonly userId = signal('');
   readonly showSwrSection = signal(true);
 
   // --- safe variants ---
-  readonly safeHttpList = safeHttpResource<Weathers[]>(
-    () => '/api/weathers',
-    undefined,
-    [], // default → safeValue is Signal<Weathers[]>
-  );
+  readonly safeHttpList = safeHttpResource<Users[]>(() => '/api/users', undefined, []);
 
-  readonly safeRxDetail = safeRxResource<Weathers>({
-    params: () => (this.weatherId() ? this.weatherId() : undefined),
-    stream: ({ params }) => this.http.get<Weathers>(`/api/weathers/${params}`),
+  readonly safeRxDetail = safeRxResource<Users>({
+    params: () => (this.userId() ? this.userId() : undefined),
+    stream: ({ params }) => this.http.get<Users>(`/api/users/${params}`),
   });
 
   // --- stale variants ---
-  readonly staleHttpList = staleHttpResource<Weathers[]>(() => '/api/weathers', undefined, []);
+  readonly staleHttpList = staleHttpResource<Users[]>(() => '/api/users', undefined, []);
 
-  readonly staleRxDetail = staleRxResource<Weathers>({
-    params: () => (this.weatherId() ? this.weatherId() : undefined),
-    stream: ({ params }) => this.http.get<Weathers>(`/api/weathers/${params}`),
+  readonly staleRxDetail = staleRxResource<Users>({
+    params: () => (this.userId() ? this.userId() : undefined),
+    stream: ({ params }) => this.http.get<Users>(`/api/users/${params}`),
   });
 
   bumpAll(): void {
     this.safeHttpList.resource.reload();
     this.staleHttpList.resource.reload();
-    if (this.weatherId()) {
+    if (this.userId()) {
       this.safeRxDetail.resource.reload();
       this.staleRxDetail.resource.reload();
     }

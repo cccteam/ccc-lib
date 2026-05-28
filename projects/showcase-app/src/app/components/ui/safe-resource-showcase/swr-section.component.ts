@@ -2,7 +2,7 @@ import { JsonPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
 import { swrHttpResource, swrRxResource } from '@cccteam/ccc-lib/resource-utils/safe-resource';
-import { Weathers } from '../../../core/generated/zz_gen_resources';
+import { Users } from '../../../core/generated/zz_gen_resources';
 
 @Component({
   selector: 'app-swr-section',
@@ -33,7 +33,7 @@ import { Weathers } from '../../../core/generated/zz_gen_resources';
       <h2>swrRxResource <small>(detail)</small></h2>
       <p class="desc">
         Cache key is required since the URL is not derivable from the wrapper's inputs. No default → typed
-        <code>Weather | undefined</code>.
+        <code>User | undefined</code>.
       </p>
       <div class="status">
         <span
@@ -43,10 +43,10 @@ import { Weathers } from '../../../core/generated/zz_gen_resources';
           >hasValue: <strong>{{ swrRxDetail.resource.hasValue() }}</strong></span
         >
         <span
-          >value: <strong>{{ swrRxDetail.safeValue()?.temperature ?? '—' }}</strong></span
+          >value: <strong>{{ swrRxDetail.safeValue()?.username ?? '—' }}</strong></span
         >
       </div>
-      <button (click)="swrRxDetail.resource.reload()" [disabled]="!weatherId()">Reload</button>
+      <button (click)="swrRxDetail.resource.reload()" [disabled]="!userId()">Reload</button>
       <pre>{{ swrRxDetail.safeValue() | json }}</pre>
     </article>
   `,
@@ -55,12 +55,12 @@ import { Weathers } from '../../../core/generated/zz_gen_resources';
 })
 export class SwrSectionComponent {
   private readonly http = inject(HttpClient);
-  readonly weatherId = input.required<string>();
+  readonly userId = input.required<string>();
 
-  readonly swrHttpList = swrHttpResource<Weathers[]>(() => '/api/weathers', undefined, []);
+  readonly swrHttpList = swrHttpResource<Users[]>(() => '/api/users', undefined, []);
 
-  readonly swrRxDetail = swrRxResource<Weathers>('weather-detail', {
-    params: () => (this.weatherId() ? this.weatherId() : undefined),
-    stream: ({ params }) => this.http.get<Weathers>(`/api/weathers/${params}`),
+  readonly swrRxDetail = swrRxResource<Users>('user-detail', {
+    params: () => (this.userId() ? this.userId() : undefined),
+    stream: ({ params }) => this.http.get<Users>(`/api/users/${params}`),
   });
 }

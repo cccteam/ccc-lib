@@ -1,15 +1,19 @@
 <section class="showcase">
   <header>
     <h1>Resource Wrapper Showcase</h1>
-    <p>Compare <code>safe</code>, <code>stale</code>, and <code>swr</code> behaviors across HTTP and RxJS resources.</p>
+    <p>
+      Compare <code>safe</code>, <code>stale</code>, and <code>swr</code> behaviors across HTTP and RxJS resources.
+      <br />
+      Tip: Open the browser's dev tools and throttle network speed to observe the lifecycle easier
+    </p>
 
     <div class="controls">
       <label>
-        Weather ID:
+        User ID:
         <input
           type="text"
-          [value]="weatherId()"
-          (input)="weatherId.set($any($event.target).value)"
+          [value]="userId()"
+          (input)="userId.set($any($event.target).value)"
           placeholder="UUID (leave blank to disable detail calls)" />
       </label>
       <button (click)="bumpAll()">Reload all</button>
@@ -40,7 +44,7 @@
 
   <article class="card">
     <h2>safeRxResource <small>(detail)</small></h2>
-    <p class="desc">No default supplied → <code>safeValue()</code> is typed <code>Weather | undefined</code>.</p>
+    <p class="desc">No default supplied → <code>safeValue()</code> is typed <code>User | undefined</code>.</p>
     <div class="status">
       <span
         >status: <strong>{{ safeRxDetail.resource.status() }}</strong></span
@@ -49,10 +53,10 @@
         >hasValue: <strong>{{ safeRxDetail.resource.hasValue() }}</strong></span
       >
       <span
-        >value: <strong>{{ safeRxDetail.safeValue()?.temperature ?? '—' }}</strong></span
+        >value: <strong>{{ safeRxDetail.safeValue()?.username ?? '—' }}</strong></span
       >
     </div>
-    <button (click)="safeRxDetail.resource.reload()" [disabled]="!weatherId()">Reload</button>
+    <button (click)="safeRxDetail.resource.reload()" [disabled]="!userId()">Reload</button>
     <pre>{{ safeRxDetail.safeValue() | json }}</pre>
   </article>
 
@@ -79,9 +83,7 @@
 
   <article class="card">
     <h2>staleRxResource <small>(detail)</small></h2>
-    <p class="desc">
-      Same as above but via <code>rxResource</code>. No default → typed <code>Weather | undefined</code>.
-    </p>
+    <p class="desc">Same as above but via <code>rxResource</code>. No default → typed <code>User | undefined</code>.</p>
     <div class="status">
       <span
         >status: <strong>{{ staleRxDetail.resource.status() }}</strong></span
@@ -90,16 +92,16 @@
         >hasValue: <strong>{{ staleRxDetail.resource.hasValue() }}</strong></span
       >
       <span
-        >value: <strong>{{ staleRxDetail.safeValue()?.temperature ?? '—' }}</strong></span
+        >value: <strong>{{ staleRxDetail.safeValue()?.username }}</strong></span
       >
     </div>
-    <button (click)="staleRxDetail.resource.reload()" [disabled]="!weatherId()">Reload</button>
+    <button (click)="staleRxDetail.resource.reload()" [disabled]="!userId()">Reload</button>
     <pre>{{ staleRxDetail.safeValue() | json }}</pre>
   </article>
 
   <!-- ============ SWR (mountable) ============ -->
   @if (showSwrSection()) {
-    <app-swr-section [weatherId]="weatherId()" />
+    <app-swr-section [userId]="userId()" />
   } @else {
     <article class="card unmounted">
       <p>
