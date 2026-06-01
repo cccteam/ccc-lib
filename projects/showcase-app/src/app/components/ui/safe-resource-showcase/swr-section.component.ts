@@ -1,6 +1,7 @@
 import { JsonPipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { swrHttpResource, swrRxResource } from '@cccteam/ccc-lib/resource-utils/safe-resource';
 import { Users } from '../../../core/generated/zz_gen_resources';
 
@@ -15,17 +16,13 @@ import { Users } from '../../../core/generated/zz_gen_resources';
         section — the list shows up instantly the second time.
       </p>
       <div class="status">
-        <span
-          >status: <strong>{{ swrHttpList.resource.status() }}</strong></span
-        >
-        <span
-          >hasValue: <strong>{{ swrHttpList.resource.hasValue() }}</strong></span
-        >
-        <span
-          >count: <strong>{{ swrHttpList.safeValue().length }}</strong></span
-        >
+        <span>status: <strong>{{ swrHttpList.resource.status() }}</strong></span>
+        <span>hasValue: <strong>{{ swrHttpList.resource.hasValue() }}</strong></span>
+        <span>count: <strong>{{ swrHttpList.safeValue().length }}</strong></span>
       </div>
-      <button (click)="swrHttpList.resource.reload()">Reload</button>
+      <div class="actions">
+        <button mat-stroked-button (click)="swrHttpList.resource.reload()">Reload</button>
+      </div>
       <pre>{{ swrHttpList.safeValue() | json }}</pre>
     </article>
 
@@ -36,22 +33,18 @@ import { Users } from '../../../core/generated/zz_gen_resources';
         <code>User | undefined</code>.
       </p>
       <div class="status">
-        <span
-          >status: <strong>{{ swrRxDetail.resource.status() }}</strong></span
-        >
-        <span
-          >hasValue: <strong>{{ swrRxDetail.resource.hasValue() }}</strong></span
-        >
-        <span
-          >value: <strong>{{ swrRxDetail.safeValue()?.username ?? '—' }}</strong></span
-        >
+        <span>status: <strong>{{ swrRxDetail.resource.status() }}</strong></span>
+        <span>hasValue: <strong>{{ swrRxDetail.resource.hasValue() }}</strong></span>
+        <span>value: <strong>{{ swrRxDetail.safeValue()?.username ?? '—' }}</strong></span>
       </div>
-      <button (click)="swrRxDetail.resource.reload()" [disabled]="!userId()">Reload</button>
+      <div class="actions">
+        <button mat-stroked-button (click)="swrRxDetail.resource.reload()" [disabled]="!userId()">Reload</button>
+      </div>
       <pre>{{ swrRxDetail.safeValue() | json }}</pre>
     </article>
   `,
   styleUrl: './safe-resource-showcase.component.scss',
-  imports: [JsonPipe],
+  imports: [JsonPipe, MatButtonModule],
 })
 export class SwrSectionComponent {
   private readonly http = inject(HttpClient);
