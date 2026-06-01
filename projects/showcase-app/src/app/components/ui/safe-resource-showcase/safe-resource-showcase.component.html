@@ -69,7 +69,7 @@
       <span>value: <strong>{{ plainRxDetail.hasValue() ? (plainRxDetail.value()?.username ?? '—') : '—' }}</strong></span>
     </div>
     <div class="actions">
-      <button mat-stroked-button (click)="plainRxDetail.reload()" [disabled]="!userId() && !useErrorUrl()">
+      <button mat-stroked-button (click)="plainRxDetail.reload()" [disabled]="!detailUrl()">
         Reload
       </button>
     </div>

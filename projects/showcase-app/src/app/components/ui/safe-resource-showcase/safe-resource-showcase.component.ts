@@ -29,8 +29,8 @@ export class SafeResourceShowcaseComponent {
   readonly showSwrSection = signal(true);
   readonly useErrorUrl = signal(false);
 
-  private readonly listUrl = computed(() => (this.useErrorUrl() ? '/api/invalid-route-test' : '/api/users'));
-  private readonly detailUrl = computed(() => {
+  readonly listUrl = computed(() => (this.useErrorUrl() ? '/api/invalid-route-test' : '/api/users'));
+  readonly detailUrl = computed(() => {
     if (this.useErrorUrl()) return '/api/invalid-route-test';
     return this.userId() ? `/api/users/${this.userId()}` : undefined;
   });
@@ -38,9 +38,11 @@ export class SafeResourceShowcaseComponent {
   // --- plain Angular variants (for comparison) ---
   readonly plainHttpList = httpResource<Users[]>(() => this.listUrl());
 
-  readonly plainRxDetail = rxResource<Users, string | undefined>({
+  // params is typed as `string` so the stream receives a non-undefined value;
+  // rxResource only invokes the stream when params() is not undefined.
+  readonly plainRxDetail = rxResource<Users, string>({
     params: () => this.detailUrl(),
-    stream: ({ params }) => this.http.get<Users>(params!),
+    stream: ({ params }) => this.http.get<Users>(params),
   });
 
   // --- safe variants ---
