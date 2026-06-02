@@ -4,8 +4,11 @@ export APP_HOST=localhost
 # Port the web server is running on
 export APP_PORT='<YOUR_WEB_PORT>'
 
-# Port the angular server is running on
+# Port the OIDC Auth angular server is running on
 export APP_NG_SERVE_PORT='<YOUR_NG_PORT>'
+
+# Port the Password Auth angular server is running on
+export APP_NG_PWD_SERVE_PORT='<YOUR_NG_PWD_PORT>'
 
 # App idle session settings
 export APP_SESSION_DURATION='1200'  # 20 minutes
