@@ -9,7 +9,7 @@ import (
 	"github.com/cccteam/ccc"
 	"github.com/cccteam/ccc/accesstypes"
 	"github.com/cccteam/demo-app/pkg/computedresources"
-	"github.com/cccteam/demo-app/pkg/router"
+	router "github.com/cccteam/demo-app/pkg/router-password-auth"
 	"github.com/cccteam/httpio"
 )
 
