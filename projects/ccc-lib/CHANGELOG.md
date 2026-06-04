@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.41](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.40...ccc-lib/v0.0.41) (2026-06-04)
+
+
+### Code Refactoring
+
+* auth guard returns url tree instead of false + side effect ([#52](https://github.com/cccteam/ccc-lib/issues/52)) ([b96eafb](https://github.com/cccteam/ccc-lib/commit/b96eafb68933901894c77dc62cddd065dd20eaf8))
+
 ## [0.0.40](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.39...ccc-lib/v0.0.40) (2026-05-12)
 
 
