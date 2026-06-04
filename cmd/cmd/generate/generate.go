@@ -7,6 +7,7 @@ package generate
 //
 // mock
 //go:generate mockgen -source ../../pkg/router/router.go -destination ../../pkg/mock/mock_router/mock_handlers.go
+//go:generate mockgen -source ../../pkg/router-password-auth/router.go -destination ../../pkg/mock/mock_router_password_auth/mock_handlers.go
 //go:generate mockgen -destination=../../pkg/mock/mock_resource/mock_read_write_transaction.go github.com/cccteam/ccc/resource ReadWriteTransaction
 //go:generate mockgen -destination=../../pkg/mock/mock_resource/mock_reader.go github.com/cccteam/ccc/resource Reader
 
