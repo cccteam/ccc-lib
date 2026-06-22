@@ -354,7 +354,20 @@ export class ResourceListComponent implements OnInit {
   });
 
   loadingRowData = computed(() => {
-    return this.store.listStatus() === 'loading' || this.store.listStatus() === 'reloading';
+    const primaryStatus = this.store.listStatus();
+    if (primaryStatus === 'loading' || primaryStatus === 'reloading') {
+      return true;
+    }
+    // Keep the grid in its loading state until enumerated (foreign-key) lookups
+    // resolve, so referenced display values appear together with the rest of the
+    // row instead of popping in after a blank flash.
+    for (const ref of this.resourceRefMap().values()) {
+      const refStatus = ref.status();
+      if (refStatus === 'loading' || refStatus === 'reloading') {
+        return true;
+      }
+    }
+    return false;
   });
 
   filters = computed(() => {
@@ -418,28 +431,66 @@ export class ResourceListComponent implements OnInit {
     this.store.disableCacheForFilterPii.set(this.config().disableCacheForFilterPii);
 
     runInInjectionContext(this.injector, () => {
+      // Group every referenced resource used by enumerated columns, collecting the
+      // foreign-key columns that point at it and the display fields read from it.
+      const referenced = new Map<
+        Resource,
+        { route: string; keyField: FieldName; fkColumns: Set<FieldName>; columns: Set<FieldName> }
+      >();
       this.config().listColumns.forEach((element) => {
         if (!('additionalIds' in element)) {
           return;
         }
-        element.additionalIds.forEach((id) => {
-          if (id.resource === undefined) {
+        element.additionalIds.forEach((additionalCol) => {
+          if (additionalCol.resource === undefined) {
             return;
           }
-          const meta = this.resourceMeta(id.resource);
+          const meta = this.resourceMeta(additionalCol.resource);
           if (meta === undefined) {
             return;
           }
-          const route = signal(meta.route);
-          const resource = signal(id.resource);
-          if (!this.resourceRefMap().has(resource())) {
-            const ref = this.store.resourceList(route);
-            if (ref === undefined) {
-              return;
-            }
-            this.resourceRefMap.set(this.resourceRefMap().set(resource(), ref));
+          const entry = referenced.get(additionalCol.resource) ?? {
+            route: meta.route,
+            keyField: additionalCol.id as FieldName,
+            fkColumns: new Set<FieldName>(),
+            columns: new Set<FieldName>(),
+          };
+          entry.fkColumns.add(element.id as FieldName);
+          entry.columns.add(additionalCol.id as FieldName);
+          if (additionalCol.field) {
+            entry.columns.add(additionalCol.field as FieldName);
           }
+          referenced.set(additionalCol.resource, entry);
         });
+      });
+
+      // For each referenced resource, fetch only the rows whose key matches a value
+      // present in the loaded list data, keeping the lookup independent of the
+      // referenced resource's total size.
+      referenced.forEach((entry, resource) => {
+        if (this.resourceRefMap().has(resource)) {
+          return;
+        }
+        const keys = computed(() => {
+          const data = this.store.listData();
+          const values = new Set<string>();
+          for (const row of data) {
+            for (const fkColumn of entry.fkColumns) {
+              const value = row[fkColumn];
+              if (value !== undefined && value !== null && value !== '') {
+                values.add(String(value));
+              }
+            }
+          }
+          return [...values];
+        });
+        const ref = this.store.resourceListByKeys(
+          signal(entry.route),
+          signal(entry.keyField),
+          keys,
+          signal([...entry.columns]),
+        );
+        this.resourceRefMap.set(this.resourceRefMap().set(resource, ref));
       });
 
       effect(() => {

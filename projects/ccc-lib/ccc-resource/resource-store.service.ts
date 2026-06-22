@@ -16,7 +16,7 @@ import {
   RPCConfig,
 } from '@cccteam/ccc-lib/types';
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
-import { Observable, of, tap } from 'rxjs';
+import { forkJoin, map, Observable, of, tap } from 'rxjs';
 import { Operation } from './resources-helpers';
 
 @Injectable()
@@ -216,6 +216,58 @@ export class ResourceStore {
             params.sorts,
             params.limit,
           );
+        },
+      }) as ResourceRef<RecordData[]>;
+    });
+  }
+
+  /**
+   * Resolves referenced-resource rows by their key values, batching the lookup into
+   * `filter=<keyField>:in:(...)` requests of at most `batchSize` keys each.
+   *
+   * Used by list views to resolve enumerated (foreign-key) display values for only the
+   * rows actually present in the loaded data, rather than fetching the whole referenced
+   * resource (which is capped by the backend list limit and silently drops rows beyond it).
+   */
+  resourceListByKeys(
+    route: Signal<string>,
+    keyField: Signal<string>,
+    keys: Signal<string[]>,
+    columns: Signal<string[]> = signal([]),
+    batchSize = 200,
+  ): ResourceRef<RecordData[]> {
+    return untracked(() => {
+      return rxResource({
+        defaultValue: [] as RecordData[],
+        injector: this.injector,
+        params: () => ({
+          route: route(),
+          keyField: keyField(),
+          keys: keys(),
+          columns: columns(),
+        }),
+        stream: ({ params }) => {
+          if (!params.route || !params.keyField || params.keys.length === 0) {
+            return of([] as RecordData[]);
+          }
+          const batches: string[][] = [];
+          for (let i = 0; i < params.keys.length; i += batchSize) {
+            batches.push(params.keys.slice(i, i + batchSize));
+          }
+          const requests = batches.map((batch) =>
+            this.list<RecordData>(
+              params.route,
+              `${params.keyField}:in:(${batch.join(',')})`,
+              false,
+              params.columns,
+              '',
+              [],
+              // Send an explicit limit so the backend's default list cap does not truncate the batch.
+              batch.length,
+            ),
+          );
+
+          return forkJoin(requests).pipe(map((results) => results.flat()));
         },
       }) as ResourceRef<RecordData[]>;
     });
