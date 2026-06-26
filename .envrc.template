@@ -4,6 +4,9 @@ export APP_HOST=localhost
 # Port the web server is running on
 export APP_PORT='<YOUR_WEB_PORT>'
 
+# Port the password auth web server is running on
+export APP_PWD_PORT='<YOUR_WEB_PORT>'
+
 # Port the OIDC Auth angular server is running on
 export APP_NG_SERVE_PORT='<YOUR_NG_PORT>'
 

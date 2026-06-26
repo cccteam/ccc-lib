@@ -1,3 +1,4 @@
+import { HttpClient } from '@angular/common/http';
 import { Component, inject, OnDestroy } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -18,6 +19,7 @@ import { PaneComponent } from '../shared/pane/pane.component';
 })
 export class LoginComponent implements OnDestroy {
   private ui = inject(UiCoreService);
+  private http = inject(HttpClient);
   private auth = inject(AuthService);
   private route = inject(ActivatedRoute);
   private idle = inject(IdleService);
@@ -46,8 +48,8 @@ export class LoginComponent implements OnDestroy {
   }
 
   authenticate(): void {
-    const encodedUrl = encodeURIComponent(this.getAndResetRedirectUrl());
-    window.location.href = `/api/user/login?returnUrl=${encodedUrl}`;
+    // const encodedUrl = encodeURIComponent(this.getAndResetRedirectUrl());
+    this.http.post('/api/user/session', { username: 'blaine@cloud-team.com', password: 'password' }).subscribe();
   }
 
   /**
