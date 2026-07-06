@@ -4,7 +4,7 @@ tmp_dir = "tmp/pwd"
 [build]
   args_bin = []
   bin = "./tmp/pwd/main"
-  cmd = "go build ${APP_BUILD_FLAGS_LOCAL_DEV} -o ./tmp/pwd/main ."
+  cmd = "go build ${APP_BUILD_FLAGS_LOCAL_DEV} -tags passwordApp -o ./tmp/pwd/main ."
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "app/testdata", "config/testdata", "spanner/testdata", "gui/testdata", "users/testdata", "gui/node_modules", "gui/src"]
   exclude_file = []
