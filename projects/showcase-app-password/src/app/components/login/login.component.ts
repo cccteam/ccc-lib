@@ -7,12 +7,12 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '@cccteam/ccc-lib/auth-service';
 import { AlertType, API_URL, BASE_URL, SESSION_PATH } from '@cccteam/ccc-lib/types';
 import { UiCoreService } from '@cccteam/ccc-lib/ui-core-service';
 import { IdleService } from '@cccteam/ccc-lib/ui-idle-service';
-import { firstValueFrom } from 'rxjs';
+import { catchError, EMPTY, tap } from 'rxjs';
 import { PaneComponent } from '../shared/pane/pane.component';
 
 interface LoginFormData {
@@ -39,6 +39,7 @@ export class LoginComponent implements OnDestroy {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
   private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private idle = inject(IdleService);
   private authService = inject(AuthService);
   private dialog = inject(MatDialog);
@@ -93,7 +94,7 @@ export class LoginComponent implements OnDestroy {
     void this.authenticate();
   }
 
-  async authenticate(): Promise<void> {
+  authenticate(): void {
     this.loginForm().markAsTouched();
     if (this.loginForm().invalid()) {
       return;
@@ -102,14 +103,16 @@ export class LoginComponent implements OnDestroy {
     this.error.set('');
     this.loading.set(true);
 
-    try {
-      // const encodedUrl = encodeURIComponent(this.getAndResetRedirectUrl());
-      await firstValueFrom(this.http.post('/api/user/session', this.loginFormModel()));
-    } catch {
-      this.error.set('Invalid username or password.');
-    } finally {
-      this.loading.set(false);
-    }
+    this.http
+      .post('/api/user/session', this.loginFormModel())
+      .pipe(
+        tap(() => this.router.navigate(['dashboard'])),
+        catchError(() => {
+          this.error.set('Invalid username or password.');
+          return EMPTY;
+        }),
+      )
+      .subscribe();
   }
 
   /**

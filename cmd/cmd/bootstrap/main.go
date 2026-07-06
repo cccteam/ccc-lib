@@ -26,6 +26,7 @@ var shouldMigratePasswordAuth bool
 const (
 	prodMigrationSource     = "file://schema/migrations"
 	passwordMigrationSource = "file://schema/password_migrations"
+	passwordBootstrapSource = "file://schema/password_bootstrap"
 )
 
 func main() {
@@ -73,6 +74,14 @@ func Main() error {
 
 	if err := bootstrapData(db); err != nil {
 		return errors.Wrap(err, "bootstrapData()")
+	}
+
+	if shouldMigratePasswordAuth {
+		fmt.Printf("Migrating from source: %s\n", passwordBootstrapSource)
+
+		if err := db.MigrateUp(passwordBootstrapSource); err != nil {
+			return errors.Wrap(err, "failed to load password auth bootstrap data")
+		}
 	}
 
 	return nil
