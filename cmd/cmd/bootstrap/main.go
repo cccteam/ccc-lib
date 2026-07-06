@@ -21,6 +21,13 @@ import (
 	"github.com/jtwatson/shutdown"
 )
 
+var shouldMigratePasswordAuth bool
+
+const (
+	prodMigrationSource     = "file://schema/migrations"
+	passwordMigrationSource = "file://schema/password_migrations"
+)
+
 func main() {
 	if err := Main(); err != nil {
 		log.Fatal(err)
@@ -84,8 +91,18 @@ func bootstrapInstanceWithSchema(ctx context.Context, conf *config.CliConfigurat
 
 	fmt.Printf("Created Database %s\n", conf.SpannerDatabaseName())
 
-	if err := db.MigrateUp("file://schema/migrations"); err != nil {
+	fmt.Printf("Migrating from source: %s\n", prodMigrationSource)
+
+	if err := db.MigrateUp(prodMigrationSource); err != nil {
 		return nil, errors.Wrap(err, "failed to create schema")
+	}
+
+	if shouldMigratePasswordAuth {
+		fmt.Printf("Migrating from source: %s\n", passwordMigrationSource)
+
+		if err := db.MigrateUp(passwordMigrationSource); err != nil {
+			return nil, errors.Wrap(err, "failed to create schema")
+		}
 	}
 	fmt.Println("Created Schema")
 

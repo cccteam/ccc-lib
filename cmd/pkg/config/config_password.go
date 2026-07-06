@@ -50,9 +50,10 @@ func NewPasswordAuth(ctx context.Context) (conf *PasswordAuthConfiguration, err 
 	}
 
 	sess, err := session.NewPasswordAuth(
-		sessionstorage.NewSpannerPasswordAuth(cliConfig.cloudSpannerClient).SetSessionTableName("PasswordSession"),
+		sessionstorage.NewSpannerPasswordAuth(cliConfig.cloudSpannerClient),
 		envVars.Options.CookieKey,
 		session.WithSessionTimeout(d),
+		session.WithSessionTableName("PasswordSessions"),
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "session.NewPasswordAuth()")
