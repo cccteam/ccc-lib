@@ -1,13 +1,13 @@
-//go:build !passwordApp
+//go:build passwordApp
 
-// main is the entrypoint for the application
+// main is the entrypoint for the password-auth application
 package main
 
 import (
 	"context"
 	"log"
 
-	"github.com/cccteam/demo-app/app"
+	app "github.com/cccteam/demo-app/app-password-auth"
 	"github.com/cccteam/demo-app/pkg/config"
 	"github.com/go-playground/errors/v5"
 	"github.com/jtwatson/server"
@@ -24,7 +24,7 @@ func Main() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	conf, err := config.New(ctx)
+	conf, err := config.NewPasswordAuth(ctx)
 	if err != nil {
 		return errors.Wrap(err, "failed to get config")
 	}

@@ -4,14 +4,50 @@
       <img src="logo.png" alt="CCC Demo App" />
     </div>
     <app-pane>
-      <div class="login-button-container">
-        <button mat-raised-button #login color="primary" (click)="authenticate(); login.disabled = true">
-          Login
-          @if (login.disabled) {
-            <mat-spinner class="loading-spinner" diameter="20" strokeWidth="2"></mat-spinner>
+      <form class="login-form" novalidate (submit)="onSubmit($event)">
+        <mat-form-field appearance="outline" class="login-field">
+          <mat-label i18n="Login form, username label">Username</mat-label>
+          <input matInput type="text" autocomplete="username" [formField]="loginForm.username" />
+          @for (fieldError of loginForm.username().errors(); track fieldError.kind) {
+            <mat-error>{{ fieldError.message }}</mat-error>
           }
-        </button>
-      </div>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="login-field">
+          <mat-label i18n="Login form, password label">Password</mat-label>
+          <input
+            matInput
+            [type]="showPassword() ? 'text' : 'password'"
+            autocomplete="current-password"
+            [formField]="loginForm.password"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+            (click)="togglePasswordVisibility()"
+          >
+            <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          @for (fieldError of loginForm.password().errors(); track fieldError.kind) {
+            <mat-error>{{ fieldError.message }}</mat-error>
+          }
+        </mat-form-field>
+
+        @if (error()) {
+          <div class="login-error">{{ error() }}</div>
+        }
+
+        <div class="login-button-container">
+          <button mat-raised-button color="primary" type="submit" [disabled]="loading()">
+            Login
+            @if (loading()) {
+              <mat-spinner class="loading-spinner" diameter="20" strokeWidth="2"></mat-spinner>
+            }
+          </button>
+        </div>
+      </form>
     </app-pane>
   </div>
 </div>
