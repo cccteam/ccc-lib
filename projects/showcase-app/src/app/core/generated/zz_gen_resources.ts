@@ -9,7 +9,7 @@ export interface Users {
 }
 
 export interface Weathers {
-  loanId: string;
+  weatherId: string;
   personAddressId: string;
   temperature: number;
 }
@@ -27,7 +27,7 @@ const resourceMap: ResourceMap = {
   [Resources.Weathers]: {
     route: 'weathers',createDisabled: true, updateDisabled: true, deleteDisabled: true,
     fields: [
-      { fieldName: 'loanId', primaryKey: { ordinalPosition: 0 }, displayType: 'string', required: true, isIndex: false },
+      { fieldName: 'weatherId', primaryKey: { ordinalPosition: 0 }, displayType: 'string', required: true, isIndex: false },
       { fieldName: 'personAddressId', displayType: 'string', required: false, isIndex: false },
       { fieldName: 'temperature', displayType: 'number', required: false, isIndex: false },
     ],
