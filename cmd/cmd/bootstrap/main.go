@@ -21,14 +21,6 @@ import (
 	"github.com/jtwatson/shutdown"
 )
 
-var shouldMigratePasswordAuth bool
-
-const (
-	prodMigrationSource     = "file://schema/migrations"
-	passwordMigrationSource = "file://schema/password_migrations"
-	passwordBootstrapSource = "file://schema/password_bootstrap"
-)
-
 func main() {
 	if err := Main(); err != nil {
 		log.Fatal(err)
@@ -76,10 +68,10 @@ func Main() error {
 		return errors.Wrap(err, "bootstrapData()")
 	}
 
-	if shouldMigratePasswordAuth {
-		fmt.Printf("Migrating from source: %s\n", passwordBootstrapSource)
+	for _, src := range bootstrapDataSource() {
+		fmt.Printf("Migrating from source: %s\n", src)
 
-		if err := db.MigrateUp(passwordBootstrapSource); err != nil {
+		if err := db.MigrateUp(src); err != nil {
 			return errors.Wrap(err, "failed to load password auth bootstrap data")
 		}
 	}
@@ -100,16 +92,10 @@ func bootstrapInstanceWithSchema(ctx context.Context, conf *config.CliConfigurat
 
 	fmt.Printf("Created Database %s\n", conf.SpannerDatabaseName())
 
-	fmt.Printf("Migrating from source: %s\n", prodMigrationSource)
+	for _, src := range migrationSource() {
+		fmt.Printf("Migrating from source: %s\n", src)
 
-	if err := db.MigrateUp(prodMigrationSource); err != nil {
-		return nil, errors.Wrap(err, "failed to create schema")
-	}
-
-	if shouldMigratePasswordAuth {
-		fmt.Printf("Migrating from source: %s\n", passwordMigrationSource)
-
-		if err := db.MigrateUp(passwordMigrationSource); err != nil {
+		if err := db.MigrateUp(src); err != nil {
 			return nil, errors.Wrap(err, "failed to create schema")
 		}
 	}
