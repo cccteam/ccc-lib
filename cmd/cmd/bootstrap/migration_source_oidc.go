@@ -7,7 +7,7 @@ func migrationSource() []string {
 	return []string{"file://schema/migrations"}
 }
 
-// bootstrapDataSource returns the source(s) for post-migration bootstrap data scripts
-func bootstrapDataSource() []string {
-	return []string{"file://schema/bootstrap"}
+// bootstrapDataPathEnv returns the environment variable that specifies the path to the bootstrap data directory
+func bootstrapDataPathEnv() string {
+	return "APP_OIDC_BOOTSTRAP_DATA_PATH"
 }

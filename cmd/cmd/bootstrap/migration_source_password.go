@@ -7,7 +7,7 @@ func migrationSource() []string {
 	return []string{"file://schema/password_migrations"}
 }
 
-// bootstrapDataSource returns the source(s) for post-migration bootstrap data scripts
-func bootstrapDataSource() []string {
-	return []string{"file://schema/password_bootstrap"}
+// bootstrapDataPathEnv returns the environment variable that specifies the path to the bootstrap data directory
+func bootstrapDataPathEnv() string {
+	return "APP_PWD_BOOTSTRAP_DATA_PATH"
 }
