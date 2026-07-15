@@ -27,20 +27,13 @@
           "builder": "@angular/build:karma",
           "options": {
             "tsConfig": "projects/ccc-lib/tsconfig.spec.json",
-            "polyfills": [
-              "zone.js",
-              "zone.js/testing",
-              "@angular/localize/init"
-            ]
+            "polyfills": ["zone.js", "zone.js/testing", "@angular/localize/init"]
           }
         },
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
-            "lintFilePatterns": [
-              "projects/ccc-lib/**/*.ts",
-              "projects/ccc-lib/**/*.html"
-            ],
+            "lintFilePatterns": ["projects/ccc-lib/**/*.ts", "projects/ccc-lib/**/*.html"],
             "eslintConfig": "projects/ccc-lib/eslint.config.js"
           }
         }
@@ -63,10 +56,7 @@
             "browser": "projects/showcase-app/src/main.ts",
             "tsConfig": "projects/showcase-app/tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "polyfills": [
-              "zone.js",
-              "@angular/localize/init"
-            ],
+            "polyfills": ["zone.js", "@angular/localize/init"],
             "assets": [
               {
                 "glob": "**/*",
@@ -128,10 +118,7 @@
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
-            "lintFilePatterns": [
-              "projects/showcase-app/**/*.ts",
-              "projects/showcase-app/**/*.html"
-            ],
+            "lintFilePatterns": ["projects/showcase-app/**/*.ts", "projects/showcase-app/**/*.html"],
             "eslintConfig": "projects/showcase-app/eslint.config.js"
           }
         }
@@ -154,10 +141,7 @@
             "browser": "projects/showcase-app-password/src/main.ts",
             "tsConfig": "projects/showcase-app-password/tsconfig.app.json",
             "inlineStyleLanguage": "scss",
-            "polyfills": [
-              "zone.js",
-              "@angular/localize/init"
-            ],
+            "polyfills": ["zone.js", "@angular/localize/init"],
             "assets": [
               {
                 "glob": "**/*",
@@ -165,7 +149,6 @@
               }
             ],
             "styles": [
-              "projects/showcase-app-password/src/styles.scss",
               {
                 "input": "node_modules/@progress/kendo-theme-default/dist/all.css"
               },
@@ -219,10 +202,7 @@
         "lint": {
           "builder": "@angular-eslint/builder:lint",
           "options": {
-            "lintFilePatterns": [
-              "projects/showcase-app-password/**/*.ts",
-              "projects/showcase-app-password/**/*.html"
-            ],
+            "lintFilePatterns": ["projects/showcase-app-password/**/*.ts", "projects/showcase-app-password/**/*.html"],
             "eslintConfig": "projects/showcase-app-password/eslint.config.js"
           }
         }
@@ -231,9 +211,7 @@
   },
   "cli": {
     "analytics": false,
-    "schematicCollections": [
-      "@angular-eslint/schematics"
-    ]
+    "schematicCollections": ["@angular-eslint/schematics"]
   },
   "schematics": {
     "@schematics/angular:component": {
