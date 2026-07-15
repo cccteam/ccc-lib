@@ -7,8 +7,8 @@ package generate
 //
 // mock
 //go:generate mockgen -source ../../pkg/router/router.go -destination ../../pkg/mock/mock_router/mock_handlers.go
-// resourcegenerator's router-test template hardcodes the identifier "mock_router", so this package must keep
-// that name even though it lives in the mock_router_password_auth directory.
+// resourcegenerator's router-test template hardcodes the identifier "mock_router". This must therefore be used despite
+// the directory being named mock_router_password_auth
 //go:generate mockgen -package=mock_router -source ../../pkg/routerpasswordauth/router.go -destination ../../pkg/mock/mock_router_password_auth/mock_handlers.go
 //go:generate mockgen -package=mock_router -destination=../../pkg/mock/mock_router_password_auth/mock_password_auth_handlers.go github.com/cccteam/session PasswordAuthHandlers
 //go:generate mockgen -destination=../../pkg/mock/mock_resource/mock_read_write_transaction.go github.com/cccteam/ccc/resource ReadWriteTransaction
