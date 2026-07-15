@@ -1,4 +1,4 @@
-package app
+package apppasswordauth
 
 import (
 	"github.com/cccteam/ccc/accesstypes"

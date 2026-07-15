@@ -7,7 +7,7 @@ import (
 	"context"
 	"log"
 
-	app "github.com/cccteam/demo-app/app-password-auth"
+	app "github.com/cccteam/demo-app/apppasswordauth"
 	"github.com/cccteam/demo-app/pkg/config"
 	"github.com/go-playground/errors/v5"
 	"github.com/jtwatson/server"

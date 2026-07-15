@@ -1,5 +1,5 @@
-// package router handles wiring up the routes to handlers and the middleware in between.
-package router
+// package routerpasswordauth handles wiring up the routes to handlers and the middleware in between.
+package routerpasswordauth
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cccteam/demo-app/pkg/mock/mock_router_password_auth"
+	mock_router "github.com/cccteam/demo-app/pkg/mock/mock_router_password_auth"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/mock/gomock"
 )
@@ -87,8 +87,8 @@ func TestNew(t *testing.T) {
 
 			rec := newCallRecorder()
 			ctrl := gomock.NewController(t)
-			handlers := mock_router_password_auth.NewMockHandlers(ctrl)
-			session := mock_router_password_auth.NewMockPasswordAuthHandlers(ctrl)
+			handlers := mock_router.NewMockHandlers(ctrl)
+			session := mock_router.NewMockPasswordAuthHandlers(ctrl)
 			e := handlers.EXPECT()
 			s := session.EXPECT()
 

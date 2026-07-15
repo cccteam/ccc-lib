@@ -1,5 +1,5 @@
-// package router handles wiring up the routes to handlers and the middleware in between.
-package router
+// package routerpasswordauth handles wiring up the routes to handlers and the middleware in between.
+package routerpasswordauth
 
 import (
 	"net/http"

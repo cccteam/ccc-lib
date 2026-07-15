@@ -1,5 +1,5 @@
-// app contains the core functionality for the application server. This includes the routing and handlers for http requests
-package app
+// apppasswordauth contains the core functionality for the application server. This includes the routing and handlers for http requests
+package apppasswordauth
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/cccteam/ccc/resource"
 	"github.com/cccteam/demo-app/gui"
 	"github.com/cccteam/demo-app/pkg/computedresources"
-	router "github.com/cccteam/demo-app/pkg/router-password-auth"
+	router "github.com/cccteam/demo-app/pkg/routerpasswordauth"
 	"github.com/cccteam/demo-app/pkg/rpc"
 	"github.com/cccteam/httpio"
 	"github.com/cccteam/logger"
@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	name = "github.com/cccteam/demo-app/app-password-auth"
+	name = "github.com/cccteam/demo-app/apppasswordauth"
 
 	// Refer to the 'Content Security Policy (CSP)' section of the README for an explanation of the CSP policy
 	cspPolicy string = "default-src 'self'; worker-src 'self'; connect-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data:"
