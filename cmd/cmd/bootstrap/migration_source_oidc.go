@@ -9,5 +9,5 @@ func migrationSource() []string {
 
 // bootstrapDataSource returns the source(s) for post-migration bootstrap data scripts
 func bootstrapDataSource() []string {
-	return nil
+	return []string{"file://schema/bootstrap"}
 }
