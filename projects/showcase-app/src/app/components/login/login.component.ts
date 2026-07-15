@@ -21,7 +21,6 @@ export class LoginComponent implements OnDestroy {
   private auth = inject(AuthService);
   private route = inject(ActivatedRoute);
   private idle = inject(IdleService);
-  private authService = inject(AuthService);
   private dialog = inject(MatDialog);
 
   sessionPath = inject(SESSION_PATH);
@@ -36,7 +35,7 @@ export class LoginComponent implements OnDestroy {
         this.ui.publishError({ message: params['message'], type: AlertType.ERROR, link: '' });
       }
     });
-    this.authService.logout().subscribe();
+    this.auth.logout().subscribe();
     this.idle.stop();
   }
 
