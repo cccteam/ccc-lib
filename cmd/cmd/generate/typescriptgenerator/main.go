@@ -75,7 +75,7 @@ func generateApp(ctx context.Context) {
 		generation.WithRPC("pkg/rpc"),
 		generation.WithComputedResources("pkg/computedresources"),
 		generation.WithTypescriptOverrides(map[string]string{
-			"resources.Attachment": "customtypes.attachment[]",
+			"resources.Attachment": "CustomTypes.Attachment[]",
 		}),
 		generation.WithSpannerEmulatorVersion("1.5.43"),
 	)
@@ -112,7 +112,7 @@ func generatePasswordApp(ctx context.Context) {
 		generation.WithRPC("pkg/rpc"),
 		generation.WithComputedResources("pkg/computedresources"),
 		generation.WithTypescriptOverrides(map[string]string{
-			"resources.Attachment": "customtypes.attachment[]",
+			"resources.Attachment": "CustomTypes.Attachment[]",
 		}),
 		generation.WithSpannerEmulatorVersion("1.5.43"),
 	)
