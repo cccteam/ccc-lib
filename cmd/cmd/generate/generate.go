@@ -3,6 +3,8 @@ package generate
 
 //go:generate go run ./resourcegenerator
 //go:generate go run -tags=collect_resource_permissions ./typescriptgenerator
+//go:generate go run ./resourcegenerator -password
+//go:generate go run -tags=collect_resource_permissions ./typescriptgenerator -password
 //go:generate go run ./mock_cleanup/mock_cleanup.go
 //
 // mock

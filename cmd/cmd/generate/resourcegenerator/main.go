@@ -3,14 +3,27 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log"
 
 	"github.com/cccteam/ccc/resource/generation"
 )
 
 func main() {
+	password := flag.Bool("password", false, "generate resources for the password-auth showcase app instead of the OIDC showcase app")
+	flag.Parse()
+
 	ctx := context.Background()
 
+	if *password {
+		generatePasswordApp(ctx)
+		return
+	}
+
+	generateApp(ctx)
+}
+
+func generateApp(ctx context.Context) {
 	generator, err := generation.NewResourceGenerator(
 		ctx,
 		"./pkg/resources",
@@ -39,7 +52,9 @@ func main() {
 	if err := generator.Generate(); err != nil {
 		panic(err)
 	}
+}
 
+func generatePasswordApp(ctx context.Context) {
 	passwordAppGenerator, err := generation.NewResourceGenerator(
 		ctx,
 		"./pkg/resources",
