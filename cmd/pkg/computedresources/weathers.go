@@ -30,7 +30,7 @@ func (w Weather) Resource() accesstypes.Resource {
 }
 
 // The code generator expects the function ReadWeather because its handler is not suppressed on the Weather struct above.
-func ReadWeather(ctx context.Context, loanID ccc.UUID, querySet *resource.QuerySet[Weather], txn resource.ReadOnlyTransaction, client *Client) (*Weather, error) {
+func ReadWeather(ctx context.Context, weatherID ccc.UUID, querySet *resource.QuerySet[Weather], txn resource.ReadOnlyTransaction, client *Client) (*Weather, error) {
 	return nil, nil
 }
 

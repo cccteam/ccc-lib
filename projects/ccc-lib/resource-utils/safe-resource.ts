@@ -13,7 +13,7 @@ import { rxResource, RxResourceOptions } from '@angular/core/rxjs-interop';
 import { SwrCacheService } from './swr-cache.service';
 
 export interface SafeResourceRef<T> {
-  safeValue: Signal<T | undefined>;
+  safeValue: Signal<T>;
   resource: ResourceRef<T | undefined>;
 }
 
@@ -25,12 +25,22 @@ export interface SafeResourceRef<T> {
  * into an exception state when the resource.value() is read after it fails to load.
  *
  * If it does not have a value, it will return `undefined` (or the provided `defaultValue` if specified).
+ * This setup via function overloading ensures that the returned safeValue will never be undefined if a default is supplied
  */
+export function safeHttpResource<T>(
+  url: () => string | undefined,
+  options: HttpResourceOptions<T, unknown> | undefined,
+  defaultValue: T,
+): SafeResourceRef<T>;
+export function safeHttpResource<T>(
+  url: () => string | undefined,
+  options?: HttpResourceOptions<T, unknown>,
+): SafeResourceRef<T | undefined>;
 export function safeHttpResource<T>(
   url: () => string | undefined,
   options?: HttpResourceOptions<T, unknown> | undefined,
   defaultValue?: T,
-): SafeResourceRef<T> {
+): SafeResourceRef<T | undefined> {
   const resource = httpResource<T>(url, options);
   const safeValue = computed(() => {
     if (!resource.hasValue()) {
@@ -48,8 +58,14 @@ export function safeHttpResource<T>(
  * into an exception state when the resource.value() is read after it fails to load.
  *
  * If it does not have a value, it will return `undefined` (or the provided `defaultValue` if specified).
+ * This setup via function overloading ensures that the returned safeValue will never be undefined if a default is supplied
  */
-export function safeRxResource<T, A = unknown>(options: RxResourceOptions<T, A>, defaultValue?: T): SafeResourceRef<T> {
+export function safeRxResource<T, A = unknown>(options: RxResourceOptions<T, A>, defaultValue: T): SafeResourceRef<T>;
+export function safeRxResource<T, A = unknown>(options: RxResourceOptions<T, A>): SafeResourceRef<T | undefined>;
+export function safeRxResource<T, A = unknown>(
+  options: RxResourceOptions<T, A>,
+  defaultValue?: T,
+): SafeResourceRef<T | undefined> {
   const resource = rxResource<T, A>(options);
 
   const safeValue = computed(() => {
@@ -67,12 +83,22 @@ export function safeRxResource<T, A = unknown>(options: RxResourceOptions<T, A>,
  * The purpose of this utility function is to prevent the resource from dropping the entire application
  * into an exception state when the resource.value() is read after it fails to load, while also preserving the previous value during loading.
  *
+ * This setup via function overloading ensures that the returned safeValue will never be undefined if a default is supplied
  */
+export function staleHttpResource<T>(
+  url: () => string | undefined,
+  options: HttpResourceOptions<T, unknown> | undefined,
+  defaultValue: T,
+): SafeResourceRef<T>;
+export function staleHttpResource<T>(
+  url: () => string | undefined,
+  options?: HttpResourceOptions<T, unknown>,
+): SafeResourceRef<T | undefined>;
 export function staleHttpResource<T>(
   url: () => string | undefined,
   options?: HttpResourceOptions<T, unknown> | undefined,
   defaultValue?: T,
-): SafeResourceRef<T> {
+): SafeResourceRef<T | undefined> {
   const resource = httpResource<T>(url, options);
   const safeValue = linkedSignal<ResourceSnapshot<T | undefined>, T | undefined>({
     source: resource.snapshot as Signal<ResourceSnapshot<T | undefined>>,
@@ -96,11 +122,14 @@ export function staleHttpResource<T>(
  * The purpose of this utility function is to prevent the resource from dropping the entire application
  * into an exception state when the resource.value() is read after it fails to load, while also preserving the previous value during loading.
  *
+ * This setup via function overloading ensures that the returned safeValue will never be undefined if a default is supplied
  */
+export function staleRxResource<T, A = unknown>(options: RxResourceOptions<T, A>, defaultValue: T): SafeResourceRef<T>;
+export function staleRxResource<T, A = unknown>(options: RxResourceOptions<T, A>): SafeResourceRef<T | undefined>;
 export function staleRxResource<T, A = unknown>(
   options: RxResourceOptions<T, A>,
   defaultValue?: T,
-): SafeResourceRef<T> {
+): SafeResourceRef<T | undefined> {
   const resource = rxResource<T, A>(options);
 
   const safeValue = linkedSignal<ResourceSnapshot<T | undefined>, T | undefined>({
@@ -127,7 +156,8 @@ export function staleRxResource<T, A = unknown>(
  *
  * When the primary resource's `hasValue()` is false
  * - If the global cache service contains this resource's data, the cached data is immediately returned.
- * - If not in cache, the input `defaultValue` is returned (may be `undefined`)
+ * - If not in cache, the input `defaultValue` is returned
+ * This setup via function overloading ensures that the returned safeValue will never be undefined if a default is supplied
  *
  * When the primary resource's `hasValue()` is true
  * Once the HTTP resource has data, the `safeValue` signal updates with
@@ -136,9 +166,18 @@ export function staleRxResource<T, A = unknown>(
  */
 export function swrHttpResource<T>(
   urlFn: () => string | undefined,
+  options: HttpResourceOptions<T, unknown> | undefined,
+  defaultValue: T,
+): SafeResourceRef<T>;
+export function swrHttpResource<T>(
+  urlFn: () => string | undefined,
+  options?: HttpResourceOptions<T, unknown>,
+): SafeResourceRef<T | undefined>;
+export function swrHttpResource<T>(
+  urlFn: () => string | undefined,
   options?: HttpResourceOptions<T, unknown> | undefined,
   defaultValue?: T,
-): SafeResourceRef<T> {
+): SafeResourceRef<T | undefined> {
   const cache = inject(SwrCacheService);
   const resource = httpResource<T>(urlFn, options);
 
@@ -180,7 +219,8 @@ export function swrHttpResource<T>(
  *
  * When the primary resource's `hasValue()` is false
  * - If the global cache service contains this resource's data, the cached data is immediately returned.
- * - If not in cache, the input `defaultValue` is returned (may be `undefined`)
+ * - If not in cache, the input `defaultValue` is returned
+ * This setup via function overloading ensures that the returned safeValue will never be undefined if a default is supplied
  *
  * When the primary resource's `hasValue()` is true
  * Once the RxJS resource has data, the `safeValue` signal updates with
@@ -190,8 +230,17 @@ export function swrHttpResource<T>(
 export function swrRxResource<T, A = unknown>(
   cacheKey: string,
   options: RxResourceOptions<T, A>,
+  defaultValue: T,
+): SafeResourceRef<T>;
+export function swrRxResource<T, A = unknown>(
+  cacheKey: string,
+  options: RxResourceOptions<T, A>,
+): SafeResourceRef<T | undefined>;
+export function swrRxResource<T, A = unknown>(
+  cacheKey: string,
+  options: RxResourceOptions<T, A>,
   defaultValue?: T,
-): SafeResourceRef<T> {
+): SafeResourceRef<T | undefined> {
   const cache = inject(SwrCacheService);
   const resource = rxResource<T, A>(options);
   const fullCacheKey = computed(() => {
