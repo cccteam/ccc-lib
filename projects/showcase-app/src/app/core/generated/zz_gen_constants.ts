@@ -39,16 +39,16 @@ export namespace Users {
 
 export namespace Weathers {
   export const fieldName = {
+    loanId: 'loanId' as FieldName,
     personAddressId: 'personAddressId' as FieldName,
-    weatherId: 'weatherId' as FieldName,
   };
   export const piiFieldName = {
     temperature: 'temperature' as FieldName,
   };
   export const resourceName = {
+    loanId: 'Weathers.loanId' as Resource,
     personAddressId: 'Weathers.personAddressId' as Resource,
     temperature: 'Weathers.temperature' as Resource,
-    weatherId: 'Weathers.weatherId' as Resource,
   };
 };
 
@@ -100,6 +100,13 @@ const Mappings: PermissionMappings = {
     [Permissions.Read]: true,
     [Permissions.Update]: false,
   },
+  [Weathers.resourceName.loanId]: {
+    [Permissions.Create]: false,
+    [Permissions.Delete]: false,
+    [Permissions.List]: false,
+    [Permissions.Read]: false,
+    [Permissions.Update]: false,
+  },
   [Weathers.resourceName.personAddressId]: {
     [Permissions.Create]: false,
     [Permissions.Delete]: false,
@@ -108,13 +115,6 @@ const Mappings: PermissionMappings = {
     [Permissions.Update]: false,
   },
   [Weathers.resourceName.temperature]: {
-    [Permissions.Create]: false,
-    [Permissions.Delete]: false,
-    [Permissions.List]: false,
-    [Permissions.Read]: false,
-    [Permissions.Update]: false,
-  },
-  [Weathers.resourceName.weatherId]: {
     [Permissions.Create]: false,
     [Permissions.Delete]: false,
     [Permissions.List]: false,

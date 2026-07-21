@@ -15,7 +15,7 @@ import (
 
 func (a *App) Weathers() http.HandlerFunc {
 	type weather struct {
-		WeatherID       ccc.UUID `json:"weatherId"`
+		LoanID          ccc.UUID `json:"loanId"`
 		PersonAddressID ccc.UUID `json:"personAddressId"`
 		Temperature     float32  `json:"temperature"     pii:"true"`
 	}
@@ -42,8 +42,8 @@ func (a *App) Weathers() http.HandlerFunc {
 			rmap := make(map[string]any)
 			for _, field := range querySet.Fields() {
 				switch string(field) {
-				case "WeatherID":
-					rmap["weatherId"] = rec.WeatherID
+				case "LoanID":
+					rmap["loanId"] = rec.LoanID
 				case "PersonAddressID":
 					rmap["personAddressId"] = rec.PersonAddressID
 				case "Temperature":
@@ -58,7 +58,7 @@ func (a *App) Weathers() http.HandlerFunc {
 }
 func (a *App) Weather() http.HandlerFunc {
 	type response struct {
-		WeatherID       ccc.UUID `json:"weatherId"`
+		LoanID          ccc.UUID `json:"loanId"`
 		PersonAddressID ccc.UUID `json:"personAddressId"`
 		Temperature     float32  `json:"temperature"     pii:"true"`
 	}
@@ -69,14 +69,14 @@ func (a *App) Weather() http.HandlerFunc {
 		ctx, span := ccc.StartTrace(r.Context())
 		defer span.End()
 
-		weatherID := httpio.Param[ccc.UUID](r, router.WeatherWeatherID)
+		loanID := httpio.Param[ccc.UUID](r, router.WeatherLoanID)
 
 		querySet, err := decoder.Decode(r, a.UserPermissions(r))
 		if err != nil {
 			return httpio.NewEncoder(w).ClientMessage(ctx, err)
 		}
 
-		row, err := computedresources.ReadWeather(ctx, weatherID, querySet, a.ResourceClient(), a.ComputedClient())
+		row, err := computedresources.ReadWeather(ctx, loanID, querySet, a.ResourceClient(), a.ComputedClient())
 
 		if err != nil {
 			return httpio.NewEncoder(w).ClientMessage(ctx, err)
@@ -85,8 +85,8 @@ func (a *App) Weather() http.HandlerFunc {
 		rmap := make(map[string]any)
 		for _, field := range querySet.Fields() {
 			switch string(field) {
-			case "WeatherID":
-				rmap["weatherId"] = rec.WeatherID
+			case "LoanID":
+				rmap["loanId"] = rec.LoanID
 			case "PersonAddressID":
 				rmap["personAddressId"] = rec.PersonAddressID
 			case "Temperature":

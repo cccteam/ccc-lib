@@ -1,5 +1,3 @@
-//go:build !passwordApp
-
 // main is the entrypoint for the application
 package main
 

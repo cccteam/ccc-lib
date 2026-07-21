@@ -4,7 +4,7 @@ export APP_HOST=localhost
 # Port the web server is running on
 export APP_PORT='<YOUR_WEB_PORT>'
 
-# Port the Angular server is running on
+# Port the angular server is running on
 export APP_NG_SERVE_PORT='<YOUR_NG_PORT>'
 
 # App idle session settings
@@ -69,6 +69,5 @@ export APP_BUILD_FLAGS_LOCAL_DEV='-tags dev,skipAuth'
 # APP_BOOTSTRAP_ROLE_PATH is used to configure the path to the role definitions file
 export APP_BOOTSTRAP_ROLE_PATH='<insert path here>'
 
-# Point to a folder containing migration scripts to bootstrap data into the database
-export APP_OIDC_BOOTSTRAP_DATA_PATH='<insert path here>'
-export APP_PWD_BOOTSTRAP_DATA_PATH='<insert path here>'
+# APP_BOOTSTRAP_DATA_PATH should point to a folder containing migration scripts to bootstrap data into the database
+export APP_BOOTSTRAP_DATA_PATH='<insert path here>'

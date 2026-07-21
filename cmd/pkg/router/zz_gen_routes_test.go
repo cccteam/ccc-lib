@@ -19,7 +19,7 @@ type generatedRouterTest struct {
 func generatedRouteParameters() []string {
 	keys := []string{
 		"userID",
-		"weatherWeatherID",
+		"weatherLoanID",
 	}
 
 	return keys
@@ -58,14 +58,14 @@ func generatedRouterTests() []*generatedRouterTest {
 			parameters:  map[string]string{},
 		},
 		{
-			url: "/api/weathers/testWeatherWeatherID", method: http.MethodGet,
+			url: "/api/weathers/testWeatherLoanID", method: http.MethodGet,
 			handlerFunc: "Weather",
-			parameters:  map[string]string{"weatherWeatherID": "testWeatherWeatherID"},
+			parameters:  map[string]string{"weatherLoanID": "testWeatherLoanID"},
 		},
 		{
-			url: "/api/weathers/testWeatherWeatherID", method: http.MethodPost,
+			url: "/api/weathers/testWeatherLoanID", method: http.MethodPost,
 			handlerFunc: "Weather",
-			parameters:  map[string]string{"weatherWeatherID": "testWeatherWeatherID"},
+			parameters:  map[string]string{"weatherLoanID": "testWeatherLoanID"},
 		},
 		{
 			url: "/api/resources", method: http.MethodPatch,
