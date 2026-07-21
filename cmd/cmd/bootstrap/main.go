@@ -84,8 +84,12 @@ func bootstrapInstanceWithSchema(ctx context.Context, conf *config.CliConfigurat
 
 	fmt.Printf("Created Database %s\n", conf.SpannerDatabaseName())
 
-	if err := db.MigrateUp("file://schema/migrations"); err != nil {
-		return nil, errors.Wrap(err, "failed to create schema")
+	for _, src := range migrationSource() {
+		fmt.Printf("Migrating from source: %s\n", src)
+
+		if err := db.MigrateUp(src); err != nil {
+			return nil, errors.Wrap(err, "failed to create schema")
+		}
 	}
 	fmt.Println("Created Schema")
 
@@ -93,7 +97,7 @@ func bootstrapInstanceWithSchema(ctx context.Context, conf *config.CliConfigurat
 }
 
 func bootstrapData(db *initiator.SpannerDB) error {
-	path := os.Getenv("APP_BOOTSTRAP_DATA_PATH")
+	path := os.Getenv(bootstrapDataPathEnv())
 	if path == "" {
 		return nil
 	}

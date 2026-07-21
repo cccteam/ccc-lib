@@ -19,7 +19,7 @@ import (
 type (
 	// @computed
 	Weather struct {
-		LoanID          ccc.UUID // @primarykey
+		WeatherID       ccc.UUID // @primarykey
 		PersonAddressID ccc.UUID
 		Temperature     float32 `conditions:"pii"`
 	}

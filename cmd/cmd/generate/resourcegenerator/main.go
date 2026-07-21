@@ -39,4 +39,33 @@ func main() {
 	if err := generator.Generate(); err != nil {
 		panic(err)
 	}
+
+	passwordAppGenerator, err := generation.NewResourceGenerator(
+		ctx,
+		"./pkg/resources",
+		"file://schema/password_migrations",
+		[]string{
+			"cloud.google.com/go/civil",
+			"github.com/cccteam/demo-app/pkg/mock/mock_router_password_auth",
+			"github.com/cccteam/demo-app/pkg/resources",
+			"github.com/cccteam/demo-app/pkg/routerpasswordauth",
+			"github.com/cccteam/demo-app/pkg/rpc",
+			"github.com/cccteam/demo-app/pkg/spanner",
+			"github.com/shopspring/decimal",
+		},
+		generation.GenerateHandlers("apppasswordauth"),
+		generation.GenerateRoutes("pkg/routerpasswordauth", "api"),
+		generation.WithRPC("pkg/rpc"),
+		generation.WithComputedResources("pkg/computedresources"),
+		generation.WithConsolidatedHandlers("resources", true),
+		generation.WithSpannerEmulatorVersion("1.5.43"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer passwordAppGenerator.Close()
+
+	if err := passwordAppGenerator.Generate(); err != nil {
+		panic(err)
+	}
 }
