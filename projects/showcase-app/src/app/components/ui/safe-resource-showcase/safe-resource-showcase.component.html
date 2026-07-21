@@ -1,0 +1,183 @@
+<section class="showcase">
+  <header>
+    <h1>Resource Wrapper Showcase</h1>
+    <p>
+      Compare <code>httpResource</code>, <code>rxResource</code>, <code>safe</code>, <code>stale</code>, and
+      <code>swr</code> behaviors across HTTP and RxJS resources.
+      <br />
+      Tip: Open the browser's dev tools and throttle network speed to observe the lifecycle easier
+    </p>
+
+    <div class="controls">
+      <mat-form-field subscriptSizing="dynamic" floatLabel="always">
+        <mat-label>User ID</mat-label>
+        <input
+          matInput
+          type="text"
+          [value]="userId()"
+          (input)="userId.set($any($event.target).value)"
+          placeholder="UUID (leave blank to disable detail calls)" />
+      </mat-form-field>
+
+      <button mat-stroked-button (click)="bumpAll()">
+        <mat-icon>refresh</mat-icon>
+        Reload all
+      </button>
+
+      <button mat-stroked-button (click)="showSwrSection.update((v) => !v)">
+        {{ showSwrSection() ? 'Unmount' : 'Remount' }} SWR section
+      </button>
+
+      <button
+        mat-raised-button
+        [color]="useErrorUrl() ? 'warn' : 'accent'"
+        (click)="toggleErrorUrl()"
+        title="Switches the plain httpResource / rxResource URL to /api/invalid-route-test to trigger a 404">
+        <mat-icon>{{ useErrorUrl() ? 'wifi_off' : 'error_outline' }}</mat-icon>
+        {{ useErrorUrl() ? 'Restore URL' : 'Simulate Error' }}
+      </button>
+    </div>
+  </header>
+
+  <!-- ============ PLAIN (comparison) ============ -->
+  <article class="card">
+    <h2>httpResource <small>(list)</small></h2>
+    <p class="desc">
+      Standard Angular <code>httpResource</code>. Value becomes <code>undefined</code> on error — accessing
+      <code>value()</code> in an error state throws.
+    </p>
+    <div class="status">
+      <span
+        >status: <strong>{{ plainHttpList.status() }}</strong></span
+      >
+      <span
+        >hasValue: <strong>{{ plainHttpList.hasValue() }}</strong></span
+      >
+      <span
+        >count: <strong>{{ plainHttpList.hasValue() ? plainHttpList.value()!.length : '—' }}</strong></span
+      >
+    </div>
+    <div class="actions">
+      <button mat-stroked-button (click)="plainHttpList.reload()">Reload</button>
+    </div>
+    <pre>{{ plainHttpList.hasValue() ? (plainHttpList.value() | json) : plainHttpList.status() }}</pre>
+  </article>
+
+  <article class="card">
+    <h2>rxResource <small>(detail)</small></h2>
+    <p class="desc">
+      Standard Angular <code>rxResource</code>. No default supplied — typed <code>User | undefined</code>. Accessing
+      <code>value()</code> in an error state throws.
+    </p>
+    <div class="status">
+      <span
+        >status: <strong>{{ plainRxDetail.status() }}</strong></span
+      >
+      <span
+        >hasValue: <strong>{{ plainRxDetail.hasValue() }}</strong></span
+      >
+      <span
+        >value: <strong>{{ plainRxDetail.hasValue() ? (plainRxDetail.value()?.username ?? '—') : '—' }}</strong></span
+      >
+    </div>
+    <div class="actions">
+      <button mat-stroked-button (click)="plainRxDetail.reload()" [disabled]="!detailUrl()">Reload</button>
+    </div>
+    <pre>{{ plainRxDetail.hasValue() ? (plainRxDetail.value() | json) : plainRxDetail.status() }}</pre>
+  </article>
+
+  <!-- ============ SAFE ============ -->
+  <article class="card">
+    <h2>safeHttpResource <small>(list)</small></h2>
+    <p class="desc">Clears to <code>defaultValue</code> (empty array) while loading. No previous value retained.</p>
+    <div class="status">
+      <span
+        >status: <strong>{{ safeHttpList.resource.status() }}</strong></span
+      >
+      <span
+        >hasValue: <strong>{{ safeHttpList.resource.hasValue() }}</strong></span
+      >
+      <span
+        >count: <strong>{{ safeHttpList.safeValue().length }}</strong></span
+      >
+    </div>
+    <div class="actions">
+      <button mat-stroked-button (click)="safeHttpList.resource.reload()">Reload</button>
+    </div>
+    <pre>{{ safeHttpList.safeValue() | json }}</pre>
+  </article>
+
+  <article class="card">
+    <h2>safeRxResource <small>(detail)</small></h2>
+    <p class="desc">No default supplied → <code>safeValue()</code> is typed <code>User | undefined</code>.</p>
+    <div class="status">
+      <span
+        >status: <strong>{{ safeRxDetail.resource.status() }}</strong></span
+      >
+      <span
+        >hasValue: <strong>{{ safeRxDetail.resource.hasValue() }}</strong></span
+      >
+      <span
+        >value: <strong>{{ safeRxDetail.safeValue()?.username ?? '—' }}</strong></span
+      >
+    </div>
+    <div class="actions">
+      <button mat-stroked-button (click)="safeRxDetail.resource.reload()" [disabled]="!userId()">Reload</button>
+    </div>
+    <pre>{{ safeRxDetail.safeValue() | json }}</pre>
+  </article>
+
+  <!-- ============ STALE ============ -->
+  <article class="card">
+    <h2>staleHttpResource <small>(list)</small></h2>
+    <p class="desc">
+      Holds previous value during reload. Watch the count stay stable while status flips to <code>reloading</code>.
+    </p>
+    <div class="status">
+      <span
+        >status: <strong>{{ staleHttpList.resource.status() }}</strong></span
+      >
+      <span
+        >hasValue: <strong>{{ staleHttpList.resource.hasValue() }}</strong></span
+      >
+      <span
+        >count: <strong>{{ staleHttpList.safeValue().length }}</strong></span
+      >
+    </div>
+    <div class="actions">
+      <button mat-stroked-button (click)="staleHttpList.resource.reload()">Reload</button>
+    </div>
+    <pre>{{ staleHttpList.safeValue() | json }}</pre>
+  </article>
+
+  <article class="card">
+    <h2>staleRxResource <small>(detail)</small></h2>
+    <p class="desc">Same as above but via <code>rxResource</code>. No default → typed <code>User | undefined</code>.</p>
+    <div class="status">
+      <span
+        >status: <strong>{{ staleRxDetail.resource.status() }}</strong></span
+      >
+      <span
+        >hasValue: <strong>{{ staleRxDetail.resource.hasValue() }}</strong></span
+      >
+      <span
+        >value: <strong>{{ staleRxDetail.safeValue()?.username }}</strong></span
+      >
+    </div>
+    <div class="actions">
+      <button mat-stroked-button (click)="staleRxDetail.resource.reload()" [disabled]="!userId()">Reload</button>
+    </div>
+    <pre>{{ staleRxDetail.safeValue() | json }}</pre>
+  </article>
+
+  <!-- ============ SWR (mountable) ============ -->
+  @if (showSwrSection()) {
+    <app-swr-section [userId]="userId()" />
+  } @else {
+    <article class="card unmounted">
+      <p>
+        SWR section unmounted. Click "Remount SWR section" to bring it back — values should appear instantly from cache.
+      </p>
+    </article>
+  }
+</section>

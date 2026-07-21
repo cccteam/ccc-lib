@@ -20,6 +20,13 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./components/ui/dashboard/dashboard.component').then((comp) => comp.DashboardComponent),
       },
+      {
+        path: 'safe-resource-showcase',
+        loadComponent: () =>
+          import('./components/ui/safe-resource-showcase/safe-resource-showcase.component').then(
+            (comp) => comp.SafeResourceShowcaseComponent,
+          ),
+      },
       resourceRoutes(usersConfig, resourceMeta),
       {
         path: '**',
