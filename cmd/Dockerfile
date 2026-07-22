@@ -19,7 +19,6 @@ RUN CGO_ENABLED=0 go build -tags "$BUILD_TAGS" -ldflags '-extldflags "-static"' 
 # > docker inspect node:20 --format='{{index .RepoDigests 0}}'
 FROM docker.io/library/node@sha256:572a90df10a58ebb7d3f223d661d964a6c2383a9c2b5763162b4f631c53dc56a as client-build-env
 ARG VALIDATE_LICENSE=false
-ARG TELERIK_LICENSE=''
 ARG APP_DEPLOYMENT
 ARG APP_COMMIT_ID=''
 ARG APP_VERSION=''
@@ -30,12 +29,6 @@ WORKDIR /src/app
 COPY ./gui ./
 RUN mkdir -p /homebuild/gui && \
     npm ci && \
-    if [ "$VALIDATE_LICENSE" = "true" ]; then \
-      echo "✅ Activating Kendo UI license..." && \
-      npx kendo-ui-license activate; \
-    else \
-      echo "Skipping license activation."; \
-    fi && \
     npm run build && \
     mv dist /homebuild/gui/
 

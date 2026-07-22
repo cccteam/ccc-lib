@@ -2,7 +2,6 @@ node_modules
 .angular
 **/dist/
 .envrc
-telerik-license.txt
 /test-results/
 /playwright-report/
 /e2e/screenshots/
