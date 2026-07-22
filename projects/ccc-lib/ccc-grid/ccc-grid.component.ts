@@ -17,6 +17,90 @@ import { TableButtonComponent } from './table-button/table-button.component';
 const MIN_COLUMN_WIDTH = 48;
 const ACTION_COLUMN_WIDTH = 66;
 
+export type FilterOperator =
+  | 'contains'
+  | 'doesNotContain'
+  | 'equals'
+  | 'notEqual'
+  | 'startsWith'
+  | 'endsWith'
+  | 'gt'
+  | 'gte'
+  | 'lt'
+  | 'lte';
+
+export const FILTER_OPERATORS: { value: FilterOperator; label: string }[] = [
+  { value: 'contains', label: 'Contains' },
+  { value: 'doesNotContain', label: 'Does not contain' },
+  { value: 'equals', label: 'Equals' },
+  { value: 'notEqual', label: 'Not equal to' },
+  { value: 'startsWith', label: 'Starts with' },
+  { value: 'endsWith', label: 'Ends with' },
+  { value: 'gt', label: 'Greater than' },
+  { value: 'gte', label: 'Greater than or equal to' },
+  { value: 'lt', label: 'Less than' },
+  { value: 'lte', label: 'Less than or equal to' },
+];
+
+interface ColumnFilter {
+  operator: FilterOperator;
+  value: string;
+}
+
+interface SortRule {
+  field: string;
+  direction: 'asc' | 'desc';
+}
+
+function compareCellToFilterValue(cellValue: unknown, filterValue: string): number {
+  const cellNum = typeof cellValue === 'number' ? cellValue : Number(cellValue);
+  const filterNum = Number(filterValue);
+  if (cellValue !== null && cellValue !== undefined && cellValue !== '' && !Number.isNaN(cellNum) && !Number.isNaN(filterNum)) {
+    return cellNum - filterNum;
+  }
+  const cellStr = cellValue == null ? '' : String(cellValue);
+  return cellStr.localeCompare(filterValue);
+}
+
+function matchesFilter(cellValue: unknown, filter: ColumnFilter): boolean {
+  const value = filter.value.trim();
+  if (!value) {
+    return true;
+  }
+
+  if (filter.operator === 'gt' || filter.operator === 'gte' || filter.operator === 'lt' || filter.operator === 'lte') {
+    const cmp = compareCellToFilterValue(cellValue, value);
+    switch (filter.operator) {
+      case 'gt':
+        return cmp > 0;
+      case 'gte':
+        return cmp >= 0;
+      case 'lt':
+        return cmp < 0;
+      case 'lte':
+        return cmp <= 0;
+    }
+  }
+
+  const cell = cellValue == null ? '' : String(cellValue).toLowerCase();
+  const needle = value.toLowerCase();
+  switch (filter.operator) {
+    case 'doesNotContain':
+      return !cell.includes(needle);
+    case 'equals':
+      return cell === needle;
+    case 'notEqual':
+      return cell !== needle;
+    case 'startsWith':
+      return cell.startsWith(needle);
+    case 'endsWith':
+      return cell.endsWith(needle);
+    case 'contains':
+    default:
+      return cell.includes(needle);
+  }
+}
+
 @Component({
   selector: 'ccc-grid',
   standalone: true,
@@ -49,12 +133,13 @@ export class AppGridComponent {
   selectedRows = output<RecordData[]>();
   loading = input<boolean>(false);
 
+  readonly filterOperators = FILTER_OPERATORS;
+
   private readonly selectedIds = signal<Set<unknown>>(new Set());
   private readonly expandedIds = signal<Set<unknown>>(new Set());
-  private readonly filters = signal<Record<string, string>>({});
+  private readonly filters = signal<Record<string, ColumnFilter>>({});
   private readonly columnWidths = signal<Record<string, number>>({});
-  private readonly sortField = signal<string | null>(null);
-  private readonly sortDirection = signal<'asc' | 'desc'>('asc');
+  private readonly sorts = signal<SortRule[]>([]);
   private readonly pageIndex = signal<number>(0);
 
   totalColumnCount = computed(
@@ -63,46 +148,41 @@ export class AppGridComponent {
 
   filteredRows = computed(() => {
     const rows = this.rowData();
-    const activeFilters = Object.entries(this.filters()).filter(([, value]) => value.trim() !== '');
+    const activeFilters = Object.entries(this.filters()).filter(([, filter]) => filter.value.trim() !== '');
     if (!activeFilters.length) {
       return rows;
     }
-    return rows.filter((row: RecordData) =>
-      activeFilters.every(([field, value]) => {
-        const cell = row[field];
-        return cell !== null && cell !== undefined && String(cell).toLowerCase().includes(value.toLowerCase());
-      }),
-    );
+    return rows.filter((row: RecordData) => activeFilters.every(([field, filter]) => matchesFilter(row[field], filter)));
   });
 
   sortedRows = computed(() => {
-    const field = this.sortField();
+    const sorts = this.sorts();
     const rows = this.filteredRows();
-    if (!field) {
+    if (!sorts.length) {
       return rows;
     }
-    const direction = this.sortDirection();
-    const sorted = [...rows].sort((a: RecordData, b: RecordData) => {
-      const aVal = a[field];
-      const bVal = b[field];
-      if (aVal == null && bVal == null) {
-        return 0;
-      }
-      if (aVal == null) {
-        return -1;
-      }
-      if (bVal == null) {
-        return 1;
-      }
-      if (aVal < bVal) {
-        return -1;
-      }
-      if (aVal > bVal) {
-        return 1;
+    return [...rows].sort((a: RecordData, b: RecordData) => {
+      for (const { field, direction } of sorts) {
+        const aVal = a[field];
+        const bVal = b[field];
+        let cmp = 0;
+        if (aVal == null && bVal == null) {
+          cmp = 0;
+        } else if (aVal == null) {
+          cmp = -1;
+        } else if (bVal == null) {
+          cmp = 1;
+        } else if (aVal < bVal) {
+          cmp = -1;
+        } else if (aVal > bVal) {
+          cmp = 1;
+        }
+        if (cmp !== 0) {
+          return direction === 'asc' ? cmp : -cmp;
+        }
       }
       return 0;
     });
-    return direction === 'asc' ? sorted : sorted.reverse();
   });
 
   displayPageIndex = computed(() => {
@@ -199,32 +279,71 @@ export class AppGridComponent {
     this.expandedIds.set(current);
   }
 
-  sortIndicator(col: ColumnConfig): 'asc' | 'desc' | null {
-    return this.sortField() === col.id ? this.sortDirection() : null;
+  /** Direction plus 1-based priority among active sorts, or null if this column isn't sorted. */
+  sortInfo(col: ColumnConfig): { direction: 'asc' | 'desc'; priority: number } | null {
+    const sorts = this.sorts();
+    const index = sorts.findIndex((sort) => sort.field === col.id);
+    return index === -1 ? null : { direction: sorts[index].direction, priority: index + 1 };
   }
 
-  toggleSort(col: ColumnConfig): void {
-    if (this.sortField() === col.id) {
-      if (this.sortDirection() === 'asc') {
-        this.sortDirection.set('desc');
+  hasMultipleSorts(): boolean {
+    return this.sorts().length > 1;
+  }
+
+  /** Click sorts by this column alone; shift-click adds/cycles it as an additional sort key. */
+  toggleSort(col: ColumnConfig, event: MouseEvent): void {
+    const field = col.id;
+    const current = this.sorts();
+
+    if (!event.shiftKey) {
+      const isSoleSort = current.length === 1 && current[0].field === field;
+      if (!isSoleSort) {
+        this.sorts.set([{ field, direction: 'asc' }]);
+      } else if (current[0].direction === 'asc') {
+        this.sorts.set([{ field, direction: 'desc' }]);
       } else {
-        this.sortField.set(null);
+        this.sorts.set([]);
       }
+      return;
+    }
+
+    const existingIndex = current.findIndex((sort) => sort.field === field);
+    if (existingIndex === -1) {
+      this.sorts.set([...current, { field, direction: 'asc' }]);
+    } else if (current[existingIndex].direction === 'asc') {
+      const next = [...current];
+      next[existingIndex] = { field, direction: 'desc' };
+      this.sorts.set(next);
     } else {
-      this.sortField.set(col.id);
-      this.sortDirection.set('asc');
+      this.sorts.set(current.filter((_, index) => index !== existingIndex));
     }
   }
 
-  filterValue(col: ColumnConfig): string {
-    return this.filters()[col.id] ?? '';
+  filterOperator(col: ColumnConfig): FilterOperator {
+    return this.filters()[col.id]?.operator ?? 'contains';
   }
 
-  setFilter(col: ColumnConfig, event: Event): void {
+  filterValue(col: ColumnConfig): string {
+    return this.filters()[col.id]?.value ?? '';
+  }
+
+  hasFilter(col: ColumnConfig): boolean {
+    return (this.filters()[col.id]?.value ?? '').trim() !== '';
+  }
+
+  setFilterOperator(col: ColumnConfig, event: Event): void {
+    const operator = (event.target as HTMLSelectElement).value as FilterOperator;
+    const next = { ...this.filters() };
+    next[col.id] = { operator, value: this.filterValue(col) };
+    this.filters.set(next);
+    this.pageIndex.set(0);
+  }
+
+  setFilterValue(col: ColumnConfig, event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     const next = { ...this.filters() };
     if (value) {
-      next[col.id] = value;
+      next[col.id] = { operator: this.filterOperator(col), value };
     } else {
       delete next[col.id];
     }

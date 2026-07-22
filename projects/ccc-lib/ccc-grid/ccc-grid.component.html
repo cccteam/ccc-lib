@@ -22,20 +22,26 @@
           @for (col of columnDefs(); track col.id + col.header) {
             <th class="data-col" [style.width.px]="widthFor(col)">
               <div class="header-cell">
-                <button type="button" class="header-label" (click)="toggleSort(col)">
+                <button
+                  type="button"
+                  class="header-label"
+                  title="Click to sort, shift-click to add a secondary sort"
+                  (click)="toggleSort(col, $event)">
                   @if (!col.hideHeader && !col.buttonConfig) {
                     <span class="col-header">{{ col.header || col.id | camelCaseToTitle }}</span>
                   }
-                  @if (sortIndicator(col)) {
-                    <mat-icon class="sort-icon">{{
-                      sortIndicator(col) === 'asc' ? 'arrow_upward' : 'arrow_downward'
-                    }}</mat-icon>
+                  @if (sortInfo(col); as sort) {
+                    <mat-icon class="sort-icon">{{ sort.direction === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+                    @if (hasMultipleSorts()) {
+                      <span class="sort-priority">{{ sort.priority }}</span>
+                    }
                   }
                 </button>
                 <button
                   type="button"
                   mat-icon-button
                   class="filter-trigger"
+                  [class.active]="hasFilter(col)"
                   [matMenuTriggerFor]="filterMenu"
                   aria-label="Filter column">
                   <mat-icon>filter_alt</mat-icon>
@@ -46,12 +52,21 @@
               }
               <mat-menu #filterMenu="matMenu">
                 <div class="filter-menu-content">
+                  <select
+                    class="filter-operator"
+                    [value]="filterOperator(col)"
+                    (change)="setFilterOperator(col, $event)"
+                    aria-label="Filter operator">
+                    @for (op of filterOperators; track op.value) {
+                      <option [value]="op.value">{{ op.label }}</option>
+                    }
+                  </select>
                   <mat-form-field appearance="outline" subscriptSizing="dynamic">
                     <input
                       matInput
-                      placeholder="Filter..."
+                      placeholder="Value"
                       [value]="filterValue(col)"
-                      (input)="setFilter(col, $event)"
+                      (input)="setFilterValue(col, $event)"
                       (keydown)="$event.stopPropagation()" />
                   </mat-form-field>
                   <button type="button" mat-button (click)="clearFilter(col)">Clear</button>

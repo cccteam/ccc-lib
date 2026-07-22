@@ -66,11 +66,22 @@
     .mat-mdc-icon-button.mat-mdc-button-base {
       --mdc-icon-button-state-layer-size: 40px;
       --mat-icon-button-state-layer-size: 40px;
+      --mat-icon-button-touch-target-display: none;
     }
 
     .mat-mdc-checkbox {
       --mat-checkbox-state-layer-size: 40px;
+      --mat-checkbox-touch-target-display: none;
     }
+  }
+
+  // the default (non-"none") touch-target overlay is invisible but still intercepts
+  // clicks well beyond the button's visual bounds, which on a narrow header column
+  // can swallow clicks meant for the sort label right next to it
+  .header-cell .filter-trigger.mat-mdc-icon-button {
+    --mdc-icon-button-state-layer-size: 22px;
+    --mat-icon-button-state-layer-size: 22px;
+    --mat-icon-button-touch-target-display: none;
   }
 }
 
@@ -121,6 +132,13 @@
     flex: 0 0 auto;
   }
 
+  .sort-priority {
+    font-size: 10px;
+    line-height: 1;
+    flex: 0 0 auto;
+    margin-left: -2px;
+  }
+
   .filter-trigger {
     width: 22px;
     height: 22px;
@@ -133,6 +151,10 @@
       width: 14px;
       height: 14px;
       line-height: 14px;
+    }
+
+    &.active {
+      color: rgba(25, 118, 210, 0.87);
     }
   }
 }
@@ -154,11 +176,20 @@
 .filter-menu-content {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: 8px 12px;
 
   mat-form-field {
-    width: 160px;
+    width: 140px;
+  }
+
+  .filter-operator {
+    font: inherit;
+    font-size: 13px;
+    padding: 4px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background: #fff;
   }
 }
 

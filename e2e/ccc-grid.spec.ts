@@ -167,6 +167,51 @@ test.describe('ccc-grid', () => {
     await screenshot(page, '14-button-columns');
   });
 
+  test('column headers support single-column and shift-click multi-column sorting', async ({ page }) => {
+    const nameHeader = page.locator('th', { hasText: 'Name' }).locator('.header-label');
+    const idHeader = page.locator('th', { hasText: 'ID' }).locator('.header-label');
+
+    await nameHeader.click();
+    await expect(rows(page).first()).toContainText('Ada Lovelace');
+
+    await nameHeader.click();
+    await expect(rows(page).first()).toContainText('Tim Berners-Lee');
+    await screenshot(page, '15-sort-single-column');
+
+    // shift-click adds ID as a secondary sort key without disturbing Name's direction
+    await idHeader.click({ modifiers: ['Shift'] });
+    await expect(page.locator('.sort-priority')).toHaveCount(2);
+    await screenshot(page, '16-sort-multi-column');
+
+    // a plain click collapses back to sorting by ID alone (ascending)
+    await idHeader.click();
+    await expect(page.locator('.sort-priority')).toHaveCount(0);
+    await expect(rows(page).first()).toContainText('Ada Lovelace');
+
+    // click again -> descending
+    await idHeader.click();
+    await expect(rows(page).first()).toContainText('Anita Borg');
+
+    // click a third time -> sort cleared, back to the original row order
+    await idHeader.click();
+    await expect(rows(page).first()).toContainText('Ada Lovelace');
+  });
+
+  test('filter menu supports operators beyond contains', async ({ page }) => {
+    await page.locator('th', { hasText: 'ID' }).locator('.filter-trigger').click();
+    await page.locator('.filter-operator').selectOption('gt');
+    await page.locator('.filter-menu-content input').fill('9');
+    await expect(rows(page)).toHaveCount(3);
+    await expect(rows(page).first()).toContainText('10');
+    await screenshot(page, '17-filter-operator');
+
+    // clearing the filter restores all rows
+    await page.locator('.filter-menu-content button', { hasText: 'Clear' }).click();
+    await page.locator('h1').click();
+    await expect(page.locator('.cdk-overlay-backdrop')).toHaveCount(0);
+    await expect(rows(page)).toHaveCount(12);
+  });
+
   test('columnDefs hideHeader hides the column label but keeps the column data', async ({ page }) => {
     const headerCells = page.locator('.ccc-grid-header-row th');
     // The "Role" column is configured with hideHeader: true.
