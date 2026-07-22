@@ -1,19 +1,26 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, input, output, TemplateRef } from '@angular/core';
+import { Component, computed, input, output, signal, TemplateRef } from '@angular/core';
 import { MatIconButton } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterModule } from '@angular/router';
 import { CamelCaseToTitlePipe } from '@cccteam/ccc-lib/ccc-camel-case-to-title';
 import { ColumnConfig, RecordData } from '@cccteam/ccc-lib/types';
-import { GridModule, SelectableMode, SelectableSettings } from '@progress/kendo-angular-grid';
 import { TableButtonComponent } from './table-button/table-button.component';
+
+const MIN_COLUMN_WIDTH = 48;
+const ACTION_COLUMN_WIDTH = 66;
 
 @Component({
   selector: 'ccc-grid',
   standalone: true,
   imports: [
-    GridModule,
     CommonModule,
     TableButtonComponent,
     CamelCaseToTitlePipe,
@@ -21,110 +28,15 @@ import { TableButtonComponent } from './table-button/table-button.component';
     MatIconButton,
     MatIconModule,
     MatTooltipModule,
+    MatCheckboxModule,
+    MatMenuModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatPaginatorModule,
+    MatProgressSpinnerModule,
   ],
-  template: `
-    <kendo-grid
-      [kendoGridBinding]="rowData()"
-      filterable="menu"
-      [sortable]="true"
-      scrollable="none"
-      [pageable]="!!pageSize()"
-      [pageSize]="pageSize() || 0"
-      [selectable]="selectionMode()"
-      [selectedKeys]="selectedKeys"
-      kendoGridSelectBy="id"
-      [loading]="loading()"
-      (selectedKeysChange)="onSelectedKeysChange($event)">
-      @if (selectionMode() !== false) {
-        <kendo-grid-checkbox-column
-          [width]="40"
-          [showSelectAll]="selectionType() === 'multiple'"></kendo-grid-checkbox-column>
-      }
-      @for (col of columnDefs(); track col.id + col.header) {
-        @if (col.buttonConfig) {
-          <kendo-grid-column [field]="col.id" [width]="66" [resizable]="col.resizable ?? true">
-            <ng-template kendoGridHeaderTemplate> </ng-template>
-            <ng-template kendoGridCellTemplate let-dataItem>
-              @if (col.buttonConfig.actionType === 'link' && col.buttonConfig.viewRoute) {
-                <a
-                  mat-icon-button
-                  [routerLink]="['/', col.buttonConfig.viewRoute, dataItem['id']]"
-                  [matTooltip]="col.buttonConfig.label || ''"
-                  [matTooltipPosition]="col.tooltipPosition || 'above'">
-                  <mat-icon>{{ col.buttonConfig.icon || 'arrow_forward' }}</mat-icon>
-                </a>
-              } @else {
-                <ccc-table-button
-                  [config]="col.buttonConfig"
-                  [rowData]="dataItem"
-                  [tooltipPosition]="col.tooltipPosition || 'above'"
-                  [viewRoute]="col.buttonConfig.viewRoute || ''"
-                  [id]="dataItem['id']">
-                </ccc-table-button>
-              }
-            </ng-template>
-          </kendo-grid-column>
-        } @else {
-          @if (col.width) {
-            <kendo-grid-column [field]="col.id" [width]="col.width" [resizable]="col.resizable ?? true">
-              <ng-template kendoGridHeaderTemplate>
-                @if (!col.hideHeader) {
-                  <span class="col-header">{{ col.header || col.id | camelCaseToTitle }}</span>
-                }
-              </ng-template>
-              <ng-template kendoGridCellTemplate let-dataItem>{{ dataItem[col.id] }} </ng-template>
-            </kendo-grid-column>
-          } @else {
-            <kendo-grid-column [field]="col.id" [resizable]="col.resizable ?? true">
-              <ng-template kendoGridHeaderTemplate>
-                @if (!col.hideHeader) {
-                  <span class="col-header">{{ col.header || col.id | camelCaseToTitle }}</span>
-                }
-              </ng-template>
-              <ng-template kendoGridCellTemplate let-dataItem>{{ dataItem[col.id] }} </ng-template>
-            </kendo-grid-column>
-          }
-        }
-      }
-      @if (enableRowExpansion() && detailTemplate()) {
-        <ng-template kendoGridDetailTemplate let-dataItem>
-          <ng-container *ngTemplateOutlet="detailTemplate()!; context: { $implicit: dataItem }"></ng-container>
-        </ng-template>
-      }
-      <ng-template kendoGridNoRecordsTemplate>
-        <div style="text-align: center; padding: 20px;">No records found</div>
-      </ng-template>
-    </kendo-grid>
-  `,
-  styles: [
-    `
-      :host {
-        display: block;
-        height: 100%;
-      }
-      kendo-grid {
-        height: 100%;
-      }
-      .col-header {
-        font-weight: bold;
-      }
-      app-table-button {
-        position: relative;
-        z-index: 10;
-      }
-      a[mat-button] {
-        position: relative;
-        z-index: 11;
-      }
-      ::ng-deep .k-grid .k-grid-aria-root {
-        overflow-x: auto; /* Allow horizontal scrolling */
-        overflow-y: hidden; /* Keep vertical behavior as needed */
-      }
-      ::ng-deep .k-grid .k-detail-cell {
-        padding: 16px;
-      }
-    `,
-  ],
+  templateUrl: './ccc-grid.component.html',
+  styleUrl: './ccc-grid.component.scss',
 })
 export class AppGridComponent {
   /* eslint-disable  @typescript-eslint/no-explicit-any */
@@ -137,27 +49,217 @@ export class AppGridComponent {
   selectedRows = output<RecordData[]>();
   loading = input<boolean>(false);
 
-  public selectedKeys: number[] = [];
+  private readonly selectedIds = signal<Set<unknown>>(new Set());
+  private readonly expandedIds = signal<Set<unknown>>(new Set());
+  private readonly filters = signal<Record<string, string>>({});
+  private readonly columnWidths = signal<Record<string, number>>({});
+  private readonly sortField = signal<string | null>(null);
+  private readonly sortDirection = signal<'asc' | 'desc'>('asc');
+  private readonly pageIndex = signal<number>(0);
 
-  onSelectedKeysChange(keys: number[]): void {
-    this.selectedKeys = keys;
-    const selectedRows = this.rowData().filter((row: any) => keys.includes(row.id));
-    this.selectedRows.emit(selectedRows);
+  totalColumnCount = computed(
+    () => this.columnDefs().length + (this.selectionType() !== 'none' ? 1 : 0) + (this.enableRowExpansion() ? 1 : 0),
+  );
+
+  filteredRows = computed(() => {
+    const rows = this.rowData();
+    const activeFilters = Object.entries(this.filters()).filter(([, value]) => value.trim() !== '');
+    if (!activeFilters.length) {
+      return rows;
+    }
+    return rows.filter((row: RecordData) =>
+      activeFilters.every(([field, value]) => {
+        const cell = row[field];
+        return cell !== null && cell !== undefined && String(cell).toLowerCase().includes(value.toLowerCase());
+      }),
+    );
+  });
+
+  sortedRows = computed(() => {
+    const field = this.sortField();
+    const rows = this.filteredRows();
+    if (!field) {
+      return rows;
+    }
+    const direction = this.sortDirection();
+    const sorted = [...rows].sort((a: RecordData, b: RecordData) => {
+      const aVal = a[field];
+      const bVal = b[field];
+      if (aVal == null && bVal == null) {
+        return 0;
+      }
+      if (aVal == null) {
+        return -1;
+      }
+      if (bVal == null) {
+        return 1;
+      }
+      if (aVal < bVal) {
+        return -1;
+      }
+      if (aVal > bVal) {
+        return 1;
+      }
+      return 0;
+    });
+    return direction === 'asc' ? sorted : sorted.reverse();
+  });
+
+  displayPageIndex = computed(() => {
+    const size = this.pageSize();
+    if (!size) {
+      return 0;
+    }
+    const maxIndex = Math.max(0, Math.ceil(this.sortedRows().length / size) - 1);
+    return Math.min(this.pageIndex(), maxIndex);
+  });
+
+  pagedRows = computed(() => {
+    const size = this.pageSize();
+    const rows = this.sortedRows();
+    if (!size) {
+      return rows;
+    }
+    const start = this.displayPageIndex() * size;
+    return rows.slice(start, start + size);
+  });
+
+  allSelected = computed(() => {
+    const rows = this.filteredRows();
+    return rows.length > 0 && rows.every((row: RecordData) => this.selectedIds().has(row['id']));
+  });
+
+  someSelected = computed(
+    () => !this.allSelected() && this.filteredRows().some((row: RecordData) => this.selectedIds().has(row['id'])),
+  );
+
+  isSelected(row: RecordData): boolean {
+    return this.selectedIds().has(row['id']);
   }
 
-  selectionMode = computed(() => {
-    if (this.selectionType() === 'none') {
-      return false;
-    } else if (this.selectionType() === 'single') {
-      return {
-        mode: 'single' as SelectableMode,
-        checkboxOnly: true,
-      } as SelectableSettings;
-    } else {
-      return {
-        mode: 'multiple' as SelectableMode,
-        checkboxOnly: true,
-      } as SelectableSettings;
+  toggleRow(row: RecordData): void {
+    const mode = this.selectionType();
+    if (mode === 'none') {
+      return;
     }
-  });
+
+    const id = row['id'];
+    const current = new Set(this.selectedIds());
+    if (mode === 'single') {
+      const wasSelected = current.has(id);
+      current.clear();
+      if (!wasSelected) {
+        current.add(id);
+      }
+    } else if (current.has(id)) {
+      current.delete(id);
+    } else {
+      current.add(id);
+    }
+
+    this.selectedIds.set(current);
+    this.emitSelectedRows();
+  }
+
+  toggleSelectAll(): void {
+    if (this.allSelected()) {
+      this.selectedIds.set(new Set());
+    } else {
+      this.selectedIds.set(new Set(this.filteredRows().map((row: RecordData) => row['id'])));
+    }
+    this.emitSelectedRows();
+  }
+
+  private emitSelectedRows(): void {
+    const ids = this.selectedIds();
+    const selected = this.rowData().filter((row: RecordData) => ids.has(row['id']));
+    this.selectedRows.emit(selected);
+  }
+
+  isExpanded(row: RecordData): boolean {
+    return this.expandedIds().has(row['id']);
+  }
+
+  toggleExpand(row: RecordData): void {
+    const id = row['id'];
+    const current = new Set(this.expandedIds());
+    if (current.has(id)) {
+      current.delete(id);
+    } else {
+      current.add(id);
+    }
+    this.expandedIds.set(current);
+  }
+
+  sortIndicator(col: ColumnConfig): 'asc' | 'desc' | null {
+    return this.sortField() === col.id ? this.sortDirection() : null;
+  }
+
+  toggleSort(col: ColumnConfig): void {
+    if (this.sortField() === col.id) {
+      if (this.sortDirection() === 'asc') {
+        this.sortDirection.set('desc');
+      } else {
+        this.sortField.set(null);
+      }
+    } else {
+      this.sortField.set(col.id);
+      this.sortDirection.set('asc');
+    }
+  }
+
+  filterValue(col: ColumnConfig): string {
+    return this.filters()[col.id] ?? '';
+  }
+
+  setFilter(col: ColumnConfig, event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    const next = { ...this.filters() };
+    if (value) {
+      next[col.id] = value;
+    } else {
+      delete next[col.id];
+    }
+    this.filters.set(next);
+    this.pageIndex.set(0);
+  }
+
+  clearFilter(col: ColumnConfig): void {
+    if (!(col.id in this.filters())) {
+      return;
+    }
+    const next = { ...this.filters() };
+    delete next[col.id];
+    this.filters.set(next);
+  }
+
+  widthFor(col: ColumnConfig): number | null {
+    const defaultWidth = col.buttonConfig ? ACTION_COLUMN_WIDTH : null;
+    return this.columnWidths()[col.id] ?? col.width ?? defaultWidth;
+  }
+
+  startResize(event: MouseEvent, col: ColumnConfig): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const header = (event.currentTarget as HTMLElement).parentElement;
+    const startWidth = this.widthFor(col) ?? header?.getBoundingClientRect().width ?? 120;
+    const startX = event.clientX;
+
+    const onMove = (moveEvent: MouseEvent): void => {
+      const nextWidth = Math.max(MIN_COLUMN_WIDTH, startWidth + (moveEvent.clientX - startX));
+      this.columnWidths.set({ ...this.columnWidths(), [col.id]: nextWidth });
+    };
+    const onUp = (): void => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }
+
+  onPageChange(event: PageEvent): void {
+    this.pageIndex.set(event.pageIndex);
+  }
 }

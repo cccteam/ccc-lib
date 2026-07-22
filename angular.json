@@ -65,9 +65,6 @@
             ],
             "styles": [
               "projects/showcase-app/src/styles.scss",
-              {
-                "input": "node_modules/@progress/kendo-theme-default/dist/all.css"
-              },
               "projects/showcase-app/src/custom-theme.scss",
               "projects/showcase-app/src/styles.scss"
             ]
@@ -149,9 +146,6 @@
               }
             ],
             "styles": [
-              {
-                "input": "node_modules/@progress/kendo-theme-default/dist/all.css"
-              },
               "projects/showcase-app-password/src/custom-theme.scss",
               "projects/showcase-app-password/src/styles.scss"
             ]
