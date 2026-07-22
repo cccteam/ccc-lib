@@ -104,6 +104,19 @@ test.describe('ccc-grid', () => {
     await expect(rows(page).first()).toContainText('Radia Perlman');
     await screenshot(page, '09-pagesize-5-page2');
 
+    // typing a page number jumps straight to that page
+    const pageInput = page.locator('.page-jump-input');
+    await pageInput.fill('3');
+    await pageInput.press('Enter');
+    await expect(rows(page)).toHaveCount(2);
+    await expect(rows(page).first()).toContainText('Guido van Rossum');
+
+    // an out-of-range page number clamps to the last valid page instead of erroring
+    await pageInput.fill('99');
+    await pageInput.press('Enter');
+    await expect(rows(page)).toHaveCount(2);
+    await expect(pageInput).toHaveValue('3');
+
     // return to the first page before switching pageSize, since the grid keeps its
     // current page index across a pageSize change
     await page.getByRole('button', { name: 'First page' }).click();

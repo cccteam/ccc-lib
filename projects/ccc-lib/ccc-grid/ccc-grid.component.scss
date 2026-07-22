@@ -203,9 +203,45 @@
   z-index: 2;
 }
 
+.ccc-grid-pager {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid #e0e0e0;
+  padding: 0 12px;
+}
+
+.page-jump {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+}
+
+.page-jump-input {
+  width: 36px;
+  padding: 4px;
+  text-align: center;
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+
+  // hide the native number spinner so it reads like a plain page-number field
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  appearance: textfield;
+}
+
 .ccc-grid-paginator {
   flex: 0 0 auto;
-  border-top: 1px solid #e0e0e0;
 }
 
 a[mat-icon-button] {

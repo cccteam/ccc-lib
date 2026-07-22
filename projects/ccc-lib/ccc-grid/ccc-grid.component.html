@@ -131,14 +131,29 @@
   </div>
 
   @if (pageSize()) {
-    <mat-paginator
-      class="ccc-grid-paginator"
-      [length]="sortedRows().length"
-      [pageSize]="pageSize()!"
-      [pageIndex]="displayPageIndex()"
-      [hidePageSize]="true"
-      [showFirstLastButtons]="true"
-      (page)="onPageChange($event)">
-    </mat-paginator>
+    <div class="ccc-grid-pager">
+      <div class="page-jump">
+        <span>Page</span>
+        <input
+          type="number"
+          class="page-jump-input"
+          min="1"
+          [max]="pageCount()"
+          [value]="displayPageIndex() + 1"
+          (change)="goToPage($event)"
+          (keydown.enter)="goToPage($event)"
+          aria-label="Page number" />
+        <span>of {{ pageCount() }}</span>
+      </div>
+      <mat-paginator
+        class="ccc-grid-paginator"
+        [length]="sortedRows().length"
+        [pageSize]="pageSize()!"
+        [pageIndex]="displayPageIndex()"
+        [hidePageSize]="true"
+        [showFirstLastButtons]="true"
+        (page)="onPageChange($event)">
+      </mat-paginator>
+    </div>
   }
 </div>

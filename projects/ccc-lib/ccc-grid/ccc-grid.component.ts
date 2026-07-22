@@ -114,6 +114,14 @@ export class AppGridComponent {
     return Math.min(this.pageIndex(), maxIndex);
   });
 
+  pageCount = computed(() => {
+    const size = this.pageSize();
+    if (!size) {
+      return 1;
+    }
+    return Math.max(1, Math.ceil(this.sortedRows().length / size));
+  });
+
   pagedRows = computed(() => {
     const size = this.pageSize();
     const rows = this.sortedRows();
@@ -261,5 +269,18 @@ export class AppGridComponent {
 
   onPageChange(event: PageEvent): void {
     this.pageIndex.set(event.pageIndex);
+  }
+
+  goToPage(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = Math.trunc(Number(input.value));
+    if (!Number.isFinite(value) || !this.pageSize()) {
+      input.value = String(this.displayPageIndex() + 1);
+      return;
+    }
+
+    const page = Math.min(Math.max(value, 1), this.pageCount());
+    this.pageIndex.set(page - 1);
+    input.value = String(page);
   }
 }
