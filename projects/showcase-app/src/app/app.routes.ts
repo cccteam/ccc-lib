@@ -11,6 +11,11 @@ export const routes: Routes = [
     loadComponent: () => import('./components/login/login.component').then((comp) => comp.LoginComponent),
   },
   {
+    path: 'grid-showcase',
+    loadComponent: () =>
+      import('./components/grid-showcase/grid-showcase.component').then((comp) => comp.GridShowcaseComponent),
+  },
+  {
     path: '',
     component: UiComponent,
     canActivate: [OIDCAuthenticationGuard],
