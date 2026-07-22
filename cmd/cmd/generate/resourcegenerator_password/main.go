@@ -3,55 +3,15 @@ package main
 
 import (
 	"context"
-	"flag"
 	"log"
 
 	"github.com/cccteam/ccc/resource/generation"
 )
 
 func main() {
-	password := flag.Bool("password", false, "generate resources for the password-auth showcase app instead of the OIDC showcase app")
-	flag.Parse()
-
 	ctx := context.Background()
 
-	if *password {
-		generatePasswordApp(ctx)
-		return
-	}
-
-	generateApp(ctx)
-}
-
-func generateApp(ctx context.Context) {
-	generator, err := generation.NewResourceGenerator(
-		ctx,
-		"./pkg/resources",
-		"file://schema/migrations",
-		[]string{
-			"cloud.google.com/go/civil",
-			"github.com/cccteam/demo-app/pkg/mock/mock_router",
-			"github.com/cccteam/demo-app/pkg/resources",
-			"github.com/cccteam/demo-app/pkg/router",
-			"github.com/cccteam/demo-app/pkg/rpc",
-			"github.com/cccteam/demo-app/pkg/spanner",
-			"github.com/shopspring/decimal",
-		},
-		generation.GenerateHandlers("app"),
-		generation.GenerateRoutes("pkg/router", "api"),
-		generation.WithRPC("pkg/rpc"),
-		generation.WithComputedResources("pkg/computedresources"),
-		generation.WithConsolidatedHandlers("resources", true),
-		generation.WithSpannerEmulatorVersion("1.5.43"),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer generator.Close()
-
-	if err := generator.Generate(); err != nil {
-		panic(err)
-	}
+	generatePasswordApp(ctx)
 }
 
 func generatePasswordApp(ctx context.Context) {

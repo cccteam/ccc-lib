@@ -1,10 +1,10 @@
 // package generate produces all generated code, including resources, mocks, and cleanup
 package generate
 
-//go:generate go run ./resourcegenerator
-//go:generate go run -tags=collect_resource_permissions ./typescriptgenerator
-//go:generate go run ./resourcegenerator -password
-//go:generate go run -tags=collect_resource_permissions ./typescriptgenerator -password
+//go:generate go run ./resourcegenerator_oidc
+//go:generate go run -tags=collect_resource_permissions ./typescriptgenerator_oidc
+//go:generate go run ./resourcegenerator_password
+//go:generate go run -tags=collect_resource_permissions ./typescriptgenerator_password
 //go:generate go run ./mock_cleanup/mock_cleanup.go
 //
 // mock

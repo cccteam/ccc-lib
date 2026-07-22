@@ -3,16 +3,13 @@ package main
 
 import (
 	"context"
-	"flag"
 	"log"
 
 	"github.com/cccteam/access"
 	"github.com/cccteam/ccc/resource"
 	"github.com/cccteam/ccc/resource/generation"
-	"github.com/cccteam/demo-app/app"
 	"github.com/cccteam/demo-app/apppasswordauth"
 	"github.com/cccteam/demo-app/pkg/computedresources"
-	"github.com/cccteam/demo-app/pkg/router"
 	"github.com/cccteam/demo-app/pkg/rpc"
 	"github.com/cccteam/session"
 	"github.com/go-playground/validator/v10"
@@ -38,55 +35,9 @@ func (c *passwordAuthGenConfigurer) ComputedClient() *computedresources.Client {
 func (c *passwordAuthGenConfigurer) Validator() *validator.Validate { return nil }
 
 func main() {
-	password := flag.Bool("password", false, "generate typescript for the password-auth showcase app instead of the OIDC showcase app")
-	flag.Parse()
-
 	ctx := context.Background()
 
-	if *password {
-		generatePasswordApp(ctx)
-		return
-	}
-
-	generateApp(ctx)
-}
-
-func generateApp(ctx context.Context) {
-	oidcSession, err := session.NewOIDCAzure(nil, nil, "", "", "", "", "")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	a := &app.App{
-		OIDCAzure:          oidcSession,
-		ResourceCollection: resource.NewCollection(),
-	}
-	router.New(a)
-
-	generator, err := generation.NewTypescriptGenerator(
-		ctx,
-		"./pkg/resources",
-		"file://schema/migrations",
-		"../projects/showcase-app/src/app/core/generated",
-		a.ResourceCollection,
-		generation.GenerateMetadata(),
-		generation.GeneratePermissions(),
-		generation.GenerateEnums(),
-		generation.WithRPC("pkg/rpc"),
-		generation.WithComputedResources("pkg/computedresources"),
-		generation.WithTypescriptOverrides(map[string]string{
-			"resources.Attachment": "CustomTypes.Attachment[]",
-		}),
-		generation.WithSpannerEmulatorVersion("1.5.43"),
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer generator.Close()
-
-	if err := generator.Generate(); err != nil {
-		panic(err)
-	}
+	generatePasswordApp(ctx)
 }
 
 func generatePasswordApp(ctx context.Context) {
