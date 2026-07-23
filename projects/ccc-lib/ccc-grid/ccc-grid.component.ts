@@ -1,5 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, input, output, signal, TemplateRef } from '@angular/core';
+import {
+  afterRenderEffect,
+  Component,
+  computed,
+  ElementRef,
+  input,
+  output,
+  signal,
+  TemplateRef,
+  viewChild,
+} from '@angular/core';
 import { MatIconButton } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -12,94 +22,13 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterModule } from '@angular/router';
 import { CamelCaseToTitlePipe } from '@cccteam/ccc-lib/ccc-camel-case-to-title';
 import { ColumnConfig, RecordData } from '@cccteam/ccc-lib/types';
+import { matchesFilter } from './grid-filter.util';
+import { ColumnFilter, FILTER_OPERATORS, FilterOperator, SortRule, VirtualScrollConfig } from './grid-types';
+import { VirtualScrollState } from './grid-virtual-scroll';
 import { TableButtonComponent } from './table-button/table-button.component';
 
 const MIN_COLUMN_WIDTH = 48;
 const ACTION_COLUMN_WIDTH = 66;
-
-export type FilterOperator =
-  | 'contains'
-  | 'doesNotContain'
-  | 'equals'
-  | 'notEqual'
-  | 'startsWith'
-  | 'endsWith'
-  | 'gt'
-  | 'gte'
-  | 'lt'
-  | 'lte';
-
-export const FILTER_OPERATORS: { value: FilterOperator; label: string }[] = [
-  { value: 'contains', label: 'Contains' },
-  { value: 'doesNotContain', label: 'Does not contain' },
-  { value: 'equals', label: 'Equals' },
-  { value: 'notEqual', label: 'Not equal to' },
-  { value: 'startsWith', label: 'Starts with' },
-  { value: 'endsWith', label: 'Ends with' },
-  { value: 'gt', label: 'Greater than' },
-  { value: 'gte', label: 'Greater than or equal to' },
-  { value: 'lt', label: 'Less than' },
-  { value: 'lte', label: 'Less than or equal to' },
-];
-
-interface ColumnFilter {
-  operator: FilterOperator;
-  value: string;
-}
-
-interface SortRule {
-  field: string;
-  direction: 'asc' | 'desc';
-}
-
-function compareCellToFilterValue(cellValue: unknown, filterValue: string): number {
-  const cellNum = typeof cellValue === 'number' ? cellValue : Number(cellValue);
-  const filterNum = Number(filterValue);
-  if (cellValue !== null && cellValue !== undefined && cellValue !== '' && !Number.isNaN(cellNum) && !Number.isNaN(filterNum)) {
-    return cellNum - filterNum;
-  }
-  const cellStr = cellValue == null ? '' : String(cellValue);
-  return cellStr.localeCompare(filterValue);
-}
-
-function matchesFilter(cellValue: unknown, filter: ColumnFilter): boolean {
-  const value = filter.value.trim();
-  if (!value) {
-    return true;
-  }
-
-  if (filter.operator === 'gt' || filter.operator === 'gte' || filter.operator === 'lt' || filter.operator === 'lte') {
-    const cmp = compareCellToFilterValue(cellValue, value);
-    switch (filter.operator) {
-      case 'gt':
-        return cmp > 0;
-      case 'gte':
-        return cmp >= 0;
-      case 'lt':
-        return cmp < 0;
-      case 'lte':
-        return cmp <= 0;
-    }
-  }
-
-  const cell = cellValue == null ? '' : String(cellValue).toLowerCase();
-  const needle = value.toLowerCase();
-  switch (filter.operator) {
-    case 'doesNotContain':
-      return !cell.includes(needle);
-    case 'equals':
-      return cell === needle;
-    case 'notEqual':
-      return cell !== needle;
-    case 'startsWith':
-      return cell.startsWith(needle);
-    case 'endsWith':
-      return cell.endsWith(needle);
-    case 'contains':
-    default:
-      return cell.includes(needle);
-  }
-}
 
 @Component({
   selector: 'ccc-grid',
@@ -132,6 +61,8 @@ export class AppGridComponent {
   pageSize = input<number | undefined>(undefined);
   selectedRows = output<RecordData[]>();
   loading = input<boolean>(false);
+  enableVirtualScroll = input<boolean>(false);
+  virtualScrollConfig = input<VirtualScrollConfig>({});
 
   readonly filterOperators = FILTER_OPERATORS;
 
@@ -211,6 +142,74 @@ export class AppGridComponent {
     const start = this.displayPageIndex() * size;
     return rows.slice(start, start + size);
   });
+
+  private readonly scrollContainer = viewChild<ElementRef<HTMLDivElement>>('scrollContainer');
+  private readonly tableBody = viewChild<ElementRef<HTMLTableSectionElement>>('tableBody');
+
+  private readonly virtualScroll = new VirtualScrollState(
+    computed(() => this.pagedRows().length),
+    this.virtualScrollConfig,
+  );
+
+  /** The rows actually rendered in the DOM: all of `pagedRows` normally, or a scroll-windowed slice when virtualized. */
+  visibleRows = computed(() => {
+    if (!this.enableVirtualScroll()) {
+      return this.pagedRows();
+    }
+    const { start, end } = this.virtualScroll.range();
+    return this.pagedRows().slice(start, end);
+  });
+
+  virtualTopPadding = computed(() => (this.enableVirtualScroll() ? this.virtualScroll.topPadding() : 0));
+  virtualBottomPadding = computed(() => (this.enableVirtualScroll() ? this.virtualScroll.bottomPadding() : 0));
+
+  constructor() {
+    // Measures the average rendered row height from the initial unvirtualized probe batch
+    // (see INITIAL_PROBE_ROW_COUNT) so the rest of the grid's virtualization math has a
+    // rowHeight to work with when one isn't explicitly configured. Uses afterRenderEffect
+    // (rather than effect) because it must run once the probe rows have actually been
+    // patched into the DOM, not just once the signals driving them have settled.
+    afterRenderEffect(() => {
+      if (!this.enableVirtualScroll() || this.virtualScroll.rowHeight() !== undefined) {
+        return;
+      }
+      const rows = this.visibleRows();
+      const body = this.tableBody()?.nativeElement;
+      if (!body || !rows.length) {
+        return;
+      }
+      const sampleRows = Array.from(body.querySelectorAll<HTMLTableRowElement>('tr.ccc-row'));
+      if (!sampleRows.length) {
+        return;
+      }
+      const average = sampleRows.reduce((sum, row) => sum + row.getBoundingClientRect().height, 0) / sampleRows.length;
+      this.virtualScroll.measureRowHeight(average);
+    });
+
+    afterRenderEffect((onCleanup) => {
+      if (!this.enableVirtualScroll()) {
+        return;
+      }
+      const container = this.scrollContainer()?.nativeElement;
+      if (!container) {
+        return;
+      }
+
+      this.virtualScroll.setViewportHeight(container.clientHeight);
+      const observer = new ResizeObserver((entries) => {
+        const height = entries[0]?.contentRect.height;
+        if (height !== undefined) {
+          this.virtualScroll.setViewportHeight(height);
+        }
+      });
+      observer.observe(container);
+      onCleanup(() => observer.disconnect());
+    });
+  }
+
+  onScroll(event: Event): void {
+    this.virtualScroll.setScrollTop((event.target as HTMLElement).scrollTop);
+  }
 
   allSelected = computed(() => {
     const rows = this.filteredRows();

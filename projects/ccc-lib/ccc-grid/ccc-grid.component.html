@@ -1,5 +1,5 @@
 <div class="ccc-grid-host">
-  <div class="ccc-grid-scroll">
+  <div class="ccc-grid-scroll" #scrollContainer (scroll)="onScroll($event)">
     <table class="ccc-grid-table">
       <thead>
         <tr class="ccc-grid-header-row">
@@ -76,13 +76,18 @@
           }
         </tr>
       </thead>
-      <tbody>
+      <tbody #tableBody>
         @if (pagedRows().length === 0) {
           <tr class="no-records-row">
             <td [attr.colspan]="totalColumnCount()">No records found</td>
           </tr>
         }
-        @for (row of pagedRows(); track row['id']) {
+        @if (enableVirtualScroll() && virtualTopPadding() > 0) {
+          <tr class="virtual-scroll-spacer" aria-hidden="true" [style.height.px]="virtualTopPadding()">
+            <td [attr.colspan]="totalColumnCount()"></td>
+          </tr>
+        }
+        @for (row of visibleRows(); track row['id']) {
           <tr class="ccc-row" [class.selected]="isSelected(row)">
             @if (selectionType() !== 'none') {
               <td class="select-col">
@@ -134,6 +139,11 @@
               </td>
             </tr>
           }
+        }
+        @if (enableVirtualScroll() && virtualBottomPadding() > 0) {
+          <tr class="virtual-scroll-spacer" aria-hidden="true" [style.height.px]="virtualBottomPadding()">
+            <td [attr.colspan]="totalColumnCount()"></td>
+          </tr>
         }
       </tbody>
     </table>

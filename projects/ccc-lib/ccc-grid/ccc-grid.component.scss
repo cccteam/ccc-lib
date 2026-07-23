@@ -207,6 +207,11 @@
   }
 }
 
+.virtual-scroll-spacer td {
+  padding: 0;
+  border: none;
+}
+
 .no-records-row td {
   text-align: center;
   padding: 20px;

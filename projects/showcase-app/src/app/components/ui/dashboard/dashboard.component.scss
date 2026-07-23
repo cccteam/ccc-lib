@@ -1,0 +1,50 @@
+.dashboard-page {
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.dashboard-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.dashboard-tile {
+  width: 280px;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease-in-out;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  mat-card-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .tile-icon {
+    flex: 0 0 auto;
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    color: rgba(25, 118, 210, 0.87);
+  }
+
+  .tile-text {
+    min-width: 0;
+
+    h2 {
+      margin: 0 0 4px;
+      font-size: 16px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 13px;
+      color: rgba(0, 0, 0, 0.6);
+    }
+  }
+}

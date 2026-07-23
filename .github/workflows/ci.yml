@@ -33,7 +33,7 @@ jobs:
         run: bun install -g @angular/cli
 
       - name: Install dependencies
-        run: bun install
+        run: bun ci
 
       - name: Run lint
         run: bun run lint

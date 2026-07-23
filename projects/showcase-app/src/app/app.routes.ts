@@ -16,6 +16,13 @@ export const routes: Routes = [
       import('./components/grid-showcase/grid-showcase.component').then((comp) => comp.GridShowcaseComponent),
   },
   {
+    path: 'virtual-scroll-grid-showcase',
+    loadComponent: () =>
+      import('./components/virtual-scroll-grid-showcase/virtual-scroll-grid-showcase.component').then(
+        (comp) => comp.VirtualScrollGridShowcaseComponent,
+      ),
+  },
+  {
     path: '',
     component: UiComponent,
     canActivate: [OIDCAuthenticationGuard],

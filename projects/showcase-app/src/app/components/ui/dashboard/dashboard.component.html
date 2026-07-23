@@ -1,1 +1,17 @@
-<h1>Dashboard</h1>
+<div class="dashboard-page">
+  <h1>Dashboard</h1>
+
+  <div class="dashboard-tiles" data-testid="dashboard-tiles">
+    @for (tile of tiles; track tile.route) {
+      <mat-card class="dashboard-tile" [routerLink]="tile.route" [attr.data-testid]="'dashboard-tile-' + tile.testId">
+        <mat-card-content>
+          <mat-icon class="tile-icon">{{ tile.icon }}</mat-icon>
+          <div class="tile-text">
+            <h2>{{ tile.label }}</h2>
+            <p>{{ tile.description }}</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  </div>
+</div>
