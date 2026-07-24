@@ -16,11 +16,13 @@ import {
   RPCConfig,
 } from '@cccteam/ccc-lib/types';
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
-import { forkJoin, map, Observable, of, tap } from 'rxjs';
+import { from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
 import { Operation } from './resources-helpers';
 
 @Injectable()
 export class ResourceStore {
+  private static readonly BATCH_REQUEST_CONCURRENCY = 5;
+
   resourceMeta = signal({} as ResourceMeta);
   resourceName = signal<Resource>('' as Resource);
   filter = signal<string>('');
@@ -236,6 +238,10 @@ export class ResourceStore {
     columns: Signal<string[]> = signal([]),
     batchSize = 200,
   ): ResourceRef<RecordData[]> {
+    if (!Number.isInteger(batchSize) || batchSize <= 0) {
+      throw new Error(`resourceListByKeys: batchSize must be a positive integer, got ${batchSize}`);
+    }
+
     return untracked(() => {
       return rxResource({
         defaultValue: [] as RecordData[],
@@ -254,20 +260,25 @@ export class ResourceStore {
           for (let i = 0; i < params.keys.length; i += batchSize) {
             batches.push(params.keys.slice(i, i + batchSize));
           }
-          const requests = batches.map((batch) =>
-            this.list<RecordData>(
-              params.route,
-              `${params.keyField}:in:(${batch.join(',')})`,
-              false,
-              params.columns,
-              '',
-              [],
-              // Send an explicit limit so the backend's default list cap does not truncate the batch.
-              batch.length,
+          return from(batches).pipe(
+            mergeMap(
+              (batch) =>
+                this.list<RecordData>(
+                  params.route,
+                  `${params.keyField}:in:(${batch.join(',')})`,
+                  false,
+                  params.columns,
+                  '',
+                  [],
+                  // Send an explicit limit so the backend's default list cap does not truncate the batch.
+                  batch.length,
+                ),
+              // Cap in-flight batch requests to avoid bursting past browser connection limits / backend rate limits.
+              ResourceStore.BATCH_REQUEST_CONCURRENCY,
             ),
+            toArray(),
+            map((results) => results.flat()),
           );
-
-          return forkJoin(requests).pipe(map((results) => results.flat()));
         },
       }) as ResourceRef<RecordData[]>;
     });

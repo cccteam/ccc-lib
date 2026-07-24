@@ -498,7 +498,7 @@ export class ResourceListComponent implements OnInit {
           keys,
           signal([...entry.columns]),
         );
-        this.resourceRefMap.set(this.resourceRefMap().set(refKey, ref));
+        this.resourceRefMap.update((map) => new Map(map).set(refKey, ref));
       });
 
       effect(() => {
