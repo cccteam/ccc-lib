@@ -175,7 +175,7 @@ export class ResourceListComponent implements OnInit {
     const config = this.config();
     return this.resourceMeta(config.overrideResource || config.primaryResource);
   });
-  resourceRefMap = signal(new Map<Resource, ResourceRef<RecordData[]>>());
+  resourceRefMap = signal(new Map<string, ResourceRef<RecordData[]>>());
   primaryKeys = computed(() => {
     const meta = this.meta();
     if (!meta) {
@@ -235,8 +235,8 @@ export class ResourceListComponent implements OnInit {
               if (!additionalCol.resource) {
                 concatArray.push(data[additionalCol.id]);
               } else {
-                const resource = signal(additionalCol.resource as Resource);
-                const resourceRef = refmap.get(resource());
+                const refKey = this.resourceRefKey(additionalCol.resource, additionalCol.id as FieldName);
+                const resourceRef = refmap.get(refKey);
                 const resData = resourceRef?.value();
                 if (!resData) {
                   return;
@@ -402,6 +402,10 @@ export class ResourceListComponent implements OnInit {
     return this.config().parentRelation?.childKey as string;
   });
 
+  private resourceRefKey(resource: Resource, keyField: FieldName): string {
+    return `${resource}::${keyField}`;
+  }
+
   private getUniqueId(baseId: string, usedIds: Set<string>): string {
     if (!usedIds.has(baseId)) {
       return baseId;
@@ -431,10 +435,12 @@ export class ResourceListComponent implements OnInit {
     this.store.disableCacheForFilterPii.set(this.config().disableCacheForFilterPii);
 
     runInInjectionContext(this.injector, () => {
-      // Group every referenced resource used by enumerated columns, collecting the
-      // foreign-key columns that point at it and the display fields read from it.
+      // Group every referenced resource+keyField pair used by enumerated columns,
+      // collecting the foreign-key columns that point at it and the display fields
+      // read from it. Two columns can reference the same resource via different
+      // key fields, so the map must be keyed on the pair, not the resource alone.
       const referenced = new Map<
-        Resource,
+        string,
         { route: string; keyField: FieldName; fkColumns: Set<FieldName>; columns: Set<FieldName> }
       >();
       this.config().listColumns.forEach((element) => {
@@ -449,26 +455,28 @@ export class ResourceListComponent implements OnInit {
           if (meta === undefined) {
             return;
           }
-          const entry = referenced.get(additionalCol.resource) ?? {
+          const keyField = additionalCol.id as FieldName;
+          const refKey = this.resourceRefKey(additionalCol.resource, keyField);
+          const entry = referenced.get(refKey) ?? {
             route: meta.route,
-            keyField: additionalCol.id as FieldName,
+            keyField,
             fkColumns: new Set<FieldName>(),
             columns: new Set<FieldName>(),
           };
           entry.fkColumns.add(element.id as FieldName);
-          entry.columns.add(additionalCol.id as FieldName);
+          entry.columns.add(keyField);
           if (additionalCol.field) {
             entry.columns.add(additionalCol.field as FieldName);
           }
-          referenced.set(additionalCol.resource, entry);
+          referenced.set(refKey, entry);
         });
       });
 
-      // For each referenced resource, fetch only the rows whose key matches a value
-      // present in the loaded list data, keeping the lookup independent of the
-      // referenced resource's total size.
-      referenced.forEach((entry, resource) => {
-        if (this.resourceRefMap().has(resource)) {
+      // For each referenced resource+keyField pair, fetch only the rows whose key
+      // matches a value present in the loaded list data, keeping the lookup
+      // independent of the referenced resource's total size.
+      referenced.forEach((entry, refKey) => {
+        if (this.resourceRefMap().has(refKey)) {
           return;
         }
         const keys = computed(() => {
@@ -490,7 +498,7 @@ export class ResourceListComponent implements OnInit {
           keys,
           signal([...entry.columns]),
         );
-        this.resourceRefMap.set(this.resourceRefMap().set(resource, ref));
+        this.resourceRefMap.set(this.resourceRefMap().set(refKey, ref));
       });
 
       effect(() => {
