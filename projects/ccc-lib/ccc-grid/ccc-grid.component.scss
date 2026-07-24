@@ -67,6 +67,10 @@
       --mdc-icon-button-state-layer-size: 40px;
       --mat-icon-button-state-layer-size: 40px;
       --mat-icon-button-touch-target-display: none;
+      // Material's padding for the icon button is computed from the theme's default
+      // density (48px) at SCSS build time, not from the CSS variables above, so it has
+      // to be corrected by hand to re-center the icon: (40px state layer - 24px icon) / 2
+      padding: 8px;
     }
 
     .mat-mdc-checkbox {
