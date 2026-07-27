@@ -223,14 +223,6 @@ export class ResourceStore {
     });
   }
 
-  /**
-   * Resolves referenced-resource rows by their key values, batching the lookup into
-   * `filter=<keyField>:in:(...)` requests of at most `batchSize` keys each.
-   *
-   * Used by list views to resolve enumerated (foreign-key) display values for only the
-   * rows actually present in the loaded data, rather than fetching the whole referenced
-   * resource (which is capped by the backend list limit and silently drops rows beyond it).
-   */
   resourceListByKeys(
     route: Signal<string>,
     keyField: Signal<string>,
@@ -270,10 +262,8 @@ export class ResourceStore {
                   params.columns,
                   '',
                   [],
-                  // Send an explicit limit so the backend's default list cap does not truncate the batch.
                   batch.length,
                 ),
-              // Cap in-flight batch requests to avoid bursting past browser connection limits / backend rate limits.
               ResourceStore.BATCH_REQUEST_CONCURRENCY,
             ),
             toArray(),

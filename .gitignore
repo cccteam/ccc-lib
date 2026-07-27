@@ -3,3 +3,4 @@ node_modules
 **/dist/
 .envrc
 telerik-license.txt
+bun.lock

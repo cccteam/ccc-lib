@@ -358,9 +358,6 @@ export class ResourceListComponent implements OnInit {
     if (primaryStatus === 'loading' || primaryStatus === 'reloading') {
       return true;
     }
-    // Keep the grid in its loading state until enumerated (foreign-key) lookups
-    // resolve, so referenced display values appear together with the rest of the
-    // row instead of popping in after a blank flash.
     for (const ref of this.resourceRefMap().values()) {
       const refStatus = ref.status();
       if (refStatus === 'loading' || refStatus === 'reloading') {
@@ -435,10 +432,6 @@ export class ResourceListComponent implements OnInit {
     this.store.disableCacheForFilterPii.set(this.config().disableCacheForFilterPii);
 
     runInInjectionContext(this.injector, () => {
-      // Group every referenced resource+keyField pair used by enumerated columns,
-      // collecting the foreign-key columns that point at it and the display fields
-      // read from it. Two columns can reference the same resource via different
-      // key fields, so the map must be keyed on the pair, not the resource alone.
       const referenced = new Map<
         string,
         { route: string; keyField: FieldName; fkColumns: Set<FieldName>; columns: Set<FieldName> }
@@ -471,10 +464,7 @@ export class ResourceListComponent implements OnInit {
           referenced.set(refKey, entry);
         });
       });
-
-      // For each referenced resource+keyField pair, fetch only the rows whose key
-      // matches a value present in the loaded list data, keeping the lookup
-      // independent of the referenced resource's total size.
+      
       referenced.forEach((entry, refKey) => {
         if (this.resourceRefMap().has(refKey)) {
           return;
