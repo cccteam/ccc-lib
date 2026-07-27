@@ -175,7 +175,7 @@ export class ResourceListComponent implements OnInit {
     const config = this.config();
     return this.resourceMeta(config.overrideResource || config.primaryResource);
   });
-  resourceRefMap = signal(new Map<Resource, ResourceRef<RecordData[]>>());
+  resourceRefMap = signal(new Map<string, ResourceRef<RecordData[]>>());
   primaryKeys = computed(() => {
     const meta = this.meta();
     if (!meta) {
@@ -235,8 +235,8 @@ export class ResourceListComponent implements OnInit {
               if (!additionalCol.resource) {
                 concatArray.push(data[additionalCol.id]);
               } else {
-                const resource = signal(additionalCol.resource as Resource);
-                const resourceRef = refmap.get(resource());
+                const refKey = this.resourceRefKey(additionalCol.resource, additionalCol.id as FieldName);
+                const resourceRef = refmap.get(refKey);
                 const resData = resourceRef?.value();
                 if (!resData) {
                   return;
@@ -354,7 +354,17 @@ export class ResourceListComponent implements OnInit {
   });
 
   loadingRowData = computed(() => {
-    return this.store.listStatus() === 'loading' || this.store.listStatus() === 'reloading';
+    const primaryStatus = this.store.listStatus();
+    if (primaryStatus === 'loading' || primaryStatus === 'reloading') {
+      return true;
+    }
+    for (const ref of this.resourceRefMap().values()) {
+      const refStatus = ref.status();
+      if (refStatus === 'loading' || refStatus === 'reloading') {
+        return true;
+      }
+    }
+    return false;
   });
 
   filters = computed(() => {
@@ -389,6 +399,10 @@ export class ResourceListComponent implements OnInit {
     return this.config().parentRelation?.childKey as string;
   });
 
+  private resourceRefKey(resource: Resource, keyField: FieldName): string {
+    return `${resource}::${keyField}`;
+  }
+
   private getUniqueId(baseId: string, usedIds: Set<string>): string {
     if (!usedIds.has(baseId)) {
       return baseId;
@@ -418,28 +432,63 @@ export class ResourceListComponent implements OnInit {
     this.store.disableCacheForFilterPii.set(this.config().disableCacheForFilterPii);
 
     runInInjectionContext(this.injector, () => {
+      const referenced = new Map<
+        string,
+        { route: string; keyField: FieldName; fkColumns: Set<FieldName>; columns: Set<FieldName> }
+      >();
       this.config().listColumns.forEach((element) => {
         if (!('additionalIds' in element)) {
           return;
         }
-        element.additionalIds.forEach((id) => {
-          if (id.resource === undefined) {
+        element.additionalIds.forEach((additionalCol) => {
+          if (additionalCol.resource === undefined) {
             return;
           }
-          const meta = this.resourceMeta(id.resource);
+          const meta = this.resourceMeta(additionalCol.resource);
           if (meta === undefined) {
             return;
           }
-          const route = signal(meta.route);
-          const resource = signal(id.resource);
-          if (!this.resourceRefMap().has(resource())) {
-            const ref = this.store.resourceList(route);
-            if (ref === undefined) {
-              return;
-            }
-            this.resourceRefMap.set(this.resourceRefMap().set(resource(), ref));
+          const keyField = additionalCol.id as FieldName;
+          const refKey = this.resourceRefKey(additionalCol.resource, keyField);
+          const entry = referenced.get(refKey) ?? {
+            route: meta.route,
+            keyField,
+            fkColumns: new Set<FieldName>(),
+            columns: new Set<FieldName>(),
+          };
+          entry.fkColumns.add(element.id as FieldName);
+          entry.columns.add(keyField);
+          if (additionalCol.field) {
+            entry.columns.add(additionalCol.field as FieldName);
           }
+          referenced.set(refKey, entry);
         });
+      });
+      
+      referenced.forEach((entry, refKey) => {
+        if (this.resourceRefMap().has(refKey)) {
+          return;
+        }
+        const keys = computed(() => {
+          const data = this.store.listData();
+          const values = new Set<string>();
+          for (const row of data) {
+            for (const fkColumn of entry.fkColumns) {
+              const value = row[fkColumn];
+              if (value !== undefined && value !== null && value !== '') {
+                values.add(String(value));
+              }
+            }
+          }
+          return [...values];
+        });
+        const ref = this.store.resourceListByKeys(
+          signal(entry.route),
+          signal(entry.keyField),
+          keys,
+          signal([...entry.columns]),
+        );
+        this.resourceRefMap.update((map) => new Map(map).set(refKey, ref));
       });
 
       effect(() => {

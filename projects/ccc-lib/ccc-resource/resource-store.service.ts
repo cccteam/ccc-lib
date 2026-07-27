@@ -16,11 +16,13 @@ import {
   RPCConfig,
 } from '@cccteam/ccc-lib/types';
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
-import { Observable, of, tap } from 'rxjs';
+import { from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
 import { Operation } from './resources-helpers';
 
 @Injectable()
 export class ResourceStore {
+  private static readonly BATCH_REQUEST_CONCURRENCY = 5;
+
   resourceMeta = signal({} as ResourceMeta);
   resourceName = signal<Resource>('' as Resource);
   filter = signal<string>('');
@@ -215,6 +217,57 @@ export class ResourceStore {
             params.searchTokens,
             params.sorts,
             params.limit,
+          );
+        },
+      }) as ResourceRef<RecordData[]>;
+    });
+  }
+
+  resourceListByKeys(
+    route: Signal<string>,
+    keyField: Signal<string>,
+    keys: Signal<string[]>,
+    columns: Signal<string[]> = signal([]),
+    batchSize = 200,
+  ): ResourceRef<RecordData[]> {
+    if (!Number.isInteger(batchSize) || batchSize <= 0) {
+      throw new Error(`resourceListByKeys: batchSize must be a positive integer, got ${batchSize}`);
+    }
+
+    return untracked(() => {
+      return rxResource({
+        defaultValue: [] as RecordData[],
+        injector: this.injector,
+        params: () => ({
+          route: route(),
+          keyField: keyField(),
+          keys: keys(),
+          columns: columns(),
+        }),
+        stream: ({ params }) => {
+          if (!params.route || !params.keyField || params.keys.length === 0) {
+            return of([] as RecordData[]);
+          }
+          const batches: string[][] = [];
+          for (let i = 0; i < params.keys.length; i += batchSize) {
+            batches.push(params.keys.slice(i, i + batchSize));
+          }
+          return from(batches).pipe(
+            mergeMap(
+              (batch) =>
+                this.list<RecordData>(
+                  params.route,
+                  `${params.keyField}:in:(${batch.join(',')})`,
+                  false,
+                  params.columns,
+                  '',
+                  [],
+                  batch.length,
+                ),
+              ResourceStore.BATCH_REQUEST_CONCURRENCY,
+            ),
+            toArray(),
+            map((results) => results.flat()),
           );
         },
       }) as ResourceRef<RecordData[]>;
