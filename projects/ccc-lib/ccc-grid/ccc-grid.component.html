@@ -6,13 +6,13 @@
           @if (selectionType() !== 'none') {
             <th class="select-col">
               @if (selectionType() === 'multiple') {
-                <mat-checkbox
-                  class="select-all-checkbox"
+                <input
+                  type="checkbox"
+                  class="ccc-checkbox select-all-checkbox"
                   [checked]="allSelected()"
                   [indeterminate]="someSelected()"
                   (change)="toggleSelectAll()"
-                  aria-label="Select all rows">
-                </mat-checkbox>
+                  aria-label="Select all rows" />
               }
             </th>
           }
@@ -91,7 +91,11 @@
           <tr class="ccc-row" [class.selected]="isSelected(row)">
             @if (selectionType() !== 'none') {
               <td class="select-col">
-                <mat-checkbox class="row-checkbox" [checked]="isSelected(row)" (change)="toggleRow(row)"></mat-checkbox>
+                <input
+                  type="checkbox"
+                  class="ccc-checkbox row-checkbox"
+                  [checked]="isSelected(row)"
+                  (change)="toggleRow(row)" />
               </td>
             }
             @if (enableRowExpansion() && detailTemplate()) {

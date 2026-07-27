@@ -69,6 +69,9 @@
       "name": "gui",
       "version": "0.0.0",
       "dependencies": {
+        "@progress/kendo-angular-grid": "^24.2.2",
+        "@progress/kendo-licensing": "^1.11.2",
+        "@progress/kendo-theme-default": "^14.4.0",
         "date-fns": "^4.1.0",
         "date-fns-tz": "^3.2.0",
         "tslib": "^2.3.0",
@@ -497,6 +500,102 @@
 
     "@playwright/test": ["@playwright/test@1.62.0", "", { "dependencies": { "playwright": "1.62.0" }, "bin": { "playwright": "cli.js" } }, "sha512-9zOJ6ZQRAena31MpOH9VSzIz8Ou3YJ/wtY/eQm5T2uhfhG7/U3COrMS8xOtUrZrp9OgdmzEnIYODye3nY1VqzA=="],
 
+    "@progress/jszip-esm": ["@progress/jszip-esm@1.0.4", "", { "dependencies": { "@progress/pako-esm": "^1.0.1" } }, "sha512-A5i26JcTosFKeHCrklarNsByW3RUJd8osRq69eskZgIaq05weTCXdpztlFMwrHpgOGods1D0WFoSQcMNE0eI8Q=="],
+
+    "@progress/kendo-angular-buttons": ["@progress/kendo-angular-buttons@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-common": "^1.0.1", "@progress/kendo-smartpaste-common": "1.0.0", "@progress/kendo-webspeech-common": "1.0.1", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-angular-popup": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-T/hAYBx6h3mLwas4fSL4gEgPsPorRh1iWwWj9DsH7hRhnO7hWbBINgaZvwB9Mf5Vy1FuygqizBdjOXcIYcK2ig=="],
+
+    "@progress/kendo-angular-common": ["@progress/kendo-angular-common@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-common": "^1.0.1", "@progress/kendo-draggable": "^3.0.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-w/u219iDpu9NoeW0MEWmUFkxcD7eyTFgK8XYr6OulBdPyeWfXQ3fvMPnlvrODrtjN8++iRQ4WgICuBe59BKinQ=="],
+
+    "@progress/kendo-angular-conversational-ui": ["@progress/kendo-angular-conversational-ui@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-buttons": "24.2.2", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-inputs": "24.2.2", "@progress/kendo-angular-intl": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-angular-layout": "24.2.2", "@progress/kendo-angular-menu": "24.2.2", "@progress/kendo-angular-popup": "24.2.2", "@progress/kendo-angular-toolbar": "24.2.2", "@progress/kendo-angular-upload": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-tBLSYgifuR/oNDSHEZcSUXZtJRERKDoTWnfUOGXd9Mhjlx7Pwp60J9viU0qhatFhLQMA0SxVW7OB4RfBiRHdoQ=="],
+
+    "@progress/kendo-angular-dateinputs": ["@progress/kendo-angular-dateinputs@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-common": "^1.0.1", "@progress/kendo-date-math": "^1.1.0", "@progress/kendo-dateinputs-common": "^0.4.11", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/forms": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-buttons": "24.2.2", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-intl": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-angular-navigation": "24.2.2", "@progress/kendo-angular-popup": "24.2.2", "@progress/kendo-angular-utils": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-FJHnpgDKV9PsjSLz5Wmkjrqm4wTzM6hf7Yel954DAdX0vl3rw7l3huhFeeeHaTMQXrzyBxlnPv/f/TN2b/1cJA=="],
+
+    "@progress/kendo-angular-dialog": ["@progress/kendo-angular-dialog@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-popup-common": "1.9.5", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-buttons": "24.2.2", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-r38d41WKeWDVMrq2rDBfZJFBmPKfoj1jPgZv9l3zsIkE4UM+InBlPMec7JK/7CAw/alrowVNMgVYDaZt9gEdsg=="],
+
+    "@progress/kendo-angular-dropdowns": ["@progress/kendo-angular-dropdowns@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-common": "^1.0.1", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/forms": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-angular-navigation": "24.2.2", "@progress/kendo-angular-popup": "24.2.2", "@progress/kendo-angular-treeview": "24.2.2", "@progress/kendo-angular-utils": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-lFOGSotQa+mn3U27D/E0I4nV9vgg75J+7DRTQJR63QmWicFjZsw76I4prWATfbE9dl+SrKo07sV5CU9sDstoPA=="],
+
+    "@progress/kendo-angular-excel-export": ["@progress/kendo-angular-excel-export@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-file-saver": "^1.0.0", "@progress/kendo-intl": "^3.0.0", "@progress/kendo-ooxml": "^1.9.0", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-BCAdD3NCizOupgp+FsmFWSTPlZa0zwMi+D6gft1zt+q1aSs8OsuYKn+wSLJw32J16nGM8tNnZa15BGiSjsHyJw=="],
+
+    "@progress/kendo-angular-grid": ["@progress/kendo-angular-grid@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-common": "^1.0.1", "@progress/kendo-csv": "^1.0.0", "@progress/kendo-file-saver": "^1.0.0", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/forms": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-buttons": "24.2.2", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-conversational-ui": "24.2.2", "@progress/kendo-angular-dateinputs": "24.2.2", "@progress/kendo-angular-dropdowns": "24.2.2", "@progress/kendo-angular-excel-export": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-indicators": "24.2.2", "@progress/kendo-angular-inputs": "24.2.2", "@progress/kendo-angular-intl": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-angular-label": "24.2.2", "@progress/kendo-angular-layout": "24.2.2", "@progress/kendo-angular-menu": "24.2.2", "@progress/kendo-angular-navigation": "24.2.2", "@progress/kendo-angular-pager": "24.2.2", "@progress/kendo-angular-pdf-export": "24.2.2", "@progress/kendo-angular-popup": "24.2.2", "@progress/kendo-angular-toolbar": "24.2.2", "@progress/kendo-angular-upload": "24.2.2", "@progress/kendo-angular-utils": "24.2.2", "@progress/kendo-data-query": "^1.7.3", "@progress/kendo-drawing": "^1.25.0", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-L9p7+SgoeJyxLprKYsqfGR5UE5nWYfoiZLPtX9bNEVbUf99rmwjx/z0aM7a1w8joxwbW6HVz73QdBixPM8k66w=="],
+
+    "@progress/kendo-angular-icons": ["@progress/kendo-angular-icons@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "@progress/kendo-svg-icons": "^4.9.0 || ^5.0.0", "rxjs": "^6.5.3 || ^7.0.0" }, "optionalPeers": ["@progress/kendo-svg-icons"] }, "sha512-RKs1dAveBhLaKz+aOW1fS4ewrUnq914sV16EH1fwP2OnDEBbemlSAknMg25eIRtCZ+2JZ0l0FY9fpfTC2WW9DA=="],
+
+    "@progress/kendo-angular-indicators": ["@progress/kendo-angular-indicators@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-intl": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-z/19rKf7/8MnAL/t+K5iSytCwV50+7Brgf1wQwoqRt2rKXOf4+KWhOsuM02EsIVNTV4uU15Ji1HJ9Y77WaBO1g=="],
+
+    "@progress/kendo-angular-inputs": ["@progress/kendo-angular-inputs@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-common": "^1.0.1", "@progress/kendo-draggable": "^3.0.0", "@progress/kendo-inputs-common": "^3.1.0", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/forms": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-buttons": "24.2.2", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-dialog": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-intl": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-angular-navigation": "24.2.2", "@progress/kendo-angular-popup": "24.2.2", "@progress/kendo-angular-utils": "24.2.2", "@progress/kendo-drawing": "^1.25.0", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-t8w2lvXfzaaNy54KnYjbL4X3QEn40DowG9DUApRgMIFuBhDnVrofCf/VWQ1SXQp1SoKjy1HPKg6ATXYZyvJurA=="],
+
+    "@progress/kendo-angular-intl": ["@progress/kendo-angular-intl@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-intl": "3.2.1", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-/+qk1O/LQ+vzlPFnepoLKGyzApQCBwxVQa9PQdPmFlR1CHS65AQrpjjYnWuWyZQrRcCHFYKodHns/ejytvXv1Q=="],
+
+    "@progress/kendo-angular-l10n": ["@progress/kendo-angular-l10n@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-W2LckrSGJ8qky6gBxddChXP6SMLszeBBIYhEtF9IBzPjPrvVoKVU/N76uJzbBHlV+KuUW02KkoKWWltS5nxnXg=="],
+
+    "@progress/kendo-angular-label": ["@progress/kendo-angular-label@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/forms": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-t6qzf7FJ70y++C3tux0KY/8XXUk95cXeElNPgYzik16A3h/0KCVHe0Uqk+RD6R5uCZ5UHlwbYBkCCiOkLat3/Q=="],
+
+    "@progress/kendo-angular-layout": ["@progress/kendo-angular-layout@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-draggable": "^3.0.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-buttons": "24.2.2", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-intl": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-angular-progressbar": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-K1jL69I6AfWbVdZsFlMI08uHMzv/YGHHA5jh23e3dqFR0TmCQw33tJyqqvPMKDv7lhrHBuOJx7CVO2nxCuho/Q=="],
+
+    "@progress/kendo-angular-menu": ["@progress/kendo-angular-menu@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-angular-popup": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-kfbOcW+VTjTPLOOIO2Za722Pvj5gvA8EodDIQjAW84n0iV6t2Fg5n9wvbae14SAWjAzuC43uZhb9c4CnCM2GVw=="],
+
+    "@progress/kendo-angular-navigation": ["@progress/kendo-angular-navigation@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-buttons": "24.2.2", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-ejm1XGRoAxM68yjtLuc1B4/2p2ODbGjodfbM6cFvLo5qZU+THaKuVcY+XHej/8i9NYrNuWeMAWIxl71n28D9rg=="],
+
+    "@progress/kendo-angular-pager": ["@progress/kendo-angular-pager@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-dropdowns": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-inputs": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-IJublLvvaQvwW84kxHG0PnHzfPWXP5OH6EyyyxqCJq9W27Ss/IOIBwTvURemnUdfDHUiD2l1Mu5lRIprdI+RHw=="],
+
+    "@progress/kendo-angular-pdf-export": ["@progress/kendo-angular-pdf-export@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-file-saver": "^1.0.1", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-drawing": "^1.25.0", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-oprkeMTX2pXrUThdoxZ+7eCz5vG1TtQ+tF3Dt6l6TUo9MJsqCB03TPDVcs4s8GV3MIz2DbBxtiPuhSH0c42lCQ=="],
+
+    "@progress/kendo-angular-popup": ["@progress/kendo-angular-popup@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-popup-common": "1.9.5", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-iY5Ew//COYrr62HeIgPL2+GK3xsw+l0puNFPbtYgTzjnSVvrsRbrn+xHDP1Bod36WwgYm3PcvreN9LsxmEvlrw=="],
+
+    "@progress/kendo-angular-progressbar": ["@progress/kendo-angular-progressbar@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-D5b7eLDz5ZLlBB+3hxRSWz0ZhJvQ5mr3TvDc5Yu9A7pqhjWRi2GiJTyDNdrKmNVPk/e0VxvXDppcs6GpeV0srQ=="],
+
+    "@progress/kendo-angular-schematics": ["@progress/kendo-angular-schematics@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@types/semver": "^7.5.0", "semver": "^7.5.3" }, "peerDependencies": { "@angular-devkit/core": "19 - 22", "@angular-devkit/schematics": "19 - 22", "@angular/core": "19 - 22", "@schematics/angular": "19 - 22", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-4bWIe9IXfcGmY8RN7R7hRKi8i3rONYnBcdi3ikV/YV+yCKSGo15r6ESeRvJhgXpSfXMHQjKjw21zRqk92hFqMg=="],
+
+    "@progress/kendo-angular-toolbar": ["@progress/kendo-angular-toolbar@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-buttons": "24.2.2", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-indicators": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-angular-popup": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-pzQl6DkVVvqeALSG0NEBqfRqJinCEAkaz1e6i4K9aJ2dPaSOL7+uYP0e4WJX03sYtSIy2zRHipSYuwvBG9bfqw=="],
+
+    "@progress/kendo-angular-treeview": ["@progress/kendo-angular-treeview@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-common": "^1.0.1", "@progress/kendo-draggable": "^3.0.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-inputs": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-SOuqCC7csukIv17RvYj3i0de7RF3y2FdGxsySoiTKld8xYDRAdYnCpAGCrrNUKlbBJRR741alma0ENECehJHWg=="],
+
+    "@progress/kendo-angular-upload": ["@progress/kendo-angular-upload@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/forms": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-buttons": "24.2.2", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-angular-icons": "24.2.2", "@progress/kendo-angular-l10n": "24.2.2", "@progress/kendo-angular-progressbar": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-cBgquxhtuQmWLtvv7SQ8TAcH8RCtfDzHkrERa1+l3KVBzIjp5KtIXs73NmS6JNcjbxC+61JlCa4ufDLsKw5a1w=="],
+
+    "@progress/kendo-angular-utils": ["@progress/kendo-angular-utils@24.2.2", "", { "dependencies": { "@progress/kendo-angular-schematics": "24.2.2", "@progress/kendo-draggable-common": "^0.2.3", "tslib": "^2.3.1" }, "peerDependencies": { "@angular/animations": "19 - 22", "@angular/common": "19 - 22", "@angular/core": "19 - 22", "@angular/platform-browser": "19 - 22", "@progress/kendo-angular-common": "24.2.2", "@progress/kendo-licensing": "^1.11.0", "rxjs": "^6.5.3 || ^7.0.0" } }, "sha512-cMTzCd0pYR4s4byBLd31gbUqEp9o1lzHNcPHfZJjEy6ExeclL6b/UJx1P/O34JQqgegswZOsSh9ryev+a/9rdg=="],
+
+    "@progress/kendo-common": ["@progress/kendo-common@1.0.2", "", { "dependencies": { "tslib": "^1.7.0" } }, "sha512-PHxnquetSmtmXiF4dmlQiypzXaFLUEPK3VAOHxmnRDrLxaPrcZfaW9FOOiyur8hv4QmXlohISMwMElZS8Xi1Ag=="],
+
+    "@progress/kendo-csv": ["@progress/kendo-csv@1.0.0", "", {}, "sha512-Z23QE0AbX9I5upvKzbDT71XQmQ9rEKIOBgWpTblBnjTtBd7n+gLOQ954drd+NHJ5xw8R+xAhtDTEBd8JtKzq7A=="],
+
+    "@progress/kendo-data-query": ["@progress/kendo-data-query@1.7.4", "", { "dependencies": { "tslib": "^2.8.1" } }, "sha512-naaQ2wJ8kj6e9C7OJerUxDK+dRC3A5z4bt52ZQmYmdJldlQL89zFKYQXHRFsPdfnok11bO82XCtj4PZ4jjp9AA=="],
+
+    "@progress/kendo-date-math": ["@progress/kendo-date-math@1.5.17", "", { "dependencies": { "tslib": "^2.4.1" } }, "sha512-tAWEllBIKCSUOIQ+w7yEGmqk5zcNbyoRgsJk5+0QbgqkK4owPXZ5PP2N8u69B5ax8wabKf789fol5mt0HtpsAA=="],
+
+    "@progress/kendo-dateinputs-common": ["@progress/kendo-dateinputs-common@0.4.12", "", { "dependencies": { "@progress/kendo-date-math": "^1.5.9", "tslib": "^2.4.1" } }, "sha512-0YV6dxrMJ22w5WIFST05LPlk0TpklADd9XU18nvdePL8bkk/5H48p2L4wgb1R21Q4YbSId8dKKu6soxLrY6cog=="],
+
+    "@progress/kendo-draggable": ["@progress/kendo-draggable@3.1.0", "", {}, "sha512-S5AHF9uiy44um+06ABJcjZn/wpO3ZwLahd2BhiTd7NeBVPt5lkj2bjdmkd88GEIIBKmT7FOK308WUt5/MmKVTQ=="],
+
+    "@progress/kendo-draggable-common": ["@progress/kendo-draggable-common@0.2.3", "", { "dependencies": { "tslib": "^1.7.0" } }, "sha512-e1FraFsT7zwevswzZlQYL//K+fzmRUvkr/4emp51dzkARLDtGd95BtPNSoXYRG5xYHeueKBS75hzVwQI6Dm3Dg=="],
+
+    "@progress/kendo-drawing": ["@progress/kendo-drawing@1.25.3", "", { "dependencies": { "@progress/kendo-common": "^1.0.1", "@progress/pako-esm": "^1.0.1" } }, "sha512-d75fBth0js82J/5kJ9M8jL5qAxtMc+EDfrDYyMKHl+VyqjVXzBGoDCJpgqMYRKq82JwjYfR8UfMRezel/y6RUA=="],
+
+    "@progress/kendo-file-saver": ["@progress/kendo-file-saver@1.1.3", "", {}, "sha512-pQDPgEzIQJP2N9bqsoXtVWMizx0/1FEy0qCvRIWr3TzKxpHyab8mzayhKtNjKe9NLipzHjX+h2zztO+jMat9sw=="],
+
+    "@progress/kendo-inputs-common": ["@progress/kendo-inputs-common@3.1.3", "", { "dependencies": { "tslib": "^2.3.1" }, "peerDependencies": { "@progress/kendo-drawing": "^1.21.2" } }, "sha512-vBoECZN+JVjCGzQA9uIOT6rbdcD8+geiHiABNgfljN+nv+CgUu7hdf/y6QdIFGR2a0ioIawbaha4egG8I2P/fQ=="],
+
+    "@progress/kendo-intl": ["@progress/kendo-intl@3.2.1", "", {}, "sha512-xNV/tlyd+YE+XgBci7RV55YRyB84Lp91MmVbolSKL4FmjEQsE18H86CKM9bFJc5juyTOuqmJCKUGa9x0be473Q=="],
+
+    "@progress/kendo-licensing": ["@progress/kendo-licensing@1.11.2", "", { "dependencies": { "glob": "^13.0.1", "jsonwebtoken": "^9.0.3", "yargs": "^17.7.2" }, "bin": { "kendo-ui-license": "bin/kendo-ui-license.js" } }, "sha512-pK+TZYLMObvqxK9Kg4CSKgwzu2kNUfRIO21YpPSc6JFRKqt60sxITvI0waYcha7bdbKWtP3CKQiqxtUa300+Jw=="],
+
+    "@progress/kendo-ooxml": ["@progress/kendo-ooxml@1.9.5", "", { "dependencies": { "@progress/jszip-esm": "^1.0.4", "@progress/pako-esm": "^1.0.1" } }, "sha512-0su5Osh8XfJY0AxYooDxxIpkexlV0BiTT504sJVk7llsGbEtFGFnlTYwf+Q1h1VWIUuq8JO+EoMTkEeaP6/gZA=="],
+
+    "@progress/kendo-popup-common": ["@progress/kendo-popup-common@1.9.5", "", {}, "sha512-HpUy0PLbS/bhhs/FxxFGaJxxbskQbAVMPWE5i6qxQ5G1krQHWApJ9B+43Rx5IQiWtoenjCGtYv0QSZlRQxDqsg=="],
+
+    "@progress/kendo-smartpaste-common": ["@progress/kendo-smartpaste-common@1.0.0", "", {}, "sha512-XH27wyfkQ7ez/h8bUt1GGgBEA8iMICvqsvch8+pEwZR2SaWUkV0PjeLFXT1ZNSVolEfmzQCKZJbFeYTPkKLBWA=="],
+
+    "@progress/kendo-svg-icons": ["@progress/kendo-svg-icons@4.11.0", "", {}, "sha512-hegIUc6ajq91AIGY0NSgGj7uteOSIA6SjSSUpblj2IG93dPf2DE0gtouf2kQH5z0aqdplzrLzdjMU2SucwcCZA=="],
+
+    "@progress/kendo-theme-core": ["@progress/kendo-theme-core@14.4.0", "", {}, "sha512-UiHaGmEkOH+Ps7GQJaQK+AagpIAz6OghTwq6ZsZPNaZFITH1i5n9V+wUvGezTrek+fTFYbtG4a9SKXeNMriUmw=="],
+
+    "@progress/kendo-theme-default": ["@progress/kendo-theme-default@14.4.0", "", { "dependencies": { "@progress/kendo-svg-icons": "^4.11.0", "@progress/kendo-theme-core": "14.4.0", "@progress/kendo-theme-utils": "14.4.0" } }, "sha512-6/a2CqSdqa7eLCS1G48zNeD8imzNqKL+IhJP43IL9teWT0dCpx8ZR2nW3Yp6MZbpWRFu9Qre1kyqotCPXOGo/A=="],
+
+    "@progress/kendo-theme-utils": ["@progress/kendo-theme-utils@14.4.0", "", { "dependencies": { "@progress/kendo-theme-core": "14.4.0" } }, "sha512-3Len/NMpEK0QM42OoZbPcvWVgUYZ2MTwAMQdPCfwwAhH7A62EFvVnpp6L05RcuOngWyf9ovimcEuN5bBx3rb/A=="],
+
+    "@progress/kendo-webspeech-common": ["@progress/kendo-webspeech-common@1.0.1", "", {}, "sha512-c5IHS5vakAtxbaVfd26rM1dZnt9JfUOqWFq7gK8mU3HaZ9rqoH+DEIn72bbiRs+Ju5e81d7H1Q/nMx8u09pwRg=="],
+
+    "@progress/pako-esm": ["@progress/pako-esm@1.0.1", "", {}, "sha512-O4A3b1EuE9Xe1pC3Xz9Tcn1M/CYrL71f4y/5TXeytOVTkmkzBgYW97fYP2f+54H0e0erWRaqV/kUUB/a8Uxfbw=="],
+
     "@rolldown/binding-android-arm64": ["@rolldown/binding-android-arm64@1.0.0-rc.4", "", { "os": "android", "cpu": "arm64" }, "sha512-vRq9f4NzvbdZavhQbjkJBx7rRebDKYR9zHfO/Wg486+I7bSecdUapzCm5cyXoK+LHokTxgSq7A5baAXUZkIz0w=="],
 
     "@rolldown/binding-darwin-arm64": ["@rolldown/binding-darwin-arm64@1.0.0-rc.4", "", { "os": "darwin", "cpu": "arm64" }, "sha512-kFgEvkWLqt3YCgKB5re9RlIrx9bRsvyVUnaTakEpOPuLGzLpLapYxE9BufJNvPg8GjT6mB1alN4yN1NjzoeM8Q=="],
@@ -641,6 +740,8 @@
 
     "@types/node": ["@types/node@24.13.3", "", { "dependencies": { "undici-types": "~7.18.0" } }, "sha512-Dh8vAsV36ig5wa9OX4pXvMc9D3Veibfw2wix0CUwYODLD8nkj9UsLjASr49nPg+2eKzxhBV+v7L8pXvT4e639Q=="],
 
+    "@types/semver": ["@types/semver@7.7.1", "", {}, "sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA=="],
+
     "@types/ws": ["@types/ws@8.18.1", "", { "dependencies": { "@types/node": "*" } }, "sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg=="],
 
     "@typescript-eslint/eslint-plugin": ["@typescript-eslint/eslint-plugin@8.65.0", "", { "dependencies": { "@eslint-community/regexpp": "^4.12.2", "@typescript-eslint/scope-manager": "8.65.0", "@typescript-eslint/type-utils": "8.65.0", "@typescript-eslint/utils": "8.65.0", "@typescript-eslint/visitor-keys": "8.65.0", "ignore": "^7.0.5", "natural-compare": "^1.4.0", "ts-api-utils": "^2.5.0" }, "peerDependencies": { "@typescript-eslint/parser": "^8.65.0", "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0", "typescript": ">=4.8.4 <6.1.0" } }, "sha512-IEgob78X12rHpUmtcwFsXhZdVGJtwTVP8FiCLZkR6GlYVrl2PcuB+KhCE5BlVC/eQpQnu8WXRtkHZuPar+gCRA=="],
@@ -776,6 +877,8 @@
     "browserslist": ["browserslist@4.28.7", "", { "dependencies": { "baseline-browser-mapping": "^2.10.44", "caniuse-lite": "^1.0.30001806", "electron-to-chromium": "^1.5.393", "node-releases": "^2.0.51", "update-browserslist-db": "^1.2.3" }, "bin": { "browserslist": "cli.js" } }, "sha512-JxV13hNrFxqjOc8alRbq9dK1MM79NEXYpma2B2J4wAtpWS5zIEIKqWPGCl7N4o7Uc7B7itylh7SuDujATRyyTw=="],
 
     "buffer": ["buffer@5.7.1", "", { "dependencies": { "base64-js": "^1.3.1", "ieee754": "^1.1.13" } }, "sha512-EHcyIPBQ4BSGlvjB16k5KgAJ27CIsHY/2JBmCRReo48y9rQ3MaUzWX3KVlBa4U7MyX02HdVj0K7C3WaB3ju7FQ=="],
+
+    "buffer-equal-constant-time": ["buffer-equal-constant-time@1.0.1", "", {}, "sha512-zRpUiDwd/xk6ADqPMATG8vc9VPrkck7T07OIx0gnjmJAnHnTVXNQG3vfvWNuiZIkwu9KrKdA1iJKfsfTVxE6NA=="],
 
     "buffer-from": ["buffer-from@1.1.2", "", {}, "sha512-E+XQCRwSbaaiChtv6k6Dwgc+bx+Bs6vuKJHHl5kox/BaKbhiXzqQOwK4cO22yElGp2OCmjwVhT3HmxgyPGnJfQ=="],
 
@@ -928,6 +1031,8 @@
     "domutils": ["domutils@3.2.2", "", { "dependencies": { "dom-serializer": "^2.0.0", "domelementtype": "^2.3.0", "domhandler": "^5.0.3" } }, "sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw=="],
 
     "dunder-proto": ["dunder-proto@1.0.1", "", { "dependencies": { "call-bind-apply-helpers": "^1.0.1", "es-errors": "^1.3.0", "gopd": "^1.2.0" } }, "sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A=="],
+
+    "ecdsa-sig-formatter": ["ecdsa-sig-formatter@1.0.11", "", { "dependencies": { "safe-buffer": "^5.0.1" } }, "sha512-nagl3RYrbNv6kQkeJIpt6NJZy8twLB/2vtz6yN9Z4vRKHN4/QZJIEbqohALSgwKdnksuY3k5Addp5lg8sVoVcQ=="],
 
     "ee-first": ["ee-first@1.1.1", "", {}, "sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow=="],
 
@@ -1299,6 +1404,12 @@
 
     "jsonparse": ["jsonparse@1.3.1", "", {}, "sha512-POQXvpdL69+CluYsillJ7SUhKvytYjW9vG/GKpnf+xP8UWgYEM/RaMzHHofbALDiKbbP1W8UEYmgGl39WkPZsg=="],
 
+    "jsonwebtoken": ["jsonwebtoken@9.0.3", "", { "dependencies": { "jws": "^4.0.1", "lodash.includes": "^4.3.0", "lodash.isboolean": "^3.0.3", "lodash.isinteger": "^4.0.4", "lodash.isnumber": "^3.0.3", "lodash.isplainobject": "^4.0.6", "lodash.isstring": "^4.0.1", "lodash.once": "^4.0.0", "ms": "^2.1.1", "semver": "^7.5.4" } }, "sha512-MT/xP0CrubFRNLNKvxJ2BYfy53Zkm++5bX9dtuPbqAeQpTVe0MQTFhao8+Cp//EmJp244xt6Drw/GVEGCUj40g=="],
+
+    "jwa": ["jwa@2.0.1", "", { "dependencies": { "buffer-equal-constant-time": "^1.0.1", "ecdsa-sig-formatter": "1.0.11", "safe-buffer": "^5.0.1" } }, "sha512-hRF04fqJIP8Abbkq5NKGN0Bbr3JxlQ+qhZufXVr0DvujKy93ZCbXZMHDL4EOtodSbCWxOqR8MS1tXA5hwqCXDg=="],
+
+    "jws": ["jws@4.0.1", "", { "dependencies": { "jwa": "^2.0.1", "safe-buffer": "^5.0.1" } }, "sha512-EKI/M/yqPncGUUh44xz0PxSidXFr/+r0pA70+gIYhjv+et7yxM+s29Y+VGDkovRofQem0fs7Uvf4+YmAdyRduA=="],
+
     "karma": ["karma@6.4.4", "", { "dependencies": { "@colors/colors": "1.5.0", "body-parser": "^1.19.0", "braces": "^3.0.2", "chokidar": "^3.5.1", "connect": "^3.7.0", "di": "^0.0.1", "dom-serialize": "^2.2.1", "glob": "^7.1.7", "graceful-fs": "^4.2.6", "http-proxy": "^1.18.1", "isbinaryfile": "^4.0.8", "lodash": "^4.17.21", "log4js": "^6.4.1", "mime": "^2.5.2", "minimatch": "^3.0.4", "mkdirp": "^0.5.5", "qjobs": "^1.2.0", "range-parser": "^1.2.1", "rimraf": "^3.0.2", "socket.io": "^4.7.2", "source-map": "^0.6.1", "tmp": "^0.2.1", "ua-parser-js": "^0.7.30", "yargs": "^16.1.1" }, "bin": { "karma": "bin/karma" } }, "sha512-LrtUxbdvt1gOpo3gxG+VAJlJAEMhbWlM4YrFQgql98FwF7+K8K12LYO4hnDdUkNjeztYrOXEMqgTajSWgmtI/w=="],
 
     "karma-chrome-launcher": ["karma-chrome-launcher@3.2.0", "", { "dependencies": { "which": "^1.2.1" } }, "sha512-rE9RkUPI7I9mAxByQWkGJFXfFD6lE4gC5nPuZdobf/QdTEJI6EU4yIay/cfU/xV4ZxlM5JiTv7zWYgA64NpS5Q=="],
@@ -1323,7 +1434,21 @@
 
     "lodash": ["lodash@4.18.1", "", {}, "sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q=="],
 
+    "lodash.includes": ["lodash.includes@4.3.0", "", {}, "sha512-W3Bx6mdkRTGtlJISOvVD/lbqjTlPPUDTMnlXZFnVwi9NKJ6tiAk6LVdlhZMm17VZisqhKcgzpO5Wz91PCt5b0w=="],
+
+    "lodash.isboolean": ["lodash.isboolean@3.0.3", "", {}, "sha512-Bz5mupy2SVbPHURB98VAcw+aHh4vRV5IPNhILUCsOzRmsTmSQ17jIuqopAentWoehktxGd9e/hbIXq980/1QJg=="],
+
+    "lodash.isinteger": ["lodash.isinteger@4.0.4", "", {}, "sha512-DBwtEWN2caHQ9/imiNeEA5ys1JoRtRfY3d7V9wkqtbycnAmTvRRmbHKDV4a0EYc678/dia0jrte4tjYwVBaZUA=="],
+
+    "lodash.isnumber": ["lodash.isnumber@3.0.3", "", {}, "sha512-QYqzpfwO3/CWf3XP+Z+tkQsfaLL/EnUlXWVkIk5FUPc4sBdTehEqZONuyRt2P67PXAk+NXmTBcc97zw9t1FQrw=="],
+
+    "lodash.isplainobject": ["lodash.isplainobject@4.0.6", "", {}, "sha512-oSXzaWypCMHkPC3NvBEaPHf0KsA5mvPrOPgQWDsbg8n7orZ290M0BmC/jgRZ4vcJ6DTAhjrsSYgdsW/F+MFOBA=="],
+
+    "lodash.isstring": ["lodash.isstring@4.0.1", "", {}, "sha512-0wJxfxH1wgO3GrbuP+dTTk7op+6L41QCXbGINEmD+ny/G/eCqGzxyCsh7159S+mgDDcoarnBw6PC1PS5+wUGgw=="],
+
     "lodash.merge": ["lodash.merge@4.6.2", "", {}, "sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ=="],
+
+    "lodash.once": ["lodash.once@4.1.1", "", {}, "sha512-Sb487aTOCr9drQVL8pIxOzVhafOjZN9UU54hiN8PU3uAiSV7lx1yYNpbNmex2PK6dSJoNTSJUUswT651yww3Mg=="],
 
     "log-symbols": ["log-symbols@4.1.0", "", { "dependencies": { "chalk": "^4.1.0", "is-unicode-supported": "^0.1.0" } }, "sha512-8XPvpAA8uyhfteu8pIvQxpJZ7SYYdpUivZpGy6sFsBuKRY/7rQGavedeB8aK+Zkyq6upMFVL/9AW6vOYzfRyLg=="],
 
@@ -1877,10 +2002,6 @@
 
     "@angular-eslint/template-parser/eslint-scope": ["eslint-scope@9.1.2", "", { "dependencies": { "@types/esrecurse": "^4.3.1", "@types/estree": "^1.0.8", "esrecurse": "^4.3.0", "estraverse": "^5.2.0" } }, "sha512-xS90H51cKw0jltxmvmHy2Iai1LIqrfbw57b79w/J7MfvDfkIkFZ+kj6zC3BjtUwh150HsSSdxXZcsuv72miDFQ=="],
 
-    "@angular/compiler-cli/yargs": ["yargs@18.1.0", "", { "dependencies": { "cliui": "^9.0.1", "escalade": "^3.1.1", "get-caller-file": "^2.0.5", "string-width": "^8.2.1", "y18n": "^5.0.5", "yargs-parser": "^22.0.0" } }, "sha512-2rAgRKu54VsHkqI0/tYkmluGXHD4KW7yZoycuqDQ15QOTnc2VVfy0nN/1eMhnQLO00A+dwtK20xuCnc1YGeUyg=="],
-
-    "@angular/localize/yargs": ["yargs@18.1.0", "", { "dependencies": { "cliui": "^9.0.1", "escalade": "^3.1.1", "get-caller-file": "^2.0.5", "string-width": "^8.2.1", "y18n": "^5.0.5", "yargs-parser": "^22.0.0" } }, "sha512-2rAgRKu54VsHkqI0/tYkmluGXHD4KW7yZoycuqDQ15QOTnc2VVfy0nN/1eMhnQLO00A+dwtK20xuCnc1YGeUyg=="],
-
     "@babel/core/convert-source-map": ["convert-source-map@2.0.0", "", {}, "sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg=="],
 
     "@babel/core/semver": ["semver@6.3.1", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
@@ -1906,6 +2027,14 @@
     "@npmcli/promise-spawn/which": ["which@6.0.1", "", { "dependencies": { "isexe": "^4.0.0" }, "bin": { "node-which": "bin/which.js" } }, "sha512-oGLe46MIrCRqX7ytPUf66EAYvdeMIZYn3WaocqqKZAxrBpkqHfL/qvTyJ/bTk5+AqHCjXmrv3CEWgy368zhRUg=="],
 
     "@parcel/watcher/node-addon-api": ["node-addon-api@7.1.1", "", {}, "sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ=="],
+
+    "@progress/kendo-common/tslib": ["tslib@1.14.1", "", {}, "sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg=="],
+
+    "@progress/kendo-draggable-common/tslib": ["tslib@1.14.1", "", {}, "sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg=="],
+
+    "@progress/kendo-licensing/glob": ["glob@13.0.6", "", { "dependencies": { "minimatch": "^10.2.2", "minipass": "^7.1.3", "path-scurry": "^2.0.2" } }, "sha512-Wjlyrolmm8uDpm/ogGyXZXb1Z+Ca2B8NbJwqBVg0axK9GbBeoS7yGV6vjXnYdGm6X53iehEuxxbyiKp8QmN4Vw=="],
+
+    "@progress/kendo-licensing/yargs": ["yargs@17.7.3", "", { "dependencies": { "cliui": "^8.0.1", "escalade": "^3.1.1", "get-caller-file": "^2.0.5", "require-directory": "^2.1.1", "string-width": "^4.2.3", "y18n": "^5.0.5", "yargs-parser": "^21.1.1" } }, "sha512-GZtjxm/J/4TSxuL3FNYjCmLktBTnIw/rVmKSIyKeYAZpmJB2ig9VauCC5xsa82GNKVKDAqpOn3KVzNt0zmrU0g=="],
 
     "@rollup/pluginutils/estree-walker": ["estree-walker@2.0.2", "", {}, "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w=="],
 
@@ -2087,10 +2216,6 @@
 
     "@angular-devkit/schematics/ora/string-width": ["string-width@8.2.2", "", { "dependencies": { "get-east-asian-width": "^1.5.0", "strip-ansi": "^7.1.2" } }, "sha512-GaPUh5gfdrYzqeVNZvUfT23vYYxXzKYidUcnMtJg/3rxRV63EFZy3k6xfKlmfeJD0176lnUV/Usr3XcwSvFzpg=="],
 
-    "@angular/compiler-cli/yargs/string-width": ["string-width@8.2.2", "", { "dependencies": { "get-east-asian-width": "^1.5.0", "strip-ansi": "^7.1.2" } }, "sha512-GaPUh5gfdrYzqeVNZvUfT23vYYxXzKYidUcnMtJg/3rxRV63EFZy3k6xfKlmfeJD0176lnUV/Usr3XcwSvFzpg=="],
-
-    "@angular/localize/yargs/string-width": ["string-width@8.2.2", "", { "dependencies": { "get-east-asian-width": "^1.5.0", "strip-ansi": "^7.1.2" } }, "sha512-GaPUh5gfdrYzqeVNZvUfT23vYYxXzKYidUcnMtJg/3rxRV63EFZy3k6xfKlmfeJD0176lnUV/Usr3XcwSvFzpg=="],
-
     "@babel/helper-compilation-targets/lru-cache/yallist": ["yallist@3.1.1", "", {}, "sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g=="],
 
     "@inquirer/core/wrap-ansi/string-width": ["string-width@4.2.3", "", { "dependencies": { "emoji-regex": "^8.0.0", "is-fullwidth-code-point": "^3.0.0", "strip-ansi": "^6.0.1" } }, "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g=="],
@@ -2102,6 +2227,14 @@
     "@npmcli/package-json/glob/minimatch": ["minimatch@10.2.6", "", { "dependencies": { "brace-expansion": "^5.0.8" } }, "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="],
 
     "@npmcli/promise-spawn/which/isexe": ["isexe@4.0.0", "", {}, "sha512-FFUtZMpoZ8RqHS3XeXEmHWLA4thH+ZxCv2lOiPIn1Xc7CxrqhWzNSDzD+/chS/zbYezmiwWLdQC09JdQKmthOw=="],
+
+    "@progress/kendo-licensing/glob/minimatch": ["minimatch@10.2.6", "", { "dependencies": { "brace-expansion": "^5.0.8" } }, "sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A=="],
+
+    "@progress/kendo-licensing/yargs/cliui": ["cliui@8.0.1", "", { "dependencies": { "string-width": "^4.2.0", "strip-ansi": "^6.0.1", "wrap-ansi": "^7.0.0" } }, "sha512-BSeNnyus75C4//NQ9gQt1/csTXyo/8Sb+afLAkzAptFuMsod9HFokGNudZpi/oQV73hnVK+sR+5PVRMd+Dr7YQ=="],
+
+    "@progress/kendo-licensing/yargs/string-width": ["string-width@4.2.3", "", { "dependencies": { "emoji-regex": "^8.0.0", "is-fullwidth-code-point": "^3.0.0", "strip-ansi": "^6.0.1" } }, "sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g=="],
+
+    "@progress/kendo-licensing/yargs/yargs-parser": ["yargs-parser@21.1.1", "", {}, "sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw=="],
 
     "@tufjs/models/minimatch/brace-expansion": ["brace-expansion@5.0.8", "", { "dependencies": { "balanced-match": "^4.0.2" } }, "sha512-JZyDyq3D4AUifKTPOB7DELf6XsB3WdPuNxCtob1vFXPsSXhdAiHBWJ/tJ8HAc9aH84BK+5JFZLNkJKx3G9kzQg=="],
 
@@ -2245,13 +2378,15 @@
 
     "@angular-devkit/schematics/ora/string-width/strip-ansi": ["strip-ansi@7.2.0", "", { "dependencies": { "ansi-regex": "^6.2.2" } }, "sha512-yDPMNjp4WyfYBkHnjIRLfca1i6KMyGCtsVgoKe/z1+6vukgaENdgGBZt+ZmKPc4gavvEZ5OgHfHdrazhgNyG7w=="],
 
-    "@angular/compiler-cli/yargs/string-width/strip-ansi": ["strip-ansi@7.2.0", "", { "dependencies": { "ansi-regex": "^6.2.2" } }, "sha512-yDPMNjp4WyfYBkHnjIRLfca1i6KMyGCtsVgoKe/z1+6vukgaENdgGBZt+ZmKPc4gavvEZ5OgHfHdrazhgNyG7w=="],
-
-    "@angular/localize/yargs/string-width/strip-ansi": ["strip-ansi@7.2.0", "", { "dependencies": { "ansi-regex": "^6.2.2" } }, "sha512-yDPMNjp4WyfYBkHnjIRLfca1i6KMyGCtsVgoKe/z1+6vukgaENdgGBZt+ZmKPc4gavvEZ5OgHfHdrazhgNyG7w=="],
-
     "@inquirer/core/wrap-ansi/string-width/emoji-regex": ["emoji-regex@8.0.0", "", {}, "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A=="],
 
     "@npmcli/package-json/glob/minimatch/brace-expansion": ["brace-expansion@5.0.8", "", { "dependencies": { "balanced-match": "^4.0.2" } }, "sha512-JZyDyq3D4AUifKTPOB7DELf6XsB3WdPuNxCtob1vFXPsSXhdAiHBWJ/tJ8HAc9aH84BK+5JFZLNkJKx3G9kzQg=="],
+
+    "@progress/kendo-licensing/glob/minimatch/brace-expansion": ["brace-expansion@5.0.8", "", { "dependencies": { "balanced-match": "^4.0.2" } }, "sha512-JZyDyq3D4AUifKTPOB7DELf6XsB3WdPuNxCtob1vFXPsSXhdAiHBWJ/tJ8HAc9aH84BK+5JFZLNkJKx3G9kzQg=="],
+
+    "@progress/kendo-licensing/yargs/cliui/wrap-ansi": ["wrap-ansi@7.0.0", "", { "dependencies": { "ansi-styles": "^4.0.0", "string-width": "^4.1.0", "strip-ansi": "^6.0.0" } }, "sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q=="],
+
+    "@progress/kendo-licensing/yargs/string-width/emoji-regex": ["emoji-regex@8.0.0", "", {}, "sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A=="],
 
     "@tufjs/models/minimatch/brace-expansion/balanced-match": ["balanced-match@4.0.4", "", {}, "sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA=="],
 
@@ -2279,11 +2414,9 @@
 
     "@angular-devkit/schematics/ora/string-width/strip-ansi/ansi-regex": ["ansi-regex@6.2.2", "", {}, "sha512-Bq3SmSpyFHaWjPk8If9yc6svM8c56dB5BAtW4Qbw5jHTwwXXcTLoRMkpDJp6VL0XzlWaCHTXrkFURMYmD0sLqg=="],
 
-    "@angular/compiler-cli/yargs/string-width/strip-ansi/ansi-regex": ["ansi-regex@6.2.2", "", {}, "sha512-Bq3SmSpyFHaWjPk8If9yc6svM8c56dB5BAtW4Qbw5jHTwwXXcTLoRMkpDJp6VL0XzlWaCHTXrkFURMYmD0sLqg=="],
-
-    "@angular/localize/yargs/string-width/strip-ansi/ansi-regex": ["ansi-regex@6.2.2", "", {}, "sha512-Bq3SmSpyFHaWjPk8If9yc6svM8c56dB5BAtW4Qbw5jHTwwXXcTLoRMkpDJp6VL0XzlWaCHTXrkFURMYmD0sLqg=="],
-
     "@npmcli/package-json/glob/minimatch/brace-expansion/balanced-match": ["balanced-match@4.0.4", "", {}, "sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA=="],
+
+    "@progress/kendo-licensing/glob/minimatch/brace-expansion/balanced-match": ["balanced-match@4.0.4", "", {}, "sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA=="],
 
     "cacache/glob/minimatch/brace-expansion/balanced-match": ["balanced-match@4.0.4", "", {}, "sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA=="],
 

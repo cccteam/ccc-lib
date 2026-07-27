@@ -11,7 +11,6 @@ import {
   viewChild,
 } from '@angular/core';
 import { MatIconButton } from '@angular/material/button';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -41,7 +40,6 @@ const ACTION_COLUMN_WIDTH = 66;
     MatIconButton,
     MatIconModule,
     MatTooltipModule,
-    MatCheckboxModule,
     MatMenuModule,
     MatFormFieldModule,
     MatInputModule,

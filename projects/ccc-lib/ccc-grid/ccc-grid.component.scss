@@ -54,11 +54,11 @@
   }
 }
 
-// Material's icon-button/checkbox theme mixins set their size variables directly on
-// the button/checkbox element itself (not just inherited from an ancestor), so an
-// override has to reach the element directly - hence ::ng-deep, including into the
-// nested ccc-table-button component. The default 48px touch target otherwise forces
-// every row to that height, well past what a text row needs.
+// Material's icon-button theme mixins set their size variables directly on the button
+// element itself (not just inherited from an ancestor), so an override has to reach the
+// element directly - hence ::ng-deep, including into the nested ccc-table-button component.
+// The default 48px touch target otherwise forces every row to that height, well past what
+// a text row needs.
 ::ng-deep {
   .select-col,
   .expand-col,
@@ -72,11 +72,6 @@
       // to be corrected by hand to re-center the icon: (40px state layer - 24px icon) / 2
       padding: 8px;
     }
-
-    .mat-mdc-checkbox {
-      --mat-checkbox-state-layer-size: 40px;
-      --mat-checkbox-touch-target-display: none;
-    }
   }
 
   // the default (non-"none") touch-target overlay is invisible but still intercepts
@@ -86,6 +81,58 @@
     --mdc-icon-button-state-layer-size: 22px;
     --mat-icon-button-state-layer-size: 22px;
     --mat-icon-button-touch-target-display: none;
+  }
+}
+
+.ccc-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid #b0b0b0;
+  border-radius: 3px;
+  background-color: #fff;
+  cursor: pointer;
+  position: relative;
+  flex: 0 0 auto;
+  vertical-align: middle;
+
+  &:hover {
+    border-color: rgba(25, 118, 210, 0.6);
+  }
+
+  &:checked,
+  &:indeterminate {
+    background-color: rgb(25, 118, 210);
+    border-color: rgb(25, 118, 210);
+  }
+
+  &:checked::after {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 1px;
+    width: 4px;
+    height: 9px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+
+  &:indeterminate::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 7px;
+    width: 9px;
+    height: 2px;
+    background-color: #fff;
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(25, 118, 210, 0.5);
+    outline-offset: 1px;
   }
 }
 

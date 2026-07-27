@@ -22,11 +22,11 @@ function rows(page: Page): Locator {
 }
 
 function rowCheckboxes(page: Page): Locator {
-  return rows(page).locator('.row-checkbox input[type="checkbox"]');
+  return rows(page).locator('.row-checkbox');
 }
 
 function headerCheckbox(page: Page): Locator {
-  return page.locator('.ccc-grid-header-row .select-all-checkbox input[type="checkbox"]');
+  return page.locator('.ccc-grid-header-row .select-all-checkbox');
 }
 
 test.describe('ccc-grid', () => {
