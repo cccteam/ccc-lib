@@ -1,0 +1,255 @@
+.kendo-perf-page {
+  --series-new-virtual: #2a78d6;
+  --series-new-flat: #eb6834;
+  --series-legacy-virtual: #1baf7a;
+  --series-legacy-flat: #eda100;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --gridline: #e1e0d9;
+
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  box-sizing: border-box;
+  gap: 12px;
+  overflow-y: auto;
+}
+
+.intro {
+  max-width: 720px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.size-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.control-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.warn-badge {
+  margin-left: 2px;
+  cursor: default;
+}
+
+.progress-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.benchmark-mount {
+  flex: 0 0 auto;
+  min-height: 320px;
+  max-height: 480px;
+  overflow: auto;
+  border: 1px solid var(--gridline);
+  border-radius: 4px;
+}
+
+.mount-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 320px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.report {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 8px;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.swatch-new-virtual {
+  background: var(--series-new-virtual);
+}
+
+.swatch-new-flat {
+  background: var(--series-new-flat);
+}
+
+.swatch-legacy-virtual {
+  background: var(--series-legacy-virtual);
+}
+
+.swatch-legacy-flat {
+  background: var(--series-legacy-flat);
+}
+
+.chart {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 720px;
+}
+
+.chart-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.chart-group-label {
+  flex: 0 0 90px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.chart-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar {
+  flex: 0 0 auto;
+  height: 18px;
+  border-radius: 0 4px 4px 0;
+  min-width: 2px;
+}
+
+.bar-new-virtual {
+  background: var(--series-new-virtual);
+}
+
+.bar-new-flat {
+  background: var(--series-new-flat);
+}
+
+.bar-legacy-virtual {
+  background: var(--series-legacy-virtual);
+}
+
+.bar-legacy-flat {
+  background: var(--series-legacy-flat);
+}
+
+.bar-value {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+  min-width: 48px;
+}
+
+.chart-axis {
+  display: flex;
+  justify-content: space-between;
+  width: 400px;
+  margin-left: 102px;
+  padding-top: 4px;
+  border-top: 1px solid var(--gridline);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.results-table {
+  border-collapse: collapse;
+  font-size: 13px;
+  max-width: 720px;
+
+  th,
+  td {
+    text-align: left;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--gridline);
+  }
+
+  th {
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  td:not(:first-child):not(:nth-child(2)) {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.summary {
+  max-width: 720px;
+
+  h3 {
+    margin: 0 0 8px;
+    font-size: 14px;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  li + li {
+    margin-top: 4px;
+  }
+}
+
+.measurement-note {
+  margin: 12px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--gridline);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.report-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.copy-status {
+  font-size: 13px;
+  color: var(--text-secondary);
+}

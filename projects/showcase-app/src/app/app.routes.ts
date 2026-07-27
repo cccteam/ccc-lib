@@ -23,6 +23,10 @@ export const routes: Routes = [
       ),
   },
   {
+    path: 'kendo-perf',
+    loadComponent: () => import('./components/kendo-perf/kendo-perf.component').then((comp) => comp.KendoPerfComponent),
+  },
+  {
     path: '',
     component: UiComponent,
     canActivate: [OIDCAuthenticationGuard],

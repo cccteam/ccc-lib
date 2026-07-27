@@ -33,5 +33,12 @@ export class DashboardComponent {
       route: '/virtual-scroll-grid-showcase',
       testId: 'virtual-scroll-grid-showcase',
     },
+    {
+      label: 'Kendo vs ccc-grid perf',
+      description: 'Benchmark the legacy Kendo grid against the new ccc-grid and view a report.',
+      icon: 'speed',
+      route: '/kendo-perf',
+      testId: 'kendo-perf',
+    },
   ];
 }

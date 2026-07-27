@@ -64,6 +64,9 @@
               }
             ],
             "styles": [
+              {
+                "input": "node_modules/@progress/kendo-theme-default/dist/all.css"
+              },
               "projects/showcase-app/src/styles.scss",
               "projects/showcase-app/src/custom-theme.scss",
               "projects/showcase-app/src/styles.scss"
