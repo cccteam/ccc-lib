@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.42](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.41...ccc-lib/v0.0.42) (2026-07-27)
+
+
+### Bug Fixes
+
+* Allow large number of enumerated resources to be loaded. ([#102](https://github.com/cccteam/ccc-lib/issues/102)) ([03e1792](https://github.com/cccteam/ccc-lib/commit/03e1792ad703cade47224961d36a0a8c0ce85817))
+* use canActivateFn return type for authorization guard ([#97](https://github.com/cccteam/ccc-lib/issues/97)) ([e626cd9](https://github.com/cccteam/ccc-lib/commit/e626cd9c6d2d2bfe1f5e6ac97357b38091165a0c))
+
 ## [0.0.41](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.40...ccc-lib/v0.0.41) (2026-06-04)
 
 
