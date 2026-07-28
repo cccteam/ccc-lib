@@ -14,16 +14,10 @@
     "@angular/platform-browser-dynamic": "^21.2.4",
     "@angular/router": "^21.2.4",
     "@angular/service-worker": "^21.2.4",
-    "@progress/kendo-angular-grid": "^23.2.0",
-    "@progress/kendo-licensing": "^1.7.2",
-    "@progress/kendo-theme-default": "^12.2.3",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "rxjs": "~7.8.0",
     "zone.js": "~0.15.0"
-  },
-  "optionalDependencies": {
-    "@progress/kendo-angular-grid": "^23.2.0"
   },
   "dependencies": {
     "tslib": "^2.3.0"
@@ -33,6 +27,7 @@
     "@angular/cli": "^21.2.2",
     "@angular/compiler-cli": "^21.2.4",
     "@angular/localize": "^21.2.4",
+    "@playwright/test": "^1.61.1",
     "@types/jasmine": "~5.1.0",
     "@types/node": "^24.10.1",
     "angular-eslint": "^21.3.0",
@@ -59,6 +54,7 @@
     "start": "ng serve showcase-app --no-hmr",
     "lint": "ng lint",
     "build": "ng build ccc-lib",
+    "test:e2e": "playwright test",
     "prestart:password": "npx --yes tsx ./projects/showcase-app-password/src/environments/initialize-env.ts",
     "start:password": "ng serve showcase-app-password --no-hmr"
   }

@@ -1,0 +1,162 @@
+<div class="showcase-page kendo-perf-page">
+  <h1>Kendo vs ccc-grid performance</h1>
+  <p class="intro">
+    Benchmarks the legacy Kendo UI grid (the pre-rewrite <code>ccc-grid</code>, kept here only for this
+    comparison) against the new <code>ccc-grid</code>. Both grids run with virtualization on and off — the
+    legacy grid's using Kendo's own <code>scrollable="virtual"</code> mode, not the <code>scrollable="none"</code>
+    it actually shipped with — so the rendering-engine difference and each grid's own virtualization gain are
+    measured separately instead of conflated into one number. Each trial mounts a fresh dataset and measures the
+    time until two animation frames after the render, then reports the median of {{ trialsPerCombo }} trials.
+  </p>
+
+  <div class="controls" data-testid="controls">
+    <div class="size-toggles">
+      <span class="control-label">Dataset sizes</span>
+      @for (size of datasetSizes; track size) {
+        <mat-checkbox
+          [checked]="selectedSizes().has(size)"
+          [disabled]="running()"
+          (change)="toggleSize(size, $event)"
+          [attr.data-testid]="'size-toggle-' + size">
+          {{ size.toLocaleString() }} rows
+          @if (size >= slowSizeThreshold) {
+            <span class="warn-badge" title="Both grids' non-virtualized modes render every row to the DOM — this size can freeze the tab briefly">
+              ⚠
+            </span>
+          }
+        </mat-checkbox>
+      }
+    </div>
+
+    <button
+      mat-flat-button
+      color="primary"
+      type="button"
+      data-testid="run-benchmark"
+      (click)="runBenchmark()"
+      [disabled]="running() || !selectedSizes().size">
+      {{ running() ? 'Running…' : 'Run benchmark' }}
+    </button>
+
+    @if (running()) {
+      <span class="progress-label" data-testid="progress-label">{{ progressLabel() }}</span>
+    }
+  </div>
+
+  <div class="benchmark-mount" #mountHost data-testid="benchmark-mount">
+    @if (benchmarkTarget(); as target) {
+      @if (target.engine === 'newVirtual') {
+        <ccc-grid [rowData]="target.rows" [columnDefs]="columnDefs()" [enableVirtualScroll]="true"></ccc-grid>
+      } @else if (target.engine === 'newFlat') {
+        <ccc-grid [rowData]="target.rows" [columnDefs]="columnDefs()" [enableVirtualScroll]="false"></ccc-grid>
+      } @else if (target.engine === 'legacyVirtual') {
+        <kendo-grid-legacy [rowData]="target.rows" [columnDefs]="columnDefs()" [enableVirtualScroll]="true"></kendo-grid-legacy>
+      } @else {
+        <kendo-grid-legacy [rowData]="target.rows" [columnDefs]="columnDefs()" [enableVirtualScroll]="false"></kendo-grid-legacy>
+      }
+    } @else {
+      <div class="mount-placeholder">No grid mounted — run the benchmark to measure a render.</div>
+    }
+  </div>
+
+  @if (results().length) {
+    <section class="report" data-testid="report">
+      <h2>Report</h2>
+
+      <div class="chart-legend">
+        <span class="legend-item"><span class="swatch swatch-new-virtual"></span>{{ engineLabels.newVirtual }}</span>
+        <span class="legend-item"><span class="swatch swatch-new-flat"></span>{{ engineLabels.newFlat }}</span>
+        <span class="legend-item"><span class="swatch swatch-legacy-virtual"></span>{{ engineLabels.legacyVirtual }}</span>
+        <span class="legend-item"><span class="swatch swatch-legacy-flat"></span>{{ engineLabels.legacyFlat }}</span>
+      </div>
+
+      <div class="chart" data-testid="chart">
+        @for (group of groupedResults(); track group.rowCount) {
+          <div class="chart-group">
+            <div class="chart-group-label">{{ group.rowCount.toLocaleString() }} rows</div>
+            <div class="chart-bars">
+              @if (group.newVirtual; as r) {
+                <div class="bar-row">
+                  <div class="bar bar-new-virtual" [style.width.px]="scaledWidth(r.median)"></div>
+                  <span class="bar-value">{{ r.median.toFixed(0) }}ms</span>
+                </div>
+              }
+              @if (group.newFlat; as r) {
+                <div class="bar-row">
+                  <div class="bar bar-new-flat" [style.width.px]="scaledWidth(r.median)"></div>
+                  <span class="bar-value">{{ r.median.toFixed(0) }}ms</span>
+                </div>
+              }
+              @if (group.legacyVirtual; as r) {
+                <div class="bar-row">
+                  <div class="bar bar-legacy-virtual" [style.width.px]="scaledWidth(r.median)"></div>
+                  <span class="bar-value">{{ r.median.toFixed(0) }}ms</span>
+                </div>
+              }
+              @if (group.legacyFlat; as r) {
+                <div class="bar-row">
+                  <div class="bar bar-legacy-flat" [style.width.px]="scaledWidth(r.median)"></div>
+                  <span class="bar-value">{{ r.median.toFixed(0) }}ms</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+        <div class="chart-axis">
+          <span>0ms</span>
+          <span>{{ (maxMedian() / 2).toFixed(0) }}ms</span>
+          <span>{{ maxMedian().toFixed(0) }}ms</span>
+        </div>
+      </div>
+
+      <table class="results-table" data-testid="results-table">
+        <thead>
+          <tr>
+            <th>Rows</th>
+            <th>Grid</th>
+            <th>Median (ms)</th>
+            <th>Min (ms)</th>
+            <th>Max (ms)</th>
+            <th>DOM rows rendered</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of results(); track r.engine + r.rowCount) {
+            <tr>
+              <td>{{ r.rowCount.toLocaleString() }}</td>
+              <td>{{ engineLabels[r.engine] }}</td>
+              <td>{{ r.median.toFixed(1) }}</td>
+              <td>{{ r.min.toFixed(1) }}</td>
+              <td>{{ r.max.toFixed(1) }}</td>
+              <td>{{ r.domRowCount.toLocaleString() }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      <div class="summary" data-testid="summary">
+        <h3>Summary</h3>
+        <ul>
+          @for (line of reportSummary(); track $index) {
+            <li>{{ line }}</li>
+          }
+        </ul>
+        <p class="measurement-note">
+          Note: this method measures until two animation frames after each render (~{{ measurementFloorMs }}ms on a
+          60Hz display), so it can't resolve differences smaller than that floor. A "virtualized vs virtualized"
+          result near {{ measurementFloorMs }}ms means both grids finished within a couple of frames, not that
+          they're precisely tied — treat it as "both fast enough," not a ranking.
+        </p>
+      </div>
+
+      <div class="report-actions">
+        <button mat-stroked-button type="button" data-testid="copy-report" (click)="copyReportMarkdown()">
+          Copy report as Markdown
+        </button>
+        @if (copyStatus()) {
+          <span class="copy-status">{{ copyStatus() }}</span>
+        }
+      </div>
+    </section>
+  }
+</div>

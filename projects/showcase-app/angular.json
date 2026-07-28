@@ -39,13 +39,7 @@
                 "input": "public"
               }
             ],
-            "styles": [
-              {
-                "input": "node_modules/@progress/kendo-theme-default/dist/all.css"
-              },
-              "src/custom-theme.scss",
-              "src/styles.scss"
-            ],
+            "styles": ["src/custom-theme.scss", "src/styles.scss"],
             "scripts": []
           },
           "configurations": {
@@ -99,12 +93,7 @@
           "builder": "@angular-devkit/build-angular:jest",
           "options": {
             "polyfills": ["zone.js", "zone.js/testing"],
-            "tsConfig": "tsconfig.spec.json",
-            "styles": [
-              {
-                "input": "node_modules/@progress/kendo-theme-default/dist/all.css"
-              }
-            ]
+            "tsConfig": "tsconfig.spec.json"
           }
         },
         "lint": {

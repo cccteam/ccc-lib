@@ -1,0 +1,192 @@
+<div class="ccc-grid-host">
+  <div class="ccc-grid-scroll" #scrollContainer (scroll)="onScroll($event)">
+    <table class="ccc-grid-table">
+      <thead>
+        <tr class="ccc-grid-header-row">
+          @if (selectionType() !== 'none') {
+            <th class="select-col">
+              @if (selectionType() === 'multiple') {
+                <input
+                  type="checkbox"
+                  class="ccc-checkbox select-all-checkbox"
+                  [checked]="allSelected()"
+                  [indeterminate]="someSelected()"
+                  (change)="toggleSelectAll()"
+                  aria-label="Select all rows" />
+              }
+            </th>
+          }
+          @if (enableRowExpansion() && detailTemplate()) {
+            <th class="expand-col"></th>
+          }
+          @for (col of columnDefs(); track col.id + col.header) {
+            <th class="data-col" [style.width.px]="widthFor(col)">
+              <div class="header-cell">
+                @if (!col.buttonConfig) {
+                  <button
+                    type="button"
+                    class="header-label"
+                    title="Click to sort, shift-click to add a secondary sort"
+                    (click)="toggleSort(col, $event)">
+                    @if (!col.hideHeader) {
+                      <span class="col-header">{{ col.header || col.id | camelCaseToTitle }}</span>
+                    }
+                    @if (sortInfo(col); as sort) {
+                      <mat-icon class="sort-icon">{{ sort.direction === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+                      @if (hasMultipleSorts()) {
+                        <span class="sort-priority">{{ sort.priority }}</span>
+                      }
+                    }
+                  </button>
+                  <button
+                    type="button"
+                    mat-icon-button
+                    class="filter-trigger"
+                    [class.active]="hasFilter(col)"
+                    [matMenuTriggerFor]="filterMenu"
+                    aria-label="Filter column">
+                    <mat-icon>filter_alt</mat-icon>
+                  </button>
+                }
+              </div>
+              @if (col.resizable ?? true) {
+                <span class="resize-handle" (mousedown)="startResize($event, col)"></span>
+              }
+              <mat-menu #filterMenu="matMenu">
+                <div class="filter-menu-content">
+                  <select
+                    class="filter-operator"
+                    [value]="filterOperator(col)"
+                    (change)="setFilterOperator(col, $event)"
+                    aria-label="Filter operator">
+                    @for (op of filterOperators; track op.value) {
+                      <option [value]="op.value">{{ op.label }}</option>
+                    }
+                  </select>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                    <input
+                      matInput
+                      placeholder="Value"
+                      [value]="filterValue(col)"
+                      (input)="setFilterValue(col, $event)"
+                      (keydown)="$event.stopPropagation()" />
+                  </mat-form-field>
+                  <button type="button" mat-button (click)="clearFilter(col)">Clear</button>
+                </div>
+              </mat-menu>
+            </th>
+          }
+        </tr>
+      </thead>
+      <tbody #tableBody>
+        @if (pagedRows().length === 0) {
+          <tr class="no-records-row">
+            <td [attr.colspan]="totalColumnCount()">No records found</td>
+          </tr>
+        }
+        @if (enableVirtualScroll() && virtualTopPadding() > 0) {
+          <tr class="virtual-scroll-spacer" aria-hidden="true" [style.height.px]="virtualTopPadding()">
+            <td [attr.colspan]="totalColumnCount()"></td>
+          </tr>
+        }
+        @for (row of visibleRows(); track row['id'] ?? $index) {
+          <tr class="ccc-row" [class.selected]="isSelected(row)">
+            @if (selectionType() !== 'none') {
+              <td class="select-col">
+                <input
+                  type="checkbox"
+                  class="ccc-checkbox row-checkbox"
+                  [checked]="isSelected(row)"
+                  (change)="toggleRow(row)" />
+              </td>
+            }
+            @if (enableRowExpansion() && detailTemplate()) {
+              <td class="expand-col expand-toggle-cell">
+                <button
+                  type="button"
+                  mat-icon-button
+                  class="expand-toggle"
+                  [disabled]="enableVirtualScroll()"
+                  [title]="enableVirtualScroll() ? 'Row expansion is not supported with virtual scroll' : ''"
+                  (click)="toggleExpand(row)"
+                  [attr.aria-label]="isExpanded(row) ? 'Collapse row' : 'Expand row'">
+                  <mat-icon>{{ isExpanded(row) ? 'remove' : 'add' }}</mat-icon>
+                </button>
+              </td>
+            }
+            @for (col of columnDefs(); track col.id + col.header) {
+              @if (col.buttonConfig) {
+                <td class="data-col action-col" [style.width.px]="widthFor(col)">
+                  @if (col.buttonConfig.actionType === 'link' && col.buttonConfig.viewRoute) {
+                    <a
+                      mat-icon-button
+                      [routerLink]="['/', col.buttonConfig.viewRoute, row['id']]"
+                      [matTooltip]="col.buttonConfig.label || ''"
+                      [matTooltipPosition]="col.tooltipPosition || 'above'">
+                      <mat-icon>{{ col.buttonConfig.icon || 'arrow_forward' }}</mat-icon>
+                    </a>
+                  } @else {
+                    <ccc-table-button
+                      [config]="col.buttonConfig"
+                      [rowData]="row"
+                      [tooltipPosition]="col.tooltipPosition || 'above'"
+                      [viewRoute]="col.buttonConfig.viewRoute || ''"
+                      [id]="row['id']">
+                    </ccc-table-button>
+                  }
+                </td>
+              } @else {
+                <td class="data-col" [style.width.px]="widthFor(col)">{{ row[col.id] }}</td>
+              }
+            }
+          </tr>
+          @if (enableRowExpansion() && detailTemplate() && isExpanded(row)) {
+            <tr class="detail-row">
+              <td [attr.colspan]="totalColumnCount()">
+                <ng-container *ngTemplateOutlet="detailTemplate()!; context: { $implicit: row }"></ng-container>
+              </td>
+            </tr>
+          }
+        }
+        @if (enableVirtualScroll() && virtualBottomPadding() > 0) {
+          <tr class="virtual-scroll-spacer" aria-hidden="true" [style.height.px]="virtualBottomPadding()">
+            <td [attr.colspan]="totalColumnCount()"></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    @if (loading()) {
+      <div class="ccc-grid-loading-overlay">
+        <mat-progress-spinner mode="indeterminate" diameter="48"></mat-progress-spinner>
+      </div>
+    }
+  </div>
+
+  @if (pageSize()) {
+    <div class="ccc-grid-pager">
+      <div class="page-jump">
+        <span>Page</span>
+        <input
+          type="number"
+          class="page-jump-input"
+          min="1"
+          [max]="pageCount()"
+          [value]="displayPageIndex() + 1"
+          (change)="goToPage($event)"
+          (keydown.enter)="goToPage($event)"
+          aria-label="Page number" />
+        <span>of {{ pageCount() }}</span>
+      </div>
+      <mat-paginator
+        class="ccc-grid-paginator"
+        [length]="sortedRows().length"
+        [pageSize]="pageSize()!"
+        [pageIndex]="displayPageIndex()"
+        [hidePageSize]="true"
+        [showFirstLastButtons]="true"
+        (page)="onPageChange($event)">
+      </mat-paginator>
+    </div>
+  }
+</div>

@@ -17,6 +17,9 @@
     "@angular/core": "^21.2.4"
   },
   "dependencies": {
+    "@progress/kendo-angular-grid": "^24.2.2",
+    "@progress/kendo-licensing": "^1.11.2",
+    "@progress/kendo-theme-default": "^14.4.0",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "tslib": "^2.3.0"

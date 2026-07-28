@@ -3,3 +3,10 @@
   height: 100%;
   display: flex;
 }
+
+.mat-mdc-icon-button.mat-mdc-button-base {
+  --mdc-icon-button-state-layer-size: 40px;
+  --mat-icon-button-state-layer-size: 40px;
+  --mat-icon-button-touch-target-display: none;
+  padding: 8px;
+}

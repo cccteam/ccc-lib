@@ -1,0 +1,65 @@
+<div class="showcase-page">
+  <h1>ccc-grid showcase</h1>
+
+  <div class="controls" data-testid="controls">
+    <mat-form-field appearance="outline">
+      <mat-label>Selection type</mat-label>
+      <mat-select
+        data-testid="selection-type-select"
+        [value]="selectionType()"
+        (selectionChange)="onSelectionTypeChange($event)">
+        <mat-option value="none">none</mat-option>
+        <mat-option value="single">single</mat-option>
+        <mat-option value="multiple">multiple</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Page size</mat-label>
+      <mat-select
+        data-testid="page-size-select"
+        [value]="pageSize() || 0"
+        (selectionChange)="onPageSizeChange($event)">
+        <mat-option [value]="0">No paging</mat-option>
+        <mat-option [value]="5">5</mat-option>
+        <mat-option [value]="10">10</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-slide-toggle
+      data-testid="loading-toggle"
+      [checked]="loading()"
+      (change)="onLoadingChange($event)">
+      Loading
+    </mat-slide-toggle>
+
+    <mat-slide-toggle
+      data-testid="row-expansion-toggle"
+      [checked]="enableRowExpansion()"
+      (change)="onRowExpansionChange($event)">
+      Row expansion
+    </mat-slide-toggle>
+  </div>
+
+  <div class="status">
+    <div data-testid="selected-summary">{{ selectedSummary() }}</div>
+    <div data-testid="action-log">Last action: {{ actionLog() || 'none' }}</div>
+  </div>
+
+  <div class="grid-container" data-testid="grid-container">
+    <ccc-grid
+      [rowData]="rowData()"
+      [columnDefs]="columnDefs()"
+      [selectionType]="selectionType()"
+      [pageSize]="pageSize()"
+      [loading]="loading()"
+      [enableRowExpansion]="enableRowExpansion()"
+      [detailTemplate]="rowDetail"
+      (selectedRows)="onSelectedRowsChange($event)">
+    </ccc-grid>
+  </div>
+</div>
+
+<ng-template #rowDetail let-row>
+  <div class="row-detail" data-testid="row-detail">Extra info for {{ row.name }} (id: {{ row.id }})</div>
+</ng-template>

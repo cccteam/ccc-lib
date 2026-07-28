@@ -4,10 +4,9 @@
 
 ## Core Features
 
-*   **Dynamic Page Generation**: Define a `resourceConfig` to dynamically render components and build complex layouts. For example, the `resource-resolver` can switch between components based on your data.
-*   **Authentication & Authorization**: A set of services and guards for managing user authentication and permissions.
-*   **Rich UI Components**: A collection of UI components, including a grid wrapper for Kendo UI, alert services, and more.
-*   **Utility Functions**: A set of helper functions for various tasks, such as data manipulation and request customization. Also included are tools for handling PATCH requests per the JSON Patch standard [RFC 6902](https://tools.ietf.org/html/rfc6902).
+- **Dynamic Page Generation**: Define a `resourceConfig` to dynamically render components and build complex layouts. For example, the `resource-resolver` can switch between components based on your data.
+- **Authentication & Authorization**: A set of services and guards for managing user authentication and permissions.
+- **Utility Functions**: A set of helper functions for various tasks, such as data manipulation and request customization. Also included are tools for handling PATCH requests per the JSON Patch standard [RFC 6902](https://tools.ietf.org/html/rfc6902).
 
 ## Getting Started
 
@@ -31,10 +30,10 @@ The `compound-component` component is the engine that brings the `resourceConfig
 
 ## Modules Overview
 
-*   **`ccc-resource`**: The core module of the library. It contains the components and services related to dynamic page generation and data management.
-*   **`auth`**: This module provides authentication and authorization, including login forms, route guards, and permission directives.
-*   **`ui`**: This module contains UI components and services, such as alerts, notifications, and sidenav components. It also includes the `ccc-grid` component, a wrapper for the Kendo UI grid that allows for dynamic configuration.
-*   **`utils`**: A collection of utility pipes and functions for various purposes.
+- **`ccc-resource`**: The core module of the library. It contains the components and services related to dynamic page generation and data management.
+- **`auth`**: This module provides authentication and authorization, including login forms, route guards, and permission directives.
+- **`ui`**: This module contains UI components and services, such as alerts, notifications, and sidenav components.
+- **`utils`**: A collection of utility pipes and functions for various purposes.
 
 ## Development
 

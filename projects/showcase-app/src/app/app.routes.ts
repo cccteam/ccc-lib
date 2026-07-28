@@ -11,6 +11,22 @@ export const routes: Routes = [
     loadComponent: () => import('./components/login/login.component').then((comp) => comp.LoginComponent),
   },
   {
+    path: 'grid-showcase',
+    loadComponent: () =>
+      import('./components/grid-showcase/grid-showcase.component').then((comp) => comp.GridShowcaseComponent),
+  },
+  {
+    path: 'virtual-scroll-grid-showcase',
+    loadComponent: () =>
+      import('./components/virtual-scroll-grid-showcase/virtual-scroll-grid-showcase.component').then(
+        (comp) => comp.VirtualScrollGridShowcaseComponent,
+      ),
+  },
+  {
+    path: 'kendo-perf',
+    loadComponent: () => import('./components/kendo-perf/kendo-perf.component').then((comp) => comp.KendoPerfComponent),
+  },
+  {
     path: '',
     component: UiComponent,
     canActivate: [OIDCAuthenticationGuard],

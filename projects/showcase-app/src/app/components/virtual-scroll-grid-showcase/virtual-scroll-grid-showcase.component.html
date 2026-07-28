@@ -1,0 +1,31 @@
+<div class="showcase-page">
+  <h1>ccc-grid virtual scroll showcase</h1>
+  <p data-testid="row-count">{{ rowCount }} test records, rendered with <code>enableVirtualScroll</code>.</p>
+
+  <div class="controls" data-testid="controls">
+    <mat-form-field appearance="outline">
+      <mat-label>Row height (blank = auto)</mat-label>
+      <input matInput type="number" data-testid="row-height-input" min="0" (change)="onRowHeightChange($event)" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Virtualized padding</mat-label>
+      <input
+        matInput
+        type="number"
+        data-testid="virtualized-padding-input"
+        min="0"
+        [value]="virtualizedPadding()"
+        (change)="onVirtualizedPaddingChange($event)" />
+    </mat-form-field>
+  </div>
+
+  <div class="grid-container" data-testid="virtual-scroll-grid-container">
+    <ccc-grid
+      [rowData]="rowData()"
+      [columnDefs]="columnDefs()"
+      [enableVirtualScroll]="true"
+      [virtualScrollConfig]="virtualScrollConfig()">
+    </ccc-grid>
+  </div>
+</div>
