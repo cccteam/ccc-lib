@@ -89,7 +89,7 @@
             <td [attr.colspan]="totalColumnCount()"></td>
           </tr>
         }
-        @for (row of visibleRows(); track row['id']) {
+        @for (row of visibleRows(); track row['id'] ?? $index) {
           <tr class="ccc-row" [class.selected]="isSelected(row)">
             @if (selectionType() !== 'none') {
               <td class="select-col">
