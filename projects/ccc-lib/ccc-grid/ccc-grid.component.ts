@@ -81,7 +81,9 @@ export class AppGridComponent {
     if (!activeFilters.length) {
       return rows;
     }
-    return rows.filter((row: RecordData) => activeFilters.every(([field, filter]) => matchesFilter(row[field], filter)));
+    return rows.filter((row: RecordData) =>
+      activeFilters.every(([field, filter]) => matchesFilter(row[field], filter)),
+    );
   });
 
   sortedRows = computed(() => {
@@ -149,7 +151,6 @@ export class AppGridComponent {
     this.virtualScrollConfig,
   );
 
-  /** The rows actually rendered in the DOM: all of `pagedRows` normally, or a scroll-windowed slice when virtualized. */
   visibleRows = computed(() => {
     if (!this.enableVirtualScroll()) {
       return this.pagedRows();
@@ -162,11 +163,7 @@ export class AppGridComponent {
   virtualBottomPadding = computed(() => (this.enableVirtualScroll() ? this.virtualScroll.bottomPadding() : 0));
 
   constructor() {
-    // Measures the average rendered row height from the initial unvirtualized probe batch
-    // (see INITIAL_PROBE_ROW_COUNT) so the rest of the grid's virtualization math has a
-    // rowHeight to work with when one isn't explicitly configured. Uses afterRenderEffect
-    // (rather than effect) because it must run once the probe rows have actually been
-    // patched into the DOM, not just once the signals driving them have settled.
+    // Falls back to a measured rowHeight from the initial probe batch (INITIAL_PROBE_ROW_COUNT)
     afterRenderEffect(() => {
       if (!this.enableVirtualScroll() || this.virtualScroll.rowHeight() !== undefined) {
         return;
@@ -276,7 +273,6 @@ export class AppGridComponent {
     this.expandedIds.set(current);
   }
 
-  /** Direction plus 1-based priority among active sorts, or null if this column isn't sorted. */
   sortInfo(col: ColumnConfig): { direction: 'asc' | 'desc'; priority: number } | null {
     const sorts = this.sorts();
     const index = sorts.findIndex((sort) => sort.field === col.id);
@@ -287,7 +283,6 @@ export class AppGridComponent {
     return this.sorts().length > 1;
   }
 
-  /** Click sorts by this column alone; shift-click adds/cycles it as an additional sort key. */
   toggleSort(col: ColumnConfig, event: MouseEvent): void {
     const field = col.id;
     const current = this.sorts();
