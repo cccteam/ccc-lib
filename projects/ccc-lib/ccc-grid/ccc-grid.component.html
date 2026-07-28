@@ -22,30 +22,32 @@
           @for (col of columnDefs(); track col.id + col.header) {
             <th class="data-col" [style.width.px]="widthFor(col)">
               <div class="header-cell">
-                <button
-                  type="button"
-                  class="header-label"
-                  title="Click to sort, shift-click to add a secondary sort"
-                  (click)="toggleSort(col, $event)">
-                  @if (!col.hideHeader && !col.buttonConfig) {
-                    <span class="col-header">{{ col.header || col.id | camelCaseToTitle }}</span>
-                  }
-                  @if (sortInfo(col); as sort) {
-                    <mat-icon class="sort-icon">{{ sort.direction === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
-                    @if (hasMultipleSorts()) {
-                      <span class="sort-priority">{{ sort.priority }}</span>
+                @if (!col.buttonConfig) {
+                  <button
+                    type="button"
+                    class="header-label"
+                    title="Click to sort, shift-click to add a secondary sort"
+                    (click)="toggleSort(col, $event)">
+                    @if (!col.hideHeader) {
+                      <span class="col-header">{{ col.header || col.id | camelCaseToTitle }}</span>
                     }
-                  }
-                </button>
-                <button
-                  type="button"
-                  mat-icon-button
-                  class="filter-trigger"
-                  [class.active]="hasFilter(col)"
-                  [matMenuTriggerFor]="filterMenu"
-                  aria-label="Filter column">
-                  <mat-icon>filter_alt</mat-icon>
-                </button>
+                    @if (sortInfo(col); as sort) {
+                      <mat-icon class="sort-icon">{{ sort.direction === 'asc' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+                      @if (hasMultipleSorts()) {
+                        <span class="sort-priority">{{ sort.priority }}</span>
+                      }
+                    }
+                  </button>
+                  <button
+                    type="button"
+                    mat-icon-button
+                    class="filter-trigger"
+                    [class.active]="hasFilter(col)"
+                    [matMenuTriggerFor]="filterMenu"
+                    aria-label="Filter column">
+                    <mat-icon>filter_alt</mat-icon>
+                  </button>
+                }
               </div>
               @if (col.resizable ?? true) {
                 <span class="resize-handle" (mousedown)="startResize($event, col)"></span>
