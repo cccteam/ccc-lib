@@ -13,6 +13,12 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
+	generateApp(ctx)
+}
+
+func generateApp(ctx context.Context) {
 	oidcSession, err := session.NewOIDCAzure(nil, nil, "", "", "", "", "")
 	if err != nil {
 		log.Fatal(err)
@@ -23,8 +29,6 @@ func main() {
 		ResourceCollection: resource.NewCollection(),
 	}
 	router.New(a)
-
-	ctx := context.Background()
 
 	generator, err := generation.NewTypescriptGenerator(
 		ctx,
@@ -38,7 +42,7 @@ func main() {
 		generation.WithRPC("pkg/rpc"),
 		generation.WithComputedResources("pkg/computedresources"),
 		generation.WithTypescriptOverrides(map[string]string{
-			"resources.Attachment": "customtypes.attachment[]",
+			"resources.Attachment": "CustomTypes.Attachment[]",
 		}),
 		generation.WithSpannerEmulatorVersion("1.5.43"),
 	)
