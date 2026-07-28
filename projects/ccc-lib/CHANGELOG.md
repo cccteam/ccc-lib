@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.43](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.42...ccc-lib/v0.0.43) (2026-07-28)
+
+
+### Features
+
+* Local implementation of ccc-grid ([#101](https://github.com/cccteam/ccc-lib/issues/101)) ([e686347](https://github.com/cccteam/ccc-lib/commit/e68634734b3387edc70448ea689c30f51c0306aa))
+
 ## [0.0.42](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.41...ccc-lib/v0.0.42) (2026-07-27)
 
 
