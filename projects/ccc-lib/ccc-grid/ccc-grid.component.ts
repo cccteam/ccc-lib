@@ -3,6 +3,7 @@ import {
   afterRenderEffect,
   Component,
   computed,
+  effect,
   ElementRef,
   input,
   output,
@@ -53,6 +54,8 @@ export class AppGridComponent {
   /* eslint-disable  @typescript-eslint/no-explicit-any */
   rowData = input<any[]>([]);
   columnDefs = input<ColumnConfig[]>([]);
+  // Detail rows aren't accounted for in the virtual scroll row-height model, so expansion
+  // is disabled while virtual scroll is active to avoid spacer math drifting out of sync.
   enableRowExpansion = input<boolean>(false);
   detailTemplate = input<TemplateRef<unknown>>();
   selectionType = input<'multiple' | 'single' | 'none'>('none');
@@ -200,6 +203,12 @@ export class AppGridComponent {
       observer.observe(container);
       onCleanup(() => observer.disconnect());
     });
+
+    effect(() => {
+      if (this.enableVirtualScroll()) {
+        this.expandedIds.set(new Set());
+      }
+    });
   }
 
   onScroll(event: Event): void {
@@ -266,6 +275,9 @@ export class AppGridComponent {
   }
 
   toggleExpand(row: RecordData): void {
+    if (this.enableVirtualScroll()) {
+      return;
+    }
     const id = row['id'];
     const current = new Set(this.expandedIds());
     if (current.has(id)) {

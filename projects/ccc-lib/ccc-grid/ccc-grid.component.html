@@ -106,6 +106,8 @@
                   type="button"
                   mat-icon-button
                   class="expand-toggle"
+                  [disabled]="enableVirtualScroll()"
+                  [title]="enableVirtualScroll() ? 'Row expansion is not supported with virtual scroll' : ''"
                   (click)="toggleExpand(row)"
                   [attr.aria-label]="isExpanded(row) ? 'Collapse row' : 'Expand row'">
                   <mat-icon>{{ isExpanded(row) ? 'remove' : 'add' }}</mat-icon>
