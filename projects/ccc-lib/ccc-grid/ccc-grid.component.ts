@@ -207,12 +207,12 @@ export class AppGridComponent {
   }
 
   allSelected = computed(() => {
-    const rows = this.filteredRows();
+    const rows = this.pagedRows();
     return rows.length > 0 && rows.every((row: RecordData) => this.selectedIds().has(row['id']));
   });
 
   someSelected = computed(
-    () => !this.allSelected() && this.filteredRows().some((row: RecordData) => this.selectedIds().has(row['id'])),
+    () => !this.allSelected() && this.pagedRows().some((row: RecordData) => this.selectedIds().has(row['id'])),
   );
 
   isSelected(row: RecordData): boolean {
@@ -244,11 +244,14 @@ export class AppGridComponent {
   }
 
   toggleSelectAll(): void {
+    const rows = this.pagedRows();
+    const current = new Set(this.selectedIds());
     if (this.allSelected()) {
-      this.selectedIds.set(new Set());
+      rows.forEach((row: RecordData) => current.delete(row['id']));
     } else {
-      this.selectedIds.set(new Set(this.filteredRows().map((row: RecordData) => row['id'])));
+      rows.forEach((row: RecordData) => current.add(row['id']));
     }
+    this.selectedIds.set(current);
     this.emitSelectedRows();
   }
 
