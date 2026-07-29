@@ -349,11 +349,7 @@ export class AppGridComponent {
   setFilterValue(col: ColumnConfig, event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     const next = { ...this.filters() };
-    if (value) {
-      next[col.id] = { operator: this.filterOperator(col), value };
-    } else {
-      delete next[col.id];
-    }
+    next[col.id] = { operator: this.filterOperator(col), value };
     this.filters.set(next);
     this.pageIndex.set(0);
   }
@@ -365,6 +361,12 @@ export class AppGridComponent {
     const next = { ...this.filters() };
     delete next[col.id];
     this.filters.set(next);
+  }
+
+  clearEmptyFilter(col: ColumnConfig): void {
+    if (!this.hasFilter(col)) {
+      this.clearFilter(col);
+    }
   }
 
   widthFor(col: ColumnConfig): number | null {

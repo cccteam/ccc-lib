@@ -60,6 +60,13 @@
   padding: 8px;
 }
 
+// The filter form is wider than Material's 280px menu cap. The panel renders in the
+// document-level overlay container, so this component style must cross encapsulation.
+::ng-deep .mat-mdc-menu-panel.ccc-grid-filter-menu {
+  width: max-content;
+  max-width: calc(100vw - 32px);
+}
+
 .header-cell .filter-trigger.mat-mdc-icon-button {
   --mdc-icon-button-state-layer-size: 22px;
   --mat-icon-button-state-layer-size: 22px;
@@ -211,8 +218,14 @@
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
+  width: max-content;
+  max-width: 100%;
 
   mat-form-field {
+    --mat-form-field-container-height: 28px;
+    --mat-form-field-container-text-size: 13px;
+    --mat-form-field-container-vertical-padding: 2px;
+
     width: 140px;
   }
 
