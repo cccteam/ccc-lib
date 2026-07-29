@@ -52,18 +52,23 @@
               @if (col.resizable ?? true) {
                 <span class="resize-handle" (mousedown)="startResize($event, col)"></span>
               }
-              <mat-menu #filterMenu="matMenu">
+              <mat-menu #filterMenu="matMenu" class="ccc-grid-filter-menu">
                 <div class="filter-menu-content">
                   <select
                     class="filter-operator"
                     [value]="filterOperator(col)"
                     (change)="setFilterOperator(col, $event)"
+                    (click)="$event.stopPropagation()"
+                    (keydown)="$event.stopPropagation()"
                     aria-label="Filter operator">
                     @for (op of filterOperators; track op.value) {
                       <option [value]="op.value">{{ op.label }}</option>
                     }
                   </select>
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+                  <mat-form-field
+                    appearance="outline"
+                    subscriptSizing="dynamic"
+                    (click)="$event.stopPropagation()">
                     <input
                       matInput
                       placeholder="Value"
