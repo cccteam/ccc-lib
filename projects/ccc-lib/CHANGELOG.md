@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.44](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.43...ccc-lib/v0.0.44) (2026-07-29)
+
+
+### Bug Fixes
+
+* ccc-grid filter menu interactions and sizing ([#104](https://github.com/cccteam/ccc-lib/issues/104)) ([870b0d8](https://github.com/cccteam/ccc-lib/commit/870b0d857b53e786fad5a44949fb677b47f7172a))
+
 ## [0.0.43](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.42...ccc-lib/v0.0.43) (2026-07-28)
 
 
