@@ -1,4 +1,4 @@
-import { Component, computed, inject, input, OnInit, signal, Signal } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { AuthService } from '@cccteam/ccc-lib/auth-service';
@@ -15,60 +15,35 @@ export enum InputMode {
   template: `
     <mat-form-field [class]="className()">
       <mat-label>{{ name() }}</mat-label>
-      <input matInput [disabled]="mode() === inputMode.Edit && canEdit()" [value]="value()" />
+      <input matInput [disabled]="mode() === inputMode.Edit && !canEdit()" [value]="value()" />
     </mat-form-field>
   `,
   styleUrl: './ccc-field.component.scss',
 })
-export class CccInputFieldComponent implements OnInit {
+export class CccInputFieldComponent {
   auth = inject(AuthService);
   className = input();
   mode = input.required<InputMode>();
   resource = input.required<Resource>();
-  domain = input.required<Domain>();
+  domain = input<Domain>();
   value = input.required();
   name = input.required<string>();
 
   inputMode = InputMode;
 
-  canEdit: Signal<boolean> = signal(false);
-  canEditSelector = false;
+  // canRead and canEdit answer from the permission digest and re-evaluate when it
+  // loads; a resource that requires no permission for the action is always allowed.
+  canRead = computed(() => this.allowed(ReadPermission));
+  canEdit = computed(() => this.allowed(UpdatePermission));
 
-  canRead: Signal<boolean> = signal(false);
-  canReadSelector = false;
-
-  ngOnInit(): void {
-    this.canEditSelector = this.auth.hasPermission({
-      resource: this.resource(),
-      permission: ReadPermission,
-      domain: this.domain(),
-    });
-    this.canReadSelector = this.auth.hasPermission({
-      resource: this.resource(),
-      permission: UpdatePermission,
-      domain: this.domain(),
-    });
-
-    this.canRead = computed(() => {
-      const res = this.resource();
-      if (!res) {
-        return false;
-      }
-      if (AuthService.requiresPermission(this.resource(), ReadPermission)) {
-        return this.canReadSelector;
-      }
+  private allowed(permission: typeof ReadPermission): boolean {
+    const resource = this.resource();
+    if (!resource) {
       return false;
-    });
-
-    this.canEdit = computed(() => {
-      const res = this.resource();
-      if (!res) {
-        return false;
-      }
-      if (AuthService.requiresPermission(this.resource(), UpdatePermission)) {
-        return this.canEditSelector;
-      }
-      return false;
-    });
+    }
+    if (!AuthService.requiresPermission(resource, permission)) {
+      return true;
+    }
+    return this.auth.hasPermission({ resource, permission, domain: this.domain() });
   }
 }

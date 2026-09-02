@@ -6,13 +6,15 @@ export type Domain = Brand<string, 'Domain'>;
 export type FieldName = Brand<string, 'FieldName'>;
 export type Method = Brand<string, 'Method'>;
 
-export type UserPermissionCollection = Record<Domain, Record<Resource | Method, Record<Resource, Permission>>>;
-export type RolePermissionCollection = Partial<Record<Permission, (Resource | Method)[]>>;
-
+/**
+ * One permission question: may the session user exercise `permission` on `resource`
+ * (a resource, a dotted `Resource.field` name, or an RPC method)? `domain` names the
+ * tenant partition the question is asked in; omit it for the global scope.
+ */
 export interface PermissionScope {
   resource: Resource | Method;
   permission: Permission;
-  domain: Domain;
+  domain?: Domain;
 }
 
 export const CreatePermission = 'Create' as Permission;
