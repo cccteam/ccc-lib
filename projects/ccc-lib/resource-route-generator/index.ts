@@ -1,13 +1,34 @@
 import { Route } from '@angular/router';
+import { AuthorizationGuard } from '@cccteam/ccc-lib/auth-authorization-guard';
 import { canDeactivateGuard } from '@cccteam/ccc-lib/guards';
 import { addNavItem } from '@cccteam/ccc-lib/resource-nav';
-import { Resource, ResourceMeta, RootConfig, RouteResourceData } from '@cccteam/ccc-lib/types';
+import {
+  ListPermission,
+  PermissionScope,
+  Resource,
+  ResourceMeta,
+  RootConfig,
+  RouteResourceData,
+} from '@cccteam/ccc-lib/types';
 
+/**
+ * Builds the routes for a config-driven resource and registers its navigation item.
+ *
+ * The routes are guarded by the resource's List permission (global scope — config-driven
+ * resources are global), answered from the permission digest by the AuthorizationGuard,
+ * and the navigation item carries the same scope so a `cccHasPermission`-gated menu hides
+ * what the user cannot open. A config may set `nav.navItem.permission` to gate on
+ * something else.
+ */
 export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Resource) => ResourceMeta): Route => {
-  const meta = resourceMeta(config.parentConfig.primaryResource as Resource);
+  const resource = config.parentConfig.primaryResource as Resource;
+  const meta = resourceMeta(resource);
   if (!meta) {
     return {} as Route;
   }
+
+  const scope: PermissionScope = { resource, permission: ListPermission };
+  config.nav.navItem.permission ??= scope;
 
   if (config.nav.group) {
     if (config.routeData.route) {
@@ -17,10 +38,13 @@ export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Reso
     }
   }
 
+  const data = { config, scope } satisfies RouteResourceData;
+
   if (config.routeData.route) {
     const baseRoute: Route = {
       path: config.routeData.route,
-      data: { config: config } satisfies RouteResourceData,
+      data,
+      canActivate: [AuthorizationGuard],
       children: [
         {
           path: '',
@@ -41,7 +65,8 @@ export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Reso
 
   return {
     path: meta.route,
-    data: { config: config } as RouteResourceData,
+    data,
+    canActivate: [AuthorizationGuard],
     children: [
       {
         path: ':uuid',

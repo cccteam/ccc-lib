@@ -1,6 +1,6 @@
 import { Directive, input, Type } from '@angular/core';
 import { TooltipPosition } from '@angular/material/tooltip';
-import { FieldName, Method, Resource } from './permissions';
+import { FieldName, Method, PermissionScope, Resource } from './permissions';
 import { ResourceMeta } from './resource-meta';
 import { ConcatFn, defaultEmptyFieldValue, NullBoolean } from './resource-types';
 import { ResourceValidatorFn } from './validators';
@@ -15,10 +15,18 @@ export interface MenuItem {
   label: string;
   route?: string[];
   children?: MenuItem[];
+  /**
+   * The permission the item's destination requires; a navigation that gates its items
+   * with `cccHasPermission` hides the item when the session user lacks it. Resource
+   * routes fill it with the resource's List permission unless the config set one.
+   */
+  permission?: PermissionScope;
 }
 
 export interface RouteResourceData {
   config: RootConfig;
+  /** The permission the route requires — read by the AuthorizationGuard. */
+  scope?: PermissionScope;
 }
 
 export type DataType = string | number | number[] | string[] | boolean | undefined | Date;
