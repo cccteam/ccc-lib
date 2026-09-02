@@ -38,6 +38,12 @@ export interface FieldMeta {
   displayType: ValidDisplayTypes;
   enumeratedResource?: Resource;
   isIndex: boolean;
+  /**
+   * The server never accepts this field from clients — it is server-owned
+   * (output-only, an @state column, or the tenant key) — so forms render it read-only
+   * in every mode. Emitted by the ccc TypeScript generator.
+   */
+  readOnly?: boolean;
 }
 
 export interface ResourceMeta {

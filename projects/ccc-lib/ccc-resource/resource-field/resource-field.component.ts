@@ -63,8 +63,11 @@ export class ResourceFieldComponent {
     );
   });
 
+  // A field is read-only when the config says so or when the server never accepts it
+  // (FieldMeta.readOnly: output-only, @state, tenant key) — structural, before any
+  // permission question.
   mode = computed(() => {
-    if (this.fieldConfig().readOnly) {
+    if (this.fieldConfig().readOnly || this.fieldMeta().readOnly) {
       return 'view';
     }
     return this.editMode();
