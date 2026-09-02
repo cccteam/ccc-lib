@@ -31,8 +31,8 @@ export class CccInputFieldComponent {
 
   inputMode = InputMode;
 
-  // canRead and canEdit answer from the permission digest and re-evaluate when it
-  // loads; a resource that requires no permission for the action is always allowed.
+  // canRead and canEdit answer from the permission digest — fail closed, and
+  // re-evaluated when the digest loads.
   canRead = computed(() => this.allowed(ReadPermission));
   canEdit = computed(() => this.allowed(UpdatePermission));
 
@@ -40,9 +40,6 @@ export class CccInputFieldComponent {
     const resource = this.resource();
     if (!resource) {
       return false;
-    }
-    if (!AuthService.requiresPermission(resource, permission)) {
-      return true;
     }
     return this.auth.hasPermission({ resource, permission, domain: this.domain() });
   }

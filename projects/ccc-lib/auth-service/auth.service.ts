@@ -5,13 +5,10 @@ import {
   Domain,
   FRONTEND_LOGIN_PATH,
   LOGOUT_ACTION,
-  Permission,
   PERMISSION_DIGEST_PATH,
-  PERMISSION_REQUIRED,
   PermissionDigest,
   PermissionDigestState,
   PermissionScope,
-  Resource,
   SESSION_PATH,
   SessionInfo,
   USER_DOMAINS_PATH,
@@ -61,12 +58,6 @@ export class AuthService {
    * picker's source. Empty until the session authenticates.
    */
   domains = this.domainsSignal.asReadonly();
-
-  constructor() {
-    this.initializePermissionFn();
-  }
-
-  private static permissionFn: (resource: Resource, permission: Permission) => boolean;
 
   /**
    * Whether the session user may exercise the scope's permission: true when the digest
@@ -139,21 +130,6 @@ export class AuthService {
     const cached = [...this.digestsSignal().keys()].map((key) => this.loadDigest(key === '' ? undefined : (key as Domain)));
 
     return forkJoin([this.loadDomains(), ...cached]).pipe(map(() => undefined));
-  }
-
-  static requiresPermission(resource: Resource, permission: Permission): boolean {
-    if (!AuthService.permissionFn) {
-      throw new Error(
-        `AuthState has not been initialized. Ensure AuthState is provided in your module or instantiated at least once.`,
-      );
-    }
-    return AuthService.permissionFn(resource, permission);
-  }
-
-  private initializePermissionFn(): void {
-    if (!AuthService.permissionFn) {
-      AuthService.permissionFn = inject(PERMISSION_REQUIRED);
-    }
   }
 
   /**

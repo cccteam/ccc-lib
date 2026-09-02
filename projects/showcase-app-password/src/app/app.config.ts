@@ -16,7 +16,6 @@ import {
   IDLE_WARNING_DURATION,
   LOGOUT_ACTION,
   METHOD_META,
-  PERMISSION_REQUIRED,
   RESOURCE_META,
   SESSION_PATH,
 } from '@cccteam/ccc-lib/types';
@@ -24,7 +23,6 @@ import { ApiInterceptor } from '@cccteam/ccc-lib/ui-interceptor';
 import { envVars } from '../environments/env';
 import { environment } from '../environments/environment';
 import { routes } from './app.routes';
-import { requiresPermission } from './core/generated/zz_gen_constants';
 import { methodMeta } from './core/generated/zz_gen_methods';
 import { resourceMeta } from './core/generated/zz_gen_resources';
 
@@ -93,10 +91,6 @@ export const appConfig: ApplicationConfig = {
     {
       provide: API_URL,
       useValue: environment.apiUrl,
-    },
-    {
-      provide: PERMISSION_REQUIRED,
-      useValue: requiresPermission,
     },
     provideRouter(
       routes,

@@ -41,15 +41,6 @@ export const PERMISSION_DIGEST_PATH = new InjectionToken<string>('PERMISSION_DIG
 export const USER_DOMAINS_PATH = new InjectionToken<string>('USER_DOMAINS_PATH', { factory: () => 'user-domains' });
 
 /**
- * A function to determine if a specific permission is required for a given resource.
- * @defaultValue a function that always returns false
- */
-export const PERMISSION_REQUIRED = new InjectionToken<(resource: Resource, permission: Permission) => boolean>(
-  'PERMISSION_REQUIRED',
-  { factory: () => () => false },
-);
-
-/**
  * The available permissions in the system.
  * @defaultValue an empty array
  */
