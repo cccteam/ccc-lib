@@ -4,6 +4,11 @@
   "extends": "../../tsconfig.json",
   "tsconfigRootDir": ".",
   "compilerOptions": {
+    "paths": {
+      "@cccteam/ccc-lib/*": ["projects/ccc-lib/*"],
+      "@cccteam/ccc-lib": ["projects/ccc-lib/index.ts"],
+      "@cccteam/resource": ["dist/resource"]
+    },
     "sourceMap": true,
     "outDir": "../../out-tsc/lib",
     "declaration": true,

@@ -8,7 +8,8 @@
   "peerDependencies": {
     "@angular/common": "^21.0.0",
     "@angular/core": "^21.0.0",
-    "@contentful/rich-text-types": "^17.2.5"
+    "@contentful/rich-text-types": "^17.2.5",
+    "@cccteam/resource": "^0.0.1"
   },
   "dependencies": {
     "date-fns": "^4.1.0",

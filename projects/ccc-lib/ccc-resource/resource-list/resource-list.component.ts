@@ -17,7 +17,6 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AppGridComponent } from '@cccteam/ccc-lib/ccc-grid';
@@ -55,7 +54,6 @@ import { ResourceStore } from '../resource-store.service';
     MatExpansionModule,
     MatTooltipModule,
     ReactiveFormsModule,
-    MatInputModule,
     ActionAccessControlWrapperComponent,
     NgComponentOutlet,
   ],
@@ -112,14 +110,6 @@ export class ResourceListComponent implements OnInit {
       shouldRender: (data: RecordData): boolean => showCreate && config.shouldRenderActions.create(data),
       resourceData: this.relatedData() ?? {},
     } satisfies ActionButtonContext;
-  });
-
-  searchableFields = computed(() => {
-    const meta = this.meta();
-    if (!meta) return '';
-    return `over fields of ${meta.route}`;
-    // TODO: implement searchable fields based on resource meta
-    // return meta.searchableFields.join(', ') || '';
   });
 
   relatedData = input<RecordData>();
@@ -424,7 +414,6 @@ export class ResourceListComponent implements OnInit {
       this.store.resourceName.set(primaryResource);
       this.store.resourceMeta.set(this.meta());
       this.store.listColumns.set(this.config().listColumns || []);
-      this.store.requireSearchToDisplayResults.set(this.config().requireSearchToDisplayResults || false);
       this.store.sorts.set(this.config().sorts || []);
       this.store.limit.set(this.config().limit);
     }
@@ -465,7 +454,7 @@ export class ResourceListComponent implements OnInit {
           referenced.set(refKey, entry);
         });
       });
-      
+
       referenced.forEach((entry, refKey) => {
         if (this.resourceRefMap().has(refKey)) {
           return;

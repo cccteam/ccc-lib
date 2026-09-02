@@ -13,15 +13,6 @@
     </action-access-control-wrapper>
   </div>
   <div class="resource-container">
-    @if (config().searchable) {
-      <mat-form-field class="search">
-        <input matInput #qry (keyup)="store.searchTokens.set(qry.value)" placeholder="Search" aria-label="Search" />
-        @if (searchableFields() !== '') {
-          <mat-hint>Search {{ searchableFields() }}</mat-hint>
-        }
-        <mat-icon matPrefix>search</mat-icon>
-      </mat-form-field>
-    }
     <ccc-grid
       [rowData]="processedRowData()"
       [columnDefs]="columns()"

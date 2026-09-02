@@ -90,7 +90,11 @@ export class ActionAccessControlWrapperComponent {
         return (
           !context.meta.createDisabled &&
           (context.resource === undefined ||
-            this.auth.hasPermission({ resource: context.resource, permission: CreatePermission, domain: context.domain }))
+            this.auth.hasPermission({
+              resource: context.resource,
+              permission: CreatePermission,
+              domain: context.domain,
+            }))
         );
       case 'edit':
         return !context.meta.updateDisabled && (context.capabilities?.Update?.length ?? 1) > 0;

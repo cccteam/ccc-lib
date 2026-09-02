@@ -31,11 +31,9 @@ export class ResourceStore {
   resourceName = signal<Resource>('' as Resource);
   filter = signal<string>('');
   disableCacheForFilterPii = signal(false);
-  searchTokens = signal<string>('');
   sorts = signal<FieldSort[]>([]);
   listColumns = signal<ColumnConfig[]>([]);
   limit = signal<number | undefined>(undefined);
-  requireSearchToDisplayResults = signal(false);
   uuid = signal<string>('');
   error = signal<string>('');
 
@@ -117,7 +115,6 @@ export class ResourceStore {
       this.filter,
       uniqueColumns,
       this.disableCacheForFilterPii,
-      this.searchTokens,
       this.sorts,
       this.limit,
     );
@@ -200,10 +197,8 @@ export class ResourceStore {
     filter: Signal<string> = signal(''),
     columns: Signal<string[]> = signal([]),
     disableCacheForFilterPii: Signal<boolean> = signal(false),
-    searchTokens: Signal<string> = signal(''),
     sorts: Signal<FieldSort[]> = signal([]),
     limit: Signal<number | undefined> = signal(undefined),
-    defaultEmpty = false,
   ): ResourceRef<RecordData[]> {
     return untracked(() => {
       return rxResource({
@@ -213,21 +208,16 @@ export class ResourceStore {
           route: route(),
           filter: filter(),
           columns: columns(),
-          searchTokens: searchTokens(),
           sorts: sorts(),
           limit: limit(),
         }),
         stream: ({ params }) => {
           if (!params.route) return of([] as RecordData[]);
-          if (defaultEmpty && (!params.searchTokens || params.searchTokens.trim() === '')) {
-            return of([] as RecordData[]);
-          }
           return this.list<RecordData>(
             String(params.route),
             params.filter,
             disableCacheForFilterPii(),
             params.columns,
-            params.searchTokens,
             params.sorts,
             params.limit,
           );
@@ -273,7 +263,6 @@ export class ResourceStore {
                   `${params.keyField}:in:(${batch.join(',')})`,
                   false,
                   params.columns,
-                  '',
                   [],
                   batch.length,
                 ),
@@ -292,7 +281,6 @@ export class ResourceStore {
     filter?: string,
     disableCacheForFilterPii?: boolean,
     columns?: string[],
-    searchTokens?: string,
     sort?: FieldSort[],
     limit?: number,
   ): Observable<T[]> {
@@ -300,7 +288,6 @@ export class ResourceStore {
     if (filter && filter.trim() !== '') paramsObj['filter'] = filter;
     if (limit && limit > 0) paramsObj['limit'] = String(limit);
     if (columns && columns.length > 0) paramsObj['columns'] = columns.join(',');
-    if (searchTokens && searchTokens.trim() !== '') paramsObj['SearchTokens'] = searchTokens;
     if (sort && sort.length > 0) {
       paramsObj['sort'] = sort.map((s) => `${s.field}:${s.direction}`).join(',');
     }

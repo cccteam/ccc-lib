@@ -1,11 +1,9 @@
 import { Directive, input, Type } from '@angular/core';
 import { TooltipPosition } from '@angular/material/tooltip';
 import { FieldName, Method, PermissionScope, Resource } from './permissions';
-import { ResourceMeta } from './resource-meta';
-import { ConcatFn, defaultEmptyFieldValue, NullBoolean } from './resource-types';
+import { NullBoolean } from './resource-meta';
+import { ConcatFn, defaultEmptyFieldValue } from './resource-types';
 import { ResourceValidatorFn } from './validators';
-
-export type ResourceMap = Record<Resource, ResourceMeta>;
 
 export interface FieldPointer {
   field: FieldName;
@@ -758,10 +756,8 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
   loadCreatedResource?: boolean;
   collapsible?: boolean;
   overrideResource?: Resource;
-  searchable?: boolean;
   enableRowExpansion?: boolean;
   rowExpansionConfig?: ChildResourceConfig;
-  requireSearchToDisplayResults?: boolean;
   listColumns: ColumnConfig[];
   relatedConfigs?: ChildResourceConfig[];
   viewResource?: Resource | string;
@@ -782,10 +778,8 @@ export interface ListViewConfig extends BaseConfig {
   loadCreatedResource: boolean;
   collapsible: boolean;
   overrideResource: Resource;
-  searchable: boolean;
   enableRowExpansion: boolean;
   rowExpansionConfig: ChildResourceConfig;
-  requireSearchToDisplayResults: boolean;
   listColumns: ColumnConfig[];
   relatedConfigs: ChildResourceConfig[];
   viewResource: Resource | string;
@@ -828,10 +822,8 @@ export const listViewConfigDefaults = {
     childKey: '' as FieldName,
   },
   overrideResource: '' as Resource,
-  searchable: false,
   enableRowExpansion: false,
   rowExpansionConfig: {} as ChildResourceConfig,
-  requireSearchToDisplayResults: false,
   showBackButton: true,
   filter: (): string => '',
   disableCacheForFilterPii: false,
