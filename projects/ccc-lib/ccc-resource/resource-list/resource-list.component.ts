@@ -108,6 +108,7 @@ export class ResourceListComponent implements OnInit {
     return {
       actionType: 'create',
       meta: this.meta(),
+      resource: this.store.resourceName(),
       shouldRender: (data: RecordData): boolean => showCreate && config.shouldRenderActions.create(data),
       resourceData: this.relatedData() ?? {},
     } satisfies ActionButtonContext;

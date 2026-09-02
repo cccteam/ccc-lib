@@ -5,15 +5,19 @@ import { Router } from '@angular/router';
 import {
   AlertType,
   API_URL,
+  CapabilitiesQueryParam,
   ColumnConfig,
   CreateNotificationMessage,
+  DeletePermission,
   FieldName,
   FieldSort,
   METHOD_META,
   RecordData,
   Resource,
   ResourceMeta,
+  rowCapabilities,
   RPCConfig,
+  UpdatePermission,
 } from '@cccteam/ccc-lib/types';
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
 import { from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
@@ -65,6 +69,12 @@ export class ResourceStore {
   viewStatus = computed(() => {
     return this.resourceViewRef()?.status();
   });
+
+  /**
+   * The viewed row's capability envelope: which fields the session user may edit and
+   * whether they may delete it. Undefined until the row resolves.
+   */
+  viewCapabilities = computed(() => rowCapabilities(this.viewData()));
 
   overrideRoute = signal<string>('');
   resourceRoute = computed(() => this.resourceMeta()?.route);
@@ -174,8 +184,11 @@ export class ResourceStore {
           }),
           stream: ({ params }) => {
             if (!params.route() || !params.uuid() || params.uuid() === 'undefined') return of({} as RecordData);
+            // The view is the edit surface: opt into the capability envelope so each
+            // field and the delete button render from the row's own affordances.
             return this.http.get<RecordData>(
               this.routes.resource(this.apiUrl, String(params.route()), params.uuid() || ''),
+              { params: new HttpParams().set(CapabilitiesQueryParam, [UpdatePermission, DeletePermission].join(',')) },
             );
           },
         }) as ResourceRef<RecordData>,

@@ -147,6 +147,7 @@ export class ResourceViewComponent implements OnInit {
     return {
       actionType: 'edit',
       meta: commonConfig.meta,
+      capabilities: this.store.viewCapabilities(),
       resourceData: commonConfig.resourceData,
       shouldRender: commonConfig.config.shouldRenderActions.edit,
     } satisfies ActionButtonContext;
@@ -162,6 +163,7 @@ export class ResourceViewComponent implements OnInit {
     return {
       actionType: 'delete',
       meta: commonConfig.meta,
+      capabilities: this.store.viewCapabilities(),
       resourceData: commonConfig.resourceData,
       shouldRender: (data: RecordData): boolean => commonConfig.config.shouldRenderActions.delete(data),
     } satisfies ActionButtonContext;
@@ -180,6 +182,7 @@ export class ResourceViewComponent implements OnInit {
         config,
         context: {
           actionType: 'rpc',
+          method: config.method,
           shouldRender: config.shouldRender,
           resourceData: this.relatedData(),
         } satisfies ActionButtonContext,
@@ -201,6 +204,7 @@ export class ResourceViewComponent implements OnInit {
         config,
         context: {
           actionType: 'rpc',
+          method: config.method,
           shouldRender: config.shouldRender,
           resourceData: this.relatedData(),
         } satisfies ActionButtonContext,

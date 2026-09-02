@@ -5,6 +5,7 @@ import {
   computed,
   effect,
   HostBinding,
+  inject,
   input,
   Signal,
   untracked,
@@ -21,6 +22,7 @@ import {
   ValidDisplayTypes,
 } from '@cccteam/ccc-lib/types';
 import { EmptyReadonlyFieldComponent } from '../empty-readonly-field/empty-readonly-field.component';
+import { ResourceStore } from '../resource-store.service';
 import { BooleanFieldComponent } from './fields/boolean-field/boolean-field.component';
 import { DateFieldComponent } from './fields/date-field/date-field.component';
 import { EnumeratedFieldComponent } from './fields/enumerated-field/enumerated-field.component';
@@ -46,6 +48,10 @@ import { TextFieldComponent } from './fields/text-field/text-field.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ResourceFieldComponent {
+  // The nearest resource store — the view this field belongs to — carries the viewed
+  // row's capability envelope. Absent outside a resource view (modals, custom hosts).
+  private store = inject(ResourceStore, { optional: true });
+
   fieldConfig = input.required<FieldElement>();
   meta = input.required<Meta>();
   fieldClass = input<string>();
@@ -65,12 +71,22 @@ export class ResourceFieldComponent {
 
   // A field is read-only when the config says so or when the server never accepts it
   // (FieldMeta.readOnly: output-only, @state, tenant key) — structural, before any
-  // permission question.
+  // permission question. In edit mode the viewed row's capability envelope, when the
+  // read carried one, is the positive list of editable fields: a field absent from it
+  // stays in view mode for this row. Advisory — the server judges the patch.
   mode = computed(() => {
     if (this.fieldConfig().readOnly || this.fieldMeta().readOnly) {
       return 'view';
     }
-    return this.editMode();
+    const editMode = this.editMode();
+    if (editMode !== 'edit') {
+      return editMode;
+    }
+    const editable = this.store?.viewCapabilities()?.Update;
+    if (editable && !editable.includes(this.fieldConfig().name)) {
+      return 'view';
+    }
+    return editMode;
   });
 
   showField = computed(() => {

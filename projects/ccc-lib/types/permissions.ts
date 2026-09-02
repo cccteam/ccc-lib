@@ -57,5 +57,15 @@ export interface RowCapabilities {
 /** The reserved per-row property the capability envelope rides under. */
 export const CapabilitiesProperty = 'zzCapabilities';
 
+/**
+ * Reads a row's capability envelope, if the read opted in. Rows arrive as generic
+ * records, so the reserved property is read structurally; undefined means the read
+ * carried no envelope and nothing about the row's editability is known.
+ */
+export function rowCapabilities(row: object | null | undefined): RowCapabilities | undefined {
+  const capabilities = (row as Record<string, unknown> | null | undefined)?.[CapabilitiesProperty];
+  return capabilities && typeof capabilities === 'object' ? (capabilities as RowCapabilities) : undefined;
+}
+
 /** The reserved query parameter that opts a list or read into the capability envelope. */
 export const CapabilitiesQueryParam = 'capabilities';

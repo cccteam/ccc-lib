@@ -13,8 +13,9 @@ export class HasPermissionDirective {
 
   private scope = signal<PermissionScope | undefined>(undefined);
 
+  /** The permission to require; an absent scope renders unconditionally. */
   @Input()
-  set cccHasPermission(scope: PermissionScope) {
+  set cccHasPermission(scope: PermissionScope | undefined) {
     this.scope.set(scope);
   }
 
