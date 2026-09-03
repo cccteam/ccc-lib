@@ -1,18 +1,29 @@
-type Brand<K, T> = K & { __brand: T };
-
-export type Permission = Brand<string, 'Permission'>;
-export type Resource = Brand<string, 'Resource'>;
-export type Domain = Brand<string, 'Domain'>;
-export type FieldName = Brand<string, 'FieldName'>;
-export type Method = Brand<string, 'Method'>;
-
-export type UserPermissionCollection = Record<Domain, Record<Resource | Method, Record<Resource, Permission>>>;
-export type RolePermissionCollection = Partial<Record<Permission, (Resource | Method)[]>>;
-export interface PermissionScope {
-  resource: Resource | Method;
-  permission: Permission;
-  domain: Domain;
-}
-
-export const ReadPermission = 'Read' as Permission;
-export const UpdatePermission = 'Update' as Permission;
+/**
+ * The permission vocabulary lives in @cccteam/resource, the framework-neutral client
+ * for generated APIs; ccc-lib re-exports it so existing imports keep resolving.
+ */
+export {
+  CreatePermission,
+  DeletePermission,
+  ExecutePermission,
+  ListPermission,
+  ReadPermission,
+  UpdatePermission,
+  CapabilitiesProperty,
+  CapabilitiesQueryParam,
+  rowCapabilities,
+} from '@cccteam/resource';
+export type {
+  Capability,
+  Domain,
+  FieldName,
+  Method,
+  Permission,
+  PermissionDigest,
+  PermissionDigestState,
+  PermissionScope,
+  Resource,
+  RowCapabilities,
+  ScopeKind,
+  WithCapabilities,
+} from '@cccteam/resource';

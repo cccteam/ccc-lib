@@ -1,15 +1,8 @@
-import { RolePermissionCollection, UserPermissionCollection } from './permissions';
-
 /**
- * Session Information for a logged in user
+ * Session Information for a logged in user. Permissions are not part of the session:
+ * the AuthService answers them from the permission digest and user-domains endpoints.
  */
-export interface SessionInfo<TAdditional extends AdditionalSessionData = AdditionalSessionData> {
+export interface SessionInfo {
   authenticated: boolean;
   username: string;
-  permissions: UserPermissionCollection;
-  additionalData?: TAdditional;
-}
-
-export interface AdditionalSessionData {
-  permissions: RolePermissionCollection | UserPermissionCollection;
 }

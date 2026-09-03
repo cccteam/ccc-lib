@@ -103,7 +103,6 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
       signal(filter),
       signal([]),
       signal(config.disableCacheForFilterPii),
-      this.query,
       this.sorts,
     );
   });
@@ -164,9 +163,14 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     return records.map((record) => this.toEnumerated(record as Record<string, string>, this.fieldConfig()));
   });
 
+  // The searchable autocomplete narrows the loaded options client-side by their display
+  // text; the server has no substring search.
   availableEnumOptions = computed(() => {
     const editMode = this.editMode() === 'edit';
-    const options = editMode ? this.listEnumValues() : this.singleEnumValue();
+    const query = this.query().trim().toLowerCase();
+    const loaded = editMode ? this.listEnumValues() : this.singleEnumValue();
+    const options =
+      editMode && query !== '' ? loaded?.filter((option) => option.display.toLowerCase().includes(query)) : loaded;
     const meta = this.fieldMeta();
     const metaRequired = 'required' in meta && meta.required;
 

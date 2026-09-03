@@ -6,6 +6,7 @@
     "baseUrl": "./",
     "paths": {
       "@cccteam/ccc-lib/*": ["projects/ccc-lib/*"],
+      "@cccteam/resource": ["projects/resource/index.ts"],
       "@cccteam/ccc-lib": ["projects/ccc-lib/index.ts"]
     },
     "outDir": "./dist/out-tsc",

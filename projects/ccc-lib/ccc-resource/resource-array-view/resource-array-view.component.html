@@ -42,13 +42,16 @@
           @let resourceId = (resource[resourceConfig().connectorField] || resource['id']) + '';
 
           @if (parentData() && resourceConfig().iteratedConfig && resourceId && i + 1 <= resourceConfig().limit) {
-            <ng-container *ngComponentOutlet="compoundResourceComponent();
-              inputs: { 
-                uuid: resourceId, 
-                parentData: parentData(), 
-                isArrayChild: true, 
-                resourceConfig: resourceConfig().iteratedConfig 
-              }">
+            <ng-container
+              *ngComponentOutlet="
+                compoundResourceComponent();
+                inputs: {
+                  uuid: resourceId,
+                  parentData: parentData(),
+                  isArrayChild: true,
+                  resourceConfig: resourceConfig().iteratedConfig,
+                }
+              ">
             </ng-container>
           }
         }
@@ -71,14 +74,17 @@
   @if (store.listStatus() === 'resolved') {
     @for (resource of store.listData(); track resource['id']; let i = $index) {
       @if (parentData() && resourceConfig().iteratedConfig && resource['id'] && i + 1 <= resourceConfig().limit) {
-      <ng-container *ngComponentOutlet="compoundResourceComponent();
-        inputs: { 
-          uuid: resource['id'] + '', 
-          parentData: parentData(), 
-          isArrayChild: true, 
-          resourceConfig: resourceConfig().iteratedConfig 
-        }">
-      </ng-container>
+        <ng-container
+          *ngComponentOutlet="
+            compoundResourceComponent();
+            inputs: {
+              uuid: resource['id'] + '',
+              parentData: parentData(),
+              isArrayChild: true,
+              resourceConfig: resourceConfig().iteratedConfig,
+            }
+          ">
+        </ng-container>
       }
     }
   } @else {

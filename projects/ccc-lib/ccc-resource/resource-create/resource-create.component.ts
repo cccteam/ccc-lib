@@ -18,11 +18,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { AuthService } from '@cccteam/ccc-lib/auth-service';
 import { CamelCaseToTitlePipe } from '@cccteam/ccc-lib/ccc-camel-case-to-title';
 import { FormStateService } from '@cccteam/ccc-lib/ccc-resource-services';
 import { cleanStringForm } from '@cccteam/ccc-lib/forms';
 import {
   ChildResourceConfig,
+  CreatePermission,
   DataType,
   FieldElement,
   ListViewConfig,
@@ -38,7 +40,7 @@ import { camelCase } from '../concat-fns';
 import { flattenElements } from '../gui-constants';
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
 import { ResourceStore } from '../resource-store.service';
-import { CreateOperation, metadataTypeCoercion } from '../resources-helpers';
+import { metadataTypeCoercion } from '../resources-helpers';
 
 @Component({
   selector: 'ccc-resource-create',
@@ -60,6 +62,7 @@ import { CreateOperation, metadataTypeCoercion } from '../resources-helpers';
 })
 export class ResourceCreateComponent implements OnInit {
   resourceMeta = inject(RESOURCE_META);
+  auth = inject(AuthService);
   activatedRoute = inject(ActivatedRoute);
   notifications = inject(NotificationService);
   store = inject(ResourceStore);
@@ -94,13 +97,33 @@ export class ResourceCreateComponent implements OnInit {
     return true;
   });
 
+  /**
+   * The digest's field-level Create entries for this resource: the inputs worth
+   * rendering. A non-key field without one is denied — no control, no input, and the
+   * value never travels. Undefined means the digest carries no field information for
+   * Create (denied outright, or a keys-only resource) and nothing narrows. Conditional
+   * entries render; the server judges the write.
+   */
+  creatableFields = computed<ReadonlySet<string> | undefined>(() => {
+    const name = this.store.resourceName();
+    if (!name) {
+      return undefined;
+    }
+    const fields = Object.keys(this.auth.fieldPermissionStates({ resource: name, permission: CreatePermission }));
+    return fields.length > 0 ? new Set(fields) : undefined;
+  });
+
   form = computed(() => {
     const meta = this.store.resourceMeta();
     const fg = new FormGroup({});
     const allElements = flattenElements(this.config().elements);
+    const creatable = this.creatableFields();
 
     for (const field of meta.fields || []) {
       if (fg.get(field.fieldName)) {
+        continue;
+      }
+      if (creatable && !field.primaryKey && !creatable.has(field.fieldName)) {
         continue;
       }
 
@@ -173,25 +196,6 @@ export class ResourceCreateComponent implements OnInit {
     return meta.fields.some((field) => field.primaryKey && field.required);
   });
 
-  primaryKeyPath = computed(() => {
-    const meta = this.store.resourceMeta();
-    const isConsolidated = meta.consolidatedRoute !== undefined;
-    const pathPrefix = isConsolidated ? '/' + meta.route : '';
-    const keyPath = this.primaryKeys()
-      .map((field) => this.form().get(field.fieldName)?.value)
-      .join('/');
-
-    if (keyPath === '' && pathPrefix === '') {
-      return '/';
-    }
-
-    if (keyPath === '') {
-      return pathPrefix;
-    }
-
-    return pathPrefix + '/' + keyPath;
-  });
-
   camelCaseToTitlePipe = new CamelCaseToTitlePipe();
 
   ngOnInit(): void {
@@ -223,58 +227,44 @@ export class ResourceCreateComponent implements OnInit {
     }
     const coercedCleanedData = metadataTypeCoercion(cleanedForm, this.store.resourceMeta());
 
-    const cleanedDataWithoutPrimaryKeys = Object.fromEntries(
-      Object.entries(coercedCleanedData).filter(
-        ([key]) => !this.primaryKeys().some((field) => field.fieldName === key),
-      ),
-    );
+    // ops.add lifts key fields out of the value into the operation path (all key
+    // fields or none), so client-assigned keys travel as path segments and a
+    // server-generated key is simply absent.
+    const handle = this.store.handle();
+    const operation = handle.ops.add(coercedCleanedData);
 
-    const createPatch: CreateOperation = {
-      op: 'add',
-      value: cleanedDataWithoutPrimaryKeys,
-      path: this.primaryKeyPath(),
-    };
+    void this.store.apply([operation], `${this.store.resourceName()} created successfully`).then((response) => {
+      this.formState.decrementDirtyForms();
 
-    this.store
-      .createPatch(createPatch, this.route(), this.store.resourceName())
-      .pipe(
-        tap((response) => {
-          this.formState.decrementDirtyForms();
+      if (!response) {
+        this.complete.emit(true);
+        return;
+      }
 
-          if (!response) {
-            this.complete.emit(true);
-            return;
+      const createIds: string[] =
+        response[handle.descriptor.property] ?? response[camelCase(this.store.resourceName())] ?? [];
+
+      {
+        if (this.loadCreatedResource() && createIds.length === 1) {
+          let route = this.rootConfig().routeData.route;
+          if (this.parentData() || !route) {
+            route = resourceMeta.route;
           }
 
-          let createIds: string[] = [];
-          if (resourceMeta.consolidatedRoute) {
-            const resourceName = camelCase(this.store.resourceName());
-            createIds = (response[resourceName] as string[]) || [];
+          const navigationRoutes = this.config().createNavigation;
+          if (navigationRoutes.length === 0) {
+            this.router.navigate([route, createIds[0]]);
           } else {
-            createIds = (response['iDs'] || []) as string[];
-          }
-
-          if (this.loadCreatedResource() && createIds.length === 1) {
-            let route = this.rootConfig().routeData.route;
-            if (this.parentData() || !route) {
-              route = resourceMeta.route;
+            if (createIds[0]) {
+              navigationRoutes.push(createIds[0]);
             }
-
-            const navigationRoutes = this.config().createNavigation;
-            if (navigationRoutes.length === 0) {
-              this.router.navigate([route, createIds[0]]);
-            } else {
-              if (createIds[0]) {
-                navigationRoutes.push(createIds[0]);
-              }
-              this.router.navigate(navigationRoutes);
-            }
-          } else {
-            this.complete.emit(true);
+            this.router.navigate(navigationRoutes);
           }
-        }),
-      )
-      .subscribe();
+        } else {
+          this.complete.emit(true);
+        }
+      }
+    });
   }
 
   cancelForm(): void {

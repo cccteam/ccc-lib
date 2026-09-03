@@ -5,19 +5,24 @@ import { Router } from '@angular/router';
 import {
   AlertType,
   API_URL,
+  CapabilitiesQueryParam,
   ColumnConfig,
   CreateNotificationMessage,
+  DeletePermission,
   FieldName,
   FieldSort,
   METHOD_META,
   RecordData,
   Resource,
   ResourceMeta,
+  rowCapabilities,
   RPCConfig,
+  UpdatePermission,
 } from '@cccteam/ccc-lib/types';
+import { RESOURCE_CLIENT } from '@cccteam/ccc-lib/resource-client';
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
+import { AnyResourceHandle, BatchResult, Operation } from '@cccteam/resource';
 import { from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
-import { Operation } from './resources-helpers';
 
 @Injectable()
 export class ResourceStore {
@@ -27,15 +32,14 @@ export class ResourceStore {
   resourceName = signal<Resource>('' as Resource);
   filter = signal<string>('');
   disableCacheForFilterPii = signal(false);
-  searchTokens = signal<string>('');
   sorts = signal<FieldSort[]>([]);
   listColumns = signal<ColumnConfig[]>([]);
   limit = signal<number | undefined>(undefined);
-  requireSearchToDisplayResults = signal(false);
   uuid = signal<string>('');
   error = signal<string>('');
 
   notifications = inject(NotificationService);
+  client = inject(RESOURCE_CLIENT);
   http = inject(HttpClient);
   router = inject(Router);
   injector = inject(Injector);
@@ -65,6 +69,12 @@ export class ResourceStore {
   viewStatus = computed(() => {
     return this.resourceViewRef()?.status();
   });
+
+  /**
+   * The viewed row's capability envelope: which fields the session user may edit and
+   * whether they may delete it. Undefined until the row resolves.
+   */
+  viewCapabilities = computed(() => rowCapabilities(this.viewData()));
 
   overrideRoute = signal<string>('');
   resourceRoute = computed(() => this.resourceMeta()?.route);
@@ -107,7 +117,6 @@ export class ResourceStore {
       this.filter,
       uniqueColumns,
       this.disableCacheForFilterPii,
-      this.searchTokens,
       this.sorts,
       this.limit,
     );
@@ -133,34 +142,35 @@ export class ResourceStore {
     method: (rootUrl: string, method: string): string => `${rootUrl}/${method}`,
   };
 
-  makePatches(operations: Operation[], route: string, resource: Resource): Observable<Record<string, unknown>> {
-    return this.patchMultiple(String(route), operations).pipe(
-      tap(() => {
-        this.notifications.addGlobalNotification({
-          message: `${resource} updated successfully`,
-          type: AlertType.SUCCESS,
-          duration: 5000,
-          link: '',
-        } satisfies CreateNotificationMessage);
-      }),
-    );
+  /**
+   * The typed client handle for the store's resource, built from the descriptor the
+   * generator emitted. Mutations assemble their operations here (ops.add lifts key
+   * fields into the path, ops.patch and ops.remove address one row) and apply()
+   * sends them.
+   */
+  handle(): AnyResourceHandle {
+    const name = this.resourceName();
+    const descriptor = this.client.descriptor.resources[name];
+    if (!descriptor) {
+      throw new Error(`${name} is not in the generated API descriptor`);
+    }
+    return this.client.define(descriptor);
   }
 
-  createPatch(operation: Operation, route: string, resource: Resource): Observable<Record<string, unknown>> {
-    return this.patchMultiple(String(route), [operation]).pipe(
-      tap(() => {
-        this.notifications.addGlobalNotification({
-          message: `${resource} created successfully`,
-          type: AlertType.SUCCESS,
-          duration: 5000,
-          link: '',
-        } satisfies CreateNotificationMessage);
-      }),
-    );
-  }
-
-  private patchMultiple(resourceRoute: string, data: Operation[]): Observable<Record<string, unknown>> {
-    return this.http.patch<Record<string, unknown>>(this.routes.resources(this.apiUrl, resourceRoute), data);
+  /**
+   * Sends operations through the client's consolidated endpoint as one transaction
+   * and reports success. The client raises ApiError on refusal, so the notification
+   * fires only on commit.
+   */
+  async apply(operations: Operation[], message: string): Promise<BatchResult> {
+    const result = await this.client.batch(operations);
+    this.notifications.addGlobalNotification({
+      message,
+      type: AlertType.SUCCESS,
+      duration: 5000,
+      link: '',
+    } satisfies CreateNotificationMessage);
+    return result;
   }
 
   resourceView(route: Signal<string>, uuid: Signal<string>): ResourceRef<RecordData> {
@@ -174,8 +184,11 @@ export class ResourceStore {
           }),
           stream: ({ params }) => {
             if (!params.route() || !params.uuid() || params.uuid() === 'undefined') return of({} as RecordData);
+            // The view is the edit surface: opt into the capability envelope so each
+            // field and the delete button render from the row's own affordances.
             return this.http.get<RecordData>(
               this.routes.resource(this.apiUrl, String(params.route()), params.uuid() || ''),
+              { params: new HttpParams().set(CapabilitiesQueryParam, [UpdatePermission, DeletePermission].join(',')) },
             );
           },
         }) as ResourceRef<RecordData>,
@@ -187,10 +200,8 @@ export class ResourceStore {
     filter: Signal<string> = signal(''),
     columns: Signal<string[]> = signal([]),
     disableCacheForFilterPii: Signal<boolean> = signal(false),
-    searchTokens: Signal<string> = signal(''),
     sorts: Signal<FieldSort[]> = signal([]),
     limit: Signal<number | undefined> = signal(undefined),
-    defaultEmpty = false,
   ): ResourceRef<RecordData[]> {
     return untracked(() => {
       return rxResource({
@@ -200,21 +211,16 @@ export class ResourceStore {
           route: route(),
           filter: filter(),
           columns: columns(),
-          searchTokens: searchTokens(),
           sorts: sorts(),
           limit: limit(),
         }),
         stream: ({ params }) => {
           if (!params.route) return of([] as RecordData[]);
-          if (defaultEmpty && (!params.searchTokens || params.searchTokens.trim() === '')) {
-            return of([] as RecordData[]);
-          }
           return this.list<RecordData>(
             String(params.route),
             params.filter,
             disableCacheForFilterPii(),
             params.columns,
-            params.searchTokens,
             params.sorts,
             params.limit,
           );
@@ -260,7 +266,6 @@ export class ResourceStore {
                   `${params.keyField}:in:(${batch.join(',')})`,
                   false,
                   params.columns,
-                  '',
                   [],
                   batch.length,
                 ),
@@ -279,7 +284,6 @@ export class ResourceStore {
     filter?: string,
     disableCacheForFilterPii?: boolean,
     columns?: string[],
-    searchTokens?: string,
     sort?: FieldSort[],
     limit?: number,
   ): Observable<T[]> {
@@ -287,7 +291,6 @@ export class ResourceStore {
     if (filter && filter.trim() !== '') paramsObj['filter'] = filter;
     if (limit && limit > 0) paramsObj['limit'] = String(limit);
     if (columns && columns.length > 0) paramsObj['columns'] = columns.join(',');
-    if (searchTokens && searchTokens.trim() !== '') paramsObj['SearchTokens'] = searchTokens;
     if (sort && sort.length > 0) {
       paramsObj['sort'] = sort.map((s) => `${s.field}:${s.direction}`).join(',');
     }

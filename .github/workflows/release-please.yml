@@ -38,4 +38,6 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run build
       - run: npm publish --access public
+        working-directory: ./dist/resource
+      - run: npm publish --access public
         working-directory: ./dist/ccc-lib

@@ -27,19 +27,18 @@ export const SESSION_PATH = new InjectionToken<string>('SESSION_PATH', { factory
 export const API_URL = new InjectionToken<string>('API_URL', { factory: () => '/api' });
 
 /**
- * The URL for additional session data requests (e.g., 'user/session/custom-data').
- * Optional token
+ * The path to the generated permission digest endpoint, relative to API_URL.
+ * @defaultValue 'permission-digest'
  */
-export const ADDITIONAL_SESSION_DATA_PATH = new InjectionToken<string>('ADDITIONAL_SESSION_DATA_PATH');
+export const PERMISSION_DIGEST_PATH = new InjectionToken<string>('PERMISSION_DIGEST_PATH', {
+  factory: () => 'permission-digest',
+});
 
 /**
- * A function to determine if a specific permission is required for a given resource.
- * @defaultValue a function that always returns false
+ * The path to the generated user-domains endpoint, relative to API_URL.
+ * @defaultValue 'user-domains'
  */
-export const PERMISSION_REQUIRED = new InjectionToken<(resource: Resource, permission: Permission) => boolean>(
-  'PERMISSION_REQUIRED',
-  { factory: () => () => false },
-);
+export const USER_DOMAINS_PATH = new InjectionToken<string>('USER_DOMAINS_PATH', { factory: () => 'user-domains' });
 
 /**
  * The available permissions in the system.

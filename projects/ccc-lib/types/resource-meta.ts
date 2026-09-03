@@ -1,64 +1,16 @@
-import { Document } from '@contentful/rich-text-types';
-import { Resource } from './permissions';
-
-export type ValidDisplayTypes =
-  | 'boolean'
-  | 'nullboolean'
-  | 'number'
-  | 'string'
-  | 'date'
-  | 'enumerated'
-  | 'link'
-  | 'uuid'
-  | 'civildate'
-  | 'string[]'
-  | 'customtypes.attachment[]'
-  | 'customtypes.contentfuldocument';
-
-export type ValidRPCTypes = ValidDisplayTypes | `${Exclude<ValidDisplayTypes, 'string[]'>}[]`;
-
-export interface RPCFieldMeta {
-  fieldName: string;
-  displayType: ValidRPCTypes;
-  enumeratedResource?: Resource;
-}
-
-export interface MethodMeta {
-  route: string;
-  fields: RPCFieldMeta[];
-}
-
-export interface FieldMeta {
-  fieldName: string;
-  /** Indicates whether the field is required and only applies during resource creation.
-   * Use the validators config parameter in all other contexts
-   */
-  required: boolean;
-  primaryKey?: { ordinalPosition: number };
-  displayType: ValidDisplayTypes;
-  enumeratedResource?: Resource;
-  isIndex: boolean;
-}
-
-export interface ResourceMeta {
-  route: string;
-  consolidatedRoute?: string;
-  listDisabled?: boolean;
-  readDisabled?: boolean;
-  createDisabled?: boolean;
-  updateDisabled?: boolean;
-  deleteDisabled?: boolean;
-  substringSearchParameter?: string;
-  fields: FieldMeta[];
-}
-
-export type Meta = MethodMeta | ResourceMeta;
-
-export namespace CustomTypes {
-  export interface Attachment {
-    title: string;
-    url: string;
-    contentType: string;
-  }
-  export type ContentfulDocument = Document;
-}
+/**
+ * The generated-metadata shapes live in @cccteam/resource, the framework-neutral
+ * client for generated APIs; ccc-lib re-exports them so existing imports keep resolving.
+ */
+export type {
+  CustomTypes,
+  FieldMeta,
+  Meta,
+  MethodMeta,
+  NullBoolean,
+  ResourceMap,
+  ResourceMeta,
+  RPCFieldMeta,
+  ValidDisplayTypes,
+  ValidRPCTypes,
+} from '@cccteam/resource';
