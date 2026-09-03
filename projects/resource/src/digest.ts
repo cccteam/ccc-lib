@@ -18,14 +18,18 @@ export type PermissionDigest = Record<string, Record<string, PermissionDigestSta
 
 /**
  * One row's capability envelope, attached under the reserved `zzCapabilities`
- * property when a list or read opted in with `?capabilities=Update,Delete`.
+ * property when a list or read opted in with `?capabilities=Update,Delete,Execute`.
  * `Update` is the positive list of editable JSON field names (a field absent from it
- * is not editable on this row); `Delete` is whether the row may be deleted. Advisory
- * hints evaluated against the row the server returned; enforcement stays server-side.
+ * is not editable on this row); `Delete` is whether the row may be deleted; `Execute`
+ * is the positive list of RPC methods whose declared transition applies to this row —
+ * the method targets this resource, the row's state is in its `from` set, and the
+ * session user holds the method's Execute grant. Advisory hints evaluated against the
+ * row the server returned; enforcement stays server-side.
  */
 export interface RowCapabilities {
   Update?: string[];
   Delete?: boolean;
+  Execute?: string[];
 }
 
 /** The reserved per-row property the capability envelope rides under. */
@@ -48,4 +52,4 @@ export function rowCapabilities(row: object | null | undefined): RowCapabilities
 export const CapabilitiesQueryParam = 'capabilities';
 
 /** The capabilities a list or read may ask the server to evaluate per row. */
-export type Capability = 'Update' | 'Delete';
+export type Capability = 'Update' | 'Delete' | 'Execute';

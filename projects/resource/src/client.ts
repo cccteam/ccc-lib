@@ -32,9 +32,11 @@ export interface ResourceHandleBase<Row, Key extends unknown[]> {
   state(permission: Permission): PermissionDigestState | undefined;
   /**
    * Asks the row first, the digest second: a capability envelope on the row decides
-   * `Update`/`Delete` for that row; without one, the scope's digest decides.
+   * `Update`/`Delete` for that row — and `Execute` whether the named RPC method's
+   * declared transition applies to it — while without an envelope the scope's digest
+   * decides. `Execute` requires the method name.
    */
-  rowCan(row: Row, permission: Capability): boolean;
+  rowCan(row: Row, permission: Capability, method?: Method | string): boolean;
   /** Whether the session user may write this field on this row (envelope first, digest second). */
   fieldEditable(row: Row, field: keyof Row & string): boolean;
 }
@@ -323,8 +325,17 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     keyOf: (row: Row) => descriptor.keys.map((field) => (row as Record<string, unknown>)[field]) as Key,
     can: (permission) => client.permissions.can(digestScope(permission)),
     state: (permission) => client.permissions.state(digestScope(permission)),
-    rowCan: (row, permission) => {
+    rowCan: (row, permission, method) => {
       const envelope = rowCapabilities(row);
+      if (permission === 'Execute') {
+        if (!method) {
+          throw new Error(`${descriptor.resource}: rowCan(row, 'Execute', method) requires the method name`);
+        }
+        if (envelope) {
+          return envelope.Execute?.includes(method) ?? false;
+        }
+        return client.permissions.can(digestScope(ExecutePermission, method));
+      }
       if (envelope) {
         return permission === 'Update' ? (envelope.Update?.length ?? 0) > 0 : envelope.Delete === true;
       }
