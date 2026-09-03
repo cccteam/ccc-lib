@@ -38,7 +38,7 @@ import {
   ViewConfig,
 } from '@cccteam/ccc-lib/types';
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
-import { filter, tap } from 'rxjs';
+import { tap } from 'rxjs';
 import {
   ActionAccessControlWrapperComponent,
   ActionButtonContext,
@@ -49,7 +49,8 @@ import { civildateCoercion, flattenElements } from '../gui-constants';
 import { ResourceCreateComponent } from '../resource-create/resource-create.component';
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
 import { ResourceStore } from '../resource-store.service';
-import { DeleteOperation, metadataTypeCoercion, UpdateOperation } from '../resources-helpers';
+import { patchFromForm } from '@cccteam/ccc-lib/resource-client';
+import { metadataTypeCoercion } from '../resources-helpers';
 
 @Component({
   selector: 'ccc-resource-view',
@@ -296,21 +297,6 @@ export class ResourceViewComponent implements OnInit {
       .sort((a, b) => a.primaryKey!.ordinalPosition - b.primaryKey!.ordinalPosition);
   });
 
-  primaryKeyPath = computed(() => {
-    const meta = this.store.resourceMeta();
-    const isConsolidated = !!meta.consolidatedRoute;
-    let resourceIdentifier = '';
-    if (isConsolidated) {
-      resourceIdentifier = '/' + String(meta.route);
-    }
-    return (
-      resourceIdentifier +
-      '/' +
-      this.primaryKeys()
-        .map((field) => this.store.viewData()[field.fieldName])
-        .join('/')
-    );
-  });
 
   ngOnInit(): void {
     if (this.resourceMeta(this.config().primaryResource as Resource)) {
@@ -353,31 +339,32 @@ export class ResourceViewComponent implements OnInit {
       return;
     }
 
-    const sparseData = sparseFormData(this.form(), this.pristineFormValues);
-    const coercedSparseData = metadataTypeCoercion(sparseData, resourceMeta);
-
-    const updatePatch: UpdateOperation = {
-      op: 'patch',
-      value: coercedSparseData,
-      path: this.primaryKeyPath(),
-    };
+    // The client's changes() diffs the coerced raw form value against the viewed
+    // row and refuses a diff outside the patchable fields — never a silent drop.
+    const coercedRawValue = metadataTypeCoercion(this.form().getRawValue(), resourceMeta);
+    let operation;
+    try {
+      operation = patchFromForm(this.store.handle(), this.store.viewData(), { getRawValue: () => coercedRawValue });
+    } catch (error) {
+      this.notifications.addGlobalNotification({
+        message: error instanceof Error ? error.message : String(error),
+        link: '',
+        type: AlertType.ERROR,
+      });
+      return;
+    }
 
     this.pristineFormValues = this.form().getRawValue();
 
-    if (Object.keys(coercedSparseData).length === 0) {
+    if (!operation) {
       return;
     }
-    this.store
-      .makePatches([updatePatch], this.route(), this.store.resourceName())
-      .pipe(
-        tap(() => {
-          this.form().markAsPristine();
-          this.setEditMode('view');
-          this.formState.decrementDirtyForms();
-          this.store.reloadViewData();
-        }),
-      )
-      .subscribe();
+    void this.store.apply([operation], `${this.store.resourceName()} updated successfully`).then(() => {
+      this.form().markAsPristine();
+      this.setEditMode('view');
+      this.formState.decrementDirtyForms();
+      this.store.reloadViewData();
+    });
   }
 
   resetForm(): void {
@@ -411,29 +398,21 @@ export class ResourceViewComponent implements OnInit {
   }
 
   deleteResource(): void {
-    const deletePatch: DeleteOperation = {
-      op: 'remove',
-      value: {},
-      path: this.primaryKeyPath(),
-    };
+    const handle = this.store.handle();
+    const operation = handle.ops.remove(handle.keyOf(this.store.viewData()));
 
-    this.store
-      .makePatches([deletePatch], this.route(), this.store.resourceName())
-      .pipe(
-        tap(() => {
-          this.deleted.emit(true);
-        }),
-        filter(() => this.compoundResourceView()),
-        tap(() => {
-          const navAfterDelete = this.navAfterDelete() !== false;
-          if (navAfterDelete) {
-            this.location.back();
-          } else {
-            this.showCreateForm.set(true);
-          }
-        }),
-      )
-      .subscribe();
+    void this.store.apply([operation], `${this.store.resourceName()} updated successfully`).then(() => {
+      this.deleted.emit(true);
+      if (!this.compoundResourceView()) {
+        return;
+      }
+      const navAfterDelete = this.navAfterDelete() !== false;
+      if (navAfterDelete) {
+        this.location.back();
+      } else {
+        this.showCreateForm.set(true);
+      }
+    });
   }
 
   relatedId(): string {

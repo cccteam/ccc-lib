@@ -85,25 +85,6 @@ export function extractFieldNames(elements: ConfigElement[]): string[] {
   return fields;
 }
 
-export type PatchOperation = 'add' | 'patch' | 'remove';
-
-export interface Operation {
-  op: PatchOperation;
-  value?: Record<string, unknown>;
-  path: string;
-}
-
-export interface CreateOperation extends Operation {
-  op: 'add';
-}
-
-export interface UpdateOperation extends Operation {
-  op: 'patch';
-}
-
-export interface DeleteOperation extends Operation {
-  op: 'remove';
-}
 
 export function isUUID(str: string): boolean {
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

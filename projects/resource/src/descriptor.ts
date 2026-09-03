@@ -20,6 +20,13 @@ export interface ResourceDescriptor {
   /** JSON names of the primary-key fields, in route order. */
   keys: readonly string[];
   operations: readonly ResourceOperation[];
+  /**
+   * JSON names of the fields a patch may change — the same set that shapes the
+   * generated Patch interface. Absent when the resource has no patch operation.
+   * `changes()` enforces it: a form diff outside this list is an error, never a
+   * silent drop.
+   */
+  patchable?: readonly string[];
 }
 
 /** One generated RPC method as the client needs to address it. */

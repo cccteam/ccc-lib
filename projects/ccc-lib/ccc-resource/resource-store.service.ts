@@ -19,9 +19,10 @@ import {
   RPCConfig,
   UpdatePermission,
 } from '@cccteam/ccc-lib/types';
+import { RESOURCE_CLIENT } from '@cccteam/ccc-lib/resource-client';
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
+import { AnyResourceHandle, BatchResult, Operation } from '@cccteam/resource';
 import { from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
-import { Operation } from './resources-helpers';
 
 @Injectable()
 export class ResourceStore {
@@ -38,6 +39,7 @@ export class ResourceStore {
   error = signal<string>('');
 
   notifications = inject(NotificationService);
+  client = inject(RESOURCE_CLIENT);
   http = inject(HttpClient);
   router = inject(Router);
   injector = inject(Injector);
@@ -140,34 +142,35 @@ export class ResourceStore {
     method: (rootUrl: string, method: string): string => `${rootUrl}/${method}`,
   };
 
-  makePatches(operations: Operation[], route: string, resource: Resource): Observable<Record<string, unknown>> {
-    return this.patchMultiple(String(route), operations).pipe(
-      tap(() => {
-        this.notifications.addGlobalNotification({
-          message: `${resource} updated successfully`,
-          type: AlertType.SUCCESS,
-          duration: 5000,
-          link: '',
-        } satisfies CreateNotificationMessage);
-      }),
-    );
+  /**
+   * The typed client handle for the store's resource, built from the descriptor the
+   * generator emitted. Mutations assemble their operations here (ops.add lifts key
+   * fields into the path, ops.patch and ops.remove address one row) and apply()
+   * sends them.
+   */
+  handle(): AnyResourceHandle {
+    const name = this.resourceName();
+    const descriptor = this.client.descriptor.resources[name];
+    if (!descriptor) {
+      throw new Error(`${name} is not in the generated API descriptor`);
+    }
+    return this.client.define(descriptor);
   }
 
-  createPatch(operation: Operation, route: string, resource: Resource): Observable<Record<string, unknown>> {
-    return this.patchMultiple(String(route), [operation]).pipe(
-      tap(() => {
-        this.notifications.addGlobalNotification({
-          message: `${resource} created successfully`,
-          type: AlertType.SUCCESS,
-          duration: 5000,
-          link: '',
-        } satisfies CreateNotificationMessage);
-      }),
-    );
-  }
-
-  private patchMultiple(resourceRoute: string, data: Operation[]): Observable<Record<string, unknown>> {
-    return this.http.patch<Record<string, unknown>>(this.routes.resources(this.apiUrl, resourceRoute), data);
+  /**
+   * Sends operations through the client's consolidated endpoint as one transaction
+   * and reports success. The client raises ApiError on refusal, so the notification
+   * fires only on commit.
+   */
+  async apply(operations: Operation[], message: string): Promise<BatchResult> {
+    const result = await this.client.batch(operations);
+    this.notifications.addGlobalNotification({
+      message,
+      type: AlertType.SUCCESS,
+      duration: 5000,
+      link: '',
+    } satisfies CreateNotificationMessage);
+    return result;
   }
 
   resourceView(route: Signal<string>, uuid: Signal<string>): ResourceRef<RecordData> {

@@ -38,7 +38,7 @@ import { camelCase } from '../concat-fns';
 import { flattenElements } from '../gui-constants';
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
 import { ResourceStore } from '../resource-store.service';
-import { CreateOperation, metadataTypeCoercion } from '../resources-helpers';
+import { metadataTypeCoercion } from '../resources-helpers';
 
 @Component({
   selector: 'ccc-resource-create',
@@ -173,24 +173,6 @@ export class ResourceCreateComponent implements OnInit {
     return meta.fields.some((field) => field.primaryKey && field.required);
   });
 
-  primaryKeyPath = computed(() => {
-    const meta = this.store.resourceMeta();
-    const isConsolidated = meta.consolidatedRoute !== undefined;
-    const pathPrefix = isConsolidated ? '/' + meta.route : '';
-    const keyPath = this.primaryKeys()
-      .map((field) => this.form().get(field.fieldName)?.value)
-      .join('/');
-
-    if (keyPath === '' && pathPrefix === '') {
-      return '/';
-    }
-
-    if (keyPath === '') {
-      return pathPrefix;
-    }
-
-    return pathPrefix + '/' + keyPath;
-  });
 
   camelCaseToTitlePipe = new CamelCaseToTitlePipe();
 
@@ -223,37 +205,25 @@ export class ResourceCreateComponent implements OnInit {
     }
     const coercedCleanedData = metadataTypeCoercion(cleanedForm, this.store.resourceMeta());
 
-    const cleanedDataWithoutPrimaryKeys = Object.fromEntries(
-      Object.entries(coercedCleanedData).filter(
-        ([key]) => !this.primaryKeys().some((field) => field.fieldName === key),
-      ),
-    );
+    // ops.add lifts key fields out of the value into the operation path (all key
+    // fields or none), so client-assigned keys travel as path segments and a
+    // server-generated key is simply absent.
+    const handle = this.store.handle();
+    const operation = handle.ops.add(coercedCleanedData);
 
-    const createPatch: CreateOperation = {
-      op: 'add',
-      value: cleanedDataWithoutPrimaryKeys,
-      path: this.primaryKeyPath(),
-    };
+    void this.store
+      .apply([operation], `${this.store.resourceName()} created successfully`)
+      .then((response) => {
+        this.formState.decrementDirtyForms();
 
-    this.store
-      .createPatch(createPatch, this.route(), this.store.resourceName())
-      .pipe(
-        tap((response) => {
-          this.formState.decrementDirtyForms();
+        if (!response) {
+          this.complete.emit(true);
+          return;
+        }
 
-          if (!response) {
-            this.complete.emit(true);
-            return;
-          }
+        const createIds: string[] = response[handle.descriptor.property] ?? response[camelCase(this.store.resourceName())] ?? [];
 
-          let createIds: string[] = [];
-          if (resourceMeta.consolidatedRoute) {
-            const resourceName = camelCase(this.store.resourceName());
-            createIds = (response[resourceName] as string[]) || [];
-          } else {
-            createIds = (response['iDs'] || []) as string[];
-          }
-
+        {
           if (this.loadCreatedResource() && createIds.length === 1) {
             let route = this.rootConfig().routeData.route;
             if (this.parentData() || !route) {
@@ -272,9 +242,8 @@ export class ResourceCreateComponent implements OnInit {
           } else {
             this.complete.emit(true);
           }
-        }),
-      )
-      .subscribe();
+        }
+      });
   }
 
   cancelForm(): void {

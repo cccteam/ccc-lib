@@ -3,6 +3,7 @@ export * from './src/client';
 export * from './src/descriptor';
 export * from './src/digest';
 export * from './src/meta';
+export * from './src/mutations';
 export * from './src/operations';
 export * from './src/permissions';
 export * from './src/query';

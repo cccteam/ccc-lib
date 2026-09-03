@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, inject, InjectionToken, Provider, signal, Signal } from '@angular/core';
-import { ClientBase, Store, Transport } from '@cccteam/resource';
+import { Batchable, changes, ClientBase, Operation, ResourceHandleBase, Store, Transport } from '@cccteam/resource';
 import { firstValueFrom } from 'rxjs';
 
 /**
@@ -54,4 +54,20 @@ export function storeSignal<T>(store: Store<T>): Signal<T> {
   const unsubscribe = store.subscribe((value) => mirror.set(value));
   inject(DestroyRef, { optional: true })?.onDestroy(unsubscribe);
   return mirror.asReadonly();
+}
+
+/**
+ * The patch operation that saves an Angular form over one row, or undefined when the
+ * form changed nothing (send no request for an empty diff). The diff runs over the
+ * form's raw value — disabled controls included, so an untouched read-only control
+ * never registers as a change — through `changes()`, which throws on a diff outside
+ * the resource's patchable fields rather than dropping it silently.
+ */
+export function patchFromForm<Row extends object, Key extends unknown[]>(
+  handle: ResourceHandleBase<Row, Key> & Batchable<unknown, Record<string, unknown>, Key>,
+  row: Row,
+  form: { getRawValue(): object },
+): Operation | undefined {
+  const diff = changes(handle, row, form.getRawValue());
+  return diff ? handle.ops.patch(handle.keyOf(row), diff) : undefined;
 }
