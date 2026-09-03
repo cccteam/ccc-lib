@@ -54,7 +54,11 @@ or one per domain), loaded on demand and cached for the session.
   the server narrow it per row. A scope that has not been loaded answers false.
 - `handle.rowCan(row, 'Update' | 'Delete')` asks the row first, the digest second: a
   capability envelope on the row (from `capabilities: [...]` on the read) decides for
-  that row; without one, the scope's digest decides.
+  that row; without one, the scope's digest decides. `rowCan(row, 'Execute', method)`
+  answers whether the named RPC method applies to the row, and
+  `rowCan(row, 'Create', member)` whether the named workflow member resource may be
+  created beneath it (the create-under-parent affordance — the add-button gate for a
+  child list, e.g. lines under a draft requisition).
 - `handle.grantedFields(permission)` is the digest's field-level enumeration — for
   `Create`, the inputs a create form is worth rendering: sorted field names whose
   dotted target is granted or conditional (a denied field is absent). Undefined means

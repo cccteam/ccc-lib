@@ -18,15 +18,20 @@ export type PermissionDigest = Record<string, Record<string, PermissionDigestSta
 
 /**
  * One row's capability envelope, attached under the reserved `zzCapabilities`
- * property when a list or read opted in with `?capabilities=Update,Delete,Execute`.
+ * property when a list or read opted in with `?capabilities=Create,Update,Delete,Execute`.
  * `Update` is the positive list of editable JSON field names (a field absent from it
  * is not editable on this row); `Delete` is whether the row may be deleted; `Execute`
  * is the positive list of RPC methods whose declared transition applies to this row —
  * the method targets this resource, the row's state is in its `from` set, and the
- * session user holds the method's Execute grant. Advisory hints evaluated against the
- * row the server returned; enforcement stays server-side.
+ * session user holds the method's Execute grant. `Create` is the positive list of
+ * workflow member resources the session user may create beneath this row (the
+ * create-under-parent affordance: the member's immediate parent hop is this resource,
+ * and the member Create grant's state condition is evaluated against this row).
+ * Advisory hints evaluated against the row the server returned; enforcement stays
+ * server-side.
  */
 export interface RowCapabilities {
+  Create?: string[];
   Update?: string[];
   Delete?: boolean;
   Execute?: string[];
@@ -52,4 +57,4 @@ export function rowCapabilities(row: object | null | undefined): RowCapabilities
 export const CapabilitiesQueryParam = 'capabilities';
 
 /** The capabilities a list or read may ask the server to evaluate per row. */
-export type Capability = 'Update' | 'Delete' | 'Execute';
+export type Capability = 'Create' | 'Update' | 'Delete' | 'Execute';

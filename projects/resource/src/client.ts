@@ -1,4 +1,5 @@
 import {
+  CreatePermission,
   DeletePermission,
   Domain,
   ExecutePermission,
@@ -52,11 +53,12 @@ export interface ResourceHandleBase<Row, Key extends unknown[]> {
   grantedFields(permission: Permission): readonly string[] | undefined;
   /**
    * Asks the row first, the digest second: a capability envelope on the row decides
-   * `Update`/`Delete` for that row — and `Execute` whether the named RPC method's
-   * declared transition applies to it — while without an envelope the scope's digest
-   * decides. `Execute` requires the method name.
+   * `Update`/`Delete` for that row — `Execute` whether the named RPC method's
+   * declared transition applies to it, and `Create` whether the named workflow member
+   * resource may be created beneath it — while without an envelope the scope's digest
+   * decides. `Execute` requires the method name; `Create` the member resource name.
    */
-  rowCan(row: Row, permission: Capability, method?: Method | string): boolean;
+  rowCan(row: Row, permission: Capability, target?: Method | string): boolean;
   /** Whether the session user may write this field on this row (envelope first, digest second). */
   fieldEditable(row: Row, field: keyof Row & string): boolean;
 }
@@ -369,16 +371,25 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     can: (permission) => client.permissions.can(digestScope(permission)),
     state: (permission) => client.permissions.state(digestScope(permission)),
     grantedFields: (permission) => definedFields(client.permissions, digestScope(permission)),
-    rowCan: (row, permission, method) => {
+    rowCan: (row, permission, target) => {
       const envelope = rowCapabilities(row);
       if (permission === 'Execute') {
-        if (!method) {
+        if (!target) {
           throw new Error(`${descriptor.resource}: rowCan(row, 'Execute', method) requires the method name`);
         }
         if (envelope) {
-          return envelope.Execute?.includes(method) ?? false;
+          return envelope.Execute?.includes(target) ?? false;
         }
-        return client.permissions.can(digestScope(ExecutePermission, method));
+        return client.permissions.can(digestScope(ExecutePermission, target));
+      }
+      if (permission === 'Create') {
+        if (!target) {
+          throw new Error(`${descriptor.resource}: rowCan(row, 'Create', member) requires the member resource name`);
+        }
+        if (envelope) {
+          return envelope.Create?.includes(target) ?? false;
+        }
+        return client.permissions.can(digestScope(CreatePermission, target));
       }
       if (envelope) {
         return permission === 'Update' ? (envelope.Update?.length ?? 0) > 0 : envelope.Delete === true;
