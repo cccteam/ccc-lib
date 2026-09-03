@@ -1,4 +1,13 @@
-import { DeletePermission, Domain, ExecutePermission, Method, Permission, Resource, UpdatePermission } from './brands';
+import {
+  DeletePermission,
+  Domain,
+  ExecutePermission,
+  Method,
+  Permission,
+  PermissionScope,
+  Resource,
+  UpdatePermission,
+} from './brands';
 import { ApiDescriptor, MethodDescriptor, ResourceDescriptor, ResourceOperation } from './descriptor';
 import { Capability, PermissionDigestState, WithCapabilities, rowCapabilities } from './digest';
 import { BatchResult, Operation } from './operations';
@@ -30,6 +39,17 @@ export interface ResourceHandleBase<Row, Key extends unknown[]> {
   /** Asks the digest of this handle's scope. Conditional grants answer true. */
   can(permission: Permission): boolean;
   state(permission: Permission): PermissionDigestState | undefined;
+  /**
+   * The fields this handle's digest says the session user may supply for the
+   * permission — `Create` narrows a create form to the inputs worth rendering:
+   * sorted JSON field names whose dotted field target is granted or conditional
+   * (conditional renders; the server judges the write). Undefined when the digest
+   * carries no field-level entries for the permission — no field information (the
+   * permission is denied outright, or the resource has no grant-bearing fields) —
+   * so narrow only on a defined answer. Key fields never appear: they are
+   * structural, not grant-bearing.
+   */
+  grantedFields(permission: Permission): readonly string[] | undefined;
   /**
    * Asks the row first, the digest second: a capability envelope on the row decides
    * `Update`/`Delete` for that row — and `Execute` whether the named RPC method's
@@ -140,6 +160,12 @@ export interface ClientBase {
    * domain-scoped; a domain-scoped target with no domain answers false.
    */
   can(permission: Permission, target: Resource | Method, domain?: Domain): boolean;
+  /**
+   * The digest's field-level answer for a resource, scope resolved from the
+   * descriptor like `can` (a domain-scoped resource with no domain answers
+   * undefined) — see ResourceHandleBase.grantedFields.
+   */
+  grantedFields(permission: Permission, target: Resource, domain?: Domain): readonly string[] | undefined;
   /** Builds a handle for a resource outside the generated descriptor (a manually registered one). */
   define<Row, Key extends unknown[], Ops extends ResourceOperation, Create = never, Patch = never>(
     descriptor: ResourceDescriptor,
@@ -175,6 +201,17 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
         return false;
       }
       return permissions.can({ resource: target, permission, domain: scope === 'domain' ? domain : undefined });
+    },
+    grantedFields: (permission, target, domain) => {
+      const scope = descriptor.resources[target]?.scope ?? (domain ? 'domain' : 'global');
+      if (scope === 'domain' && !domain) {
+        return undefined;
+      }
+      return definedFields(permissions, {
+        resource: target,
+        permission,
+        domain: scope === 'domain' ? domain : undefined,
+      });
     },
     define: (resource, domain) => createResourceHandle(base, resource, domain) as never,
   };
@@ -221,6 +258,12 @@ function attachHandles(
       handles[method.property] = createMethodHandle(client, method, domain);
     }
   }
+}
+
+/** The digest's field-level enumeration for a scope, as sorted names — undefined when it holds none. */
+function definedFields(permissions: PermissionStore, scope: PermissionScope): readonly string[] | undefined {
+  const fields = Object.keys(permissions.fieldStates(scope)).sort();
+  return fields.length > 0 ? fields : undefined;
 }
 
 function createRequester(baseUrl: string, transport: Transport, onError?: (error: ApiError) => void): Requester {
@@ -325,6 +368,7 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     keyOf: (row: Row) => descriptor.keys.map((field) => (row as Record<string, unknown>)[field]) as Key,
     can: (permission) => client.permissions.can(digestScope(permission)),
     state: (permission) => client.permissions.state(digestScope(permission)),
+    grantedFields: (permission) => definedFields(client.permissions, digestScope(permission)),
     rowCan: (row, permission, method) => {
       const envelope = rowCapabilities(row);
       if (permission === 'Execute') {

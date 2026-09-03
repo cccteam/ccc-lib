@@ -90,6 +90,13 @@ export class ResourceFieldComponent {
   });
 
   showField = computed(() => {
+    // A field the form has no control for never renders: the form owner decides which
+    // fields exist — the create form omits controls the digest's field-level Create
+    // entries deny — and every rendered input must be form-backed.
+    if (!this.form().get(this.fieldConfig().name)) {
+      return false;
+    }
+
     const shouldRender = this.fieldConfig().shouldRender;
     const conditionallyNull = this.fieldConfig().nullIfConditionallyHidden;
     const isForeignKeyDefault = this.fieldConfig().default?.type === 'foreignKey';

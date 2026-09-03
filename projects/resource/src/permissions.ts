@@ -31,6 +31,38 @@ export function permissionState(
 }
 
 /**
+ * The digest's field-level entries for one resource and permission: every JSON field
+ * name whose dotted `Resource.field` target carries the permission in the scope's
+ * digest, mapped to its state. Granted and conditional both appear — conditional means
+ * render the input and let the server judge the write. A denied field is absent, so
+ * consumers fail closed per field. An empty record means the digest carries no
+ * field-level entries at all for this resource and permission: the permission is
+ * denied outright (the base entry is absent too) or the resource has no grant-bearing
+ * fields (a keys-only resource) — ask the base entry to tell them apart.
+ */
+export function fieldPermissionStates(
+  snapshot: PermissionsSnapshot,
+  scope: PermissionScope,
+): Record<string, PermissionDigestState> {
+  const states: Record<string, PermissionDigestState> = {};
+  const digest = snapshot.digests.get(digestKey(scope.domain));
+  if (!digest) {
+    return states;
+  }
+  const prefix = `${scope.resource}.`;
+  for (const [target, permissions] of Object.entries(digest)) {
+    if (!target.startsWith(prefix)) {
+      continue;
+    }
+    const state = permissions?.[scope.permission];
+    if (state !== undefined) {
+      states[target.slice(prefix.length)] = state;
+    }
+  }
+  return states;
+}
+
+/**
  * PermissionStore owns the session user's digest cache. One digest per scope (global,
  * or one per domain), loaded on demand and cached for the session; `can` answers
  * synchronously from the cache and never fetches. `granted` and `conditional` both
@@ -70,6 +102,11 @@ export class PermissionStore {
 
   state(scope: PermissionScope): PermissionDigestState | undefined {
     return permissionState(this.snapshot.get(), scope);
+  }
+
+  /** The cached digest's field-level entries for one resource and permission — see fieldPermissionStates. */
+  fieldStates(scope: PermissionScope): Record<string, PermissionDigestState> {
+    return fieldPermissionStates(this.snapshot.get(), scope);
   }
 
   can(scope: PermissionScope): boolean {

@@ -55,6 +55,12 @@ or one per domain), loaded on demand and cached for the session.
 - `handle.rowCan(row, 'Update' | 'Delete')` asks the row first, the digest second: a
   capability envelope on the row (from `capabilities: [...]` on the read) decides for
   that row; without one, the scope's digest decides.
+- `handle.grantedFields(permission)` is the digest's field-level enumeration — for
+  `Create`, the inputs a create form is worth rendering: sorted field names whose
+  dotted target is granted or conditional (a denied field is absent). Undefined means
+  the digest carries no field-level entries for the permission — no field information
+  (denied outright, or a keys-only resource) — so narrow only on a defined answer.
+  Key fields never appear: they are structural, not grant-bearing.
 - `api.permissions.loadDigest(domain?)` loads a scope; `loadDomains()` fetches the
   domains where the user holds any grant; `subscribe` notifies a UI framework.
 

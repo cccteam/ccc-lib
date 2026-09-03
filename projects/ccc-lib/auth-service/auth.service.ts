@@ -15,7 +15,7 @@ import {
   USER_DOMAINS_PATH,
 } from '@cccteam/ccc-lib/types';
 import { errorOptions } from '@cccteam/ccc-lib/util-request-options';
-import { createClient, permissionState, PermissionStore } from '@cccteam/resource';
+import { createClient, fieldPermissionStates, permissionState, PermissionStore } from '@cccteam/resource';
 import { from, map, Observable, of, switchMap, tap } from 'rxjs';
 
 /**
@@ -80,6 +80,17 @@ export class AuthService {
   /** The digest state for one scope: granted, conditional, or undefined when absent or not loaded. */
   permissionState(scope: PermissionScope): PermissionDigestState | undefined {
     return permissionState(this.snapshot(), scope);
+  }
+
+  /**
+   * The digest's field-level entries for one resource and permission: JSON field names
+   * mapped to granted or conditional — a denied field is absent, and an empty record
+   * means the digest carries no field information for the target (see
+   * fieldPermissionStates in @cccteam/resource). Signal-backed, so computeds that call
+   * it re-evaluate when a digest loads.
+   */
+  fieldPermissionStates(scope: PermissionScope): Record<string, PermissionDigestState> {
+    return fieldPermissionStates(this.snapshot(), scope);
   }
 
   /** Whether the digest for the domain (global when omitted) has been loaded. */
