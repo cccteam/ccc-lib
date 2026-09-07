@@ -13,7 +13,10 @@ export type ValidDisplayTypes =
   | 'civildate'
   | 'string[]'
   | 'customtypes.attachment[]'
-  | 'customtypes.contentfuldocument';
+  | 'customtypes.contentfuldocument'
+  /** A nested struct the generator mirrored: one opaque object, granted, masked, and selected whole. */
+  | 'object'
+  | 'object[]';
 
 export type ValidRPCTypes = ValidDisplayTypes | `${Exclude<ValidDisplayTypes, 'string[]'>}[]`;
 
