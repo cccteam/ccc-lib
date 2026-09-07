@@ -13,6 +13,7 @@ import { ApiDescriptor, MethodDescriptor, ResourceDescriptor, ResourceOperation 
 import { Capability, PermissionDigestState, WithCapabilities, rowCapabilities } from './digest';
 import { BatchResult, Operation } from './operations';
 import { PermissionStore, Requester, RequestOptions } from './permissions';
+import { dryRunHeader } from './transport';
 import { ListQuery, ReadOptions, listSearchParams, readSearchParams } from './query';
 import { ApiError, HttpMethod, Transport, fetchTransport } from './transport';
 
@@ -141,6 +142,15 @@ export interface MethodHandle<Body, Result = void> {
    * for the rest.
    */
   execute(body: Body): Promise<Result>;
+  /**
+   * Runs the method's whole frame — decode, the entry check, the target's checks, the
+   * body with every write it arms — and rolls the transaction back instead of
+   * committing. It resolves when the real call would succeed and rejects with the
+   * same ApiError the real call would raise, so a control can be enabled or a refusal
+   * explained before the user commits. A method that runs outside a transaction
+   * rejects with 400.
+   */
+  dryRun(body: Body): Promise<void>;
   can(): boolean;
   state(): PermissionDigestState | undefined;
 }
@@ -276,7 +286,7 @@ function createRequester(baseUrl: string, transport: Transport, onError?: (error
   return async <T>(method: HttpMethod, path: string, options?: RequestOptions): Promise<T> => {
     const query = options?.query?.toString();
     const url = `${baseUrl}/${path}${query ? `?${query}` : ''}`;
-    const response = await transport({ method, url, body: options?.body });
+    const response = await transport({ method, url, body: options?.body, headers: options?.headers });
     if (response.status >= 400) {
       const error = new ApiError(method, url, response.status, response.body);
       onError?.(error);
@@ -454,6 +464,9 @@ function createMethodHandle<Body, Result = void>(
       // to undefined, which is the void the handle promises.
       const answer = await client.request<Result | null | undefined>('POST', route, { body });
       return (answer ?? undefined) as Result;
+    },
+    dryRun: async (body) => {
+      await client.request<unknown>('POST', route, { body, headers: { [dryRunHeader]: 'true' } });
     },
     can: () => client.permissions.can(scope),
     state: () => client.permissions.state(scope),

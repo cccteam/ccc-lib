@@ -6,7 +6,12 @@ export interface TransportRequest {
   url: string;
   /** A JSON-serializable body, or undefined for none. */
   body?: unknown;
+  /** Request headers this one request carries beyond the transport's own. */
+  headers?: Record<string, string>;
 }
+
+/** The header that asks a transaction-form RPC method to run and roll back instead of committing. */
+export const dryRunHeader = 'X-Dry-Run';
 
 export interface TransportResponse {
   status: number;
@@ -73,7 +78,7 @@ export function fetchTransport(options: FetchTransportOptions = {}): Transport {
   const doFetch = options.fetch ?? globalThis.fetch.bind(globalThis);
   const xsrf = options.xsrf === undefined ? defaultXsrf : options.xsrf;
   return async (request) => {
-    const headers: Record<string, string> = { Accept: 'application/json', ...options.headers };
+    const headers: Record<string, string> = { Accept: 'application/json', ...options.headers, ...request.headers };
     let body: string | undefined;
     if (request.body !== undefined) {
       headers['Content-Type'] = 'application/json';

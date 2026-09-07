@@ -9,6 +9,8 @@ export type Requester = <T>(method: HttpMethod, path: string, options?: RequestO
 export interface RequestOptions {
   query?: URLSearchParams;
   body?: unknown;
+  /** Extra request headers, such as the dry-run header a method handle sends. */
+  headers?: Record<string, string>;
 }
 
 /** The permission cache at one instant: digests by scope key, and the user's domains. */
