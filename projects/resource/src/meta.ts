@@ -28,6 +28,8 @@ export interface RPCFieldMeta {
 
 export interface MethodMeta {
   route: string;
+  /** Set when the method answers with a result body; absent methods resolve with nothing. */
+  answers?: true;
   fields: RPCFieldMeta[];
 }
 

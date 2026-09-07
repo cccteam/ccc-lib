@@ -130,13 +130,17 @@ export type AnyResourceHandle<Row = Record<string, unknown>, Key extends unknown
   Record<string, unknown>
 >;
 
-export interface MethodHandle<Body> {
+export interface MethodHandle<Body, Result = void> {
   readonly method: Method;
   readonly descriptor: MethodDescriptor;
   readonly domain?: Domain;
   url(): string;
-  /** Posts the body to the Execute-gated route. The server answers with no body. */
-  execute(body: Body): Promise<void>;
+  /**
+   * Posts the body to the Execute-gated route and resolves with the method's answer:
+   * the generated `<Method>Result` for a method whose Execute returns one, nothing
+   * for the rest.
+   */
+  execute(body: Body): Promise<Result>;
   can(): boolean;
   state(): PermissionDigestState | undefined;
 }
@@ -429,11 +433,11 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
   return handle;
 }
 
-function createMethodHandle<Body>(
+function createMethodHandle<Body, Result = void>(
   client: ClientBase,
   descriptor: MethodDescriptor,
   domain: Domain | undefined,
-): MethodHandle<Body> {
+): MethodHandle<Body, Result> {
   const route = scopedRoute(client.descriptor, descriptor.route, descriptor.scope, domain);
   const scope = {
     resource: descriptor.method,
@@ -446,7 +450,10 @@ function createMethodHandle<Body>(
     domain: scope.domain,
     url: () => `${client.baseUrl}/${route}`,
     execute: async (body) => {
-      await client.request<unknown>('POST', route, { body });
+      // A method without an answer serves an empty 200; the transport decodes that
+      // to undefined, which is the void the handle promises.
+      const answer = await client.request<Result | null | undefined>('POST', route, { body });
+      return (answer ?? undefined) as Result;
     },
     can: () => client.permissions.can(scope),
     state: () => client.permissions.state(scope),

@@ -36,6 +36,8 @@ export interface MethodDescriptor {
   /** The kebab-case route segment, without API prefix or domain segment. */
   route: string;
   scope: ScopeKind;
+  /** Set when the method answers with a result body; absent methods resolve with nothing. */
+  answers?: boolean;
 }
 
 /** The domain route pair domain-scoped routes are served under: `<segment>/<domain>/...`. */
