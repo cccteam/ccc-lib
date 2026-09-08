@@ -19,6 +19,11 @@ module.exports = tseslint.config(
       ...angular.configs.tsRecommended,
     ],
     processor: angular.processInlineTemplates,
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: __dirname,
+      },
+    },
     rules: {
       ...boundaries.configs.recommended.rules,
       'import/no-cycle': ['error', { maxDepth: 1 }],
