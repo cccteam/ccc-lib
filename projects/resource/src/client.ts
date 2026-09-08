@@ -203,6 +203,33 @@ export interface MethodHandle<Body, Result = void> {
   state(): PermissionDigestState | undefined;
 }
 
+/**
+ * The handle of an `@upload` method: `execute` and `dryRun` as on any method, and
+ * `upload`, which sends the body with files as multipart/form-data — the JSON body
+ * as the `request` part first, then one `file` part per file — and resolves like
+ * `execute`. The sum of the files' sizes is checked against the declared maximum
+ * before anything is sent, with the same message shape as the server's 413.
+ */
+export interface UploadMethodHandle<Body, Result = void> extends MethodHandle<Body, Result> {
+  upload(body: Body, files: readonly (File | Blob)[]): Promise<Result>;
+}
+
+/** The name of the multipart part carrying the method's JSON, sent first. */
+export const uploadRequestPart = 'request';
+/** The name of each multipart file part. */
+export const uploadFilePart = 'file';
+
+/** Renders a byte count the way @upload declares it: whole GB, MB, or KB when even, bytes otherwise. */
+export function formatByteSize(n: number): string {
+  const kb = 1024;
+  const mb = kb * 1024;
+  const gb = mb * 1024;
+  if (n >= gb && n % gb === 0) return `${n / gb}GB`;
+  if (n >= mb && n % mb === 0) return `${n / mb}MB`;
+  if (n >= kb && n % kb === 0) return `${n / kb}KB`;
+  return `${n} bytes`;
+}
+
 export interface DomainClientBase {
   readonly domain: Domain;
   /** Asks this partition's digest about a domain-scoped resource or method. */
@@ -590,32 +617,67 @@ function createMethodHandle<Body, Result = void>(
     permission: ExecutePermission,
     domain: descriptor.scope === 'domain' ? domain : undefined,
   };
-  return {
+  // Posts one body — JSON, or the multipart form of an upload — and resolves with
+  // the method's answer. A method with declared statuses resolves every declared
+  // code as { status, result }; the rest resolve the result or nothing.
+  const post = async (body: unknown, headers?: Record<string, string>): Promise<Result> => {
+    if (descriptor.statuses) {
+      const response = await client.requestResponse<unknown>('POST', route, {
+        body,
+        headers,
+        accept: descriptor.statuses,
+      });
+      if (!descriptor.answers) {
+        // An answerless method declaring 204: nothing to pair.
+        return undefined as Result;
+      }
+      const answer: MethodAnswer = { status: response.status, result: response.body ?? undefined };
+      return answer as Result;
+    }
+    // A method without an answer serves an empty 200; the transport decodes that
+    // to undefined, which is the void the handle promises.
+    const answer = await client.request<Result | null | undefined>('POST', route, { body, headers });
+    return (answer ?? undefined) as Result;
+  };
+  const handle: MethodHandle<Body, Result> = {
     method: descriptor.method,
     descriptor,
     domain: scope.domain,
     url: () => `${client.baseUrl}/${route}`,
-    execute: async (body) => {
-      if (descriptor.statuses) {
-        // The method chooses its status per response among the declared ones; the
-        // requester resolves them all, and the handle pairs the code with the body.
-        const response = await client.requestResponse<unknown>('POST', route, { body, accept: descriptor.statuses });
-        if (!descriptor.answers) {
-          // An answerless method declaring 204: nothing to pair.
-          return undefined as Result;
-        }
-        const answer: MethodAnswer = { status: response.status, result: response.body ?? undefined };
-        return answer as Result;
-      }
-      // A method without an answer serves an empty 200; the transport decodes that
-      // to undefined, which is the void the handle promises.
-      const answer = await client.request<Result | null | undefined>('POST', route, { body });
-      return (answer ?? undefined) as Result;
-    },
+    execute: (body) => post(body),
     dryRun: async (body) => {
       await client.request<unknown>('POST', route, { body, headers: { [dryRunHeader]: 'true' } });
     },
     can: () => client.permissions.can(scope),
     state: () => client.permissions.state(scope),
   };
+  if (!descriptor.upload) {
+    return handle;
+  }
+  const maxBytes = descriptor.upload.maxBytes;
+  const upload: UploadMethodHandle<Body, Result> = {
+    ...handle,
+    upload: (body, files) => {
+      const total = files.reduce((sum, file) => sum + file.size, 0);
+      if (total > maxBytes) {
+        throw new ApiError(
+          'POST',
+          handle.url(),
+          413,
+          `the upload exceeds the declared maximum of ${formatByteSize(maxBytes)}`,
+        );
+      }
+      const form = new FormData();
+      form.append(uploadRequestPart, new Blob([JSON.stringify(body)], { type: 'application/json' }));
+      for (const file of files) {
+        if (file instanceof File) {
+          form.append(uploadFilePart, file, file.name);
+        } else {
+          form.append(uploadFilePart, file);
+        }
+      }
+      return post(form);
+    },
+  };
+  return upload;
 }

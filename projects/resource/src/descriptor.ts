@@ -56,6 +56,12 @@ export interface MethodDescriptor {
    * every status outside the list.
    */
   statuses?: readonly number[];
+  /**
+   * Set on an `@upload` method: the request travels as multipart/form-data with the
+   * JSON `request` part first and one `file` part per file, and the whole body is
+   * bounded by `maxBytes`. The handle gains `upload(body, files)`.
+   */
+  upload?: { maxBytes: number };
 }
 
 /** The domain route pair domain-scoped routes are served under: `<segment>/<domain>/...`. */

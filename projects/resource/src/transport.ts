@@ -4,7 +4,10 @@ export interface TransportRequest {
   method: HttpMethod;
   /** The absolute URL, query string included. */
   url: string;
-  /** A JSON-serializable body, or undefined for none. */
+  /**
+   * A JSON-serializable body, a FormData for a multipart upload (sent as-is, the
+   * platform writing the boundary), or undefined for none.
+   */
   body?: unknown;
   /** Request headers this one request carries beyond the transport's own. */
   headers?: Record<string, string>;
@@ -81,8 +84,11 @@ export function fetchTransport(options: FetchTransportOptions = {}): Transport {
   const xsrf = options.xsrf === undefined ? defaultXsrf : options.xsrf;
   return async (request) => {
     const headers: Record<string, string> = { Accept: 'application/json', ...options.headers, ...request.headers };
-    let body: string | undefined;
-    if (request.body !== undefined) {
+    let body: string | FormData | undefined;
+    if (request.body instanceof FormData) {
+      // The platform writes the multipart content type with its boundary.
+      body = request.body;
+    } else if (request.body !== undefined) {
       headers['Content-Type'] = 'application/json';
       body = JSON.stringify(request.body);
     }
