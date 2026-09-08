@@ -5,9 +5,9 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
-      "@cccteam/ccc-lib/*": ["projects/ccc-lib/*"],
+      "@cccteam/resource-angular/*": ["projects/resource-angular/*"],
       "@cccteam/resource": ["projects/resource/index.ts"],
-      "@cccteam/ccc-lib": ["projects/ccc-lib/index.ts"]
+      "@cccteam/resource-angular": ["projects/resource-angular/index.ts"]
     },
     "outDir": "./dist/out-tsc",
     "strict": true,

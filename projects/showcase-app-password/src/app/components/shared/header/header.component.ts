@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { Router, RouterModule } from '@angular/router';
-import { AuthService } from '@cccteam/ccc-lib/auth-service';
+import { AuthService } from '@cccteam/resource-angular/auth-service';
 import { finalize, switchMap } from 'rxjs';
 import { TopbarComponent } from '../topbar/topbar.component';
 

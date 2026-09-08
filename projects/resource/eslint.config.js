@@ -23,8 +23,8 @@ module.exports = tseslint.config({
       {
         patterns: [
           {
-            group: ['@angular/*', 'rxjs', 'rxjs/*', '@cccteam/ccc-lib', '@cccteam/ccc-lib/*'],
-            message: '@cccteam/resource is framework-neutral: it must not depend on Angular, RxJS, or ccc-lib.',
+            group: ['@angular/*', 'rxjs', 'rxjs/*', '@cccteam/resource-angular', '@cccteam/resource-angular/*'],
+            message: '@cccteam/resource is framework-neutral: it must not depend on Angular, RxJS, or @cccteam/resource-angular.',
           },
         ],
       },

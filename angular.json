@@ -34,22 +34,22 @@
         }
       }
     },
-    "ccc-lib": {
+    "resource-angular": {
       "projectType": "library",
-      "root": "projects/ccc-lib",
-      "sourceRoot": "projects/ccc-lib",
+      "root": "projects/resource-angular",
+      "sourceRoot": "projects/resource-angular",
       "architect": {
         "build": {
           "builder": "@angular/build:ng-packagr",
           "options": {
-            "project": "projects/ccc-lib/ng-package.json"
+            "project": "projects/resource-angular/ng-package.json"
           },
           "configurations": {
             "production": {
-              "tsConfig": "projects/ccc-lib/tsconfig.lib.prod.json"
+              "tsConfig": "projects/resource-angular/tsconfig.lib.prod.json"
             },
             "development": {
-              "tsConfig": "projects/ccc-lib/tsconfig.lib.json"
+              "tsConfig": "projects/resource-angular/tsconfig.lib.json"
             }
           },
           "defaultConfiguration": "production"
@@ -57,7 +57,7 @@
         "test": {
           "builder": "@angular/build:karma",
           "options": {
-            "tsConfig": "projects/ccc-lib/tsconfig.spec.json",
+            "tsConfig": "projects/resource-angular/tsconfig.spec.json",
             "polyfills": [
               "zone.js",
               "zone.js/testing",
@@ -69,10 +69,10 @@
           "builder": "@angular-eslint/builder:lint",
           "options": {
             "lintFilePatterns": [
-              "projects/ccc-lib/**/*.ts",
-              "projects/ccc-lib/**/*.html"
+              "projects/resource-angular/**/*.ts",
+              "projects/resource-angular/**/*.html"
             ],
-            "eslintConfig": "projects/ccc-lib/eslint.config.js"
+            "eslintConfig": "projects/resource-angular/eslint.config.js"
           }
         }
       }

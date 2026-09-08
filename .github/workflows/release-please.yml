@@ -40,4 +40,4 @@ jobs:
       - run: npm publish --access public
         working-directory: ./dist/resource
       - run: npm publish --access public
-        working-directory: ./dist/ccc-lib
+        working-directory: ./dist/resource-angular

@@ -1,8 +1,8 @@
 import { inject } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { CanDeactivateFn, UrlTree } from '@angular/router';
-import { LeavePageConfirmationModalComponent } from '@cccteam/ccc-lib/ccc-resource-modals';
-import { FormStateService } from '@cccteam/ccc-lib/ccc-resource-services';
+import { LeavePageConfirmationModalComponent } from '@cccteam/resource-angular/ccc-resource-modals';
+import { FormStateService } from '@cccteam/resource-angular/ccc-resource-services';
 import { firstValueFrom, Observable, tap } from 'rxjs';
 
 export type CanDeactivateType = Observable<boolean | UrlTree> | Promise<boolean | UrlTree> | boolean | UrlTree;

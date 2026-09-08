@@ -18,8 +18,8 @@ import {
   METHOD_META,
   RESOURCE_META,
   SESSION_PATH,
-} from '@cccteam/ccc-lib/types';
-import { ApiInterceptor } from '@cccteam/ccc-lib/ui-interceptor';
+} from '@cccteam/resource-angular/types';
+import { ApiInterceptor } from '@cccteam/resource-angular/ui-interceptor';
 import { envVars } from '../environments/env';
 import { environment } from '../environments/environment';
 import { routes } from './app.routes';

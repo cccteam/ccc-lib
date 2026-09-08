@@ -4,9 +4,9 @@ import { MatIconButton } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterModule } from '@angular/router';
-import { CamelCaseToTitlePipe } from '@cccteam/ccc-lib/ccc-camel-case-to-title';
-import { TableButtonComponent } from '@cccteam/ccc-lib/ccc-grid';
-import { ColumnConfig, RecordData } from '@cccteam/ccc-lib/types';
+import { CamelCaseToTitlePipe } from '@cccteam/resource-angular/ccc-camel-case-to-title';
+import { TableButtonComponent } from '@cccteam/resource-angular/ccc-grid';
+import { ColumnConfig, RecordData } from '@cccteam/resource-angular/types';
 import { GridDataResult, GridModule, PageChangeEvent, SelectableMode, SelectableSettings } from '@progress/kendo-angular-grid';
 
 /**

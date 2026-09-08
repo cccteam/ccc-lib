@@ -5,7 +5,7 @@
 version: 2
 updates:
   - package-ecosystem: 'npm'
-    directory: '/projects/ccc-lib'
+    directory: '/projects/resource-angular'
     schedule:
       interval: 'weekly'
     groups:

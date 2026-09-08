@@ -2,8 +2,8 @@ import { Component, computed, signal } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectChange, MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
-import { AppGridComponent } from '@cccteam/ccc-lib/ccc-grid';
-import { ColumnConfig, FieldName, RecordData } from '@cccteam/ccc-lib/types';
+import { AppGridComponent } from '@cccteam/resource-angular/ccc-grid';
+import { ColumnConfig, FieldName, RecordData } from '@cccteam/resource-angular/types';
 
 interface GridShowcaseRow extends RecordData {
   id: number;

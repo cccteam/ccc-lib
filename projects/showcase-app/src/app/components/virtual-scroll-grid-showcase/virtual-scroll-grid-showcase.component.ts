@@ -1,8 +1,8 @@
 import { Component, computed, signal } from '@angular/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { AppGridComponent } from '@cccteam/ccc-lib/ccc-grid';
-import { ColumnConfig, FieldName, RecordData } from '@cccteam/ccc-lib/types';
+import { AppGridComponent } from '@cccteam/resource-angular/ccc-grid';
+import { ColumnConfig, FieldName, RecordData } from '@cccteam/resource-angular/types';
 
 interface VirtualScrollShowcaseRow extends RecordData {
   id: number;

@@ -8,10 +8,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AuthService } from '@cccteam/ccc-lib/auth-service';
-import { AlertType, API_URL, BASE_URL, SESSION_PATH } from '@cccteam/ccc-lib/types';
-import { UiCoreService } from '@cccteam/ccc-lib/ui-core-service';
-import { IdleService } from '@cccteam/ccc-lib/ui-idle-service';
+import { AuthService } from '@cccteam/resource-angular/auth-service';
+import { AlertType, API_URL, BASE_URL, SESSION_PATH } from '@cccteam/resource-angular/types';
+import { UiCoreService } from '@cccteam/resource-angular/ui-core-service';
+import { IdleService } from '@cccteam/resource-angular/ui-idle-service';
 import { catchError, EMPTY, tap } from 'rxjs';
 import { PaneComponent } from '../shared/pane/pane.component';
 

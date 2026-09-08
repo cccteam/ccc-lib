@@ -1,8 +1,8 @@
 import { Component, computed, ElementRef, signal, viewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxChange, MatCheckboxModule } from '@angular/material/checkbox';
-import { AppGridComponent } from '@cccteam/ccc-lib/ccc-grid';
-import { ColumnConfig, FieldName } from '@cccteam/ccc-lib/types';
+import { AppGridComponent } from '@cccteam/resource-angular/ccc-grid';
+import { ColumnConfig, FieldName } from '@cccteam/resource-angular/types';
 import { KendoGridLegacyComponent } from '../../kendo-grid-legacy/kendo-grid-legacy.component';
 
 interface PerfRow {
