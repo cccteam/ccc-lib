@@ -65,6 +65,10 @@ while (page.next) {
 const everything = await api.suppliers.all({ sort: { field: 'name' } });
 ```
 
+A filter naming a PII field must not travel in a URL: pass `sensitiveFilter: true` and the
+list becomes a POST carrying the filter in its body, with paging relations followed the
+same way.
+
 A page position is a sealed cursor the server issues; a client never assembles one,
 and a cursor presented with a different filter, sort, limit, or tenant is refused.
 `offset` no longer exists. A list with no sort on a resource with no declared order is
