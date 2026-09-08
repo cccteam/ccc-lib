@@ -477,13 +477,14 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
         client.permissions.can(digestScope(UpdatePermission))
       );
     },
-    list: (async (query?: ListQuery<Row>) =>
-      (await client.request<Row[] | null>('GET', route, { query: listSearchParams(query) })) ??
-      []) as Listable<Row>['list'],
-    page: ((query?: ListQuery<Row>) =>
-      pageOf<Row>(client, client.requestResponse('GET', route, { query: listSearchParams(query) }))) as Listable<
-      Row
-    >['page'],
+    list: (async (query?: ListQuery<Row>) => {
+      const { method, params, body } = listRequest(query);
+      return (await client.request<Row[] | null>(method, route, { query: params, body })) ?? [];
+    }) as Listable<Row>['list'],
+    page: ((query?: ListQuery<Row>) => {
+      const { method, params, body } = listRequest(query);
+      return pageOf<Row>(client, method, body, client.requestResponse(method, route, { query: params, body }));
+    }) as Listable<Row>['page'],
     all: (async (query?: ListQuery<Row>) => {
       if (descriptor.page?.max === undefined) {
         return handle.list({ ...query, limit: 'all' } as ListQuery<Row>);
@@ -521,15 +522,42 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
   return handle;
 }
 
-/** Reads one list response into a Page, with `next` and `prev` following the Link relations as issued. */
-async function pageOf<Row>(client: ClientBase, response: Promise<ClientResponse<Row[] | null>>): Promise<Page<Row>> {
-  const { body, headers } = await response;
+/**
+ * The request a list query makes: a GET with every parameter in the URL, or, for a
+ * sensitive filter, a POST carrying the filter in the body and the rest in the URL.
+ */
+function listRequest<Row>(query: ListQuery<Row> | undefined): {
+  method: HttpMethod;
+  params: URLSearchParams;
+  body: { filter: string } | undefined;
+} {
+  const params = listSearchParams(query);
+  if (!query?.sensitiveFilter || !params.has('filter')) {
+    return { method: 'GET', params, body: undefined };
+  }
+  const filter = params.get('filter') ?? '';
+  params.delete('filter');
+  return { method: 'POST', params, body: { filter } };
+}
+
+/**
+ * Reads one list response into a Page, with `next` and `prev` following the Link
+ * relations as issued — by the same method and with the same body, so a filter carried
+ * in the body travels with the walk.
+ */
+async function pageOf<Row>(
+  client: ClientBase,
+  method: HttpMethod,
+  body: unknown,
+  response: Promise<ClientResponse<Row[] | null>>,
+): Promise<Page<Row>> {
+  const { body: rows, headers } = await response;
   const relations = parseLinkHeader(headers[LinkHeader]);
   const total = headers[TotalCountHeader];
   const follow = (reference: string) => () =>
-    pageOf<Row>(client, client.requestResponse<Row[] | null>('GET', reference, { absolute: true }));
+    pageOf<Row>(client, method, body, client.requestResponse<Row[] | null>(method, reference, { absolute: true, body }));
   return {
-    rows: body ?? [],
+    rows: rows ?? [],
     total: total === undefined ? undefined : Number(total),
     more: headers[PageMoreHeader] === 'true',
     next: relations['next'] ? follow(relations['next']) : undefined,

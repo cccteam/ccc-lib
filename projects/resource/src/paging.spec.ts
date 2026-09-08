@@ -141,6 +141,38 @@ describe('page', () => {
   });
 });
 
+describe('sensitive filter', () => {
+  it('posts the filter in the body and follows the walk with the same body', async () => {
+    const first = '/api/missions?sort=deadline&limit=1';
+    const second = '/api/missions?sort=deadline&limit=1&cursor=v4.local.two';
+    const { transport, requests } = scripted({
+      [first]: { rows: [{ id: 'a' }], headers: { link: `<${second}>; rel="next"` } },
+      [second]: { rows: [{ id: 'b' }] },
+    });
+    const api = createClient<{ missions: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
+
+    const page = await api.missions.page({
+      filter: 'contactEmail:eq:cleo@halvard.example',
+      sensitiveFilter: true,
+      sort: { field: 'deadline' as never },
+      limit: 1,
+    });
+    const next = await page.next!();
+    expect(next.rows).toEqual([{ id: 'b' }]);
+    expect(requests.map((r) => [r.method, r.url, r.body])).toEqual([
+      ['POST', first, { filter: 'contactEmail:eq:cleo@halvard.example' }],
+      ['POST', second, { filter: 'contactEmail:eq:cleo@halvard.example' }],
+    ]);
+  });
+
+  it('stays a GET when the query carries no filter', async () => {
+    const { transport, requests } = scripted({ '/api/sectors': { rows: [] } });
+    const api = createClient<{ sectors: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
+    await api.sectors.list({ sensitiveFilter: true });
+    expect(requests[0].method).toBe('GET');
+  });
+});
+
 describe('all', () => {
   it('asks for every row at once where the resource declares no maximum', async () => {
     const { transport, requests } = scripted({

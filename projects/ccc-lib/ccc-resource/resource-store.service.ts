@@ -1,14 +1,10 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
 import { computed, inject, Injectable, Injector, ResourceRef, Signal, signal, untracked } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import {
   AlertType,
-  API_URL,
-  CapabilitiesQueryParam,
   ColumnConfig,
   CreateNotificationMessage,
-  DeletePermission,
   FieldName,
   FieldSort,
   METHOD_META,
@@ -17,12 +13,11 @@ import {
   ResourceMeta,
   rowCapabilities,
   RPCConfig,
-  UpdatePermission,
 } from '@cccteam/ccc-lib/types';
 import { RESOURCE_CLIENT } from '@cccteam/ccc-lib/resource-client';
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
-import { AnyResourceHandle, BatchResult, LinkHeader, Operation, parseLinkHeader } from '@cccteam/resource';
-import { firstValueFrom, from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
+import { AnyResourceHandle, BatchResult, Operation, Resource as ClientResource, ResourceDescriptor } from '@cccteam/resource';
+import { from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
 
 @Injectable()
 export class ResourceStore {
@@ -40,10 +35,8 @@ export class ResourceStore {
 
   notifications = inject(NotificationService);
   client = inject(RESOURCE_CLIENT);
-  http = inject(HttpClient);
   router = inject(Router);
   injector = inject(Injector);
-  apiUrl = inject(API_URL);
   methodMeta = inject(METHOD_META);
 
   private resourceListRef = signal<ResourceRef<RecordData[]> | undefined>(undefined);
@@ -136,12 +129,6 @@ export class ResourceStore {
     this.reloadListData();
   }
 
-  routes = {
-    resources: (rootUrl: string, resources: string): string => `${rootUrl}/${resources}`,
-    resource: (rootUrl: string, resources: string, uuid: string): string => `${rootUrl}/${resources}/${uuid}`,
-    method: (rootUrl: string, method: string): string => `${rootUrl}/${method}`,
-  };
-
   /**
    * The typed client handle for the store's resource, built from the descriptor the
    * generator emitted. Mutations assemble their operations here (ops.add lifts key
@@ -154,6 +141,27 @@ export class ResourceStore {
     if (!descriptor) {
       throw new Error(`${name} is not in the generated API descriptor`);
     }
+    return this.client.define(descriptor);
+  }
+
+  /**
+   * The client handle for a resource the configs address by route: the generated
+   * descriptor's when the route is one of its resources, otherwise a read-only handle
+   * over the route alone (an override route, or a resource registered by hand), keyed
+   * by `id`. Every read the store makes goes through the client, so one transport,
+   * one paging contract, and one error shape serve the whole library.
+   */
+  private handleFor(route: string): AnyResourceHandle {
+    const known = Object.values(this.client.descriptor.resources).find((r) => r.route === route);
+    const descriptor: ResourceDescriptor = known ?? {
+      resource: route as ClientResource,
+      property: route,
+      route,
+      scope: 'global',
+      consolidated: false,
+      keys: ['id'],
+      operations: ['list', 'read'],
+    };
     return this.client.define(descriptor);
   }
 
@@ -186,9 +194,10 @@ export class ResourceStore {
             if (!params.route() || !params.uuid() || params.uuid() === 'undefined') return of({} as RecordData);
             // The view is the edit surface: opt into the capability envelope so each
             // field and the delete button render from the row's own affordances.
-            return this.http.get<RecordData>(
-              this.routes.resource(this.apiUrl, String(params.route()), params.uuid() || ''),
-              { params: new HttpParams().set(CapabilitiesQueryParam, [UpdatePermission, DeletePermission].join(',')) },
+            return from(
+              this.handleFor(String(params.route())).read([params.uuid()], {
+                capabilities: ['Update', 'Delete'],
+              }) as Promise<RecordData>,
             );
           },
         }) as ResourceRef<RecordData>,
@@ -280,12 +289,11 @@ export class ResourceStore {
   }
 
   /**
-   * Lists a resource for the table. With a configured limit the server's first page of
-   * that size is the table's data, as before. Without one the store walks every page
-   * the server issues, following each Link relation as given, so the table holds the
-   * whole list while the server serves it in pages; the walk orders by the configured
-   * sorts, or by the resource's primary key when none is configured, since the server
-   * issues no cursor for a list in primary-key order without a stated sort.
+   * Lists a resource for the table through the client. With a configured limit the
+   * server's first page of that size is the table's data, as before. Without one the
+   * client's all() reads every row — limit=all where the resource declares no maximum,
+   * otherwise a walk through the pages in the configured sorts, or in primary-key order
+   * when none is configured. A PII filter travels in the request body.
    */
   private list<T>(
     resourceRoute: string,
@@ -295,59 +303,16 @@ export class ResourceStore {
     sort?: FieldSort[],
     limit?: number,
   ): Observable<T[]> {
-    return from(this.listPages<T>(resourceRoute, filter, disableCacheForFilterPii, columns, sort, limit));
-  }
-
-  private async listPages<T>(
-    resourceRoute: string,
-    filter?: string,
-    disableCacheForFilterPii?: boolean,
-    columns?: string[],
-    sort?: FieldSort[],
-    limit?: number,
-  ): Promise<T[]> {
-    const paramsObj: Record<string, string> = {};
-    if (filter && filter.trim() !== '') paramsObj['filter'] = filter;
-    if (limit && limit > 0) paramsObj['limit'] = String(limit);
-    if (columns && columns.length > 0) paramsObj['columns'] = columns.join(',');
-    const walkSort = sort && sort.length > 0 ? sort : limit ? [] : this.primaryKeySort();
-    if (walkSort.length > 0) {
-      paramsObj['sort'] = walkSort.map((s) => `${s.field}:${s.direction}`).join(',');
-    }
-
-    // A PII filter travels in the body: the walk repeats the POST, body included, at
-    // every Link relation, which carries the rest of the query in its URL.
-    const bodyFilter = disableCacheForFilterPii ? { filter } : undefined;
-    if (bodyFilter) {
-      delete paramsObj['filter'];
-    }
-
-    let url = this.routes.resources(this.apiUrl, resourceRoute);
-    let params: HttpParams | undefined = new HttpParams({ fromObject: paramsObj });
-    const rows: T[] = [];
-    for (;;) {
-      const response = await firstValueFrom(
-        bodyFilter
-          ? this.http.post<T[]>(url, bodyFilter, { params, observe: 'response' })
-          : this.http.get<T[]>(url, { params, observe: 'response' }),
-      );
-      rows.push(...(response.body ?? []));
-      const next = parseLinkHeader(response.headers.get(LinkHeader) ?? undefined)['next'];
-      if (!next || limit) {
-        return rows;
-      }
-      url = next;
-      params = undefined;
-    }
-  }
-
-  /** The resource's primary key as an ascending sort, in key order; empty when the meta names none. */
-  private primaryKeySort(): FieldSort[] {
-    const fields = this.resourceMeta()?.fields ?? [];
-    return fields
-      .filter((f) => f.primaryKey)
-      .sort((a, b) => (a.primaryKey?.ordinalPosition ?? 0) - (b.primaryKey?.ordinalPosition ?? 0))
-      .map((f) => ({ field: f.fieldName as FieldName, direction: 'asc' as const }));
+    const handle = this.handleFor(resourceRoute);
+    const query = {
+      filter: filter && filter.trim() !== '' ? filter : undefined,
+      sensitiveFilter: disableCacheForFilterPii || undefined,
+      columns: columns && columns.length > 0 ? columns : undefined,
+      sort: sort && sort.length > 0 ? sort.map((s) => ({ field: s.field as string, direction: s.direction })) : undefined,
+      limit: limit && limit > 0 ? limit : undefined,
+    };
+    const rows = query.limit ? handle.list(query as never) : handle.all(query as never);
+    return from(rows as Promise<T[]>);
   }
 
   rpcCall<T>(rpcConfig: RPCConfig, body: T): Observable<T> {
@@ -357,7 +322,7 @@ export class ResourceStore {
       return of({} as T);
     }
 
-    return this.http.post<T>(this.routes.method(this.apiUrl, methodData.route), body).pipe(
+    return from(this.client.request<T>('POST', methodData.route, { body })).pipe(
       tap(() => {
         this.notifications.addGlobalNotification({
           message: rpcConfig.successMessage ? rpcConfig.successMessage : `${rpcConfig.method} called successfully`,

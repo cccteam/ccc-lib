@@ -108,6 +108,12 @@ export interface ListQuery<Row> {
   cursor?: string;
   /** Ask the first page for the total row count, answered in the Total-Count header. */
   count?: boolean;
+  /**
+   * Carry the filter in the request body instead of the URL, as the server requires
+   * when the filter names a PII field (a URL is logged; a body is not). The request
+   * becomes a POST to the same route; paging relations are followed with the same body.
+   */
+  sensitiveFilter?: boolean;
   /** Ask the server to evaluate these per row and attach the capability envelope. */
   capabilities?: Capability[];
 }

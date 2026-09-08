@@ -14,8 +14,7 @@ import {
   SessionInfo,
   USER_DOMAINS_PATH,
 } from '@cccteam/ccc-lib/types';
-import { errorOptions } from '@cccteam/ccc-lib/util-request-options';
-import { createClient, fieldPermissionStates, permissionState, PermissionStore } from '@cccteam/resource';
+import { ClientBase, createClient, fieldPermissionStates, permissionState, PermissionStore } from '@cccteam/resource';
 import { from, map, Observable, of, switchMap, tap } from 'rxjs';
 
 /**
@@ -43,9 +42,14 @@ export class AuthService {
 
   http = inject(HttpClient);
 
-  /** The permission cache: the app's client when provided, else a private one. */
-  readonly permissions: PermissionStore = (inject(RESOURCE_CLIENT, { optional: true }) ?? this.privateClient())
-    .permissions;
+  /**
+   * The client every request of this service goes through: the app's when provided,
+   * else a private one over the same interceptor-aware transport.
+   */
+  private readonly client: ClientBase = inject(RESOURCE_CLIENT, { optional: true }) ?? this.privateClient();
+
+  /** The permission cache: the client's. */
+  readonly permissions: PermissionStore = this.client.permissions;
 
   private snapshot = storeSignal(this.permissions.snapshot);
   private authenticatedSignal = signal(false);
@@ -134,8 +138,7 @@ export class AuthService {
    * @returns Observable with a boolean indicating whether they were logged out.
    */
   logout(): Observable<boolean> {
-    return this.http
-      .delete(`${this.apiUrl}/${this.sessionUrl}`, errorOptions(false))
+    return from(this.client.request<unknown>('DELETE', this.sessionUrl))
       .pipe(map(() => true))
       .pipe(
         tap(() => {
@@ -159,7 +162,7 @@ export class AuthService {
    * @returns Observable with the user session info
    */
   checkUserSession(): Observable<SessionInfo> {
-    return this.http.get<SessionInfo>(`${this.apiUrl}/${this.sessionUrl}`, errorOptions(false)).pipe(
+    return from(this.client.request<SessionInfo>('GET', this.sessionUrl)).pipe(
       tap((sessionInfo) => {
         this.authenticatedSignal.set(!!sessionInfo?.authenticated);
         this.sessionInfoSignal.set(sessionInfo);
