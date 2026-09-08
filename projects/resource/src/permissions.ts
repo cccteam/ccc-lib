@@ -6,8 +6,9 @@ import { HttpMethod } from './transport';
 /** Issues one request against the API; the client supplies it. */
 export type Requester = <T>(method: HttpMethod, path: string, options?: RequestOptions) => Promise<T>;
 
-/** A response as a handle reads it: the decoded body and the headers by lower-cased name. */
+/** A response as a handle reads it: the status, the decoded body, and the headers by lower-cased name. */
 export interface ClientResponse<T> {
+  status: number;
   body: T;
   headers: Record<string, string>;
 }
@@ -24,6 +25,11 @@ export interface RequestOptions {
   body?: unknown;
   /** Extra request headers, such as the dry-run header a method handle sends. */
   headers?: Record<string, string>;
+  /**
+   * Statuses at or above 400 the requester resolves rather than throws: a method's
+   * declared answers. Every other 4xx or 5xx is still an ApiError.
+   */
+  accept?: readonly number[];
   /**
    * The path is a complete URL reference the server handed out (a Link relation),
    * carrying the API prefix already: it is resolved against baseUrl's origin, never

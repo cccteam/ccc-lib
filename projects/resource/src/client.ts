@@ -165,6 +165,17 @@ export type AnyResourceHandle<Row = Record<string, unknown>, Key extends unknown
   Record<string, unknown>
 >;
 
+/**
+ * The answer of a method that declares its statuses (`@answers`): the status the
+ * method chose for this response and its typed result. A 4xx here is the method's own
+ * refusal, resolved rather than thrown, because the method declared it and typed its
+ * body.
+ */
+export interface MethodAnswer<Status extends number = number, Result = unknown> {
+  status: Status;
+  result: Result;
+}
+
 export interface MethodHandle<Body, Result = void> {
   readonly method: Method;
   readonly descriptor: MethodDescriptor;
@@ -172,17 +183,20 @@ export interface MethodHandle<Body, Result = void> {
   url(): string;
   /**
    * Posts the body to the Execute-gated route and resolves with the method's answer:
-   * the generated `<Method>Result` for a method whose Execute returns one, nothing
-   * for the rest.
+   * the generated `<Method>Result` for a method whose Execute returns one, the
+   * generated `<Method>Answer` (`{ status, result }`) for a method that declares its
+   * statuses, nothing for the rest. A status the method did not declare, and every
+   * refusal by the frame, rejects with ApiError.
    */
   execute(body: Body): Promise<Result>;
   /**
    * Runs the method's whole frame — decode, the entry check, the target's checks, the
    * body with every write it arms — and rolls the transaction back instead of
-   * committing. It resolves when the real call would succeed and rejects with the
+   * committing. It resolves when the real call would commit and rejects with the
    * same ApiError the real call would raise, so a control can be enabled or a refusal
-   * explained before the user commits. A method that runs outside a transaction
-   * rejects with 400.
+   * explained before the user commits. A 4xx the method declares is still a refusal
+   * here: nothing would commit, and the ApiError carries the method's typed body. A
+   * method that runs outside a transaction rejects with 400.
    */
   dryRun(body: Body): Promise<void>;
   can(): boolean;
@@ -330,12 +344,12 @@ function createRequester(
     const query = options?.query?.toString();
     const url = options?.absolute ? resolveAbsolute(baseUrl, path) : `${baseUrl}/${path}${query ? `?${query}` : ''}`;
     const response = await transport({ method, url, body: options?.body, headers: options?.headers });
-    if (response.status >= 400) {
+    if (response.status >= 400 && !options?.accept?.includes(response.status)) {
       const error = new ApiError(method, url, response.status, response.body);
       onError?.(error);
       throw error;
     }
-    return { body: response.body as T, headers: response.headers ?? {} };
+    return { status: response.status, body: response.body as T, headers: response.headers ?? {} };
   };
 }
 
@@ -582,6 +596,17 @@ function createMethodHandle<Body, Result = void>(
     domain: scope.domain,
     url: () => `${client.baseUrl}/${route}`,
     execute: async (body) => {
+      if (descriptor.statuses) {
+        // The method chooses its status per response among the declared ones; the
+        // requester resolves them all, and the handle pairs the code with the body.
+        const response = await client.requestResponse<unknown>('POST', route, { body, accept: descriptor.statuses });
+        if (!descriptor.answers) {
+          // An answerless method declaring 204: nothing to pair.
+          return undefined as Result;
+        }
+        const answer: MethodAnswer = { status: response.status, result: response.body ?? undefined };
+        return answer as Result;
+      }
       // A method without an answer serves an empty 200; the transport decodes that
       // to undefined, which is the void the handle promises.
       const answer = await client.request<Result | null | undefined>('POST', route, { body });

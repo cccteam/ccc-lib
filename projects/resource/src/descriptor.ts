@@ -49,6 +49,13 @@ export interface MethodDescriptor {
   scope: ScopeKind;
   /** Set when the method answers with a result body; absent methods resolve with nothing. */
   answers?: boolean;
+  /**
+   * The statuses the method declares with `@answers`. A listed 4xx is the method's own
+   * answer with its typed body, not a refusal by the frame: `execute` resolves with
+   * `{ status, result }` for a method that declares statuses and throws ApiError for
+   * every status outside the list.
+   */
+  statuses?: readonly number[];
 }
 
 /** The domain route pair domain-scoped routes are served under: `<segment>/<domain>/...`. */
