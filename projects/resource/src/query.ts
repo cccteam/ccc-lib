@@ -87,16 +87,27 @@ export interface Sort<Row> {
 }
 
 /**
- * The reserved list parameters. The server answers at most `limit` rows (its default
- * is 50) and rejects any parameter it does not know.
+ * The reserved list parameters. The server answers one page — `limit` rows, or the
+ * resource's declared default when omitted (see ResourceDescriptor.page) — and names
+ * the neighboring pages in its Link header; it rejects any parameter it does not know.
  */
 export interface ListQuery<Row> {
   filter?: Filter<Row>;
   sort?: Sort<Row> | Sort<Row>[];
   /** JSON field names to return; omitted means every field the caller may read. */
   columns?: (keyof Row & string)[];
-  limit?: number;
-  offset?: number;
+  /**
+   * The page size, up to the resource's declared maximum, or 'all' for every row on a
+   * resource that declares no maximum. The server refuses 0 and a size over the maximum.
+   */
+  limit?: number | 'all';
+  /**
+   * The page position, exactly as a Link relation handed it out. `page()` follows
+   * relations itself; set this only when replaying a URL the server issued.
+   */
+  cursor?: string;
+  /** Ask the first page for the total row count, answered in the Total-Count header. */
+  count?: boolean;
   /** Ask the server to evaluate these per row and attach the capability envelope. */
   capabilities?: Capability[];
 }
@@ -132,13 +143,39 @@ export function listSearchParams<Row>(query: ListQuery<Row> | undefined): URLSea
   if (query.limit !== undefined) {
     params.set('limit', String(query.limit));
   }
-  if (query.offset !== undefined) {
-    params.set('offset', String(query.offset));
+  if (query.cursor !== undefined) {
+    params.set('cursor', query.cursor);
+  }
+  if (query.count) {
+    params.set('count', 'true');
   }
   if (query.capabilities && query.capabilities.length > 0) {
     params.set(CapabilitiesQueryParam, query.capabilities.join(','));
   }
   return params;
+}
+
+/** The response headers a paged list carries. */
+export const LinkHeader = 'link';
+export const TotalCountHeader = 'total-count';
+export const PageMoreHeader = 'page-more';
+
+/**
+ * Parses a Link header (RFC 8288) into relation → URL reference, exactly as the
+ * server wrote each URL. A paged list carries `next` and `prev`.
+ */
+export function parseLinkHeader(header: string | undefined): Record<string, string> {
+  const relations: Record<string, string> = {};
+  if (!header) {
+    return relations;
+  }
+  for (const part of header.split(/,\s*(?=<)/)) {
+    const match = /^<([^>]*)>\s*;\s*rel="?([^";]+)"?/.exec(part.trim());
+    if (match) {
+      relations[match[2]] = match[1];
+    }
+  }
+  return relations;
 }
 
 export function readSearchParams<Row>(options: ReadOptions<Row> | undefined): URLSearchParams {

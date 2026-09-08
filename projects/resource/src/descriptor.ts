@@ -7,6 +7,15 @@ import { Method, Resource, ScopeKind } from './brands';
  */
 export type ResourceOperation = 'list' | 'read' | 'create' | 'patch' | 'remove' | 'batch';
 
+/**
+ * A resource's page sizes: the page a request without `limit` receives, and the
+ * largest page it may ask for. A resource with no `max` also permits `limit: 'all'`.
+ */
+export interface PageDescriptor {
+  default: number;
+  max?: number;
+}
+
 /** One generated resource as the client needs to address it. */
 export interface ResourceDescriptor {
   resource: Resource;
@@ -27,6 +36,8 @@ export interface ResourceDescriptor {
    * silent drop.
    */
   patchable?: readonly string[];
+  /** The resource's page sizes. Absent on a descriptor written by hand: the server's default applies. */
+  page?: PageDescriptor;
 }
 
 /** One generated RPC method as the client needs to address it. */

@@ -21,8 +21,8 @@ import {
 } from '@cccteam/ccc-lib/types';
 import { RESOURCE_CLIENT } from '@cccteam/ccc-lib/resource-client';
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
-import { AnyResourceHandle, BatchResult, Operation } from '@cccteam/resource';
-import { from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
+import { AnyResourceHandle, BatchResult, LinkHeader, Operation, parseLinkHeader } from '@cccteam/resource';
+import { firstValueFrom, from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
 
 @Injectable()
 export class ResourceStore {
@@ -279,6 +279,14 @@ export class ResourceStore {
     });
   }
 
+  /**
+   * Lists a resource for the table. With a configured limit the server's first page of
+   * that size is the table's data, as before. Without one the store walks every page
+   * the server issues, following each Link relation as given, so the table holds the
+   * whole list while the server serves it in pages; the walk orders by the configured
+   * sorts, or by the resource's primary key when none is configured, since the server
+   * issues no cursor for a list in primary-key order without a stated sort.
+   */
   private list<T>(
     resourceRoute: string,
     filter?: string,
@@ -287,24 +295,59 @@ export class ResourceStore {
     sort?: FieldSort[],
     limit?: number,
   ): Observable<T[]> {
+    return from(this.listPages<T>(resourceRoute, filter, disableCacheForFilterPii, columns, sort, limit));
+  }
+
+  private async listPages<T>(
+    resourceRoute: string,
+    filter?: string,
+    disableCacheForFilterPii?: boolean,
+    columns?: string[],
+    sort?: FieldSort[],
+    limit?: number,
+  ): Promise<T[]> {
     const paramsObj: Record<string, string> = {};
     if (filter && filter.trim() !== '') paramsObj['filter'] = filter;
     if (limit && limit > 0) paramsObj['limit'] = String(limit);
     if (columns && columns.length > 0) paramsObj['columns'] = columns.join(',');
-    if (sort && sort.length > 0) {
-      paramsObj['sort'] = sort.map((s) => `${s.field}:${s.direction}`).join(',');
+    const walkSort = sort && sort.length > 0 ? sort : limit ? [] : this.primaryKeySort();
+    if (walkSort.length > 0) {
+      paramsObj['sort'] = walkSort.map((s) => `${s.field}:${s.direction}`).join(',');
     }
-    const params = new HttpParams({ fromObject: paramsObj });
-    if (disableCacheForFilterPii) {
-      const paramsObjWithoutFilter = { ...paramsObj };
-      delete paramsObjWithoutFilter['filter'];
-      return this.http.post<T[]>(
-        this.routes.resources(this.apiUrl, resourceRoute),
-        { filter: filter },
-        paramsObjWithoutFilter,
+
+    // A PII filter travels in the body: the walk repeats the POST, body included, at
+    // every Link relation, which carries the rest of the query in its URL.
+    const bodyFilter = disableCacheForFilterPii ? { filter } : undefined;
+    if (bodyFilter) {
+      delete paramsObj['filter'];
+    }
+
+    let url = this.routes.resources(this.apiUrl, resourceRoute);
+    let params: HttpParams | undefined = new HttpParams({ fromObject: paramsObj });
+    const rows: T[] = [];
+    for (;;) {
+      const response = await firstValueFrom(
+        bodyFilter
+          ? this.http.post<T[]>(url, bodyFilter, { params, observe: 'response' })
+          : this.http.get<T[]>(url, { params, observe: 'response' }),
       );
+      rows.push(...(response.body ?? []));
+      const next = parseLinkHeader(response.headers.get(LinkHeader) ?? undefined)['next'];
+      if (!next || limit) {
+        return rows;
+      }
+      url = next;
+      params = undefined;
     }
-    return this.http.get<T[]>(this.routes.resources(this.apiUrl, resourceRoute), { params });
+  }
+
+  /** The resource's primary key as an ascending sort, in key order; empty when the meta names none. */
+  private primaryKeySort(): FieldSort[] {
+    const fields = this.resourceMeta()?.fields ?? [];
+    return fields
+      .filter((f) => f.primaryKey)
+      .sort((a, b) => (a.primaryKey?.ordinalPosition ?? 0) - (b.primaryKey?.ordinalPosition ?? 0))
+      .map((f) => ({ field: f.fieldName as FieldName, direction: 'asc' as const }));
   }
 
   rpcCall<T>(rpcConfig: RPCConfig, body: T): Observable<T> {

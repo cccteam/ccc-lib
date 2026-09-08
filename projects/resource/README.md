@@ -18,7 +18,7 @@ import { createApi } from './zz_gen_api';
 const api = createApi({ baseUrl: '/api' });
 
 // Global resources hang off the root.
-const suppliers = await api.suppliers.list({ sort: { field: 'name' }, limit: 100 });
+const suppliers = await api.suppliers.list({ sort: { field: 'name' }, limit: 100 }); // one page
 
 // Domain-scoped resources exist only on a client bound to a domain; calling one
 // without a domain does not compile.
@@ -43,6 +43,34 @@ await api.batch([station.requisitions.ops.add(values), station.requisitionLines.
   string.
 - Filters and sorts are typed against the row's fields. The server's filter grammar
   is available directly as a string when needed.
+
+## Paging
+
+A list is served one page at a time. `list()` returns one page of rows — the query's
+`limit`, or the resource's declared default (`descriptor.page.default`) when the query
+names none. `page()` returns the page with its neighbors: `next` and `prev` follow the
+server's `Link` relations exactly as issued, and are absent where no such page exists;
+`total` answers a `count: true` request on a first page from the `Total-Count` header.
+`all()` returns every row: `limit: 'all'` where the resource declares no maximum page
+size, otherwise a walk through the pages to the end in the query's sort, or in
+primary-key order when the query names none.
+
+```ts
+let page = await station.missions.page({ sort: { field: 'deadline' }, limit: 25, count: true });
+console.log(page.total);            // every mission the filter admits
+while (page.next) {
+  page = await page.next();          // the server's own URL, cursor included
+}
+
+const everything = await api.suppliers.all({ sort: { field: 'name' } });
+```
+
+A page position is a sealed cursor the server issues; a client never assembles one,
+and a cursor presented with a different filter, sort, limit, or tenant is refused.
+`offset` no longer exists. A list with no sort on a resource with no declared order is
+served in primary-key order and issues no cursor: `page.more` marks that its rows did
+not fit, and paging further requires a sort. A resource over a declared maximum page
+size refuses the request (400) rather than clamping it, and refuses `limit: 'all'`.
 
 ## Permissions
 
@@ -76,7 +104,9 @@ is advisory material for what to render.
 `fetchTransport()` is the default. A framework routes requests through its own HTTP
 stack by passing a `Transport`; ccc-lib ships `httpClientTransport` so Angular apps
 keep their interceptors. A transport resolves for every HTTP status; the client turns
-4xx and 5xx into `ApiError`, which carries the decoded body.
+4xx and 5xx into `ApiError`, which carries the decoded body. A transport also hands back
+the response headers by lower-cased name; paged lists read `Link` and `Total-Count`
+from them.
 
 ## Escape hatches
 

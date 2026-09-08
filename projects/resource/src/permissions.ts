@@ -6,11 +6,30 @@ import { HttpMethod } from './transport';
 /** Issues one request against the API; the client supplies it. */
 export type Requester = <T>(method: HttpMethod, path: string, options?: RequestOptions) => Promise<T>;
 
+/** A response as a handle reads it: the decoded body and the headers by lower-cased name. */
+export interface ClientResponse<T> {
+  body: T;
+  headers: Record<string, string>;
+}
+
+/** Like Requester, resolving with the headers too; paged lists read Link and Total-Count. */
+export type ResponseRequester = <T>(
+  method: HttpMethod,
+  path: string,
+  options?: RequestOptions,
+) => Promise<ClientResponse<T>>;
+
 export interface RequestOptions {
   query?: URLSearchParams;
   body?: unknown;
   /** Extra request headers, such as the dry-run header a method handle sends. */
   headers?: Record<string, string>;
+  /**
+   * The path is a complete URL reference the server handed out (a Link relation),
+   * carrying the API prefix already: it is resolved against baseUrl's origin, never
+   * appended under it.
+   */
+  absolute?: boolean;
 }
 
 /** The permission cache at one instant: digests by scope key, and the user's domains. */

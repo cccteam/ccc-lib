@@ -20,9 +20,16 @@ export function httpClientTransport(http: HttpClient): Transport {
   return async (request) => {
     try {
       const response = await firstValueFrom(
-        http.request(request.method, request.url, { body: request.body, observe: 'response' }),
+        http.request(request.method, request.url, { body: request.body, headers: request.headers, observe: 'response' }),
       );
-      return { status: response.status, body: response.body ?? undefined };
+      const headers: Record<string, string> = {};
+      for (const name of response.headers.keys()) {
+        const value = response.headers.get(name);
+        if (value !== null) {
+          headers[name.toLowerCase()] = value;
+        }
+      }
+      return { status: response.status, body: response.body ?? undefined, headers };
     } catch (error) {
       if (error instanceof HttpErrorResponse && error.status > 0) {
         return { status: error.status, body: error.error ?? undefined };

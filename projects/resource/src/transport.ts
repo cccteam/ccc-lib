@@ -17,6 +17,8 @@ export interface TransportResponse {
   status: number;
   /** The decoded JSON body; undefined for an empty body. */
   body: unknown;
+  /** Response headers by lower-cased name. A paged list positions its walk through them (Link, Total-Count). */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -96,7 +98,11 @@ export function fetchTransport(options: FetchTransportOptions = {}): Transport {
       body,
       credentials: options.credentials ?? 'same-origin',
     });
-    return { status: response.status, body: await decodeBody(response) };
+    const responseHeaders: Record<string, string> = {};
+    response.headers.forEach((value, name) => {
+      responseHeaders[name.toLowerCase()] = value;
+    });
+    return { status: response.status, body: await decodeBody(response), headers: responseHeaders };
   };
 }
 

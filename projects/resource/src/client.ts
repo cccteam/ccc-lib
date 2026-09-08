@@ -12,9 +12,19 @@ import {
 import { ApiDescriptor, MethodDescriptor, ResourceDescriptor, ResourceOperation } from './descriptor';
 import { Capability, PermissionDigestState, WithCapabilities, rowCapabilities } from './digest';
 import { BatchResult, Operation } from './operations';
-import { PermissionStore, Requester, RequestOptions } from './permissions';
+import { ClientResponse, PermissionStore, Requester, RequestOptions, ResponseRequester } from './permissions';
 import { dryRunHeader } from './transport';
-import { ListQuery, ReadOptions, listSearchParams, readSearchParams } from './query';
+import {
+  LinkHeader,
+  ListQuery,
+  PageMoreHeader,
+  ReadOptions,
+  Sort,
+  TotalCountHeader,
+  listSearchParams,
+  parseLinkHeader,
+  readSearchParams,
+} from './query';
 import { ApiError, HttpMethod, Transport, fetchTransport } from './transport';
 
 export interface ClientOptions {
@@ -67,8 +77,32 @@ export interface ResourceHandleBase<Row, Key extends unknown[]> {
 /** The row type a read returns: with the capability envelope when the query asked for one. */
 export type Returned<Row, Query> = Query extends { capabilities: Capability[] } ? WithCapabilities<Row> : Row;
 
+/**
+ * One page of a list. `next` and `prev` follow the server's Link relations exactly as
+ * issued and are absent where no such page exists; `total` answers a `count: true`
+ * request on a first page; `more` marks a page served in primary-key order (no sort,
+ * no declared order) whose rows did not fit — the server issues no cursor there, so
+ * paging further requires a sort.
+ */
+export interface Page<Row> {
+  rows: Row[];
+  total?: number;
+  more: boolean;
+  next?: () => Promise<Page<Row>>;
+  prev?: () => Promise<Page<Row>>;
+}
+
 export interface Listable<Row> {
+  /** One page of rows, the resource's default page when the query names no limit. */
   list<Query extends ListQuery<Row> | undefined = undefined>(query?: Query): Promise<Returned<Row, Query>[]>;
+  /** One page with its neighbors: follow `next` and `prev` as the server names them. */
+  page<Query extends ListQuery<Row> | undefined = undefined>(query?: Query): Promise<Page<Returned<Row, Query>>>;
+  /**
+   * Every row. Asks `limit: 'all'` where the resource declares no maximum page size;
+   * otherwise walks the pages to the end in the query's sort, or in primary-key order
+   * when the query names none, so an export sees each row once.
+   */
+  all<Query extends ListQuery<Row> | undefined = undefined>(query?: Query): Promise<Returned<Row, Query>[]>;
 }
 
 export interface Readable<Row, Key extends unknown[]> {
@@ -169,6 +203,8 @@ export interface ClientBase {
   readonly permissions: PermissionStore;
   /** Issues a request under baseUrl; the escape hatch for routes the generator did not describe. */
   readonly request: Requester;
+  /** Issues a request and resolves with the headers too. */
+  readonly requestResponse: ResponseRequester;
   /** Sends operations to the consolidated endpoint as one transaction. */
   batch(operations: Operation[]): Promise<BatchResult>;
   /**
@@ -198,7 +234,9 @@ export type Client<G, D> = ClientBase & G & { domain(domain: Domain | string): D
 export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOptions): Client<G, D> {
   const baseUrl = options.baseUrl.replace(/\/+$/, '');
   const transport = options.transport ?? fetchTransport();
-  const request = createRequester(baseUrl, transport, options.onError);
+  const requestResponse = createRequester(baseUrl, transport, options.onError);
+  const request: Requester = async <T>(method: HttpMethod, path: string, requestOptions?: RequestOptions): Promise<T> =>
+    (await requestResponse<T>(method, path, requestOptions)).body;
   const permissions = new PermissionStore(request, {
     digest: descriptor.permissionDigestRoute,
     domains: descriptor.userDomainsRoute,
@@ -209,6 +247,7 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
     baseUrl,
     permissions,
     request,
+    requestResponse,
     batch: (operations) => batch(request, descriptor, operations),
     can: (permission, target, domain) => {
       const scope =
@@ -282,18 +321,36 @@ function definedFields(permissions: PermissionStore, scope: PermissionScope): re
   return fields.length > 0 ? fields : undefined;
 }
 
-function createRequester(baseUrl: string, transport: Transport, onError?: (error: ApiError) => void): Requester {
-  return async <T>(method: HttpMethod, path: string, options?: RequestOptions): Promise<T> => {
+function createRequester(
+  baseUrl: string,
+  transport: Transport,
+  onError?: (error: ApiError) => void,
+): ResponseRequester {
+  return async <T>(method: HttpMethod, path: string, options?: RequestOptions): Promise<ClientResponse<T>> => {
     const query = options?.query?.toString();
-    const url = `${baseUrl}/${path}${query ? `?${query}` : ''}`;
+    const url = options?.absolute ? resolveAbsolute(baseUrl, path) : `${baseUrl}/${path}${query ? `?${query}` : ''}`;
     const response = await transport({ method, url, body: options?.body, headers: options?.headers });
     if (response.status >= 400) {
       const error = new ApiError(method, url, response.status, response.body);
       onError?.(error);
       throw error;
     }
-    return response.body as T;
+    return { body: response.body as T, headers: response.headers ?? {} };
   };
+}
+
+/**
+ * Resolves a URL reference the server issued. The server writes path-absolute
+ * references carrying the API prefix, so under a baseUrl with an origin they are
+ * joined to that origin; a same-origin baseUrl passes them through, and a complete
+ * URL is used as given.
+ */
+export function resolveAbsolute(baseUrl: string, reference: string): string {
+  if (/^https?:\/\//i.test(reference)) {
+    return reference;
+  }
+  const origin = /^https?:\/\/[^/]+/i.exec(baseUrl);
+  return origin && reference.startsWith('/') ? origin[0] + reference : reference;
 }
 
 async function batch(request: Requester, descriptor: ApiDescriptor, operations: Operation[]): Promise<BatchResult> {
@@ -423,6 +480,27 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     list: (async (query?: ListQuery<Row>) =>
       (await client.request<Row[] | null>('GET', route, { query: listSearchParams(query) })) ??
       []) as Listable<Row>['list'],
+    page: ((query?: ListQuery<Row>) =>
+      pageOf<Row>(client, client.requestResponse('GET', route, { query: listSearchParams(query) }))) as Listable<
+      Row
+    >['page'],
+    all: (async (query?: ListQuery<Row>) => {
+      if (descriptor.page?.max === undefined) {
+        return handle.list({ ...query, limit: 'all' } as ListQuery<Row>);
+      }
+      // A walk needs an order worth walking: the query's sort, or the primary key.
+      const sort: Sort<Row> | Sort<Row>[] =
+        query?.sort ?? descriptor.keys.map((key) => ({ field: key as keyof Row & string, direction: 'asc' as const }));
+      const rows: Row[] = [];
+      let page = await handle.page({ ...query, sort, count: false } as ListQuery<Row>);
+      for (;;) {
+        rows.push(...page.rows);
+        if (!page.next) {
+          return rows;
+        }
+        page = await page.next();
+      }
+    }) as Listable<Row>['all'],
     read: (async (key: Key, options?: ReadOptions<Row>) =>
       client.request<Row>('GET', `${route}${keySegments(key)}`, { query: readSearchParams(options) })) as Readable<
       Row,
@@ -441,6 +519,22 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     ops,
   };
   return handle;
+}
+
+/** Reads one list response into a Page, with `next` and `prev` following the Link relations as issued. */
+async function pageOf<Row>(client: ClientBase, response: Promise<ClientResponse<Row[] | null>>): Promise<Page<Row>> {
+  const { body, headers } = await response;
+  const relations = parseLinkHeader(headers[LinkHeader]);
+  const total = headers[TotalCountHeader];
+  const follow = (reference: string) => () =>
+    pageOf<Row>(client, client.requestResponse<Row[] | null>('GET', reference, { absolute: true }));
+  return {
+    rows: body ?? [],
+    total: total === undefined ? undefined : Number(total),
+    more: headers[PageMoreHeader] === 'true',
+    next: relations['next'] ? follow(relations['next']) : undefined,
+    prev: relations['prev'] ? follow(relations['prev']) : undefined,
+  };
 }
 
 function createMethodHandle<Body, Result = void>(
