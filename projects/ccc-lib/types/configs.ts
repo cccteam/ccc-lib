@@ -205,8 +205,17 @@ export const fieldSortDefaults = {
 } satisfies FieldSort;
 
 export interface EnumeratedConfigOptions {
-  // primaryResource comes from the metadata
-  overrideResource?: Resource;
+  /* The resource to pull options from, instead of the enumeratedResource in the field's metadata.
+   *
+   * Setting this also makes the field render as an enumerated picker even when its metadata says
+   * otherwise, which is how a field with no foreign key of its own (an ID held in a plain string
+   * column, say) gets a picker.
+   *
+   * Pass a function to choose the resource from the record being edited. The argument holds the
+   * current form values and can be empty during resource creation, in which case return '' to
+   * leave the field a plain input until the values it depends on are filled in.
+   */
+  overrideResource?: Resource | ((resource: any) => Resource);
   /* A function to filter the list of enumerated options.
    * The `parentResource` argument contains the data of the resource that this enumerated field is part of.
    * It will be an object with the current form values, which can be empty during resource creation.
@@ -232,11 +241,15 @@ export interface EnumeratedConfigOptions {
   listConcatFn?: ConcatFn;
   viewDetails?: boolean;
   searchable?: boolean;
+  /* How many options to fetch. Left unset the API applies its own default of 50, which silently
+   * hides the rest, so set this when the resource can hold more options than that.
+   */
+  limit?: number;
 }
 
 type FilterType = 'parentResource' | 'rootResource';
 export interface EnumeratedConfig {
-  overrideResource: Resource;
+  overrideResource: Resource | ((resource: any) => Resource);
   filter: (resource: any) => string;
   disableCacheForFilterPii: boolean;
   filterType: FilterType;
@@ -247,6 +260,7 @@ export interface EnumeratedConfig {
   listConcatFn: ConcatFn;
   viewDetails: boolean;
   searchable: boolean;
+  limit?: number;
 }
 export function enumeratedConfig(config: EnumeratedConfigOptions): EnumeratedConfig {
   return {
@@ -266,6 +280,7 @@ export const enumeratedConfigDefaults = {
   listConcatFn: 'hyphen-concat' as ConcatFn,
   viewDetails: false,
   searchable: false,
+  limit: undefined as number | undefined,
 };
 
 export type FieldDefault = ForeignKeyDefault | StaticDefault | null;

@@ -110,6 +110,25 @@ export function isUUID(str: string): boolean {
   return uuidRegex.test(str);
 }
 
+/**
+ * Reports whether every character of needle appears in haystack in the same order, though not
+ * necessarily together. This is the match behind type-ahead filtering: "getsep" matches
+ * "Get Readi September". Both arguments must already be in the same case.
+ */
+export function isSubsequence(needle: string, haystack: string): boolean {
+  if (!needle) return true;
+
+  let index = 0;
+  for (const char of haystack) {
+    if (char === needle[index]) {
+      index++;
+      if (index === needle.length) return true;
+    }
+  }
+
+  return false;
+}
+
 export function metadataTypeCoercion(record: RecordData, meta: ResourceMeta): RecordData;
 export function metadataTypeCoercion(record: RPCRecordData, meta: MethodMeta): RPCRecordData;
 export function metadataTypeCoercion(

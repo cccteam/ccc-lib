@@ -160,7 +160,10 @@ export class ResourceLayoutComponent implements OnInit {
         validatorsIsFunction = true;
       }
 
-      return shouldRenderIsFunction || isComputedField || validatorsIsFunction;
+      // An enumerated field can pick its options resource from the other field values.
+      const overrideResourceIsFunction = typeof castConfig.enumeratedConfig?.overrideResource === 'function';
+
+      return shouldRenderIsFunction || isComputedField || validatorsIsFunction || overrideResourceIsFunction;
     });
 
     if (!form || layoutNestingDepth > 1) {

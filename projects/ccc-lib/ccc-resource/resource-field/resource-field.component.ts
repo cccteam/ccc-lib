@@ -70,6 +70,19 @@ export class ResourceFieldComponent {
     return this.editMode();
   });
 
+  /**
+   * Which field component renders this field. An enumeratedConfig.overrideResource forces the
+   * enumerated picker, which is how a field whose metadata carries no enumeratedResource gets
+   * one: an id held in a plain string column and looked up from another resource.
+   */
+  displayType: Signal<ValidDisplayTypes> = computed(() => {
+    if (this.fieldConfig().enumeratedConfig?.overrideResource) {
+      return 'enumerated';
+    }
+
+    return this.fieldMeta().displayType as ValidDisplayTypes;
+  });
+
   showField = computed(() => {
     const shouldRender = this.fieldConfig().shouldRender;
     const conditionallyNull = this.fieldConfig().nullIfConditionallyHidden;

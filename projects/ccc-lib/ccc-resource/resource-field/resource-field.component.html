@@ -2,7 +2,7 @@
   @if (showEmptyField()) {
     <ccc-empty-readonly-field [label]="fieldConfig().label"></ccc-empty-readonly-field>
   } @else {
-    @switch (fieldMeta().displayType) {
+    @switch (displayType()) {
       @case ('date') {
         <ccc-date-field
           [form]="form()"
@@ -55,6 +55,7 @@
       @case ('enumerated') {
         <ccc-enumerated-field
           [form]="form()"
+          [formDataState]="formDataState()"
           [fieldConfig]="fieldConfig()"
           [editMode]="mode()"
           [fieldClass]="fieldClass()"
