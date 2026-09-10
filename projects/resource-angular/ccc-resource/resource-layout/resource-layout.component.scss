@@ -8,6 +8,16 @@
   padding-bottom: 4px;
 }
 
+// The section box the label is anchored to. It is this component's own element, so
+// its positioning lives here and never depends on the application's global styles.
+.resource-layout-container {
+  border: 1px solid #8e8e8e;
+  border-radius: 5px;
+  position: relative;
+  margin-bottom: 20px;
+  padding-top: 10px;
+}
+
 .label {
   position: absolute;
   top: -15px;

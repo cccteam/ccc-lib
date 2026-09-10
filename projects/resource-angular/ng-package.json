@@ -4,5 +4,6 @@
   "lib": {
     "entryFile": "index.ts"
   },
-  "allowedNonPeerDependencies": ["date-fns", "date-fns-tz"]
+  "allowedNonPeerDependencies": ["date-fns", "date-fns-tz"],
+  "assets": ["styles/**/*.scss"]
 }

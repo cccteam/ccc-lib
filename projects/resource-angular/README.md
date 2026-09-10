@@ -18,6 +18,14 @@ npm install @cccteam/resource @cccteam/resource-angular
 
 `@cccteam/resource` is a peer dependency: the application installs it once and both the generated client and this library resolve the same copy.
 
+Then import the library's stylesheet once, from the application's global styles (`src/styles.scss`):
+
+```scss
+@use '@cccteam/resource-angular/styles';
+```
+
+The form and list components request its classes by name — the twelve-column field grid, the read-only and edit-mode treatments, the sticky list header — and expose CSS variables (`--layout-label-background-color`, `--default-blue`, …) the application overrides to theme them. Without the import, fields lose their grid and section labels lose their styling.
+
 ## Core Concepts
 
 The central concept of the library is the `resourceConfig`. This configuration object defines the structure and behavior of a page or a part of a page. It specifies which components to render, how they are connected, and how they interact with data.
