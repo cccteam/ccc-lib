@@ -20,6 +20,12 @@ export type ValidDisplayTypes =
 
 export type ValidRPCTypes = ValidDisplayTypes | `${Exclude<ValidDisplayTypes, 'string[]'>}[]`;
 
+/** One value of a fixed enumeration: the stored id and the description shown for it. */
+export interface EnumerationOption {
+  id: string;
+  display: string;
+}
+
 export interface RPCFieldMeta {
   fieldName: string;
   displayType: ValidRPCTypes;
@@ -41,7 +47,16 @@ export interface FieldMeta {
   required: boolean;
   primaryKey?: { ordinalPosition: number };
   displayType: ValidDisplayTypes;
+  /** The resource whose rows a picker for this key lists; absent when the values are fixed (see enumeration). */
   enumeratedResource?: Resource;
+  /**
+   * The fixed value set of a key into an @enumerate table, emitted by the generator from
+   * the table's rows at generation time — the same rows the Go constants and the
+   * TypeScript enum come from. A picker renders these without a request or a List
+   * grant. Present exactly when displayType is 'enumerated' and enumeratedResource is
+   * absent.
+   */
+  enumeration?: EnumerationOption[];
   isIndex: boolean;
   /**
    * The server never accepts this field from clients — it is server-owned

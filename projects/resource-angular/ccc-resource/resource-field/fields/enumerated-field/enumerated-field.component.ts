@@ -10,7 +10,14 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { defaultEmptyFieldValue, EnumeratedConfig, FieldElement, Resource, RootConfig } from '@cccteam/resource-angular/types';
+import {
+  defaultEmptyFieldValue,
+  EnumeratedConfig,
+  EnumerationOption,
+  FieldElement,
+  Resource,
+  RootConfig,
+} from '@cccteam/resource-angular/types';
 import { concatFunctions, hyphenConcat } from '../../../concat-fns';
 import { BaseInputComponent } from '../../base-field.directive';
 
@@ -40,7 +47,20 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
 
   query = signal('');
 
+  /**
+   * The fixed value set the metadata carries for a key into an @enumerate table. When
+   * present the picker renders from it and never lists a resource: the values are the
+   * program's constants, so there is nothing to fetch and no List grant to hold.
+   */
+  enumeration = computed((): EnumerationOption[] | undefined => {
+    const meta = this.fieldMeta();
+    return meta && 'enumeration' in meta ? meta.enumeration : undefined;
+  });
+
   resource = computed(() => {
+    if (this.enumeration()) {
+      return undefined;
+    }
     if (this.fieldConfig()?.enumeratedConfig?.overrideResource) {
       return this.fieldConfig()?.enumeratedConfig?.overrideResource;
     }
@@ -53,8 +73,8 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
   });
 
   route = computed(() => {
-    const resource = this.fieldMeta()?.enumeratedResource;
-    return this.resourceMeta(resource as Resource)?.route;
+    const resource = this.resource();
+    return resource ? this.resourceMeta(resource)?.route : '';
   });
 
   viewDetails = computed(() => {
@@ -91,7 +111,7 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
   });
 
   enumResourceRef = computed(() => {
-    if (this.showField() === false) return undefined;
+    if (this.showField() === false || !this.resource()) return undefined;
     const enumeratedMeta = this.resourceMeta(this.resource() as Resource);
     const config = this.fieldConfig().enumeratedConfig;
     const filter =
@@ -115,6 +135,11 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
 
     const form = this.form();
     const fieldConfig = this.fieldConfig();
+    const fixed = this.enumeration();
+    if (fixed && form && fieldConfig) {
+      const value = form.get(fieldConfig.name)?.value as string | null | undefined;
+      return fixed.find((option) => option.id === value)?.display ?? defaultEmptyFieldValue;
+    }
     const singleEnumResourceRef = this.singleEnumResourceRef();
 
     if (form === undefined || fieldConfig === undefined || singleEnumResourceRef === undefined) {
@@ -149,6 +174,10 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
   singleEnumValue = computed(() => {
     if (this.showField() === false) return undefined;
     const currentValue = this.form().get(this.fieldConfig().name)?.value;
+    const fixed = this.enumeration();
+    if (fixed) {
+      return fixed.filter((option) => option.id === currentValue).map(toOption);
+    }
     const record = this.singleEnumResourceRef()?.value();
     if (!currentValue) return [];
     if (!record) return [];
@@ -157,6 +186,10 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
 
   listEnumValues = computed(() => {
     if (this.showField() === false) return [];
+    const fixed = this.enumeration();
+    if (fixed) {
+      return fixed.map(toOption);
+    }
     const currentValue = this.singleEnumValue();
     const records = this.enumResourceRef()?.value();
     if (!records || !records.length) return currentValue || [];
@@ -227,4 +260,9 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     this.form().markAsTouched();
     this.reloadSignal.update((prev) => !prev);
   }
+}
+
+/** A fixed enumeration value in the shape the option list and display helpers share. */
+function toOption(option: EnumerationOption): { id: string; display: string } {
+  return { id: option.id, display: option.display };
 }

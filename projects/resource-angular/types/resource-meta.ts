@@ -4,6 +4,7 @@
  */
 export type {
   CustomTypes,
+  EnumerationOption,
   FieldMeta,
   Meta,
   MethodMeta,
