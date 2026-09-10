@@ -29,7 +29,10 @@ export interface EnumerationOption {
 export interface RPCFieldMeta {
   fieldName: string;
   displayType: ValidRPCTypes;
+  /** The resource whose rows a picker for this field lists; absent when the values are fixed (see enumeration). */
   enumeratedResource?: Resource;
+  /** The fixed values of an enumeration table the field names; the picker renders them without a request. */
+  enumeration?: EnumerationOption[];
 }
 
 export interface MethodMeta {
