@@ -29,6 +29,11 @@ await station.scheduleWorkOrder.execute({ workOrderId: orders[0].id, assignedTea
 
 // Several operations, one transaction.
 await api.batch([station.requisitions.ops.add(values), station.requisitionLines.ops.add(line)]);
+
+// A resource kept off the consolidated handler (consolidated: false) has its own PATCH
+// route; its operations remember it, so the same call reaches the right endpoint.
+// Operations for two different endpoints cannot commit together and are refused.
+await api.batch([api.clients.ops.patch([clientId], { trusted: true })]);
 ```
 
 ## What the types enforce
@@ -57,9 +62,9 @@ primary-key order when the query names none.
 
 ```ts
 let page = await station.missions.page({ sort: { field: 'deadline' }, limit: 25, count: true });
-console.log(page.total);            // every mission the filter admits
+console.log(page.total); // every mission the filter admits
 while (page.next) {
-  page = await page.next();          // the server's own URL, cursor included
+  page = await page.next(); // the server's own URL, cursor included
 }
 
 const everything = await api.suppliers.all({ sort: { field: 'name' } });

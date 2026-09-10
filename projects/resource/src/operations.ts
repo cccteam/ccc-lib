@@ -1,15 +1,32 @@
 export type OperationType = 'add' | 'patch' | 'remove';
 
 /**
+ * The endpoint an operation must be sent to when it is not the consolidated one. A
+ * resource the generator left off the consolidated handler (`consolidated: false` in
+ * the descriptor) keeps a standalone PATCH route, and its operations carry that route
+ * under this symbol so `client.batch` can deliver them there instead. A symbol key
+ * survives an object spread and never reaches the wire: JSON.stringify skips it.
+ */
+export const OperationRoute: unique symbol = Symbol('OperationRoute');
+
+/**
  * One mutation on the consolidated (or per-resource) PATCH endpoint. `path` is the
  * resource route plus key segments, without API prefix: `/work-orders`,
  * `/waystations/ws-alpha/work-order-tasks/{id}/{n}`. Every operation in one request
- * commits in one transaction or not at all.
+ * commits in one transaction or not at all. An operation built by a standalone
+ * resource's handle carries the route it belongs to under `OperationRoute`, and its
+ * path is the key segments alone.
  */
 export interface Operation {
   op: OperationType;
   path: string;
   value?: Record<string, unknown>;
+  [OperationRoute]?: string;
+}
+
+/** The standalone route an operation is bound to; undefined for a consolidated one. */
+export function operationRoute(operation: Operation): string | undefined {
+  return operation[OperationRoute];
 }
 
 /**

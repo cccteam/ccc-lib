@@ -11,7 +11,7 @@ import {
 } from './brands';
 import { ApiDescriptor, MethodDescriptor, ResourceDescriptor, ResourceOperation } from './descriptor';
 import { Capability, PermissionDigestState, WithCapabilities, rowCapabilities } from './digest';
-import { BatchResult, Operation } from './operations';
+import { BatchResult, Operation, OperationRoute, operationRoute } from './operations';
 import { ClientResponse, PermissionStore, Requester, RequestOptions, ResponseRequester } from './permissions';
 import { dryRunHeader } from './transport';
 import {
@@ -246,7 +246,13 @@ export interface ClientBase {
   readonly request: Requester;
   /** Issues a request and resolves with the headers too. */
   readonly requestResponse: ResponseRequester;
-  /** Sends operations to the consolidated endpoint as one transaction. */
+  /**
+   * Sends operations as one transaction. Operations built by consolidated resources go
+   * to the consolidated endpoint; operations built by one standalone resource (a
+   * `consolidated: false` descriptor) go to that resource's own PATCH route, which
+   * offers the same transaction over its own rows. Operations from more than one
+   * endpoint cannot commit together and are refused before any request is sent.
+   */
   batch(operations: Operation[]): Promise<BatchResult>;
   /**
    * Asks the right digest: the descriptor decides whether the target is global or
@@ -395,10 +401,20 @@ export function resolveAbsolute(baseUrl: string, reference: string): string {
 }
 
 async function batch(request: Requester, descriptor: ApiDescriptor, operations: Operation[]): Promise<BatchResult> {
-  if (!descriptor.consolidatedRoute) {
+  const endpoints = new Set(operations.map((operation) => operationRoute(operation) ?? descriptor.consolidatedRoute));
+  if (endpoints.size > 1) {
+    throw new Error(
+      `operations for more than one endpoint (${[...endpoints].map(String).join(', ')}) cannot commit as one transaction: ` +
+        'a standalone resource has its own PATCH route; send its operations in their own batch',
+    );
+  }
+  const [endpoint] = endpoints;
+  if (operations.length === 0 || !endpoint) {
     throw new Error('this API has no consolidated endpoint; mutate resources individually');
   }
-  return (await request<BatchResult | null>('PATCH', descriptor.consolidatedRoute, { body: operations })) ?? {};
+  // The binding is the client's own bookkeeping; the wire carries the operation alone.
+  const body = operations.map(({ op, path, value }) => (value === undefined ? { op, path } : { op, path, value }));
+  return (await request<BatchResult | null>('PATCH', endpoint, { body })) ?? {};
 }
 
 /** The route of a resource or method in a scope: the domain pair is prepended for domain-scoped targets. */
@@ -442,12 +458,15 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     const segments = keySegments(key);
     return descriptor.consolidated ? `/${route}${segments}` : segments || '/';
   };
-  const mutationRoute = descriptor.consolidated ? api.consolidatedRoute : route;
+  // A standalone resource's operations carry their route, so client.batch delivers
+  // them to the resource's own PATCH handler; a consolidated one's carry nothing.
+  const bound = (operation: Operation): Operation =>
+    descriptor.consolidated ? operation : { ...operation, [OperationRoute]: route };
   const mutate = async (operation: Operation): Promise<BatchResult> => {
-    if (!mutationRoute) {
+    if (descriptor.consolidated && !api.consolidatedRoute) {
       throw new Error(`${descriptor.resource} is consolidated but the API declares no consolidated route`);
     }
-    return (await client.request<BatchResult | null>('PATCH', mutationRoute, { body: [operation] })) ?? {};
+    return client.batch([operation]);
   };
 
   const ops = {
@@ -467,10 +486,10 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
           `${descriptor.resource}: a create must supply every key field (${descriptor.keys.join(', ')}) or none`,
         );
       }
-      return { op: 'add', path: path(key), value: body };
+      return bound({ op: 'add', path: path(key), value: body });
     },
-    patch: (key: Key, value: Record<string, unknown>): Operation => ({ op: 'patch', path: path(key), value }),
-    remove: (key: Key): Operation => ({ op: 'remove', path: path(key) }),
+    patch: (key: Key, value: Record<string, unknown>): Operation => bound({ op: 'patch', path: path(key), value }),
+    remove: (key: Key): Operation => bound({ op: 'remove', path: path(key) }),
   };
 
   const handle: AnyResourceHandle<Row, Key> = {
@@ -596,7 +615,12 @@ async function pageOf<Row>(
   const relations = parseLinkHeader(headers[LinkHeader]);
   const total = headers[TotalCountHeader];
   const follow = (reference: string) => () =>
-    pageOf<Row>(client, method, body, client.requestResponse<Row[] | null>(method, reference, { absolute: true, body }));
+    pageOf<Row>(
+      client,
+      method,
+      body,
+      client.requestResponse<Row[] | null>(method, reference, { absolute: true, body }),
+    );
   return {
     rows: rows ?? [],
     total: total === undefined ? undefined : Number(total),
