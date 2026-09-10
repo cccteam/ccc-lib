@@ -210,9 +210,13 @@ export const fieldSortDefaults = {
   direction: 'asc' as 'asc' | 'desc',
 } satisfies FieldSort;
 
+/**
+ * How an enumerated field presents the rows of the resource its metadata names. Which
+ * resource a picker lists is the generator's statement alone (a field-scope @enumerate,
+ * or the schema's foreign key); the configuration narrows those rows with `filter`,
+ * orders them with `sorts`, and chooses the columns and concatenation shown.
+ */
 export interface EnumeratedConfigOptions {
-  // primaryResource comes from the metadata
-  overrideResource?: Resource;
   /* A function to filter the list of enumerated options.
    * The `parentResource` argument contains the data of the resource that this enumerated field is part of.
    * It will be an object with the current form values, which can be empty during resource creation.
@@ -242,7 +246,6 @@ export interface EnumeratedConfigOptions {
 
 type FilterType = 'parentResource' | 'rootResource';
 export interface EnumeratedConfig {
-  overrideResource: Resource;
   filter: (resource: any) => string;
   disableCacheForFilterPii: boolean;
   filterType: FilterType;
@@ -261,7 +264,6 @@ export function enumeratedConfig(config: EnumeratedConfigOptions): EnumeratedCon
   } satisfies EnumeratedConfig;
 }
 export const enumeratedConfigDefaults = {
-  overrideResource: '' as Resource,
   filter: (): string => '',
   disableCacheForFilterPii: false,
   filterType: 'parentResource' as FilterType,

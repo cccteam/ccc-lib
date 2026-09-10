@@ -1,4 +1,4 @@
-import { InjectionToken } from '@angular/core';
+import { InjectionToken, signal, Signal } from '@angular/core';
 import { Domain, Permission, Resource } from './permissions';
 import { MethodMeta, ResourceMeta } from './resource-meta';
 
@@ -53,6 +53,19 @@ export const AVAILABLE_PERMISSIONS = new InjectionToken<{
 }>('AVAILABLE_PERMISSIONS');
 export const AVAILABLE_DOMAINS = new InjectionToken<Record<string, Domain>[]>('AVAILABLE_DOMAINS', {
   factory: () => [],
+});
+
+/**
+ * The selected tenant for the library's pages: a signal the application provides from
+ * its tenant picker. Every request the store makes for a domain-scoped resource is
+ * bound to it, and a permission question about a domain-scoped target whose scope
+ * names no domain is asked in its digest. Undefined means no tenant is selected: a
+ * domain-scoped request is refused by the client before it is sent, and a domain-scoped
+ * permission question answers false.
+ * @defaultValue a signal holding undefined
+ */
+export const RESOURCE_DOMAIN = new InjectionToken<Signal<Domain | undefined>>('RESOURCE_DOMAIN', {
+  factory: () => signal<Domain | undefined>(undefined),
 });
 
 /**

@@ -10,6 +10,7 @@ import {
   METHOD_META,
   RecordData,
   Resource,
+  RESOURCE_DOMAIN,
   ResourceMeta,
   rowCapabilities,
   RPCConfig,
@@ -38,6 +39,8 @@ export class ResourceStore {
   router = inject(Router);
   injector = inject(Injector);
   methodMeta = inject(METHOD_META);
+  /** The selected tenant, which every request for a domain-scoped resource is bound to. */
+  domain = inject(RESOURCE_DOMAIN);
 
   private resourceListRef = signal<ResourceRef<RecordData[]> | undefined>(undefined);
   listData = computed(() => {
@@ -154,18 +157,22 @@ export class ResourceStore {
     if (!descriptor) {
       throw new Error(`${name} is not in the generated API descriptor`);
     }
-    return this.client.define(descriptor);
+    return this.defineScoped(descriptor);
   }
 
   /**
    * The client handle for a resource the configs address by route: the generated
-   * descriptor's when the route is one of its resources, otherwise a read-only handle
-   * over the route alone (an override route, or a resource registered by hand), keyed
-   * by `id`. Every read the store makes goes through the client, so one transport,
-   * one paging contract, and one error shape serve the whole library.
+   * descriptor's when the route is one of its resources — as the descriptor spells it,
+   * or as the resource metadata spells a domain-scoped one, with the tenant parameter
+   * in braces — otherwise a read-only handle over the route alone (an override route,
+   * or a resource registered by hand), keyed by `id`. Every read the store makes goes
+   * through the client, so one transport, one paging contract, and one error shape
+   * serve the whole library.
    */
   private handleFor(route: string): AnyResourceHandle {
-    const known = Object.values(this.client.descriptor.resources).find((r) => r.route === route);
+    const known = Object.values(this.client.descriptor.resources).find(
+      (r) => r.route === route || this.metadataRoute(r) === route,
+    );
     const descriptor: ResourceDescriptor = known ?? {
       resource: route as ClientResource,
       property: route,
@@ -175,7 +182,29 @@ export class ResourceStore {
       keys: ['id'],
       operations: ['list', 'read'],
     };
-    return this.client.define(descriptor);
+    return this.defineScoped(descriptor);
+  }
+
+  /**
+   * The route as the generated resource metadata carries it: a domain-scoped resource's
+   * is prefixed with the domain pair, the tenant parameter in braces
+   * (`sectors/{sectorID}/missions`), which the client fills from the bound tenant.
+   */
+  private metadataRoute(descriptor: ResourceDescriptor): string | undefined {
+    const domainRoute = this.client.descriptor.domainRoute;
+    if (descriptor.scope !== 'domain' || !domainRoute) {
+      return undefined;
+    }
+    return `${domainRoute.segment}/{${domainRoute.param}}/${descriptor.route}`;
+  }
+
+  /**
+   * A handle bound to the selected tenant when the resource is domain-scoped. The client
+   * refuses to build a domain-scoped handle with no tenant, so a page over such a
+   * resource asks for nothing until one is selected.
+   */
+  private defineScoped(descriptor: ResourceDescriptor): AnyResourceHandle {
+    return this.client.define(descriptor, descriptor.scope === 'domain' ? this.domain() : undefined);
   }
 
   /**
@@ -202,6 +231,7 @@ export class ResourceStore {
           params: () => ({
             route: route,
             uuid: uuid,
+            domain: this.domain(),
           }),
           stream: ({ params }) => {
             if (!params.route() || !params.uuid() || params.uuid() === 'undefined') return of({} as RecordData);
@@ -235,6 +265,7 @@ export class ResourceStore {
           columns: columns(),
           sorts: sorts(),
           limit: limit(),
+          domain: this.domain(),
         }),
         stream: ({ params }) => {
           if (!params.route) return of([] as RecordData[]);
@@ -271,6 +302,7 @@ export class ResourceStore {
           keyField: keyField(),
           keys: keys(),
           columns: columns(),
+          domain: this.domain(),
         }),
         stream: ({ params }) => {
           if (!params.route || !params.keyField || params.keys.length === 0) {

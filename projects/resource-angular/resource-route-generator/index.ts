@@ -15,12 +15,15 @@ import {
 /**
  * Builds the routes for a config-driven resource and registers its navigation item.
  *
- * The routes are guarded by the resource's List permission (global scope — config-driven
- * resources are global), answered from the permission digest by the AuthorizationGuard,
- * and the navigation item carries the same scope so a `cccHasPermission`-gated menu hides
- * what the user cannot open. The row route (`:uuid`) is guarded on Read as well, since a
- * role may list a resource without reading its rows. A config may set
- * `nav.navItem.permission` to gate on something else.
+ * The routes are guarded by the resource's List permission, answered from the permission
+ * digest by the AuthorizationGuard, and the navigation item carries the same scope so a
+ * `cccHasPermission`-gated menu hides what the user cannot open. The scope names no
+ * domain: a global resource is asked in the global digest, and a domain-scoped one in
+ * the selected tenant's (RESOURCE_DOMAIN), which AuthService settles. The row route
+ * (`:uuid`) is guarded on Read as well, since a role may list a resource without reading
+ * its rows. A config may set `nav.navItem.permission` to gate on something else. A
+ * domain-scoped resource's metadata route carries the tenant parameter in braces, so
+ * such a page sets `routeData.route` to the path it should live at.
  */
 export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Resource) => ResourceMeta): Route => {
   const resource = config.parentConfig.primaryResource as Resource;

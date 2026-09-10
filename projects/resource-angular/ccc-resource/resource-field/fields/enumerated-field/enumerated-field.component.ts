@@ -20,7 +20,16 @@ import {
 } from '@cccteam/resource-angular/types';
 import { concatFunctions, hyphenConcat } from '../../../concat-fns';
 import { BaseInputComponent } from '../../base-field.directive';
+import { displayFromOptions, matchOptions, optionColumns, PickerOption } from './enumerated-options';
 
+/**
+ * The picker for a field that holds another resource's identifier. Which resource it
+ * lists is the generated metadata's statement alone: `enumeratedResource` names the
+ * resource (a field-scope @enumerate, or the schema's foreign key), or `enumeration`
+ * carries a fixed value set the picker renders with no request. The configuration
+ * narrows and presents those rows — `filter`, `sorts`, the display columns — and never
+ * chooses another resource.
+ */
 @Component({
   selector: 'ccc-enumerated-field',
   imports: [
@@ -48,21 +57,19 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
   query = signal('');
 
   /**
-   * The fixed value set the metadata carries for a key into an @enumerate table. When
-   * present the picker renders from it and never lists a resource: the values are the
-   * program's constants, so there is nothing to fetch and no List grant to hold.
+   * The fixed value set the metadata carries for a field naming an @enumerate table.
+   * When present the picker renders from it and never lists a resource: the values are
+   * the program's constants, so there is nothing to fetch and no List grant to hold.
    */
   enumeration = computed((): EnumerationOption[] | undefined => {
     const meta = this.fieldMeta();
     return meta && 'enumeration' in meta ? meta.enumeration : undefined;
   });
 
+  /** The resource whose rows the picker lists, as the metadata names it; none for a fixed enumeration. */
   resource = computed(() => {
     if (this.enumeration()) {
       return undefined;
-    }
-    if (this.fieldConfig()?.enumeratedConfig?.overrideResource) {
-      return this.fieldConfig()?.enumeratedConfig?.overrideResource;
     }
     return this.fieldMeta()?.enumeratedResource as Resource;
   });
@@ -77,6 +84,16 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     return resource ? this.resourceMeta(resource)?.route : '';
   });
 
+  /**
+   * True when the listed resource has no read handler, so a single record cannot be
+   * fetched by id — a computed catalog served from Go, say. The current value's display
+   * then resolves from the option list instead.
+   */
+  private readDisabled = computed(() => {
+    const resource = this.resource();
+    return resource ? this.resourceMeta(resource)?.readDisabled === true : false;
+  });
+
   viewDetails = computed(() => {
     return this.editMode() === 'view' && this.fieldConfig().enumeratedConfig.viewDetails === true;
   });
@@ -84,6 +101,9 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
   sorts = computed(() => {
     return this.fieldConfig().enumeratedConfig.sorts;
   });
+
+  /** The columns the option list asks for: the id plus whatever the display concatenates. */
+  private columns = computed(() => optionColumns(this.fieldConfig().enumeratedConfig));
 
   singleEnumResourceRef = computed(() => {
     this.editMode();
@@ -97,8 +117,8 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     this.reloadSignal();
     const fieldValue = this.form().get(this.fieldConfig().name)?.value;
 
-    if (fieldValue && route && resource) {
-      return untracked(() => this.store.resourceView(this.route, signal(fieldValue)));
+    if (fieldValue && route && resource && !this.readDisabled()) {
+      return untracked(() => this.store.resourceView(signal(route), signal(fieldValue)));
     }
     return undefined;
   });
@@ -121,10 +141,17 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     return this.store.resourceList(
       signal(enumeratedMeta.route),
       signal(filter),
-      signal([]),
+      this.columns,
       signal(config.disableCacheForFilterPii),
       this.sorts,
     );
+  });
+
+  /** Every option the listed resource answered, in the mode's display. */
+  private allEnumOptions = computed((): PickerOption[] => {
+    const records = this.enumResourceRef()?.value();
+    if (!records || !records.length) return [];
+    return records.map((record) => this.toEnumerated(record as Record<string, string>, this.fieldConfig()));
   });
 
   singleEnumDisplayText = computed(() => {
@@ -135,14 +162,21 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
 
     const form = this.form();
     const fieldConfig = this.fieldConfig();
+    if (form === undefined || fieldConfig === undefined) {
+      return defaultEmptyFieldValue;
+    }
+    const value = form.get(fieldConfig.name)?.value as string | null | undefined;
     const fixed = this.enumeration();
-    if (fixed && form && fieldConfig) {
-      const value = form.get(fieldConfig.name)?.value as string | null | undefined;
+    if (fixed) {
       return fixed.find((option) => option.id === value)?.display ?? defaultEmptyFieldValue;
     }
+    // With no read handler to fetch the record by id, the display comes from the
+    // option list; a value the list does not hold shows as itself.
+    if (this.readDisabled()) {
+      return value ? displayFromOptions(this.allEnumOptions(), value).display : defaultEmptyFieldValue;
+    }
     const singleEnumResourceRef = this.singleEnumResourceRef();
-
-    if (form === undefined || fieldConfig === undefined || singleEnumResourceRef === undefined) {
+    if (singleEnumResourceRef === undefined) {
       return defaultEmptyFieldValue;
     }
 
@@ -171,39 +205,39 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     return control.hasValidator(Validators.required);
   });
 
-  singleEnumValue = computed(() => {
+  singleEnumValue = computed((): PickerOption[] | undefined => {
     if (this.showField() === false) return undefined;
     const currentValue = this.form().get(this.fieldConfig().name)?.value;
     const fixed = this.enumeration();
     if (fixed) {
       return fixed.filter((option) => option.id === currentValue).map(toOption);
     }
-    const record = this.singleEnumResourceRef()?.value();
     if (!currentValue) return [];
+    if (this.readDisabled()) {
+      return [displayFromOptions(this.allEnumOptions(), String(currentValue))];
+    }
+    const record = this.singleEnumResourceRef()?.value();
     if (!record) return [];
     return [this.toEnumerated(record as Record<string, string>, this.fieldConfig())];
   });
 
-  listEnumValues = computed(() => {
+  listEnumValues = computed((): PickerOption[] => {
     if (this.showField() === false) return [];
     const fixed = this.enumeration();
     if (fixed) {
       return fixed.map(toOption);
     }
-    const currentValue = this.singleEnumValue();
-    const records = this.enumResourceRef()?.value();
-    if (!records || !records.length) return currentValue || [];
-    return records.map((record) => this.toEnumerated(record as Record<string, string>, this.fieldConfig()));
+    const options = this.allEnumOptions();
+    if (!options.length) return this.singleEnumValue() || [];
+    return options;
   });
 
-  // The searchable autocomplete narrows the loaded options client-side by their display
-  // text; the server has no substring search.
+  // The searchable autocomplete narrows the loaded options client-side, by display text
+  // or by id (so an identifier can be pasted); the server has no substring search.
   availableEnumOptions = computed(() => {
     const editMode = this.editMode() === 'edit';
-    const query = this.query().trim().toLowerCase();
     const loaded = editMode ? this.listEnumValues() : this.singleEnumValue();
-    const options =
-      editMode && query !== '' ? loaded?.filter((option) => option.display.toLowerCase().includes(query)) : loaded;
+    const options = editMode && loaded ? matchOptions(loaded, this.query()) : loaded;
     const meta = this.fieldMeta();
     const metaRequired = 'required' in meta && meta.required;
 
@@ -214,7 +248,7 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     return options;
   });
 
-  toEnumerated(resource: Record<string, string>, element: FieldElement): { id: string; display: string } {
+  toEnumerated(resource: Record<string, string>, element: FieldElement): PickerOption {
     const enumeratedConfig = element.enumeratedConfig as EnumeratedConfig;
     const displayFields =
       this.editMode() === 'edit' && enumeratedConfig.listDisplay.length > 0
@@ -238,9 +272,8 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
 
     if (typeof value === 'string') {
       const option = this.availableEnumOptions()?.find((o) => o.id === value);
-      if (!option) return '';
-
-      return option['display'] || (option.id !== null ? this.formatDisplay(option) : '');
+      // An id with no matching option displays as itself rather than blanking the field.
+      return option ? option.display : value;
     }
 
     return value['display'] || this.formatDisplay(value);
@@ -263,6 +296,6 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
 }
 
 /** A fixed enumeration value in the shape the option list and display helpers share. */
-function toOption(option: EnumerationOption): { id: string; display: string } {
+function toOption(option: EnumerationOption): PickerOption {
   return { id: option.id, display: option.display };
 }

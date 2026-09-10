@@ -6,10 +6,13 @@ import {
   Domain,
   FRONTEND_LOGIN_PATH,
   LOGOUT_ACTION,
+  Method,
   PERMISSION_DIGEST_PATH,
   PermissionDigest,
   PermissionDigestState,
   PermissionScope,
+  Resource,
+  RESOURCE_DOMAIN,
   SESSION_PATH,
   SessionInfo,
   USER_DOMAINS_PATH,
@@ -39,6 +42,8 @@ export class AuthService {
   private loginUrl = inject(FRONTEND_LOGIN_PATH);
   private sessionUrl = inject(SESSION_PATH);
   private logoutAction = inject(LOGOUT_ACTION);
+  /** The selected tenant, which a domain-scoped question naming no domain is asked in. */
+  private domain = inject(RESOURCE_DOMAIN);
 
   http = inject(HttpClient);
 
@@ -83,7 +88,27 @@ export class AuthService {
 
   /** The digest state for one scope: granted, conditional, or undefined when absent or not loaded. */
   permissionState(scope: PermissionScope): PermissionDigestState | undefined {
-    return permissionState(this.snapshot(), scope);
+    return permissionState(this.snapshot(), this.scoped(scope));
+  }
+
+  /**
+   * The scope with its domain settled. A scope naming a domain is asked as written. One
+   * naming none is asked in the selected tenant (RESOURCE_DOMAIN) when the client's
+   * descriptor places the target in the domain scope, else in the global digest; a
+   * domain-scoped target with no tenant selected stays global-keyed and answers false,
+   * since no domain digest holds it.
+   */
+  private scoped(scope: PermissionScope): PermissionScope {
+    if (scope.domain !== undefined) {
+      return scope;
+    }
+    const { resources, methods } = this.client.descriptor;
+    const kind = resources[scope.resource as Resource]?.scope ?? methods[scope.resource as Method]?.scope;
+    if (kind !== 'domain') {
+      return scope;
+    }
+    const domain = this.domain();
+    return domain ? { ...scope, domain } : scope;
   }
 
   /**
@@ -94,7 +119,7 @@ export class AuthService {
    * it re-evaluate when a digest loads.
    */
   fieldPermissionStates(scope: PermissionScope): Record<string, PermissionDigestState> {
-    return fieldPermissionStates(this.snapshot(), scope);
+    return fieldPermissionStates(this.snapshot(), this.scoped(scope));
   }
 
   /** Whether the digest for the domain (global when omitted) has been loaded. */
@@ -110,7 +135,7 @@ export class AuthService {
     if (!scope) {
       return of(true);
     }
-    return from(this.permissions.ensure(scope).catch(() => false));
+    return from(this.permissions.ensure(this.scoped(scope)).catch(() => false));
   }
 
   /**
