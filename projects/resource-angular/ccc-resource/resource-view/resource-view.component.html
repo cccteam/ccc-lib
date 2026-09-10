@@ -28,6 +28,10 @@
           </form>
           <ng-container *ngTemplateOutlet="footerSlot"></ng-container>
         </div>
+      } @else if (viewErrorMessage()) {
+        <div class="resource-container">
+          <div class="refusal message">{{ viewErrorMessage() }}</div>
+        </div>
       } @else {
         <div class="resource-container empty">
           <div class="resource row"></div>
@@ -55,6 +59,10 @@
             }
           </div>
         </form>
+      </div>
+    } @else if (viewErrorMessage()) {
+      <div class="resource-container base-container-bg">
+        <div class="refusal message">{{ viewErrorMessage() }}</div>
       </div>
     } @else {
       <div class="resource-container">

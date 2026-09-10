@@ -85,7 +85,7 @@
       <tbody #tableBody>
         @if (pagedRows().length === 0) {
           <tr class="no-records-row">
-            <td [attr.colspan]="totalColumnCount()">No records found</td>
+            <td [attr.colspan]="totalColumnCount()">{{ emptyMessage() }}</td>
           </tr>
         }
         @if (enableVirtualScroll() && virtualTopPadding() > 0) {

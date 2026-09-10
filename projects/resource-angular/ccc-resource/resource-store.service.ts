@@ -50,6 +50,14 @@ export class ResourceStore {
   listStatus = computed(() => {
     return this.resourceListRef()?.status();
   });
+  /**
+   * The list request's error when it failed — an ApiError for a server refusal — else
+   * undefined, so a table can show a refusal as a refusal rather than as an empty list.
+   */
+  listError = computed<unknown>(() => {
+    const ref = this.resourceListRef();
+    return ref && ref.status() === 'error' ? ref.error() : undefined;
+  });
 
   private resourceViewRef = signal<ResourceRef<RecordData> | undefined>(undefined);
   viewData = computed(() => {
@@ -61,6 +69,11 @@ export class ResourceStore {
   });
   viewStatus = computed(() => {
     return this.resourceViewRef()?.status();
+  });
+  /** The view request's error when it failed — an ApiError for a server refusal — else undefined. */
+  viewError = computed<unknown>(() => {
+    const ref = this.resourceViewRef();
+    return ref && ref.status() === 'error' ? ref.error() : undefined;
   });
 
   /**

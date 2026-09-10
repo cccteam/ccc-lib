@@ -38,6 +38,7 @@ import {
   ViewConfig,
 } from '@cccteam/resource-angular/types';
 import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
+import { ApiError } from '@cccteam/resource';
 import { tap } from 'rxjs';
 import {
   ActionAccessControlWrapperComponent,
@@ -100,6 +101,22 @@ export class ResourceViewComponent implements OnInit {
   navAfterDelete = input(true);
 
   showCreateForm = model(false);
+  /**
+   * What a view that could not load says in place of its form: the server's own
+   * message when the read was refused or failed. A refusal must never render as an
+   * empty record.
+   */
+  viewErrorMessage = computed<string | undefined>(() => {
+    const error = this.store.viewError();
+    if (error instanceof ApiError && error.status === 403) {
+      return `This record is not available to you: ${error.message}`;
+    }
+    if (error) {
+      return `This record could not be loaded: ${error instanceof Error ? error.message : String(error)}`;
+    }
+    return undefined;
+  });
+
   createConfig = computed(() => {
     if (Object.keys(this.config().createConfig || {}).length > 0) {
       return this.config().createConfig;

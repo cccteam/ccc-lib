@@ -19,17 +19,21 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { AuthService } from '@cccteam/resource-angular/auth-service';
 import { AppGridComponent } from '@cccteam/resource-angular/ccc-grid';
 import {
   ChildResourceConfig,
   ColumnConfig,
   FieldName,
+  ListPermission,
   ListViewConfig,
+  ReadPermission,
   RecordData,
   Resource,
   RESOURCE_META,
   RootConfig,
 } from '@cccteam/resource-angular/types';
+import { ApiError } from '@cccteam/resource';
 import {
   ActionAccessControlWrapperComponent,
   ActionButtonContext,
@@ -43,6 +47,7 @@ import {
 } from '../concat-fns';
 import { applyFormatting, formatDateString } from '../format-fns';
 import { ResourceStore } from '../resource-store.service';
+import { listableColumns } from './listable-columns';
 
 @Component({
   standalone: true,
@@ -71,6 +76,7 @@ export class ResourceListComponent implements OnInit {
   store = inject(ResourceStore);
   injector = inject(Injector);
   activatedRoute = inject(ActivatedRoute);
+  auth = inject(AuthService);
 
   hideCreateButton = input<boolean>(true);
   createMode = output<boolean>();
@@ -174,8 +180,75 @@ export class ResourceListComponent implements OnInit {
     }
     return meta.fields.filter((field) => field.primaryKey !== undefined);
   });
-  rootColumns = computed(() => {
+  /**
+   * The digest's field-level List entries for the page's resource: the columns worth
+   * asking for. A configured column outside them is denied, and a request naming it
+   * refuses the whole list, so it leaves the request and the table alike — the way the
+   * create form leaves out the inputs the digest does not grant. Undefined means the
+   * digest carries no field information for List (denied outright, or a keys-only
+   * resource) and nothing narrows. Conditional entries stay; the server masks their cells.
+   */
+  listableFields = computed<ReadonlySet<string> | undefined>(() => {
+    const resource = this.config().primaryResource;
+    if (!resource) {
+      return undefined;
+    }
+    const fields = Object.keys(this.auth.fieldPermissionStates({ resource, permission: ListPermission }));
+    return fields.length > 0 ? new Set(fields) : undefined;
+  });
+
+  /**
+   * The configured columns the caller may list: every column when nothing narrows,
+   * otherwise those whose fields the digest grants. Key fields are structural, never
+   * grant-bearing, and always pass; a concatenated column passes when its own field and
+   * every field it reads off this resource pass (fields of a referenced resource are
+   * read through that resource's own request).
+   */
+  listColumns = computed<ColumnConfig[]>(() =>
+    listableColumns(
+      this.config().listColumns || [],
+      this.listableFields(),
+      new Set<string>(this.primaryKeys().map((pk) => pk.fieldName)),
+    ),
+  );
+
+  /**
+   * Whether the caller may open a row: the digest's Read answer for the resource the
+   * view shows (granted or conditional). Without it the view column is not drawn, since
+   * the row page would only be refused; the view route carries the same gate.
+   */
+  canView = computed(() => {
     const config = this.config();
+    const resource = (config.viewResource || config.primaryResource) as Resource;
+    return this.auth.hasPermission({ resource, permission: ReadPermission });
+  });
+
+  /** Whether the digest left this page no column to ask for. */
+  noListableColumns = computed(
+    () =>
+      this.listableFields() !== undefined && (this.config().listColumns || []).length > 0 && this.listColumns().length === 0,
+  );
+
+  /**
+   * What the empty table says: the refusal when the digest leaves no column, the server's
+   * own message when the request was refused or failed, otherwise the plain empty-list
+   * text. A refusal must never read as an empty list.
+   */
+  emptyMessage = computed(() => {
+    if (this.noListableColumns()) {
+      return 'Your permissions cover none of the columns on this page.';
+    }
+    const error = this.store.listError();
+    if (error instanceof ApiError && error.status === 403) {
+      return `This list is not available to you: ${error.message}`;
+    }
+    if (error) {
+      return `This list could not be loaded: ${error instanceof Error ? error.message : String(error)}`;
+    }
+    return 'No records found';
+  });
+
+  rootColumns = computed(() => {
     const idCols = [];
     for (const pk of this.primaryKeys()) {
       if (pk.required) {
@@ -186,7 +259,8 @@ export class ResourceListComponent implements OnInit {
         hidden: true,
       });
     }
-    for (const col of config.listColumns) {
+    const listColumns = this.listColumns();
+    for (const col of listColumns) {
       if (!('additionalIds' in col)) continue;
       for (const additionalCol of col.additionalIds) {
         if (additionalCol.resource !== undefined) continue;
@@ -197,7 +271,7 @@ export class ResourceListComponent implements OnInit {
       }
     }
 
-    return [...new Set([...idCols, ...config.listColumns])];
+    return [...new Set([...idCols, ...listColumns])];
   });
   columns = computed(() => {
     const refmap = this.resourceRefMap();
@@ -282,7 +356,7 @@ export class ResourceListComponent implements OnInit {
       }
     }
 
-    if (this.config().showViewButton) {
+    if (this.config().showViewButton && this.canView()) {
       let route = '';
       const isRootList = this.isRootList() === undefined;
 
@@ -413,7 +487,7 @@ export class ResourceListComponent implements OnInit {
     if (this.meta()) {
       this.store.resourceName.set(primaryResource);
       this.store.resourceMeta.set(this.meta());
-      this.store.listColumns.set(this.config().listColumns || []);
+      this.store.listColumns.set(this.listColumns());
       this.store.sorts.set(this.config().sorts || []);
       this.store.limit.set(this.config().limit);
     }
@@ -484,8 +558,15 @@ export class ResourceListComponent implements OnInit {
       effect(() => {
         this.filter();
         this.relatedData();
+        const columns = this.listColumns();
         this.store.filter.set(this.filters());
         this.store.disableCacheForFilterPii.set(this.config().disableCacheForFilterPii);
+        this.store.listColumns.set(columns);
+        if (this.noListableColumns()) {
+          // Nothing the digest grants is on this page: there is nothing to ask for, and
+          // the table says so instead of provoking the refusal it already predicts.
+          return;
+        }
         this.store.buildStoreListData();
       });
     });

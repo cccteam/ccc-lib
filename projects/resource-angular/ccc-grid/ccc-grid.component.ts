@@ -62,6 +62,8 @@ export class AppGridComponent {
   pageSize = input<number | undefined>(undefined);
   selectedRows = output<RecordData[]>();
   loading = input<boolean>(false);
+  /** What the table says when it has no rows: the caller decides whether that is an empty list or a refusal. */
+  emptyMessage = input<string>('No records found');
   enableVirtualScroll = input<boolean>(false);
   virtualScrollConfig = input<VirtualScrollConfig>({});
 
