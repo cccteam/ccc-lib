@@ -72,6 +72,15 @@ export interface FieldMeta {
 export interface ResourceMeta {
   route: string;
   consolidatedRoute?: string;
+  /**
+   * The table resource whose rows this view carries, one to one under the same key: the
+   * struct-scope @rowsOf on a virtual or computed view. The view declares its backing
+   * table, a create goes into the table, and the new row shows up in the view on the
+   * next list because the view's SQL reads that table, so a page listing the view sends
+   * its create, edit, and delete here and opens a row on this resource's page. Absent,
+   * the view is a read-only list.
+   */
+  rowsOf?: Resource;
   listDisabled?: boolean;
   readDisabled?: boolean;
   createDisabled?: boolean;
