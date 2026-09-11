@@ -30,7 +30,7 @@
     *ngComponentOutlet="
       compoundResourceComponent();
       inputs: {
-        uuid: rowData.id,
+        uuid: rowData[expansionKey()],
         navAfterDelete: false,
         deleted: store.reloadListData.bind(store),
         resourceConfig: expansionConfig(),

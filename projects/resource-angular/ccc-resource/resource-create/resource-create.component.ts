@@ -33,6 +33,7 @@ import {
   RESOURCE_META,
   RootConfig,
   ViewConfig,
+  writeResource,
 } from '@cccteam/resource-angular/types';
 import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
 import { tap } from 'rxjs';
@@ -199,9 +200,13 @@ export class ResourceCreateComponent implements OnInit {
   camelCaseToTitlePipe = new CamelCaseToTitlePipe();
 
   ngOnInit(): void {
-    if (this.resourceMeta(this.config().primaryResource as Resource)) {
-      this.store.resourceName.set(this.config().primaryResource as Resource);
-      this.store.resourceMeta.set(this.resourceMeta(this.config().primaryResource as Resource));
+    // The form is built for the resource the create goes into: the listed resource,
+    // or its table when the list is a view declaring one (rowsOf).
+    const primary = this.config().primaryResource as Resource;
+    const resource = writeResource(primary, this.resourceMeta(primary));
+    if (this.resourceMeta(resource)) {
+      this.store.resourceName.set(resource);
+      this.store.resourceMeta.set(this.resourceMeta(resource));
     }
   }
 

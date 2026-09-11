@@ -56,6 +56,8 @@ export interface ActionButtonConfig {
   icon: string;
   action?: (resource: { id: string }) => void;
   viewRoute?: string;
+  /** The row field whose value follows viewRoute as the opened row's key; `id` when unset. */
+  keyField?: FieldName;
   actionType?: ActionType;
   color?: string;
   disabledLabel?: string;
@@ -65,6 +67,7 @@ export interface ActionButtonConfigOptions {
   icon: string;
   action?: (resource: { id: string }) => void;
   viewRoute?: string;
+  keyField?: FieldName;
   actionType?: ActionType;
   color?: string;
   disabledLabel?: string;
@@ -757,12 +760,20 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
   showViewButton?: boolean;
   loadCreatedResource?: boolean;
   collapsible?: boolean;
-  overrideResource?: Resource;
   enableRowExpansion?: boolean;
   rowExpansionConfig?: ChildResourceConfig;
   listColumns: ColumnConfig[];
   relatedConfigs?: ChildResourceConfig[];
-  viewResource?: Resource | string;
+  /**
+   * The field of the primary resource a row opens by. Its target is that field's
+   * `enumeratedResource` in the metadata, the route the target's page, and the key the
+   * row's value in the field; the View column is drawn when the caller may Read the
+   * target. Without it a row opens the write resource — the metadata's `rowsOf` when the
+   * list is a view over a table, else the primary resource — by its single primary key,
+   * and a compound-key resource with no rowRoute draws no View column. A rowRoute naming
+   * a field with no target in the metadata throws when the page is built, naming the field.
+   */
+  rowRoute?: FieldName;
   actionType?: ActionType;
   /* eslint-disable  @typescript-eslint/no-explicit-any */
   filter?: (parentResource: any) => string;
@@ -779,12 +790,11 @@ export interface ListViewConfig extends BaseConfig {
   showViewButton: boolean;
   loadCreatedResource: boolean;
   collapsible: boolean;
-  overrideResource: Resource;
   enableRowExpansion: boolean;
   rowExpansionConfig: ChildResourceConfig;
   listColumns: ColumnConfig[];
   relatedConfigs: ChildResourceConfig[];
-  viewResource: Resource | string;
+  rowRoute?: FieldName;
   actionType: ActionType;
   /* eslint-disable  @typescript-eslint/no-explicit-any */
   filter: (parentResource: any) => string;
@@ -823,7 +833,6 @@ export const listViewConfigDefaults = {
     parentKey: '' as FieldName,
     childKey: '' as FieldName,
   },
-  overrideResource: '' as Resource,
   enableRowExpansion: false,
   rowExpansionConfig: {} as ChildResourceConfig,
   showBackButton: true,
@@ -831,7 +840,6 @@ export const listViewConfigDefaults = {
   disableCacheForFilterPii: false,
   sorts: [] as FieldSort[],
   limit: undefined,
-  viewResource: '' as Resource,
   actionType: 'function' as ActionType,
   rpcConfigs: [],
   shouldRenderActions: {

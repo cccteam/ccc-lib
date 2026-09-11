@@ -18,13 +18,17 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '@cccteam/resource-angular/auth-service';
 import { AppGridComponent } from '@cccteam/resource-angular/ccc-grid';
+import { resourcePageRoute } from '@cccteam/resource-angular/resource-nav';
 import {
   ChildResourceConfig,
   ColumnConfig,
+  DeletePermission,
   FieldName,
+  keyFields,
   ListPermission,
   ListViewConfig,
   ReadPermission,
@@ -32,6 +36,8 @@ import {
   Resource,
   RESOURCE_META,
   RootConfig,
+  rowRouteTarget,
+  writeResource,
 } from '@cccteam/resource-angular/types';
 import { ApiError } from '@cccteam/resource';
 import {
@@ -46,6 +52,7 @@ import {
   spaceHyphenConcatWithoutResource,
 } from '../concat-fns';
 import { applyFormatting, formatDateString } from '../format-fns';
+import { DeleteResourceConfirmationModalComponent } from '../delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
 import { ResourceStore } from '../resource-store.service';
 import { listableColumns } from './listable-columns';
 
@@ -77,6 +84,7 @@ export class ResourceListComponent implements OnInit {
   injector = inject(Injector);
   activatedRoute = inject(ActivatedRoute);
   auth = inject(AuthService);
+  dialog = inject(MatDialog);
 
   hideCreateButton = input<boolean>(true);
   createMode = output<boolean>();
@@ -111,8 +119,8 @@ export class ResourceListComponent implements OnInit {
 
     return {
       actionType: 'create',
-      meta: this.meta(),
-      resource: this.store.resourceName(),
+      meta: this.writeMeta(),
+      resource: this.writeResourceName(),
       shouldRender: (data: RecordData): boolean => showCreate && config.shouldRenderActions.create(data),
       resourceData: this.relatedData() ?? {},
     } satisfies ActionButtonContext;
@@ -168,18 +176,36 @@ export class ResourceListComponent implements OnInit {
     return this.config().createButtonLabel || 'Create';
   });
 
-  meta = computed(() => {
-    const config = this.config();
-    return this.resourceMeta(config.overrideResource || config.primaryResource);
-  });
-  resourceRefMap = signal(new Map<string, ResourceRef<RecordData[]>>());
-  primaryKeys = computed(() => {
-    const meta = this.meta();
-    if (!meta) {
-      return [];
+  /** The listed resource's metadata: the rows, columns, and keys the table shows. */
+  meta = computed(() => this.resourceMeta(this.config().primaryResource));
+  /**
+   * The resource the page's writes go to and whose form it builds: the metadata's
+   * rowsOf when the list is a view declaring its table, else the listed resource.
+   */
+  writeResourceName = computed(() => writeResource(this.config().primaryResource, this.meta()));
+  writeMeta = computed(() => this.resourceMeta(this.writeResourceName()));
+  /**
+   * Where a row opens: the rowRoute field's target, else the write resource by its
+   * single key; undefined when a compound key has no rowRoute. A rowRoute naming a
+   * field with no target in the metadata throws here, naming the field.
+   */
+  rowTarget = computed(() => rowRouteTarget(this.config().primaryResource, this.config().rowRoute, this.resourceMeta, resourcePageRoute));
+  /**
+   * Whether rows are deleted from the list: the write resource's key is compound, so a
+   * row has no page of its own to delete from, and the digest grants Delete on it. A
+   * single-key row is deleted from its page, as before.
+   */
+  deletesFromList = computed(() => {
+    const meta = this.writeMeta();
+    if (!meta || meta.deleteDisabled || keyFields(meta).length < 2) {
+      return false;
     }
-    return meta.fields.filter((field) => field.primaryKey !== undefined);
+    return this.auth.hasPermission({ resource: this.writeResourceName(), permission: DeletePermission });
   });
+  /** The row field an expanded row is opened by: the listed resource's single key. */
+  expansionKey = computed(() => (keyFields(this.meta())[0]?.fieldName ?? 'id') as FieldName);
+  resourceRefMap = signal(new Map<string, ResourceRef<RecordData[]>>());
+  primaryKeys = computed(() => keyFields(this.meta()));
   /**
    * The digest's field-level List entries for the page's resource: the columns worth
    * asking for. A configured column outside them is denied, and a request naming it
@@ -206,21 +232,43 @@ export class ResourceListComponent implements OnInit {
    */
   listColumns = computed<ColumnConfig[]>(() =>
     listableColumns(
-      this.config().listColumns || [],
+      this.configuredColumns(),
       this.listableFields(),
       new Set<string>(this.primaryKeys().map((pk) => pk.fieldName)),
     ),
   );
 
   /**
-   * Whether the caller may open a row: the digest's Read answer for the resource the
-   * view shows (granted or conditional). Without it the view column is not drawn, since
-   * the row page would only be refused; the view route carries the same gate.
+   * The columns the page configures, plus the rowRoute field hidden when the page does
+   * not show it: a row carries the key its route lifts. It passes the digest like any
+   * column, so a rowRoute the caller may not list draws no View column.
+   */
+  configuredColumns = computed<ColumnConfig[]>(() => {
+    const configured = [...(this.config().listColumns || [])];
+    const rowRoute = this.config().rowRoute;
+    if (rowRoute && !configured.some((col) => col.id === rowRoute)) {
+      configured.push({ id: rowRoute, hidden: true });
+    }
+    return configured;
+  });
+
+  /** Whether the rows carry the field their route lifts: no rowRoute, or one the list requests. */
+  rowRouteRequested = computed(() => {
+    const rowRoute = this.config().rowRoute;
+    return !rowRoute || this.listColumns().some((col) => col.id === rowRoute);
+  });
+
+  /**
+   * Whether the caller may open a row: the digest's Read answer for the resource a row
+   * opens (granted or conditional). Without it the view column is not drawn, since the
+   * row page would only be refused; the row route carries the same gate.
    */
   canView = computed(() => {
-    const config = this.config();
-    const resource = (config.viewResource || config.primaryResource) as Resource;
-    return this.auth.hasPermission({ resource, permission: ReadPermission });
+    const target = this.rowTarget();
+    if (!target) {
+      return false;
+    }
+    return this.auth.hasPermission({ resource: target.resource, permission: ReadPermission });
   });
 
   /** Whether the digest left this page no column to ask for. */
@@ -250,8 +298,12 @@ export class ResourceListComponent implements OnInit {
 
   rootColumns = computed(() => {
     const idCols = [];
+    const listColumns = this.listColumns();
+    // Every key field rides along hidden unless the page shows it, so a row carries
+    // the key an operation or a row route lifts.
+    const shown = new Set<string>(listColumns.map((col) => col.id));
     for (const pk of this.primaryKeys()) {
-      if (pk.required) {
+      if (shown.has(pk.fieldName)) {
         continue;
       }
       idCols.push({
@@ -259,7 +311,6 @@ export class ResourceListComponent implements OnInit {
         hidden: true,
       });
     }
-    const listColumns = this.listColumns();
     for (const col of listColumns) {
       if (!('additionalIds' in col)) continue;
       for (const additionalCol of col.additionalIds) {
@@ -356,24 +407,11 @@ export class ResourceListComponent implements OnInit {
       }
     }
 
-    if (this.config().showViewButton && this.canView()) {
-      let route = '';
-      const isRootList = this.isRootList() === undefined;
-
-      if (this.viewRouteFallback() && isRootList) {
-        route = this.viewRouteFallback() || '';
-      } else {
-        let viewResource = this.config().viewResource;
-        if (!viewResource || viewResource === '') {
-          viewResource = this.config().primaryResource;
-        }
-
-        const meta = this.resourceMeta(viewResource as Resource);
-        if (meta !== undefined) {
-          route = meta.route;
-        }
-      }
-
+    const target = this.rowTarget();
+    if (this.config().showViewButton && target && this.rowRouteRequested() && this.canView()) {
+      // The root list's rows open on the page's own row route; any other list's, and a
+      // rowRoute's, on the target's page.
+      const ownPage = this.viewRouteFallback() && this.isRootList() === undefined && !this.config().rowRoute;
       columns.push({
         id: 'view' as FieldName,
         header: 'View',
@@ -381,14 +419,53 @@ export class ResourceListComponent implements OnInit {
         buttonConfig: {
           label: 'View',
           icon: 'arrow_forward',
-          viewRoute: route,
+          viewRoute: ownPage ? this.viewRouteFallback() || '' : target.route,
+          keyField: target.keyField,
           actionType: 'link',
+        },
+      });
+    }
+
+    if (this.deletesFromList()) {
+      columns.push({
+        id: 'delete' as FieldName,
+        header: 'Delete',
+        hideHeader: true,
+        buttonConfig: {
+          label: 'Delete',
+          icon: 'delete',
+          actionType: 'function',
+          action: (row): void => {
+            this.confirmDeleteRow(row as RecordData);
+          },
         },
       });
     }
 
     return columns;
   });
+
+  /** Asks before a row leaves the list, then deletes it through the write resource. */
+  confirmDeleteRow(row: RecordData): void {
+    const dialogRef = this.dialog.open(DeleteResourceConfirmationModalComponent, { delayFocusTrap: false });
+    dialogRef.afterClosed().subscribe((confirmed) => {
+      if (confirmed === true) {
+        this.deleteRow(row);
+      }
+    });
+  }
+
+  /**
+   * Deletes one row through the write resource, lifting the key fields the row carries
+   * under the table's names — the compound key an association view carries whole.
+   */
+  deleteRow(row: RecordData): void {
+    const handle = this.store.handle();
+    const operation = handle.ops.remove(handle.keyOf(row));
+    void this.store.apply([operation], `${this.store.resourceName()} deleted successfully`).then(() => {
+      this.store.reloadListData();
+    });
+  }
 
   reloadListData(): void {
     this.store.reloadListData();
@@ -483,9 +560,9 @@ export class ResourceListComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const primaryResource = this.config().primaryResource;
     if (this.meta()) {
-      this.store.resourceName.set(primaryResource);
+      // The store reads the listed resource and writes the write resource.
+      this.store.resourceName.set(this.writeResourceName());
       this.store.resourceMeta.set(this.meta());
       this.store.listColumns.set(this.listColumns());
       this.store.sorts.set(this.config().sorts || []);

@@ -1,7 +1,7 @@
 import { Route } from '@angular/router';
 import { AuthorizationGuard } from '@cccteam/resource-angular/auth-authorization-guard';
 import { canDeactivateGuard } from '@cccteam/resource-angular/guards';
-import { addNavItem } from '@cccteam/resource-angular/resource-nav';
+import { addNavItem, registerResourcePage } from '@cccteam/resource-angular/resource-nav';
 import {
   ListPermission,
   PermissionScope,
@@ -10,6 +10,7 @@ import {
   ResourceMeta,
   RootConfig,
   RouteResourceData,
+  writeResource,
 } from '@cccteam/resource-angular/types';
 
 /**
@@ -21,9 +22,13 @@ import {
  * domain: a global resource is asked in the global digest, and a domain-scoped one in
  * the selected tenant's (RESOURCE_DOMAIN), which AuthService settles. The row route
  * (`:uuid`) is guarded on Read as well, since a role may list a resource without reading
- * its rows. A config may set `nav.navItem.permission` to gate on something else. A
- * domain-scoped resource's metadata route carries the tenant parameter in braces, so
- * such a page sets `routeData.route` to the path it should live at.
+ * its rows — Read on the resource whose row the page opens: the listed resource, or its
+ * table when the list is a view declaring one (the metadata's `rowsOf`), since a view
+ * lists and never reads. A config may set `nav.navItem.permission` to gate on something
+ * else. A domain-scoped resource's metadata route carries the tenant parameter in
+ * braces, so such a page sets `routeData.route` to the path it should live at. The page
+ * is registered as where the resource's rows open (resourcePageRoute), for the listed
+ * resource and for its table, so another list's row route lands here.
  */
 export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Resource) => ResourceMeta): Route => {
   const resource = config.parentConfig.primaryResource as Resource;
@@ -43,8 +48,13 @@ export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Reso
     }
   }
 
+  const pageRoute = config.routeData.route || meta.route;
+  const rowResource = writeResource(resource, meta);
+  registerResourcePage(resource, pageRoute);
+  registerResourcePage(rowResource, pageRoute);
+
   const data = { config, scope } satisfies RouteResourceData;
-  const viewData = { config, scope: { resource, permission: ReadPermission } } satisfies RouteResourceData;
+  const viewData = { config, scope: { resource: rowResource, permission: ReadPermission } } satisfies RouteResourceData;
 
   if (config.routeData.route) {
     const baseRoute: Route = {

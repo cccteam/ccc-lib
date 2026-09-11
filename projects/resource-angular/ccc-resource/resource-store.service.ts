@@ -5,10 +5,10 @@ import {
   AlertType,
   ColumnConfig,
   CreateNotificationMessage,
-  FieldName,
   FieldSort,
   METHOD_META,
   RecordData,
+  requestedColumns,
   Resource,
   RESOURCE_DOMAIN,
   ResourceMeta,
@@ -112,14 +112,14 @@ export class ResourceStore {
     if (!route || name === '') {
       return;
     }
-    const columnIds = this.listColumns().flatMap((col) => {
-      return [col.id];
-    });
-    const resourceMeta = this.resourceMeta();
-    if (resourceMeta && resourceMeta.fields.some((field) => field.fieldName === 'id')) {
-      columnIds.push('id' as FieldName);
-    }
-    const uniqueColumns = signal([...new Set([...columnIds])]);
+    // The configured columns and every key field the metadata names, so a row carries
+    // the key an operation or a row route lifts.
+    const uniqueColumns = signal<string[]>(
+      requestedColumns(
+        this.listColumns().map((col) => col.id),
+        this.resourceMeta(),
+      ),
+    );
 
     const ref = this.resourceList(
       this.route,

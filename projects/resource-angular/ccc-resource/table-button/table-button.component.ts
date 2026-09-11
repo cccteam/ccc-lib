@@ -41,9 +41,11 @@ export class TableButtonComponent<T> {
     const rowData = this.rowData();
     const action = this.config().action;
     if (rowData && action !== undefined) {
+      // The whole row travels, so an action can lift a compound key the row carries;
+      // id stays first for the callers that read only it.
       const id = 'id' as keyof T;
       const idVal = rowData[id] as string;
-      action({ id: idVal });
+      action({ ...rowData, id: idVal });
     }
   }
 }

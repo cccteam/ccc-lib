@@ -36,6 +36,7 @@ import {
   RootConfig,
   RPCConfig,
   ViewConfig,
+  writeResource,
 } from '@cccteam/resource-angular/types';
 import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
 import { ApiError } from '@cccteam/resource';
@@ -316,9 +317,13 @@ export class ResourceViewComponent implements OnInit {
 
 
   ngOnInit(): void {
-    if (this.resourceMeta(this.config().primaryResource as Resource)) {
-      this.store.resourceName.set(this.config().primaryResource as Resource);
-      this.store.resourceMeta.set(this.resourceMeta(this.config().primaryResource as Resource));
+    // The view reads and writes the resource whose row it shows: the listed resource,
+    // or its table when the list is a view declaring one (rowsOf).
+    const primary = this.config().primaryResource as Resource;
+    const resource = writeResource(primary, this.resourceMeta(primary));
+    if (this.resourceMeta(resource)) {
+      this.store.resourceName.set(resource);
+      this.store.resourceMeta.set(this.resourceMeta(resource));
     }
 
     this.inlineRpcConfigs();

@@ -22,6 +22,7 @@ import {
   Resource,
   RESOURCE_META,
   RootConfig,
+  writeResource,
 } from '@cccteam/resource-angular/types';
 import {
   ActionAccessControlWrapperComponent,
@@ -167,7 +168,10 @@ export class CompoundResourceComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    const resource = this.primaryConfig().primaryResource as Resource;
+    // The row page reads and writes the resource whose row it opens: the listed
+    // resource, or its table when the list is a view declaring one (rowsOf).
+    const primary = this.primaryConfig().primaryResource as Resource;
+    const resource = writeResource(primary, this.resourceMeta(primary));
     const meta = this.resourceMeta(resource);
 
     if (meta) {

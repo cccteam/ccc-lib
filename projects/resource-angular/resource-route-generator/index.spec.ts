@@ -1,5 +1,6 @@
 import { Route } from '@angular/router';
 import { AuthorizationGuard } from '@cccteam/resource-angular/auth-authorization-guard';
+import { resourcePageRoute } from '@cccteam/resource-angular/resource-nav';
 import {
   ListPermission,
   listViewConfig,
@@ -67,4 +68,34 @@ describe('resourceRoutes', () => {
       }
     });
   }
+
+  describe('over a view declaring its table', () => {
+    const boards = 'CrewBoards' as Resource;
+    const crew = 'Crew' as Resource;
+    const metas: Record<string, ResourceMeta> = {
+      [boards]: { route: 'sectors/{sectorID}/crew-boards', rowsOf: crew } as ResourceMeta,
+      [crew]: { route: 'sectors/{sectorID}/crew' } as ResourceMeta,
+    };
+    const route = resourceRoutes(
+      rootConfig({
+        routeData: { route: 'sector/crew' },
+        nav: { navItem: { label: 'Crew' } },
+        parentConfig: listViewConfig({ primaryResource: boards, listColumns: [], elements: [] }),
+      }),
+      (resource) => metas[resource],
+    );
+
+    it('guards the list route on List of the view', () => {
+      expect(scopeOf(route)).toEqual({ resource: boards, permission: ListPermission });
+    });
+
+    it('guards the row route on Read of the table, which the row page opens', () => {
+      expect(scopeOf(rowRoute(route))).toEqual({ resource: crew, permission: ReadPermission });
+    });
+
+    it('registers the page as where both the view and the table open', () => {
+      expect(resourcePageRoute(boards)).toBe('sector/crew');
+      expect(resourcePageRoute(crew)).toBe('sector/crew');
+    });
+  });
 });
