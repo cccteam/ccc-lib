@@ -16,6 +16,12 @@ export interface PageDescriptor {
   max?: number;
 }
 
+/** One entry of a resource's declared `@order`: a JSON field name and its direction. */
+export interface OrderDescriptor {
+  field: string;
+  direction: 'asc' | 'desc';
+}
+
 /** One generated resource as the client needs to address it. */
 export interface ResourceDescriptor {
   resource: Resource;
@@ -38,6 +44,13 @@ export interface ResourceDescriptor {
   patchable?: readonly string[];
   /** The resource's page sizes. Absent on a descriptor written by hand: the server's default applies. */
   page?: PageDescriptor;
+  /**
+   * The resource's declared `@order`, the order a list takes when the request names no
+   * sort, with the primary key appended by the server so it is total. A resource that
+   * declares one issues cursors for a sort-less list; one that declares none lists by
+   * primary key and issues no cursor, so a walk over it must send a sort (see walkSort).
+   */
+  order?: readonly OrderDescriptor[];
 }
 
 /** One generated RPC method as the client needs to address it. */

@@ -42,6 +42,9 @@ export interface MethodMeta {
   fields: RPCFieldMeta[];
 }
 
+/** When the server accepts a filter on a field: on its own, or only beside an indexed field. */
+export type FilterEligibility = 'always' | 'withIndexed';
+
 export interface FieldMeta {
   fieldName: string;
   /** Indicates whether the field is required and only applies during resource creation.
@@ -61,6 +64,17 @@ export interface FieldMeta {
    */
   enumeration?: EnumerationOption[];
   isIndex: boolean;
+  /**
+   * Whether the server accepts a filter on this field, by the eligibility the query
+   * decoder applies, so a table draws a filter control only where the server will
+   * answer. `always`: an indexed or unique-indexed table or view field, or a computed
+   * resource's `allow_filter` field (its List function filters in memory).
+   * `withIndexed`: a table or view `allow_filter` field, accepted only when the same
+   * filter also touches an `always` field — once one index has narrowed the rows a
+   * second is rarely used, and indexes are a scarce commodity on Spanner, so
+   * `allow_filter` conserves them. Absent, a filter naming the field is refused.
+   */
+  filterable?: FilterEligibility;
   /**
    * The server never accepts this field from clients — it is server-owned
    * (output-only, an @state column, or the tenant key) — so forms render it read-only

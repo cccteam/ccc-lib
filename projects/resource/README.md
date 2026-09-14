@@ -55,10 +55,14 @@ A list is served one page at a time. `list()` returns one page of rows — the q
 `limit`, or the resource's declared default (`descriptor.page.default`) when the query
 names none. `page()` returns the page with its neighbors: `next` and `prev` follow the
 server's `Link` relations exactly as issued, and are absent where no such page exists;
-`total` answers a `count: true` request on a first page from the `Total-Count` header.
+`total` answers a `count: true` request on a first page from the `Total-Count` header;
+`reload()` repeats the request that produced the page — the first page's parameters, or
+the cursor a relation handed out — so a table refreshes the page it is on after a write.
 `all()` returns every row: `limit: 'all'` where the resource declares no maximum page
-size, otherwise a walk through the pages to the end in the query's sort, or in
-primary-key order when the query names none.
+size, otherwise a walk through the pages to the end in the query's sort, in the resource's
+declared order when the query names none and the descriptor carries one (`descriptor.order`,
+the `@order` annotation), else in primary-key order. `walkSort(descriptor, sort)` is that
+rule on its own, for a table that pages one page at a time.
 
 ```ts
 let page = await station.missions.page({ sort: { field: 'deadline' }, limit: 25, count: true });
@@ -80,6 +84,13 @@ and a cursor presented with a different filter, sort, limit, or tenant is refuse
 served in primary-key order and issues no cursor: `page.more` marks that its rows did
 not fit, and paging further requires a sort. A resource over a declared maximum page
 size refuses the request (400) rather than clamping it, and refuses `limit: 'all'`.
+
+A filter may name only the fields the server filters, and the generated field metadata
+says which: `FieldMeta.filterable` is `'always'` on an indexed table or view field and on
+a computed resource's `allow_filter` field, `'withIndexed'` on a table or view `allow_filter`
+field — accepted only when the same filter also names an `'always'` field, since indexes
+are scarce and one is enough to narrow the rows — and absent on a field a filter may not
+name. A table draws a filter control from it, so what it offers is what the server answers.
 
 ## Permissions
 

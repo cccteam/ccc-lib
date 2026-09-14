@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { Resource } from './brands';
-import { createClient, resolveAbsolute, AnyResourceHandle } from './client';
+import { createClient, resolveAbsolute, walkSort, AnyResourceHandle } from './client';
 import { ApiDescriptor } from './descriptor';
 import { listSearchParams, parseLinkHeader } from './query';
 import { Transport, TransportRequest } from './transport';
@@ -28,6 +28,18 @@ const descriptor: ApiDescriptor = {
       keys: ['id'],
       operations: ['list', 'read'],
       page: { default: 50 },
+    },
+    // A declared @order: the server pages a sort-less list by it.
+    Consignments: {
+      resource: 'Consignments' as Resource,
+      property: 'consignments',
+      route: 'consignments',
+      scope: 'global',
+      consolidated: false,
+      keys: ['id'],
+      operations: ['list', 'read'],
+      page: { default: 20, max: 100 },
+      order: [{ field: 'expiresOn', direction: 'asc' }],
     },
   },
   methods: {},
@@ -141,6 +153,41 @@ describe('page', () => {
   });
 });
 
+describe('page reload', () => {
+  it('repeats the request that produced the page: the first page by its parameters, a later one by its cursor', async () => {
+    const first = '/api/missions?sort=deadline&count=true';
+    const second = '/api/missions?sort=deadline&cursor=v4.local.two';
+    const { transport, requests } = scripted({
+      [first]: { rows: [{ id: 'a' }], headers: { link: `<${second}>; rel="next"`, 'total-count': '2' } },
+      [second]: { rows: [{ id: 'b' }], headers: { link: `<${first}>; rel="prev"` } },
+    });
+    const api = createClient<{ missions: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
+    const page = await api.missions.page({ sort: { field: 'deadline' as never }, count: true });
+    const again = await page.reload();
+    expect(again.rows).toEqual([{ id: 'a' }]);
+    expect(again.total).toBe(2);
+    const turned = await again.next!();
+    const turnedAgain = await turned.reload();
+    expect(turnedAgain.rows).toEqual([{ id: 'b' }]);
+    expect(requests.map((r) => r.url)).toEqual([first, first, second, second]);
+  });
+});
+
+describe('walkSort', () => {
+  const cases: { name: string; resource: string; sort: { field: string; direction?: 'asc' | 'desc' }[] | undefined; want: unknown }[] = [
+    { name: 'the caller\'s sort wins', resource: 'Consignments', sort: [{ field: 'mass', direction: 'desc' }], want: [{ field: 'mass', direction: 'desc' }] },
+    { name: 'a declared order sends nothing', resource: 'Consignments', sort: undefined, want: undefined },
+    { name: 'an empty sort counts as none', resource: 'Consignments', sort: [], want: undefined },
+    { name: 'no declared order sends the primary key', resource: 'Missions', sort: undefined, want: [{ field: 'id', direction: 'asc' }] },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, () => {
+      expect(walkSort(descriptor.resources[tt.resource], tt.sort as never)).toEqual(tt.want as never);
+    });
+  }
+});
+
 describe('sensitive filter', () => {
   it('posts the filter in the body and follows the walk with the same body', async () => {
     const first = '/api/missions?sort=deadline&limit=1';
@@ -192,6 +239,18 @@ describe('all', () => {
     });
     const api = createClient<{ missions: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
     expect(await api.missions.all()).toEqual([{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
+    expect(requests.map((r) => r.url)).toEqual([first, second]);
+  });
+
+  it('sends no sort where the resource declares an order, which the server pages by', async () => {
+    const first = '/api/consignments';
+    const second = '/api/consignments?cursor=v4.local.two';
+    const { transport, requests } = scripted({
+      [first]: { rows: [{ id: 'a' }], headers: { link: `<${second}>; rel="next"` } },
+      [second]: { rows: [{ id: 'b' }], headers: { link: `<${first}>; rel="prev"` } },
+    });
+    const api = createClient<{ consignments: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
+    expect(await api.consignments.all()).toEqual([{ id: 'a' }, { id: 'b' }]);
     expect(requests.map((r) => r.url)).toEqual([first, second]);
   });
 

@@ -90,6 +90,12 @@ export interface Page<Row> {
   more: boolean;
   next?: () => Promise<Page<Row>>;
   prev?: () => Promise<Page<Row>>;
+  /**
+   * The same page again: the request that produced it, repeated as issued — the first
+   * page's parameters, or the cursor a relation handed out — so a table refreshes the
+   * page it is on after a write without losing its position.
+   */
+  reload: () => Promise<Page<Row>>;
 }
 
 export interface Listable<Row> {
@@ -543,17 +549,14 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     }) as Listable<Row>['list'],
     page: ((query?: ListQuery<Row>) => {
       const { method, params, body } = listRequest(query);
-      return pageOf<Row>(client, method, body, client.requestResponse(method, route, { query: params, body }));
+      return pageOf<Row>(client, method, body, () => client.requestResponse(method, route, { query: params, body }));
     }) as Listable<Row>['page'],
     all: (async (query?: ListQuery<Row>) => {
       if (descriptor.page?.max === undefined) {
         return handle.list({ ...query, limit: 'all' } as ListQuery<Row>);
       }
-      // A walk needs an order worth walking: the query's sort, or the primary key.
-      const sort: Sort<Row> | Sort<Row>[] =
-        query?.sort ?? descriptor.keys.map((key) => ({ field: key as keyof Row & string, direction: 'asc' as const }));
       const rows: Row[] = [];
-      let page = await handle.page({ ...query, sort, count: false } as ListQuery<Row>);
+      let page = await handle.page({ ...query, sort: walkSort(descriptor, query?.sort), count: false } as ListQuery<Row>);
       for (;;) {
         rows.push(...page.rows);
         if (!page.next) {
@@ -583,6 +586,26 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
 }
 
 /**
+ * The sort a paged walk sends so the server issues cursors: the caller's when the query
+ * names one; nothing when the resource declares an `@order`, which the server applies
+ * and pages by; otherwise the primary key, since a list with no order is served in
+ * primary-key order without a cursor. The same rule serves a table over one page and
+ * an export over every page.
+ */
+export function walkSort<Row>(
+  descriptor: ResourceDescriptor,
+  sort: Sort<Row> | Sort<Row>[] | undefined,
+): Sort<Row> | Sort<Row>[] | undefined {
+  if (sort !== undefined && (!Array.isArray(sort) || sort.length > 0)) {
+    return sort;
+  }
+  if (descriptor.order && descriptor.order.length > 0) {
+    return undefined;
+  }
+  return descriptor.keys.map((key) => ({ field: key as keyof Row & string, direction: 'asc' as const }));
+}
+
+/**
  * The request a list query makes: a GET with every parameter in the URL, or, for a
  * sensitive filter, a POST carrying the filter in the body and the rest in the URL.
  */
@@ -603,22 +626,20 @@ function listRequest<Row>(query: ListQuery<Row> | undefined): {
 /**
  * Reads one list response into a Page, with `next` and `prev` following the Link
  * relations as issued — by the same method and with the same body, so a filter carried
- * in the body travels with the walk.
+ * in the body travels with the walk — and `reload` repeating the request that produced
+ * the page.
  */
 async function pageOf<Row>(
   client: ClientBase,
   method: HttpMethod,
   body: unknown,
-  response: Promise<ClientResponse<Row[] | null>>,
+  request: () => Promise<ClientResponse<Row[] | null>>,
 ): Promise<Page<Row>> {
-  const { body: rows, headers } = await response;
+  const { body: rows, headers } = await request();
   const relations = parseLinkHeader(headers[LinkHeader]);
   const total = headers[TotalCountHeader];
   const follow = (reference: string) => () =>
-    pageOf<Row>(
-      client,
-      method,
-      body,
+    pageOf<Row>(client, method, body, () =>
       client.requestResponse<Row[] | null>(method, reference, { absolute: true, body }),
     );
   return {
@@ -627,6 +648,7 @@ async function pageOf<Row>(
     more: headers[PageMoreHeader] === 'true',
     next: relations['next'] ? follow(relations['next']) : undefined,
     prev: relations['prev'] ? follow(relations['prev']) : undefined,
+    reload: () => pageOf<Row>(client, method, body, request),
   };
 }
 
