@@ -18,9 +18,16 @@
       [columnDefs]="columns()"
       [enableRowExpansion]="config().enableRowExpansion"
       [detailTemplate]="expandedRowTemplate"
-      [pageSize]="config().pageSize"
       [loading]="loadingRowData()"
-      [emptyMessage]="emptyMessage()">
+      [emptyMessage]="emptyMessage()"
+      [sorts]="store.sorts()"
+      [filters]="store.columnFilters()"
+      [filterability]="filterability()"
+      [externalFilterFields]="configFilterFields()"
+      [page]="store.page()"
+      (sortChange)="onSortChange($event)"
+      (filterChange)="onFilterChange($event)"
+      (pageTurn)="onPageTurn($event)">
     </ccc-grid>
   </div>
 </div>
@@ -32,7 +39,7 @@
       inputs: {
         uuid: rowData[expansionKey()],
         navAfterDelete: false,
-        deleted: store.reloadListData.bind(store),
+        deleted: store.reloadPage.bind(store),
         resourceConfig: expansionConfig(),
       }
     ">

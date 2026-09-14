@@ -1,37 +1,71 @@
-export type FilterOperator =
-  | 'contains'
-  | 'doesNotContain'
-  | 'equals'
-  | 'notEqual'
-  | 'startsWith'
-  | 'endsWith'
-  | 'gt'
-  | 'gte'
-  | 'lt'
-  | 'lte';
+import { FilterEligibility, FilterOperator } from '@cccteam/resource';
 
-export const FILTER_OPERATORS: { value: FilterOperator; label: string }[] = [
-  { value: 'contains', label: 'Contains' },
-  { value: 'doesNotContain', label: 'Does not contain' },
-  { value: 'equals', label: 'Equals' },
-  { value: 'notEqual', label: 'Not equal to' },
-  { value: 'startsWith', label: 'Starts with' },
-  { value: 'endsWith', label: 'Ends with' },
-  { value: 'gt', label: 'Greater than' },
-  { value: 'gte', label: 'Greater than or equal to' },
-  { value: 'lt', label: 'Less than' },
-  { value: 'lte', label: 'Less than or equal to' },
+export type { FilterEligibility, FilterOperator } from '@cccteam/resource';
+
+/** One of the server's filter operators as the column filter menu offers it. */
+export interface FilterOperatorOption {
+  value: FilterOperator;
+  label: string;
+  /** Whether the operator compares against a value; the null tests take none. */
+  takesValue: boolean;
+  /** Whether the value is a comma-separated list. */
+  takesList: boolean;
+}
+
+/**
+ * The server's filter grammar, and nothing else: a filter the grid offers is one the
+ * server answers. A substring match is not in the grammar, so none is offered.
+ */
+export const FILTER_OPERATORS: readonly FilterOperatorOption[] = [
+  { value: 'eq', label: 'Equals', takesValue: true, takesList: false },
+  { value: 'ne', label: 'Not equal to', takesValue: true, takesList: false },
+  { value: 'gt', label: 'Greater than', takesValue: true, takesList: false },
+  { value: 'gte', label: 'Greater than or equal to', takesValue: true, takesList: false },
+  { value: 'lt', label: 'Less than', takesValue: true, takesList: false },
+  { value: 'lte', label: 'Less than or equal to', takesValue: true, takesList: false },
+  { value: 'in', label: 'One of', takesValue: true, takesList: true },
+  { value: 'notin', label: 'None of', takesValue: true, takesList: true },
+  { value: 'isnull', label: 'Is empty', takesValue: false, takesList: false },
+  { value: 'isnotnull', label: 'Is not empty', takesValue: false, takesList: false },
 ];
 
+/** One column's filter as the grid holds it: the field, the operator, and the typed value (a comma list for `in`/`notin`, empty for the null tests). */
 export interface ColumnFilter {
+  field: string;
   operator: FilterOperator;
   value: string;
 }
 
+/** One sort the rows were requested in. */
 export interface SortRule {
   field: string;
   direction: 'asc' | 'desc';
 }
+
+/**
+ * Which columns the server filters, by column id: the generated field metadata's
+ * `filterable` for the field the column shows. A column absent here draws no filter
+ * control.
+ */
+export type ColumnFilterability = Readonly<Record<string, FilterEligibility | undefined>>;
+
+/**
+ * The control a column header draws: none where the server would refuse a filter,
+ * enabled where it answers one, or waiting for an indexed filter to join first — a
+ * `withIndexed` column is accepted only beside one.
+ */
+export type FilterControl = 'none' | 'enabled' | 'needsIndexed';
+
+/** Where the rows sit in the server's list: the rows before this page, whether neighbors exist, and the total when the first page asked for it. */
+export interface GridPageState {
+  offset: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+  total?: number;
+}
+
+/** A page turn the grid asks for; the data source performs it. */
+export type PageTurn = 'first' | 'prev' | 'next';
 
 export interface VirtualScrollConfig {
   /**

@@ -1,4 +1,4 @@
-import { computed, inject, Injectable, Injector, ResourceRef, Signal, signal, untracked } from '@angular/core';
+import { computed, effect, EffectRef, inject, Injectable, Injector, ResourceRef, Signal, signal, untracked } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import {
@@ -15,10 +15,36 @@ import {
   rowCapabilities,
   RPCConfig,
 } from '@cccteam/resource-angular/types';
+import { ColumnFilter, composeFilter, PageTurn } from '@cccteam/resource-angular/ccc-grid';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
-import { AnyResourceHandle, BatchResult, Operation, Resource as ClientResource, ResourceDescriptor } from '@cccteam/resource';
+import {
+  AnyResourceHandle,
+  BatchResult,
+  ListQuery,
+  Operation,
+  Page,
+  Resource as ClientResource,
+  ResourceDescriptor,
+  walkSort,
+} from '@cccteam/resource';
 import { from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
+import { PagePosition, positionAfter } from './resource-list/list-request';
+
+/** One page of the listed resource as the table shows it, positioned in the server's list. */
+export interface ListPage {
+  rows: RecordData[];
+  /** The rows before this page. */
+  offset: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+  /** The total the first page answered, kept while turning; undefined until it answers. */
+  total?: number;
+}
+
+export type ListPageStatus = 'idle' | 'loading' | 'resolved' | 'error';
+
+const emptyListPage: ListPage = { rows: [], offset: 0, hasPrev: false, hasNext: false };
 
 @Injectable()
 export class ResourceStore {
@@ -30,7 +56,16 @@ export class ResourceStore {
   disableCacheForFilterPii = signal(false);
   sorts = signal<FieldSort[]>([]);
   listColumns = signal<ColumnConfig[]>([]);
-  limit = signal<number | undefined>(undefined);
+  /**
+   * The server page size the list asks for; undefined sends no limit, so the resource's
+   * declared default applies. A size over the declared maximum is the server's 400,
+   * surfaced as the page's error.
+   */
+  pageSize = signal<number | undefined>(undefined);
+  /** The grid's column filters, composed into the request filter beside `filter`. */
+  columnFilters = signal<ColumnFilter[]>([]);
+  /** Set while the page has nothing to ask for (the digest grants none of its columns): no request is made. */
+  listSuspended = signal(false);
   uuid = signal<string>('');
   error = signal<string>('');
 
@@ -61,6 +96,159 @@ export class ResourceStore {
     const ref = this.resourceListRef();
     return ref && ref.status() === 'error' ? ref.error() : undefined;
   });
+
+  // The server's page, as the list component shows it. One paging model, the server's:
+  // the store holds the page the client answered — its rows, whether a previous and a
+  // next page exist, and the total the first page asked for, kept while turning — and
+  // performs the turns the grid asks for through the page's own relations. A change to
+  // the sorts, the filters, the columns, or the page size drops the cursor and asks for
+  // a first page with the count.
+  private readonly currentPage = signal<Page<RecordData> | undefined>(undefined);
+  private readonly position = signal<PagePosition>({ offset: 0 });
+  private pageEffect: EffectRef | undefined;
+  private pageRequestSeq = 0;
+  pageStatus = signal<ListPageStatus>('idle');
+  /** The page request's error when it failed — an ApiError for a server refusal — else undefined. */
+  pageError = signal<unknown>(undefined);
+  page = computed<ListPage>(() => {
+    const current = this.currentPage();
+    if (!current) {
+      return emptyListPage;
+    }
+    return {
+      rows: current.rows,
+      offset: this.position().offset,
+      hasPrev: current.prev !== undefined,
+      hasNext: current.next !== undefined,
+      total: this.position().total,
+    };
+  });
+
+  /**
+   * The first-page request as the store's signals describe it: the route and the
+   * request filter (the page's filter and the column filters composed), the columns
+   * with every key field, the sorts, and the page size; undefined while the list has
+   * nothing to ask for.
+   */
+  private readonly pageQuery = computed(() => {
+    const route = this.route();
+    if (!route || this.resourceName() === '' || this.listSuspended()) {
+      return undefined;
+    }
+    return {
+      route,
+      filter: composeFilter(this.filter(), this.columnFilters()),
+      sensitive: this.disableCacheForFilterPii(),
+      columns: requestedColumns(
+        this.listColumns().map((col) => col.id),
+        this.resourceMeta(),
+      ),
+      sorts: this.sorts(),
+      limit: this.pageSize(),
+      domain: this.domain(),
+    };
+  });
+
+  /**
+   * Starts holding the server's page for the list: from here on, whenever the request the
+   * signals describe changes, the store asks for a first page. Idempotent.
+   */
+  buildStorePage(): void {
+    if (this.pageEffect) {
+      return;
+    }
+    this.pageEffect = untracked(() =>
+      effect(
+        () => {
+          const query = this.pageQuery();
+          untracked(() => this.loadFirstPage(query));
+        },
+        { injector: this.injector },
+      ),
+    );
+  }
+
+  /** The first page of the current request, with the count. */
+  firstPage(): void {
+    this.loadFirstPage(untracked(() => this.pageQuery()));
+  }
+
+  /** The page the current one names as previous or next; nothing when there is none. */
+  turnPage(direction: PageTurn): void {
+    if (direction === 'first') {
+      this.firstPage();
+      return;
+    }
+    const current = this.currentPage();
+    const step = direction === 'next' ? current?.next : current?.prev;
+    if (!current || !step) {
+      return;
+    }
+    void this.runPageRequest(step, direction, current.rows.length);
+  }
+
+  /** The page the table is on, requested again by its own cursor, so a write shows without losing the position. */
+  reloadPage(): void {
+    const current = this.currentPage();
+    if (!current) {
+      this.firstPage();
+      return;
+    }
+    void this.runPageRequest(current.reload, 'reload', current.rows.length);
+  }
+
+  private loadFirstPage(query: ReturnType<typeof this.pageQuery>): void {
+    if (!query) {
+      this.pageRequestSeq++;
+      this.currentPage.set(undefined);
+      this.position.set({ offset: 0 });
+      this.pageError.set(undefined);
+      this.pageStatus.set('idle');
+      return;
+    }
+    const handle = this.handleFor(query.route);
+    // No limit unless the page names one, so the descriptor's default applies; no sort
+    // unless the page names one, so a declared @order applies, and the primary key only
+    // where the resource declares no order — the client's walk rule.
+    const sorts = query.sorts.map((s) => ({ field: s.field as string, direction: s.direction }));
+    const request: ListQuery<RecordData> = {
+      filter: query.filter !== '' ? query.filter : undefined,
+      sensitiveFilter: query.sensitive || undefined,
+      columns: query.columns.length > 0 ? query.columns : undefined,
+      sort: walkSort(handle.descriptor, sorts) as ListQuery<RecordData>['sort'],
+      limit: query.limit,
+      count: true,
+    };
+    void this.runPageRequest(() => handle.page(request as never) as Promise<Page<RecordData>>, 'first', 0);
+  }
+
+  /** Runs one page request; a request that lands after a later one started is dropped. */
+  private async runPageRequest(
+    request: () => Promise<Page<RecordData>>,
+    turn: PageTurn | 'reload',
+    leftRows: number,
+  ): Promise<void> {
+    const seq = ++this.pageRequestSeq;
+    this.pageStatus.set('loading');
+    try {
+      const landed = await request();
+      if (seq !== this.pageRequestSeq) {
+        return;
+      }
+      this.position.set(positionAfter(this.position(), turn, leftRows, { rows: landed.rows.length, total: landed.total }));
+      this.currentPage.set(landed);
+      this.pageError.set(undefined);
+      this.pageStatus.set('resolved');
+    } catch (error) {
+      if (seq !== this.pageRequestSeq) {
+        return;
+      }
+      this.currentPage.set(undefined);
+      this.position.set({ offset: 0 });
+      this.pageError.set(error);
+      this.pageStatus.set('error');
+    }
+  }
 
   private resourceViewRef = signal<ResourceRef<RecordData> | undefined>(undefined);
   viewData = computed(() => {
@@ -121,14 +309,7 @@ export class ResourceStore {
       ),
     );
 
-    const ref = this.resourceList(
-      this.route,
-      this.filter,
-      uniqueColumns,
-      this.disableCacheForFilterPii,
-      this.sorts,
-      this.limit,
-    );
+    const ref = this.resourceList(this.route, this.filter, uniqueColumns, this.disableCacheForFilterPii, this.sorts);
     this.resourceListRef.set(ref);
     this.reloadListData();
   }
@@ -334,11 +515,13 @@ export class ResourceStore {
   }
 
   /**
-   * Lists a resource for the table through the client. With a configured limit the
-   * server's first page of that size is the table's data, as before. Without one the
-   * client's all() reads every row — limit=all where the resource declares no maximum,
-   * otherwise a walk through the pages in the configured sorts, or in primary-key order
-   * when none is configured. A PII filter travels in the request body.
+   * Lists a resource through the client for the readers that want every row — the
+   * array view, the pickers, the referenced-resource columns. With a limit the server's
+   * first page of that size is the answer. Without one the client's all() reads every
+   * row — limit=all where the resource declares no maximum, otherwise a walk through
+   * the pages in the configured sorts, or in the declared order or primary-key order
+   * when none is configured. A PII filter travels in the request body. The list
+   * component does not read here: it holds one server page (see buildStorePage).
    */
   private list<T>(
     resourceRoute: string,

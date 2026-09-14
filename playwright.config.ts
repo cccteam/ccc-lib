@@ -22,7 +22,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `npx ng serve showcase-app --port ${PORT} --no-hmr`,
-    url: `http://localhost:${PORT}/grid-showcase`,
+    url: `http://localhost:${PORT}/login`,
     reuseExistingServer: !process.env['CI'],
     timeout: 120_000,
   },

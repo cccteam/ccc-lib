@@ -292,37 +292,23 @@
   justify-content: space-between;
   gap: 12px;
   border-top: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
-  padding: 0 12px;
+  padding: 4px 12px;
 }
 
-.page-jump {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.pager-rows {
   font-size: 13px;
   color: var(--mat-sys-on-surface-variant, rgba(0, 0, 0, 0.6));
   white-space: nowrap;
 }
 
-.page-jump-input {
-  width: 36px;
-  padding: 4px;
-  text-align: center;
-  font: inherit;
-  font-size: 13px;
-  border: 1px solid var(--mat-sys-outline-variant, #e0e0e0);
-  border-radius: 4px;
-
-  // hide the native number spinner so it reads like a plain page-number field
-  &::-webkit-outer-spin-button,
-  &::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-  appearance: textfield;
+.pager-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
-.ccc-grid-paginator {
+.filter-trigger-wrap {
+  display: inline-flex;
   flex: 0 0 auto;
 }
 

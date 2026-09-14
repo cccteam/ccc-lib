@@ -188,10 +188,9 @@ export class CompoundResourceComponent implements OnInit {
       if (this.missingRoot()) {
         return;
       }
-      if (c.type === 'View') {
-        this.store.buildStoreViewData();
-      } else if (c.type === 'ListView') {
-        this.store.buildStoreListData();
+      if (c.type === 'View' || c.type === 'ListView') {
+        // The list component holds its own store and its own page; this store serves
+        // the row the page is on.
         this.store.buildStoreViewData();
       }
     });

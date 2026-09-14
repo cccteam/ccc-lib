@@ -18,27 +18,15 @@ interface DashboardTile {
   styleUrl: './dashboard.component.scss',
 })
 export class DashboardComponent {
+  // The config-driven pages are the grid's showcase: the Users page lists one server
+  // page at a time, sorts and filters through the server, and turns pages by cursor.
   readonly tiles: DashboardTile[] = [
     {
-      label: 'Grid showcase',
-      description: 'ccc-grid features: selection, sorting, filtering, pagination, and row expansion.',
+      label: 'Users',
+      description: 'The config-driven list over the server: one page of rows, sort and filter as request parameters, First, Previous, and Next by cursor.',
       icon: 'grid_on',
-      route: '/grid-showcase',
-      testId: 'grid-showcase',
-    },
-    {
-      label: 'Virtual scroll grid showcase',
-      description: 'ccc-grid with enableVirtualScroll rendering 5,000 test records.',
-      icon: 'view_list',
-      route: '/virtual-scroll-grid-showcase',
-      testId: 'virtual-scroll-grid-showcase',
-    },
-    {
-      label: 'Kendo vs ccc-grid perf',
-      description: 'Benchmark the legacy Kendo grid against the new ccc-grid and view a report.',
-      icon: 'speed',
-      route: '/kendo-perf',
-      testId: 'kendo-perf',
+      route: '/users',
+      testId: 'users',
     },
   ];
 }

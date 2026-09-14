@@ -21,13 +21,21 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog } from '@angular/material/dialog';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '@cccteam/resource-angular/auth-service';
-import { AppGridComponent } from '@cccteam/resource-angular/ccc-grid';
+import {
+  AppGridComponent,
+  ColumnFilter,
+  filterFields,
+  PageTurn,
+  SortRule,
+  withoutOrphanedCompanions,
+} from '@cccteam/resource-angular/ccc-grid';
 import { resourcePageRoute } from '@cccteam/resource-angular/resource-nav';
 import {
   ChildResourceConfig,
   ColumnConfig,
   DeletePermission,
   FieldName,
+  FieldSort,
   keyFields,
   ListPermission,
   ListViewConfig,
@@ -39,7 +47,6 @@ import {
   rowRouteTarget,
   writeResource,
 } from '@cccteam/resource-angular/types';
-import { ApiError } from '@cccteam/resource';
 import {
   ActionAccessControlWrapperComponent,
   ActionButtonContext,
@@ -54,6 +61,7 @@ import {
 import { applyFormatting, formatDateString } from '../format-fns';
 import { DeleteResourceConfirmationModalComponent } from '../delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
 import { ResourceStore } from '../resource-store.service';
+import { filterEligibility, listEmptyMessage } from './list-request';
 import { listableColumns } from './listable-columns';
 
 @Component({
@@ -160,8 +168,9 @@ export class ResourceListComponent implements OnInit {
     if (!title) return '';
 
     if (!this.config().showRowCount) return title;
-    const count = this.processedRowData().length;
-    return count > 0 ? `${title} (${count})` : title;
+    // The server's total, answered with the first page and kept while turning.
+    const total = this.store.page().total;
+    return total !== undefined && total > 0 ? `${title} (${total})` : title;
   });
 
   indentTitle = computed(() => {
@@ -279,22 +288,38 @@ export class ResourceListComponent implements OnInit {
 
   /**
    * What the empty table says: the refusal when the digest leaves no column, the server's
-   * own message when the request was refused or failed, otherwise the plain empty-list
-   * text. A refusal must never read as an empty list.
+   * own message when the request was refused (the list, a filter, or a page size) or
+   * failed, otherwise the plain empty-list text. A refusal must never read as an empty list.
    */
-  emptyMessage = computed(() => {
-    if (this.noListableColumns()) {
-      return 'Your permissions cover none of the columns on this page.';
-    }
-    const error = this.store.listError();
-    if (error instanceof ApiError && error.status === 403) {
-      return `This list is not available to you: ${error.message}`;
-    }
-    if (error) {
-      return `This list could not be loaded: ${error instanceof Error ? error.message : String(error)}`;
-    }
-    return 'No records found';
-  });
+  emptyMessage = computed(() => listEmptyMessage(this.store.pageError(), this.noListableColumns()));
+
+  /**
+   * Which columns the server filters, from the listed resource's metadata: the grid draws
+   * a filter control only on these, and a companion-only column waits for an indexed filter.
+   */
+  filterability = computed(() => filterEligibility(this.meta(), this.columns()));
+
+  /** The fields the page's own filter names, so the grid knows when an indexed filter is already in the request. */
+  configFilterFields = computed(() => filterFields(this.filters()));
+
+  /** A header click: the sorts to request next; the store drops the cursor and asks for a first page. */
+  onSortChange(sorts: SortRule[]): void {
+    this.store.sorts.set(sorts as FieldSort[]);
+  }
+
+  /**
+   * A filter menu commit: the column filters to request next. Once no indexed filter is
+   * left in the request, the companion-only filters go with it, since the server would
+   * refuse them alone.
+   */
+  onFilterChange(filters: ColumnFilter[]): void {
+    this.store.columnFilters.set(withoutOrphanedCompanions(filters, this.filterability(), this.configFilterFields()));
+  }
+
+  /** A pager click: the store follows the server's relation. */
+  onPageTurn(turn: PageTurn): void {
+    this.store.turnPage(turn);
+  }
 
   rootColumns = computed(() => {
     const idCols = [];
@@ -463,19 +488,18 @@ export class ResourceListComponent implements OnInit {
     const handle = this.store.handle();
     const operation = handle.ops.remove(handle.keyOf(row));
     void this.store.apply([operation], `${this.store.resourceName()} deleted successfully`).then(() => {
-      this.store.reloadListData();
+      this.store.reloadPage();
     });
   }
 
+  /** Requests the page the table is on again, by its own cursor, so a write shows without losing the position. */
   reloadListData(): void {
-    this.store.reloadListData();
+    this.store.reloadPage();
   }
 
+  /** The page's rows with each column's getter and formatter applied. */
   processedRowData = computed(() => {
-    this.filter();
-    this.relatedData();
-    const data = this.store.listData();
-    if (!data) return [];
+    const data = this.store.page().rows;
     const columns = this.columns();
 
     return data.map((row) => {
@@ -496,8 +520,7 @@ export class ResourceListComponent implements OnInit {
   });
 
   loadingRowData = computed(() => {
-    const primaryStatus = this.store.listStatus();
-    if (primaryStatus === 'loading' || primaryStatus === 'reloading') {
+    if (this.store.pageStatus() === 'loading') {
       return true;
     }
     for (const ref of this.resourceRefMap().values()) {
@@ -566,7 +589,7 @@ export class ResourceListComponent implements OnInit {
       this.store.resourceMeta.set(this.meta());
       this.store.listColumns.set(this.listColumns());
       this.store.sorts.set(this.config().sorts || []);
-      this.store.limit.set(this.config().limit);
+      this.store.pageSize.set(this.config().pageSize);
     }
 
     this.store.filter.set(this.filters());
@@ -611,7 +634,7 @@ export class ResourceListComponent implements OnInit {
           return;
         }
         const keys = computed(() => {
-          const data = this.store.listData();
+          const data = this.store.page().rows;
           const values = new Set<string>();
           for (const row of data) {
             for (const fkColumn of entry.fkColumns) {
@@ -639,13 +662,14 @@ export class ResourceListComponent implements OnInit {
         this.store.filter.set(this.filters());
         this.store.disableCacheForFilterPii.set(this.config().disableCacheForFilterPii);
         this.store.listColumns.set(columns);
-        if (this.noListableColumns()) {
-          // Nothing the digest grants is on this page: there is nothing to ask for, and
-          // the table says so instead of provoking the refusal it already predicts.
-          return;
-        }
-        this.store.buildStoreListData();
+        // Nothing the digest grants is on this page: there is nothing to ask for, and
+        // the table says so instead of provoking the refusal it already predicts.
+        this.store.listSuspended.set(this.noListableColumns());
       });
+
+      // From here the store holds the server's page: a change to the filter, the columns,
+      // the sorts, or the column filters asks for a first page; the pager turns it.
+      this.store.buildStorePage();
     });
   }
 }

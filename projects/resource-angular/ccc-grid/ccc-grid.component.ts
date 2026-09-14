@@ -11,25 +11,48 @@ import {
   TemplateRef,
   viewChild,
 } from '@angular/core';
-import { MatIconButton } from '@angular/material/button';
+import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterModule } from '@angular/router';
 import { CamelCaseToTitlePipe } from '@cccteam/resource-angular/ccc-camel-case-to-title';
 import { ColumnConfig, RecordData } from '@cccteam/resource-angular/types';
-import { matchesFilter } from './grid-filter.util';
-import { ColumnFilter, FILTER_OPERATORS, FilterOperator, SortRule, VirtualScrollConfig } from './grid-types';
+import { filterControlFor, indexedFilterActive, isComplete, operatorOption } from './grid-filter.util';
+import {
+  ColumnFilter,
+  ColumnFilterability,
+  FILTER_OPERATORS,
+  FilterControl,
+  FilterOperator,
+  GridPageState,
+  PageTurn,
+  SortRule,
+  VirtualScrollConfig,
+} from './grid-types';
 import { VirtualScrollState } from './grid-virtual-scroll';
 import { TableButtonComponent } from './table-button/table-button.component';
 
 const MIN_COLUMN_WIDTH = 48;
 const ACTION_COLUMN_WIDTH = 66;
 
+/** What a companion-only column's disabled filter control says. */
+export const COMPANION_FILTER_HINT =
+  'Filter on an indexed column first; the server filters this column only beside one.';
+
+/**
+ * The grid renders one page of rows and emits intents. The rows are the page the data
+ * source holds; a header click emits the next sorts, a filter menu emits the next column
+ * filters, and the pager emits a turn — the source asks the server and hands back the
+ * page. Nothing here filters, sorts, or slices rows in the browser: one paging model, the
+ * server's. A filter control is drawn only on a column the generated metadata says the
+ * server filters (`filterability`), with a companion-only column waiting until an indexed
+ * filter is in the request. Selection is held as rows, so it spans pages. Virtual scroll
+ * renders the one page it is given; row expansion is as before.
+ */
 @Component({
   selector: 'ccc-grid',
   standalone: true,
@@ -38,13 +61,12 @@ const ACTION_COLUMN_WIDTH = 66;
     TableButtonComponent,
     CamelCaseToTitlePipe,
     RouterModule,
-    MatIconButton,
+    MatButtonModule,
     MatIconModule,
     MatTooltipModule,
     MatMenuModule,
     MatFormFieldModule,
     MatInputModule,
-    MatPaginatorModule,
     MatProgressSpinnerModule,
   ],
   templateUrl: './ccc-grid.component.html',
@@ -52,6 +74,7 @@ const ACTION_COLUMN_WIDTH = 66;
 })
 export class AppGridComponent {
   /* eslint-disable  @typescript-eslint/no-explicit-any */
+  /** The page of rows to render, as the data source holds it. */
   rowData = input<any[]>([]);
   columnDefs = input<ColumnConfig[]>([]);
   // Detail rows aren't accounted for in the virtual scroll row-height model, so expansion
@@ -59,113 +82,76 @@ export class AppGridComponent {
   enableRowExpansion = input<boolean>(false);
   detailTemplate = input<TemplateRef<unknown>>();
   selectionType = input<'multiple' | 'single' | 'none'>('none');
-  pageSize = input<number | undefined>(undefined);
-  selectedRows = output<RecordData[]>();
   loading = input<boolean>(false);
   /** What the table says when it has no rows: the caller decides whether that is an empty list or a refusal. */
   emptyMessage = input<string>('No records found');
   enableVirtualScroll = input<boolean>(false);
   virtualScrollConfig = input<VirtualScrollConfig>({});
+  /** The sorts the rows were requested in, the first primary. Drawn on the headers; a click emits the next set. */
+  sorts = input<SortRule[]>([]);
+  /** The column filters the rows were requested with. Drawn on the headers; a menu commit emits the next set. */
+  filters = input<ColumnFilter[]>([]);
+  /** Which columns the server filters, by column id, from the generated field metadata. A column absent here draws no filter control. */
+  filterability = input<ColumnFilterability>({});
+  /** The fields the page's own filter names outside the grid, so a companion-only column knows an indexed filter is already in the request. */
+  externalFilterFields = input<string[]>([]);
+  /** Where the rows sit in the server's list. The pager is drawn only when given. */
+  page = input<GridPageState | undefined>(undefined);
+
+  /** The selected rows, across pages. */
+  selectedRows = output<RecordData[]>();
+  /** The sorts to request next, after a header click. */
+  sortChange = output<SortRule[]>();
+  /** The column filters to request next, after a filter menu commits or clears. */
+  filterChange = output<ColumnFilter[]>();
+  /** The page to show next. */
+  pageTurn = output<PageTurn>();
 
   readonly filterOperators = FILTER_OPERATORS;
+  readonly companionHint = COMPANION_FILTER_HINT;
 
-  private readonly selectedIds = signal<Set<unknown>>(new Set());
+  private readonly selected = signal<Map<unknown, RecordData>>(new Map());
   private readonly expandedIds = signal<Set<unknown>>(new Set());
-  private readonly filters = signal<Record<string, ColumnFilter>>({});
   private readonly columnWidths = signal<Record<string, number>>({});
-  private readonly sorts = signal<SortRule[]>([]);
-  private readonly pageIndex = signal<number>(0);
+  /** The filter each open menu is editing, before it commits; keyed by column id. */
+  private readonly drafts = signal<Record<string, ColumnFilter>>({});
 
   totalColumnCount = computed(
     () => this.columnDefs().length + (this.selectionType() !== 'none' ? 1 : 0) + (this.enableRowExpansion() ? 1 : 0),
   );
 
-  filteredRows = computed(() => {
-    const rows = this.rowData();
-    const activeFilters = Object.entries(this.filters()).filter(([, filter]) => filter.value.trim() !== '');
-    if (!activeFilters.length) {
-      return rows;
-    }
-    return rows.filter((row: RecordData) =>
-      activeFilters.every(([field, filter]) => matchesFilter(row[field], filter)),
-    );
-  });
-
-  sortedRows = computed(() => {
-    const sorts = this.sorts();
-    const rows = this.filteredRows();
-    if (!sorts.length) {
-      return rows;
-    }
-    return [...rows].sort((a: RecordData, b: RecordData) => {
-      for (const { field, direction } of sorts) {
-        const aVal = a[field];
-        const bVal = b[field];
-        let cmp = 0;
-        if (aVal == null && bVal == null) {
-          cmp = 0;
-        } else if (aVal == null) {
-          cmp = -1;
-        } else if (bVal == null) {
-          cmp = 1;
-        } else if (aVal < bVal) {
-          cmp = -1;
-        } else if (aVal > bVal) {
-          cmp = 1;
-        }
-        if (cmp !== 0) {
-          return direction === 'asc' ? cmp : -cmp;
-        }
-      }
-      return 0;
-    });
-  });
-
-  displayPageIndex = computed(() => {
-    const size = this.pageSize();
-    if (!size) {
-      return 0;
-    }
-    const maxIndex = Math.max(0, Math.ceil(this.sortedRows().length / size) - 1);
-    return Math.min(this.pageIndex(), maxIndex);
-  });
-
-  pageCount = computed(() => {
-    const size = this.pageSize();
-    if (!size) {
-      return 1;
-    }
-    return Math.max(1, Math.ceil(this.sortedRows().length / size));
-  });
-
-  pagedRows = computed(() => {
-    const size = this.pageSize();
-    const rows = this.sortedRows();
-    if (!size) {
-      return rows;
-    }
-    const start = this.displayPageIndex() * size;
-    return rows.slice(start, start + size);
-  });
+  /** Whether the request already carries a filter the server indexes, so companion columns may join. */
+  indexedFilterActive = computed(() => indexedFilterActive(this.filters(), this.filterability(), this.externalFilterFields()));
 
   private readonly scrollContainer = viewChild<ElementRef<HTMLDivElement>>('scrollContainer');
   private readonly tableBody = viewChild<ElementRef<HTMLTableSectionElement>>('tableBody');
 
   private readonly virtualScroll = new VirtualScrollState(
-    computed(() => this.pagedRows().length),
+    computed(() => this.rowData().length),
     this.virtualScrollConfig,
   );
 
   visibleRows = computed(() => {
     if (!this.enableVirtualScroll()) {
-      return this.pagedRows();
+      return this.rowData();
     }
     const { start, end } = this.virtualScroll.range();
-    return this.pagedRows().slice(start, end);
+    return this.rowData().slice(start, end);
   });
 
   virtualTopPadding = computed(() => (this.enableVirtualScroll() ? this.virtualScroll.topPadding() : 0));
   virtualBottomPadding = computed(() => (this.enableVirtualScroll() ? this.virtualScroll.bottomPadding() : 0));
+
+  /** The pager's text: the rows this page spans, of the total when the first page asked for it. */
+  pageLabel = computed(() => {
+    const page = this.page();
+    if (!page) {
+      return '';
+    }
+    const count = this.rowData().length;
+    const range = count === 0 ? '0' : `${page.offset + 1}–${page.offset + count}`;
+    return page.total === undefined ? range : `${range} of ${page.total}`;
+  });
 
   constructor() {
     // Falls back to a measured rowHeight from the initial probe batch (INITIAL_PROBE_ROW_COUNT)
@@ -217,17 +203,19 @@ export class AppGridComponent {
     this.virtualScroll.setScrollTop((event.target as HTMLElement).scrollTop);
   }
 
+  // Selection: held as rows keyed by id, so it spans the pages the source turns.
+
   allSelected = computed(() => {
-    const rows = this.pagedRows();
-    return rows.length > 0 && rows.every((row: RecordData) => this.selectedIds().has(row['id']));
+    const rows = this.rowData();
+    return rows.length > 0 && rows.every((row: RecordData) => this.selected().has(row['id']));
   });
 
   someSelected = computed(
-    () => !this.allSelected() && this.pagedRows().some((row: RecordData) => this.selectedIds().has(row['id'])),
+    () => !this.allSelected() && this.rowData().some((row: RecordData) => this.selected().has(row['id'])),
   );
 
   isSelected(row: RecordData): boolean {
-    return this.selectedIds().has(row['id']);
+    return this.selected().has(row['id']);
   }
 
   toggleRow(row: RecordData): void {
@@ -237,39 +225,38 @@ export class AppGridComponent {
     }
 
     const id = row['id'];
-    const current = new Set(this.selectedIds());
+    const current = new Map(this.selected());
     if (mode === 'single') {
       const wasSelected = current.has(id);
       current.clear();
       if (!wasSelected) {
-        current.add(id);
+        current.set(id, row);
       }
     } else if (current.has(id)) {
       current.delete(id);
     } else {
-      current.add(id);
+      current.set(id, row);
     }
 
-    this.selectedIds.set(current);
+    this.selected.set(current);
     this.emitSelectedRows();
   }
 
+  /** Selects or clears every row of this page; rows selected on other pages stay. */
   toggleSelectAll(): void {
-    const rows = this.pagedRows();
-    const current = new Set(this.selectedIds());
+    const rows = this.rowData();
+    const current = new Map(this.selected());
     if (this.allSelected()) {
       rows.forEach((row: RecordData) => current.delete(row['id']));
     } else {
-      rows.forEach((row: RecordData) => current.add(row['id']));
+      rows.forEach((row: RecordData) => current.set(row['id'], row));
     }
-    this.selectedIds.set(current);
+    this.selected.set(current);
     this.emitSelectedRows();
   }
 
   private emitSelectedRows(): void {
-    const ids = this.selectedIds();
-    const selected = this.rowData().filter((row: RecordData) => ids.has(row['id']));
-    this.selectedRows.emit(selected);
+    this.selectedRows.emit([...this.selected().values()]);
   }
 
   isExpanded(row: RecordData): boolean {
@@ -290,6 +277,8 @@ export class AppGridComponent {
     this.expandedIds.set(current);
   }
 
+  // Sorting: the headers draw the sorts the rows came in; a click emits the next set.
+
   sortInfo(col: ColumnConfig): { direction: 'asc' | 'desc'; priority: number } | null {
     const sorts = this.sorts();
     const index = sorts.findIndex((sort) => sort.field === col.id);
@@ -300,6 +289,7 @@ export class AppGridComponent {
     return this.sorts().length > 1;
   }
 
+  /** A click makes the column the sort (asc, then desc, then none); shift-click adds it as a secondary. */
   toggleSort(col: ColumnConfig, event: MouseEvent): void {
     const field = col.id;
     const current = this.sorts();
@@ -307,68 +297,115 @@ export class AppGridComponent {
     if (!event.shiftKey) {
       const isSoleSort = current.length === 1 && current[0].field === field;
       if (!isSoleSort) {
-        this.sorts.set([{ field, direction: 'asc' }]);
+        this.sortChange.emit([{ field, direction: 'asc' }]);
       } else if (current[0].direction === 'asc') {
-        this.sorts.set([{ field, direction: 'desc' }]);
+        this.sortChange.emit([{ field, direction: 'desc' }]);
       } else {
-        this.sorts.set([]);
+        this.sortChange.emit([]);
       }
       return;
     }
 
     const existingIndex = current.findIndex((sort) => sort.field === field);
     if (existingIndex === -1) {
-      this.sorts.set([...current, { field, direction: 'asc' }]);
+      this.sortChange.emit([...current, { field, direction: 'asc' }]);
     } else if (current[existingIndex].direction === 'asc') {
       const next = [...current];
       next[existingIndex] = { field, direction: 'desc' };
-      this.sorts.set(next);
+      this.sortChange.emit(next);
     } else {
-      this.sorts.set(current.filter((_, index) => index !== existingIndex));
+      this.sortChange.emit(current.filter((_, index) => index !== existingIndex));
     }
   }
 
-  filterOperator(col: ColumnConfig): FilterOperator {
-    return this.filters()[col.id]?.operator ?? 'contains';
+  // Filtering: the menu edits a draft and emits the next filters when it commits.
+
+  filterControl(col: ColumnConfig): FilterControl {
+    return filterControlFor(col, this.filterability(), this.indexedFilterActive());
   }
 
-  filterValue(col: ColumnConfig): string {
-    return this.filters()[col.id]?.value ?? '';
+  private committedFilter(col: ColumnConfig): ColumnFilter | undefined {
+    return this.filters().find((filter) => filter.field === col.id);
+  }
+
+  /** The filter the column's menu shows: the draft being edited, else the committed filter, else an empty equals. */
+  draftFor(col: ColumnConfig): ColumnFilter {
+    return this.drafts()[col.id] ?? this.committedFilter(col) ?? { field: col.id, operator: 'eq', value: '' };
   }
 
   hasFilter(col: ColumnConfig): boolean {
-    return (this.filters()[col.id]?.value ?? '').trim() !== '';
+    return this.committedFilter(col) !== undefined;
   }
 
+  operatorTakesValue(col: ColumnConfig): boolean {
+    return operatorOption(this.draftFor(col).operator).takesValue;
+  }
+
+  valuePlaceholder(col: ColumnConfig): string {
+    return operatorOption(this.draftFor(col).operator).takesList ? 'a, b, c' : 'Value';
+  }
+
+  /** A new operator commits at once when the draft is complete (a null test, or a value already typed). */
   setFilterOperator(col: ColumnConfig, event: Event): void {
     const operator = (event.target as HTMLSelectElement).value as FilterOperator;
-    const next = { ...this.filters() };
-    next[col.id] = { operator, value: this.filterValue(col) };
-    this.filters.set(next);
-    this.pageIndex.set(0);
+    const draft = { ...this.draftFor(col), operator };
+    this.drafts.set({ ...this.drafts(), [col.id]: draft });
+    if (isComplete(draft)) {
+      this.commitFilter(col);
+    }
   }
 
   setFilterValue(col: ColumnConfig, event: Event): void {
     const value = (event.target as HTMLInputElement).value;
-    const next = { ...this.filters() };
-    next[col.id] = { operator: this.filterOperator(col), value };
-    this.filters.set(next);
-    this.pageIndex.set(0);
+    this.drafts.set({ ...this.drafts(), [col.id]: { ...this.draftFor(col), value } });
+  }
+
+  /** Emits the filters with this column's draft in place of its committed filter; an emptied draft clears it. */
+  commitFilter(col: ColumnConfig): void {
+    const draft = this.draftFor(col);
+    const others = this.filters().filter((filter) => filter.field !== col.id);
+    const next = isComplete(draft) ? [...others, draft] : others;
+    this.dropDraft(col);
+    if (!isComplete(draft) && !this.hasFilter(col)) {
+      return;
+    }
+    this.filterChange.emit(next);
   }
 
   clearFilter(col: ColumnConfig): void {
-    if (!(col.id in this.filters())) {
+    this.dropDraft(col);
+    if (!this.hasFilter(col)) {
       return;
     }
-    const next = { ...this.filters() };
-    delete next[col.id];
-    this.filters.set(next);
+    this.filterChange.emit(this.filters().filter((filter) => filter.field !== col.id));
   }
 
-  clearEmptyFilter(col: ColumnConfig): void {
-    if (!this.hasFilter(col)) {
-      this.clearFilter(col);
+  /**
+   * Typing in the filter menu stays in its controls: the menu would otherwise read a letter
+   * as an item shortcut. Escape passes through, so it closes the menu as anywhere else, and
+   * the close commits a complete draft.
+   */
+  keepTyping(event: KeyboardEvent): void {
+    if (event.key !== 'Escape') {
+      event.stopPropagation();
     }
+  }
+
+  /** A menu that closes with a complete draft commits it; an incomplete draft is dropped. */
+  onFilterMenuClosed(col: ColumnConfig): void {
+    if (this.drafts()[col.id] === undefined) {
+      return;
+    }
+    this.commitFilter(col);
+  }
+
+  private dropDraft(col: ColumnConfig): void {
+    if (!(col.id in this.drafts())) {
+      return;
+    }
+    const next = { ...this.drafts() };
+    delete next[col.id];
+    this.drafts.set(next);
   }
 
   widthFor(col: ColumnConfig): number | null {
@@ -397,20 +434,7 @@ export class AppGridComponent {
     document.addEventListener('mouseup', onUp);
   }
 
-  onPageChange(event: PageEvent): void {
-    this.pageIndex.set(event.pageIndex);
-  }
-
-  goToPage(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const value = Math.trunc(Number(input.value));
-    if (!Number.isFinite(value) || !this.pageSize()) {
-      input.value = String(this.displayPageIndex() + 1);
-      return;
-    }
-
-    const page = Math.min(Math.max(value, 1), this.pageCount());
-    this.pageIndex.set(page - 1);
-    input.value = String(page);
+  turn(direction: PageTurn): void {
+    this.pageTurn.emit(direction);
   }
 }

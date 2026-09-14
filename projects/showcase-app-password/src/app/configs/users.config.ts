@@ -21,7 +21,6 @@ export const usersConfig = rootConfig({
   parentConfig: listViewConfig({
     title: 'Users',
     createTitle: 'Create User',
-    limit: 8,
     pageSize: 3,
     createConfig: viewConfig({
       primaryResource: Resources.Users,

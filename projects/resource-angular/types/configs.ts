@@ -103,6 +103,11 @@ export interface SingleColumnConfig {
   formatType?: FormatType | string;
   hidden?: boolean;
   emptyDataValue?: DataType;
+  /**
+   * Opt the column out of its filter control. A control is drawn only where the
+   * generated metadata says the server filters the field (`filterable`); `false` removes
+   * it there too. It never adds one where the server would refuse the filter.
+   */
   filterable?: boolean;
   hideHeader?: boolean;
 }
@@ -121,6 +126,7 @@ export interface SingleColumnConfigOptions {
   formatType?: FormatType | string;
   hidden?: boolean;
   emptyDataValue?: DataType;
+  /** Opt the column out of its filter control; see SingleColumnConfig.filterable. */
   filterable?: boolean;
   hideHeader?: boolean;
 }
@@ -779,10 +785,18 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
   filter?: (parentResource: any) => string;
   disableCacheForFilterPii?: boolean;
   rpcConfigs?: RPCConfig[];
+  /** The sorts the list is requested in until a header is clicked; none, and the resource's declared order applies. */
   sorts?: FieldSort[];
-  limit?: number;
   shouldRenderActions?: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
+  /** Show the server's total row count in the title. */
   showRowCount?: boolean;
+  /**
+   * The server page size: rows per page, up to the resource's declared maximum (`@page`).
+   * Omitted, the resource's declared default applies, so the descriptor decides. A size
+   * over the maximum is refused by the server and the list shows its message. The list
+   * pages on the server: one page of rows is requested and rendered, First, Previous,
+   * and Next follow the server's cursors, and the browser never gathers every row.
+   */
   pageSize?: number;
 }
 export interface ListViewConfig extends BaseConfig {
@@ -801,9 +815,9 @@ export interface ListViewConfig extends BaseConfig {
   disableCacheForFilterPii: boolean;
   rpcConfigs?: RPCConfig[];
   sorts: FieldSort[];
-  limit?: number;
   shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
   showRowCount: boolean;
+  /** The server page size; see ListViewConfigOptions.pageSize. */
   pageSize?: number;
 }
 
@@ -839,7 +853,6 @@ export const listViewConfigDefaults = {
   filter: (): string => '',
   disableCacheForFilterPii: false,
   sorts: [] as FieldSort[],
-  limit: undefined,
   actionType: 'function' as ActionType,
   rpcConfigs: [],
   shouldRenderActions: {

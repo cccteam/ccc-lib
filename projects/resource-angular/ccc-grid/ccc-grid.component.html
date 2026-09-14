@@ -12,7 +12,7 @@
                   [checked]="allSelected()"
                   [indeterminate]="someSelected()"
                   (change)="toggleSelectAll()"
-                  aria-label="Select all rows" />
+                  aria-label="Select all rows on this page" />
               }
             </th>
           }
@@ -40,41 +40,56 @@
                       }
                     }
                   </button>
-                  <button
-                    type="button"
-                    mat-icon-button
-                    class="filter-trigger"
-                    [class.active]="hasFilter(col)"
-                    [matMenuTriggerFor]="filterMenu"
-                    aria-label="Filter column">
-                    <mat-icon>filter_alt</mat-icon>
-                  </button>
+                  @switch (filterControl(col)) {
+                    @case ('enabled') {
+                      <button
+                        type="button"
+                        mat-icon-button
+                        class="filter-trigger"
+                        [class.active]="hasFilter(col)"
+                        [matMenuTriggerFor]="filterMenu"
+                        aria-label="Filter column">
+                        <mat-icon>filter_alt</mat-icon>
+                      </button>
+                    }
+                    @case ('needsIndexed') {
+                      <span class="filter-trigger-wrap" [matTooltip]="companionHint">
+                        <button type="button" mat-icon-button class="filter-trigger" disabled aria-label="Filter column">
+                          <mat-icon>filter_alt_off</mat-icon>
+                        </button>
+                      </span>
+                    }
+                  }
                 }
               </div>
               @if (col.resizable ?? true) {
                 <span class="resize-handle" (mousedown)="startResize($event, col)"></span>
               }
-              <mat-menu #filterMenu="matMenu" class="ccc-grid-filter-menu" (closed)="clearEmptyFilter(col)">
+              <mat-menu #filterMenu="matMenu" class="ccc-grid-filter-menu" (closed)="onFilterMenuClosed(col)">
                 <div class="filter-menu-content">
                   <select
                     class="filter-operator"
-                    [value]="filterOperator(col)"
+                    [value]="draftFor(col).operator"
                     (change)="setFilterOperator(col, $event)"
                     (click)="$event.stopPropagation()"
-                    (keydown)="$event.stopPropagation()"
+                    (keydown)="keepTyping($event)"
                     aria-label="Filter operator">
                     @for (op of filterOperators; track op.value) {
                       <option [value]="op.value">{{ op.label }}</option>
                     }
                   </select>
-                  <mat-form-field appearance="outline" subscriptSizing="dynamic" (click)="$event.stopPropagation()">
-                    <input
-                      matInput
-                      placeholder="Value"
-                      [value]="filterValue(col)"
-                      (input)="setFilterValue(col, $event)"
-                      (keydown)="$event.stopPropagation()" />
-                  </mat-form-field>
+                  @if (operatorTakesValue(col)) {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic" (click)="$event.stopPropagation()">
+                      <input
+                        matInput
+                        [placeholder]="valuePlaceholder(col)"
+                        [value]="draftFor(col).value"
+                        (input)="setFilterValue(col, $event)"
+                        (keydown.enter)="commitFilter(col)"
+                        (keydown)="keepTyping($event)" />
+                    </mat-form-field>
+                  }
+                  <button type="button" mat-button (click)="commitFilter(col)">Apply</button>
                   <button type="button" mat-button (click)="clearFilter(col)">Clear</button>
                 </div>
               </mat-menu>
@@ -83,7 +98,7 @@
         </tr>
       </thead>
       <tbody #tableBody>
-        @if (pagedRows().length === 0) {
+        @if (rowData().length === 0) {
           <tr class="no-records-row">
             <td [attr.colspan]="totalColumnCount()">{{ emptyMessage() }}</td>
           </tr>
@@ -167,30 +182,20 @@
     }
   </div>
 
-  @if (pageSize()) {
+  @if (page(); as position) {
     <div class="ccc-grid-pager">
-      <div class="page-jump">
-        <span>Page</span>
-        <input
-          type="number"
-          class="page-jump-input"
-          min="1"
-          [max]="pageCount()"
-          [value]="displayPageIndex() + 1"
-          (change)="goToPage($event)"
-          (keydown.enter)="goToPage($event)"
-          aria-label="Page number" />
-        <span>of {{ pageCount() }}</span>
+      <span class="pager-rows">{{ pageLabel() }}</span>
+      <div class="pager-buttons">
+        <button type="button" mat-button [disabled]="!position.hasPrev" (click)="turn('first')">
+          <mat-icon>first_page</mat-icon> First
+        </button>
+        <button type="button" mat-button [disabled]="!position.hasPrev" (click)="turn('prev')">
+          <mat-icon>chevron_left</mat-icon> Previous
+        </button>
+        <button type="button" mat-button [disabled]="!position.hasNext" (click)="turn('next')">
+          Next <mat-icon iconPositionEnd>chevron_right</mat-icon>
+        </button>
       </div>
-      <mat-paginator
-        class="ccc-grid-paginator"
-        [length]="sortedRows().length"
-        [pageSize]="pageSize()!"
-        [pageIndex]="displayPageIndex()"
-        [hidePageSize]="true"
-        [showFirstLastButtons]="true"
-        (page)="onPageChange($event)">
-      </mat-paginator>
     </div>
   }
 </div>
