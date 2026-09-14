@@ -45,6 +45,12 @@ export interface MethodMeta {
 /** When the server accepts a filter on a field: on its own, or only beside an indexed field. */
 export type FilterEligibility = 'always' | 'withIndexed';
 
+/**
+ * How a field's masked cells meet a sort or a filter. Only the non-default behavior is
+ * named: a field without it conceals.
+ */
+export type MaskingBehavior = 'positional';
+
 export interface FieldMeta {
   fieldName: string;
   /** Indicates whether the field is required and only applies during resource creation.
@@ -75,6 +81,14 @@ export interface FieldMeta {
    * `allow_filter` conserves them. Absent, a filter naming the field is refused.
    */
   filterable?: FilterEligibility;
+  /**
+   * Set when the field is declared masking:"positional" on the server: a masked cell
+   * still arrives hidden (absent from the row), but the server sorts, filters, and pages
+   * on the real column, so a reader who sees some values can tell where the hidden ones
+   * fall between them. Absent, the field conceals: a masked cell is NULL to the sort and
+   * the filter, sorting in the NULL region and matching only isnull.
+   */
+  masking?: MaskingBehavior;
   /**
    * The server never accepts this field from clients — it is server-owned
    * (output-only, an @state column, or the tenant key) — so forms render it read-only
