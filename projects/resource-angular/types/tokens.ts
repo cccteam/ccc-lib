@@ -1,4 +1,4 @@
-import { InjectionToken, signal, Signal } from '@angular/core';
+import { InjectionToken, Provider, signal, Signal } from '@angular/core';
 import { Domain, Permission, Resource } from './permissions';
 import { MethodMeta, ResourceMeta } from './resource-meta';
 
@@ -127,3 +127,46 @@ export const IDLE_LOGOUT_ACTION = new InjectionToken<() => void>('IDLE_LOGOUT_AC
 export const IDLE_TIMEOUT_REQUIRE_CONFIRMATION = new InjectionToken<boolean>('IDLE_TIMEOUT_REQUIRE_CONFIRMATION', {
   factory: () => false,
 });
+
+/**
+ * The sentence a login page shows for each login refusal code the session module sends.
+ * A refused login redirects to the login page with `?code=<code>` and nothing else; the
+ * page renders the sentence it holds for the code and nothing for a code it does not
+ * know, so no text that arrives in the URL is ever displayed. One entry per code in the
+ * session module's "Login refusal codes" table.
+ */
+export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
+  internal_error: 'Sign-in failed because of a problem on our side. Please try again.',
+  login_refused: 'Sign-in was refused for this account.',
+  no_oidc_cookie: 'Sign-in could not be completed because the browser lost its sign-in cookie. Please try again.',
+  invalid_state: 'Sign-in could not be completed because it did not match the sign-in this browser started. Please try again.',
+  invalid_pkce: 'Sign-in could not be completed because its verification code was missing. Please try again.',
+  token_exchange_failed: 'The identity provider did not complete the sign-in. Please try again.',
+  no_id_token: 'The identity provider did not return an identity token. Please try again.',
+  verify_id_token_failed: 'The identity token could not be verified. Please try again.',
+  parse_claims_failed: 'The identity token could not be read. Please try again.',
+  not_workspace_member: 'This account is not a member of the required organization.',
+  email_not_verified: 'The email address of this account is not verified.',
+  no_roles: 'This account has no role in this application. Please contact your administrator.',
+  no_email_claim: 'The identity provider did not say which account signed in.',
+};
+
+/**
+ * The login refusal codes the application holds text for: the session module's codes with
+ * the library's sentences, plus whatever `provideLoginMessages` adds. `UiCoreService`
+ * reads it for `loginMessage` and `publishLoginError`.
+ * @defaultValue DEFAULT_LOGIN_MESSAGES
+ */
+export const LOGIN_MESSAGES = new InjectionToken<Readonly<Record<string, string>>>('LOGIN_MESSAGES', {
+  factory: () => DEFAULT_LOGIN_MESSAGES,
+});
+
+/**
+ * Adds the application's own login refusal codes, or rewords a default: the library's
+ * sentences come first and the application's entries after, so a repeated key wins. An
+ * application whose custom session data resolver refuses with `not_provisioned` provides
+ * `provideLoginMessages({ not_provisioned: 'Your account has not been set up yet.' })`.
+ */
+export function provideLoginMessages(messages: Record<string, string>): Provider {
+  return { provide: LOGIN_MESSAGES, useValue: { ...DEFAULT_LOGIN_MESSAGES, ...messages } };
+}

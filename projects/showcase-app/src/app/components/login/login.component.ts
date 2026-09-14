@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from '@cccteam/resource-angular/auth-service';
-import { AlertType, API_URL, BASE_URL, SESSION_PATH } from '@cccteam/resource-angular/types';
+import { API_URL, BASE_URL, SESSION_PATH } from '@cccteam/resource-angular/types';
 import { UiCoreService } from '@cccteam/resource-angular/ui-core-service';
 import { IdleService } from '@cccteam/resource-angular/ui-idle-service';
 import { PaneComponent } from '../shared/pane/pane.component';
@@ -30,9 +30,10 @@ export class LoginComponent implements OnDestroy {
   constructor() {
     this.dialog.closeAll();
 
+    // A refused login returns here with a code, never text; the library holds the sentence.
     this.route.queryParams.subscribe((params) => {
-      if (params['message']) {
-        this.ui.publishError({ message: params['message'], type: AlertType.ERROR, link: '' });
+      if (params['code']) {
+        this.ui.publishLoginError(params['code']);
       }
     });
     this.auth.logout().subscribe();
