@@ -62,9 +62,6 @@ func generatePasswordApp(ctx context.Context) {
 		generation.GenerateEnums(),
 		generation.WithRPC("pkg/rpc"),
 		generation.WithComputedResources("pkg/computedresources"),
-		generation.WithTypescriptOverrides(map[string]string{
-			"resources.Attachment": "CustomTypes.Attachment[]",
-		}),
 		generation.WithSpannerEmulatorVersion("1.5.43"),
 	)
 	if err != nil {

@@ -1,4 +1,3 @@
-import { Document } from '@contentful/rich-text-types';
 import { Resource } from './brands';
 
 export type ValidDisplayTypes =
@@ -11,8 +10,6 @@ export type ValidDisplayTypes =
   | 'uuid'
   | 'civildate'
   | 'string[]'
-  | 'customtypes.attachment[]'
-  | 'customtypes.contentfuldocument'
   /** A nested struct the generator mirrored: one opaque object, granted, masked, and selected whole. */
   | 'object'
   | 'object[]';
@@ -131,12 +128,3 @@ export type Meta = MethodMeta | ResourceMeta;
 export type ResourceMap = Record<Resource, ResourceMeta>;
 
 export type NullBoolean = null | true | false;
-
-export namespace CustomTypes {
-  export interface Attachment {
-    title: string;
-    url: string;
-    contentType: string;
-  }
-  export type ContentfulDocument = Document;
-}

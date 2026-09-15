@@ -57,9 +57,6 @@
       "dependencies": {
         "tslib": "^2.3.0",
       },
-      "peerDependencies": {
-        "@contentful/rich-text-types": "^17.2.5",
-      },
     },
     "projects/resource-angular": {
       "name": "@cccteam/resource-angular",
@@ -73,7 +70,6 @@
         "@angular/common": "^21.0.0",
         "@angular/core": "^21.0.0",
         "@cccteam/resource": "^0.0.1",
-        "@contentful/rich-text-types": "^17.2.5",
       },
     },
     "projects/showcase-app": {
@@ -235,8 +231,6 @@
     "@cccteam/resource-angular": ["@cccteam/resource-angular@workspace:projects/resource-angular"],
 
     "@colors/colors": ["@colors/colors@1.5.0", "", {}, "sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ=="],
-
-    "@contentful/rich-text-types": ["@contentful/rich-text-types@17.2.7", "", {}, "sha512-aIdozk8vk5gsYcallOrwEiL6+GSlMXZorDOmiVELfpbVaXMJPJPlf2CBw3LUzviAqCw0UPQcKHHCwG7SdY7u5w=="],
 
     "@csstools/color-helpers": ["@csstools/color-helpers@6.1.0", "", {}, "sha512-064IFJdjTfUqnjpCVpMOdbr8FLQBhinbZj6yRv2An2E41O/pLEXqfFRWqGq/SxlE5PEUYTlvWsG2r8MswAVvkg=="],
 

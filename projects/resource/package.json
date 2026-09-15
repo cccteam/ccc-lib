@@ -6,9 +6,6 @@
     "type": "git",
     "url": "git://github.com/cccteam/ccc-lib.git"
   },
-  "peerDependencies": {
-    "@contentful/rich-text-types": "^17.2.5"
-  },
   "dependencies": {
     "tslib": "^2.3.0"
   },
