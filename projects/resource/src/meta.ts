@@ -1,26 +1,56 @@
 import { Resource } from './brands';
 
+/**
+ * The display-type vocabulary: the name the ccc generator emits for every field it
+ * describes, a table column, a view column, a computed field, and an RPC field alike, and
+ * the name a browser chooses a control and a cell renderer by. A leaf's display type is
+ * its own name on every path (a time.Time is 'date', a civil.Date 'civildate', a ccc.UUID
+ * 'uuid', so a computed UUID field and a UUID column carry the same name), a nested
+ * struct, an imported type, and a value with no fixed shape are 'object', a byte slice is
+ * 'bytes', a nullable BOOL column is 'nullboolean', and a picker is 'enumerated'. A slice
+ * of a leaf adds [], for every leaf but the two that describe one value alone:
+ * 'nullboolean' is the tri-state rule for one nullable BOOL column, and a picker stores
+ * one key. The list is the generator's own (resource/generation/displaytype.go) and its
+ * README's table (section 12), spelled the same, and the generator refuses to emit
+ * anything outside it, so the union says exactly what a generated file can carry.
+ */
 export type ValidDisplayTypes =
-  | 'boolean'
-  | 'nullboolean'
-  | 'number'
   | 'string'
+  | 'number'
+  | 'boolean'
+  /** A nullable BOOL column: null, true, or false (NullBoolean), one tri-state control. */
+  | 'nullboolean'
+  /** A timestamp (time.Time): a Date in the interface. */
   | 'date'
-  | 'enumerated'
-  | 'uuid'
+  /** A calendar date (civil.Date): a Date in the interface, coerced to yyyy-MM-dd on the wire. */
   | 'civildate'
+  /** A UUID: a string in the interface, and this name says it is an identifier, not text. */
+  | 'uuid'
+  /** A picker: the field holds a key into the resource or enumeration the metadata names beside it. */
+  | 'enumerated'
+  /** A nested struct the generator mirrored or derived, an imported type, or a value with no fixed shape: one opaque object, granted, masked, and selected whole. */
+  | 'object'
   /**
    * A byte slice ([]byte, BYTES(n)): the interface says string because encoding/json
    * carries it as base64, and this name says it is not text. A grid shows its size or
    * offers a download, never the base64; a form takes no free-text control for it.
    */
   | 'bytes'
+  /** A list of a leaf (an ARRAY column, a slice field): never filtered, indexed, or sorted by; a grid shows the list, a form takes no free-text control for it. */
   | 'string[]'
-  /** A nested struct the generator mirrored: one opaque object, granted, masked, and selected whole. */
-  | 'object'
-  | 'object[]';
+  | 'number[]'
+  | 'boolean[]'
+  | 'date[]'
+  | 'civildate[]'
+  | 'uuid[]'
+  | 'object[]'
+  | 'bytes[]';
 
-export type ValidRPCTypes = ValidDisplayTypes | `${Exclude<ValidDisplayTypes, 'string[]'>}[]`;
+/**
+ * An RPC field carries the same vocabulary as a resource field; the name stays because
+ * the generated methods file imports it.
+ */
+export type ValidRPCTypes = ValidDisplayTypes;
 
 /** One value of a fixed enumeration: the stored id and the description shown for it. */
 export interface EnumerationOption {
