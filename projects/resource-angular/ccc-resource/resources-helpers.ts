@@ -7,19 +7,12 @@ import {
   FieldElement,
   MethodMeta,
   RecordData,
-  Resource,
   ResourceMeta,
   RPCRecordData,
   ViewConfig,
 } from '@cccteam/resource-angular/types';
 import { format, isValid } from 'date-fns';
 import { civildateCoercion, flattenElements } from './gui-constants';
-
-export interface Link {
-  id: string;
-  resource: Resource;
-  text: string;
-}
 
 export type PristineData = Record<string, DataType | null>;
 

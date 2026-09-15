@@ -8,7 +8,6 @@ export type ValidDisplayTypes =
   | 'string'
   | 'date'
   | 'enumerated'
-  | 'link'
   | 'uuid'
   | 'civildate'
   | 'string[]'
