@@ -41,7 +41,7 @@ import { camelCase } from '../concat-fns';
 import { flattenElements } from '../gui-constants';
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
 import { ResourceStore } from '../resource-store.service';
-import { metadataTypeCoercion } from '../resources-helpers';
+import { maxLengthValidator, metadataTypeCoercion } from '../resources-helpers';
 
 @Component({
   selector: 'ccc-resource-create',
@@ -169,6 +169,10 @@ export class ResourceCreateComponent implements OnInit {
 
       if (field.required && !control.hasValidator(Validators.required)) {
         control.addValidators(Validators.required);
+      }
+      const maxLength = maxLengthValidator(field);
+      if (maxLength) {
+        control.addValidators(maxLength);
       }
       fg.addControl(field.fieldName, control);
     }

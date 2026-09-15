@@ -1,5 +1,6 @@
 import { ModelSignal } from '@angular/core';
-import { FormControl, FormGroup } from '@angular/forms';
+import { FormControl, FormGroup, ValidatorFn, Validators } from '@angular/forms';
+import { FieldMeta } from '@cccteam/resource';
 import {
   ConfigElement,
   DataType,
@@ -21,6 +22,20 @@ export interface Link {
 }
 
 export type PristineData = Record<string, DataType | null>;
+
+/**
+ * The validator a field's metadata adds to its form control: the server's character
+ * limit (FieldMeta.maxLength) as Validators.maxLength, so a value the server would refuse
+ * with 400 never leaves the browser. Undefined for a field without a limit, and for a
+ * 'string[]' field, whose limit is per element while the array validator would count the
+ * elements.
+ */
+export function maxLengthValidator(field: FieldMeta): ValidatorFn | undefined {
+  if (!field.maxLength || field.displayType === 'string[]') {
+    return undefined;
+  }
+  return Validators.maxLength(field.maxLength);
+}
 
 export const createFormGroup = (
   meta: ResourceMeta,

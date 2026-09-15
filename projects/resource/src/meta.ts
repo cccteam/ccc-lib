@@ -90,6 +90,16 @@ export interface FieldMeta {
    */
   masking?: MaskingBehavior;
   /**
+   * The most characters the server accepts in this field, from its column's declared
+   * STRING(n) length; per element for a 'string[]' field. A form adds a maxLength
+   * validator from it so a value the server would refuse with 400 never leaves the
+   * browser. JavaScript counts UTF-16 units and the server counts code points, so the
+   * form refuses a little early on astral characters and never accepts what the server
+   * refuses. Absent on an unbounded column and on every non-string field. Emitted by the
+   * ccc TypeScript generator.
+   */
+  maxLength?: number;
+  /**
    * The server never accepts this field from clients — it is server-owned
    * (output-only, an @state column, or the tenant key) — so forms render it read-only
    * in every mode. Emitted by the ccc TypeScript generator.

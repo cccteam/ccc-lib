@@ -52,7 +52,7 @@ import { ResourceCreateComponent } from '../resource-create/resource-create.comp
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
 import { ResourceStore } from '../resource-store.service';
 import { patchFromForm } from '@cccteam/resource-angular/resource-client';
-import { metadataTypeCoercion } from '../resources-helpers';
+import { maxLengthValidator, metadataTypeCoercion } from '../resources-helpers';
 
 @Component({
   selector: 'ccc-resource-view',
@@ -289,6 +289,10 @@ export class ResourceViewComponent implements OnInit {
 
       if (fieldConfig.validators.length > 0) {
         control.setValidators(fieldConfig.validators);
+      }
+      const maxLength = maxLengthValidator(field);
+      if (maxLength) {
+        control.addValidators(maxLength);
       }
 
       fg.addControl(field.fieldName, control);
