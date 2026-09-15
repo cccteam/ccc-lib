@@ -9,6 +9,12 @@ export type ValidDisplayTypes =
   | 'enumerated'
   | 'uuid'
   | 'civildate'
+  /**
+   * A byte slice ([]byte, BYTES(n)): the interface says string because encoding/json
+   * carries it as base64, and this name says it is not text. A grid shows its size or
+   * offers a download, never the base64; a form takes no free-text control for it.
+   */
+  | 'bytes'
   | 'string[]'
   /** A nested struct the generator mirrored: one opaque object, granted, masked, and selected whole. */
   | 'object'
