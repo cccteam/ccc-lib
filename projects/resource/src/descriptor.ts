@@ -47,8 +47,8 @@ export interface ResourceDescriptor {
   /**
    * The resource's declared `@order`, the order a list takes when the request names no
    * sort, with the primary key appended by the server so it is total. A resource that
-   * declares one issues cursors for a sort-less list; one that declares none lists by
-   * primary key and issues no cursor, so a walk over it must send a sort (see walkSort).
+   * declares one issues cursors for a sort-less list; one that declares none is not
+   * sorted and issues no cursor, so a walk over it must send a sort (see walkSort).
    */
   order?: readonly OrderDescriptor[];
 }

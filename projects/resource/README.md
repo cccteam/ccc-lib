@@ -59,10 +59,12 @@ server's `Link` relations exactly as issued, and are absent where no such page e
 `reload()` repeats the request that produced the page — the first page's parameters, or
 the cursor a relation handed out — so a table refreshes the page it is on after a write.
 `all()` returns every row: `limit: 'all'` where the resource declares no maximum page
-size, otherwise a walk through the pages to the end in the query's sort, in the resource's
-declared order when the query names none and the descriptor carries one (`descriptor.order`,
-the `@order` annotation), else in primary-key order. `walkSort(descriptor, sort)` is that
-rule on its own, for a table that pages one page at a time.
+size, otherwise a walk through the pages to the end in the query's sort, or in the
+resource's declared order when the query names none and the descriptor carries one
+(`descriptor.order`, the `@order` annotation). A resource with a maximum and no declared
+order cannot be walked without a sort, and `all()` throws naming that rather than
+answering the one unsorted page the server serves. `walkSort(descriptor, sort)` is the
+sort a walk sends: the caller's, else nothing, never a fabricated primary-key sort.
 
 ```ts
 let page = await station.missions.page({ sort: { field: 'deadline' }, limit: 25, count: true });
@@ -81,8 +83,10 @@ same way.
 A page position is a sealed cursor the server issues; a client never assembles one,
 and a cursor presented with a different filter, sort, limit, or tenant is refused.
 `offset` no longer exists. A list with no sort on a resource with no declared order is
-served in primary-key order and issues no cursor: `page.more` marks that its rows did
-not fit, and paging further requires a sort. A resource over a declared maximum page
+not sorted (the server writes no `ORDER BY`, and a computed list keeps its body's order)
+and issues no cursor: `page.more` marks that its rows did not fit, and paging further
+requires a sort. A grid on such a resource shows the first page until the user sorts a
+column. A resource over a declared maximum page
 size refuses the request (400) rather than clamping it, and refuses `limit: 'all'`.
 
 A filter may name only the fields the server filters, and the generated field metadata

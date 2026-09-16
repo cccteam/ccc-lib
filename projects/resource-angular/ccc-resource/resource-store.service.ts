@@ -208,8 +208,9 @@ export class ResourceStore {
     }
     const handle = this.handleFor(query.route);
     // No limit unless the page names one, so the descriptor's default applies; no sort
-    // unless the page names one, so a declared @order applies, and the primary key only
-    // where the resource declares no order — the client's walk rule.
+    // unless the page names one, so a declared @order applies, and a resource declaring
+    // none is served unsorted, its first page with no cursor until a header is clicked
+    // — the client's walk rule.
     const sorts = query.sorts.map((s) => ({ field: s.field as string, direction: s.direction }));
     const request: ListQuery<RecordData> = {
       filter: query.filter !== '' ? query.filter : undefined,
@@ -519,8 +520,10 @@ export class ResourceStore {
    * array view, the pickers, the referenced-resource columns. With a limit the server's
    * first page of that size is the answer. Without one the client's all() reads every
    * row — limit=all where the resource declares no maximum, otherwise a walk through
-   * the pages in the configured sorts, or in the declared order or primary-key order
-   * when none is configured. A PII filter travels in the request body. The list
+   * the pages in the configured sorts, or in the declared order when none is
+   * configured; a resource with a maximum and no order cannot be walked without a
+   * sort, and the client refuses rather than answering one unsorted page. A PII
+   * filter travels in the request body. The list
    * component does not read here: it holds one server page (see buildStorePage).
    */
   private list<T>(

@@ -80,7 +80,7 @@ export type Returned<Row, Query> = Query extends { capabilities: Capability[] } 
 /**
  * One page of a list. `next` and `prev` follow the server's Link relations exactly as
  * issued and are absent where no such page exists; `total` answers a `count: true`
- * request on a first page; `more` marks a page served in primary-key order (no sort,
+ * request on a first page; `more` marks a page of a list that is not sorted (no sort,
  * no declared order) whose rows did not fit — the server issues no cursor there, so
  * paging further requires a sort.
  */
@@ -105,8 +105,11 @@ export interface Listable<Row> {
   page<Query extends ListQuery<Row> | undefined = undefined>(query?: Query): Promise<Page<Returned<Row, Query>>>;
   /**
    * Every row. Asks `limit: 'all'` where the resource declares no maximum page size;
-   * otherwise walks the pages to the end in the query's sort, or in primary-key order
-   * when the query names none, so an export sees each row once.
+   * otherwise walks the pages to the end in the query's sort, or in the resource's
+   * declared order when the query names none, so an export sees each row once. A
+   * resource with a maximum and no declared order cannot be walked without a sort:
+   * the server serves one unsorted page and no cursor, and `all()` throws naming
+   * the sort it needs rather than answering that page as if it were every row.
    */
   all<Query extends ListQuery<Row> | undefined = undefined>(query?: Query): Promise<Returned<Row, Query>[]>;
 }
@@ -557,6 +560,11 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
       }
       const rows: Row[] = [];
       let page = await handle.page({ ...query, sort: walkSort(descriptor, query?.sort), count: false } as ListQuery<Row>);
+      if (page.more) {
+        throw new Error(
+          `${descriptor.resource}: all() cannot walk every row: the resource declares a maximum page size and no order, so the server serves one unsorted page and no cursor; pass a sort`,
+        );
+      }
       for (;;) {
         rows.push(...page.rows);
         if (!page.next) {
@@ -586,23 +594,22 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
 }
 
 /**
- * The sort a paged walk sends so the server issues cursors: the caller's when the query
- * names one; nothing when the resource declares an `@order`, which the server applies
- * and pages by; otherwise the primary key, since a list with no order is served in
- * primary-key order without a cursor. The same rule serves a table over one page and
- * an export over every page.
+ * The sort a paged walk sends: the caller's when the query names one, and nothing
+ * otherwise. A resource that declares an `@order` is paged by it on the server; one
+ * that declares none is not sorted, and the request goes as given: the server serves
+ * the first page with `more` set where the rows did not fit, and no cursor, until
+ * the caller sorts. The client fabricates no sort of its own, the primary key's
+ * included, since an order nobody asked for is random for UUID keys. The same rule
+ * serves a table over one page and an export over every page.
  */
 export function walkSort<Row>(
-  descriptor: ResourceDescriptor,
+  _descriptor: ResourceDescriptor,
   sort: Sort<Row> | Sort<Row>[] | undefined,
 ): Sort<Row> | Sort<Row>[] | undefined {
   if (sort !== undefined && (!Array.isArray(sort) || sort.length > 0)) {
     return sort;
   }
-  if (descriptor.order && descriptor.order.length > 0) {
-    return undefined;
-  }
-  return descriptor.keys.map((key) => ({ field: key as keyof Row & string, direction: 'asc' as const }));
+  return undefined;
 }
 
 /**

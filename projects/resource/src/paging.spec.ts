@@ -178,7 +178,7 @@ describe('walkSort', () => {
     { name: 'the caller\'s sort wins', resource: 'Consignments', sort: [{ field: 'mass', direction: 'desc' }], want: [{ field: 'mass', direction: 'desc' }] },
     { name: 'a declared order sends nothing', resource: 'Consignments', sort: undefined, want: undefined },
     { name: 'an empty sort counts as none', resource: 'Consignments', sort: [], want: undefined },
-    { name: 'no declared order sends the primary key', resource: 'Missions', sort: undefined, want: [{ field: 'id', direction: 'asc' }] },
+    { name: 'no declared order sends nothing: the list is not sorted, never by a key nobody asked for', resource: 'Missions', sort: undefined, want: undefined },
   ];
 
   for (const tt of cases) {
@@ -230,16 +230,22 @@ describe('all', () => {
     expect(requests).toHaveLength(1);
   });
 
-  it('walks the pages in primary-key order where a maximum is declared', async () => {
-    const first = '/api/missions?sort=id%3Aasc';
-    const second = '/api/missions?sort=id%3Aasc&cursor=v4.local.two';
+  it('sends no sort where a maximum is declared and no order is, and refuses to pass off the unsorted first page as every row', async () => {
+    const first = '/api/missions';
     const { transport, requests } = scripted({
-      [first]: { rows: [{ id: 'a' }, { id: 'b' }], headers: { link: `<${second}>; rel="next"` } },
-      [second]: { rows: [{ id: 'c' }], headers: { link: `<${first}>; rel="prev"` } },
+      [first]: { rows: [{ id: 'a' }, { id: 'b' }], headers: { 'page-more': 'true' } },
     });
     const api = createClient<{ missions: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
-    expect(await api.missions.all()).toEqual([{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
-    expect(requests.map((r) => r.url)).toEqual([first, second]);
+    await expect(api.missions.all()).rejects.toThrow('Missions: all() cannot walk every row');
+    expect(requests.map((r) => r.url)).toEqual([first]);
+  });
+
+  it('answers the unsorted page where a maximum is declared, no order is, and every row fit', async () => {
+    const first = '/api/missions';
+    const { transport, requests } = scripted({ [first]: { rows: [{ id: 'a' }, { id: 'b' }] } });
+    const api = createClient<{ missions: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
+    expect(await api.missions.all()).toEqual([{ id: 'a' }, { id: 'b' }]);
+    expect(requests.map((r) => r.url)).toEqual([first]);
   });
 
   it('sends no sort where the resource declares an order, which the server pages by', async () => {
