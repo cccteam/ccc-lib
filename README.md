@@ -21,11 +21,12 @@ To install the Angular library in your project, run the following command:
 npm install @cccteam/resource @cccteam/resource-angular
 ```
 
-To run a full test environment, use [overmind](https://github.com/DarthSim/overmind):
-
-```bash
-overmind s
-```
+This repository holds the two packages and their specs, nothing else. Lodestar, the
+demonstration application in [cccteam/ccc](https://github.com/cccteam/ccc) at
+`resource/lodestar`, is the library's application: every library change is proven there,
+against a running server, through the yalc loop its `web/ccclib.sh` runs. `ccclib.sh local`
+builds both packages from this checkout and attaches them to Lodestar's workspace, and
+`ccclib.sh push` rebuilds them into every attached consumer.
 
 ## Core Concepts
 

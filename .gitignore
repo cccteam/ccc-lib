@@ -2,6 +2,3 @@ node_modules
 .angular
 **/dist/
 .envrc
-/test-results/
-/playwright-report/
-/e2e/screenshots/

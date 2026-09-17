@@ -13,7 +13,6 @@
     "@angular/platform-browser": "^21.2.4",
     "@angular/platform-browser-dynamic": "^21.2.4",
     "@angular/router": "^21.2.4",
-    "@angular/service-worker": "^21.2.4",
     "date-fns": "^4.1.0",
     "date-fns-tz": "^3.2.0",
     "rxjs": "~7.8.0",
@@ -26,8 +25,6 @@
     "@angular/build": "^21.2.2",
     "@angular/cli": "^21.2.2",
     "@angular/compiler-cli": "^21.2.4",
-    "@angular/localize": "^21.2.4",
-    "@playwright/test": "^1.61.1",
     "@types/jasmine": "~5.1.0",
     "@types/node": "^24.10.1",
     "angular-eslint": "^21.3.0",
@@ -50,13 +47,8 @@
     "vitest": "^4.0.8"
   },
   "scripts": {
-    "prestart": "npx --yes tsx ./projects/showcase-app/src/environments/initialize-env.ts",
-    "start": "ng serve showcase-app --no-hmr",
     "lint": "ng lint",
     "typecheck:resource": "tsc --noEmit -p projects/resource/tsconfig.spec.json",
-    "build": "ng build resource && ng build resource-angular",
-    "test:e2e": "playwright test",
-    "prestart:password": "npx --yes tsx ./projects/showcase-app-password/src/environments/initialize-env.ts",
-    "start:password": "ng serve showcase-app-password --no-hmr"
+    "build": "ng build resource && ng build resource-angular"
   }
 }
