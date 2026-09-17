@@ -82,7 +82,9 @@ export type Returned<Row, Query> = Query extends { capabilities: Capability[] } 
  * issued and are absent where no such page exists; `total` answers a `count: true`
  * request on a first page; `more` marks a page of a list that is not sorted (no sort,
  * no declared order) whose rows did not fit — the server issues no cursor there, so
- * paging further requires a sort.
+ * paging further requires a sort. A key-less resource (an empty `keys` tuple) is served
+ * whole on every request: its one page is the whole list, with no `next`, no `prev`,
+ * and `more` never set.
  */
 export interface Page<Row> {
   rows: Row[];
@@ -98,20 +100,32 @@ export interface Page<Row> {
   reload: () => Promise<Page<Row>>;
 }
 
-export interface Listable<Row> {
-  /** One page of rows, the resource's default page when the query names no limit. */
-  list<Query extends ListQuery<Row> | undefined = undefined>(query?: Query): Promise<Returned<Row, Query>[]>;
-  /** One page with its neighbors: follow `next` and `prev` as the server names them. */
-  page<Query extends ListQuery<Row> | undefined = undefined>(query?: Query): Promise<Page<Returned<Row, Query>>>;
+/**
+ * The list operations of a handle. `Key` is the resource's key tuple: on the empty
+ * tuple, a key-less resource served whole, the query type carries no `limit` and no
+ * `cursor` (ListQuery), so a page asked of such a handle does not compile.
+ */
+export interface Listable<Row, Key extends readonly unknown[] = readonly unknown[]> {
   /**
-   * Every row. Asks `limit: 'all'` where the resource declares no maximum page size;
+   * One page of rows, the resource's default page when the query names no limit; the
+   * whole list on a key-less resource.
+   */
+  list<Query extends ListQuery<Row, Key> | undefined = undefined>(query?: Query): Promise<Returned<Row, Query>[]>;
+  /**
+   * One page with its neighbors: follow `next` and `prev` as the server names them. On
+   * a key-less resource the one page is the whole list and has no neighbors.
+   */
+  page<Query extends ListQuery<Row, Key> | undefined = undefined>(query?: Query): Promise<Page<Returned<Row, Query>>>;
+  /**
+   * Every row. Asks `limit: 'all'` where the resource declares no maximum page size,
+   * and nothing at all on a key-less resource, which is served whole as it is;
    * otherwise walks the pages to the end in the query's sort, or in the resource's
    * declared order when the query names none, so an export sees each row once. A
    * resource with a maximum and no declared order cannot be walked without a sort:
    * the server serves one unsorted page and no cursor, and `all()` throws naming
    * the sort it needs rather than answering that page as if it were every row.
    */
-  all<Query extends ListQuery<Row> | undefined = undefined>(query?: Query): Promise<Returned<Row, Query>[]>;
+  all<Query extends ListQuery<Row, Key> | undefined = undefined>(query?: Query): Promise<Returned<Row, Query>[]>;
 }
 
 export interface Readable<Row, Key extends unknown[]> {
@@ -158,7 +172,7 @@ export type ResourceHandle<
   Create = never,
   Patch = never,
 > = ResourceHandleBase<Row, Key> &
-  ('list' extends Ops ? Listable<Row> : unknown) &
+  ('list' extends Ops ? Listable<Row, Key> : unknown) &
   ('read' extends Ops ? Readable<Row, Key> : unknown) &
   ('create' extends Ops ? Creatable<Create> : unknown) &
   ('patch' extends Ops ? Patchable<Patch, Key> : unknown) &
@@ -467,6 +481,19 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     const segments = keySegments(key);
     return descriptor.consolidated ? `/${route}${segments}` : segments || '/';
   };
+  // A key-less resource is served whole on every request and refuses a limit or a
+  // cursor, so neither is sent for it, whatever a caller typed past the type; the rest
+  // of the query goes as given.
+  const keyless = descriptor.keys.length === 0;
+  const wholeList = (query: ListQuery<Row> | undefined): ListQuery<Row> | undefined => {
+    if (!keyless || !query) {
+      return query;
+    }
+    const rest = { ...query };
+    delete rest.limit;
+    delete rest.cursor;
+    return rest;
+  };
   // A standalone resource's operations carry their route, so client.batch delivers
   // them to the resource's own PATCH handler; a consolidated one's carry nothing.
   const bound = (operation: Operation): Operation =>
@@ -547,14 +574,17 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
       );
     },
     list: (async (query?: ListQuery<Row>) => {
-      const { method, params, body } = listRequest(query);
+      const { method, params, body } = listRequest(wholeList(query));
       return (await client.request<Row[] | null>(method, route, { query: params, body })) ?? [];
     }) as Listable<Row>['list'],
     page: ((query?: ListQuery<Row>) => {
-      const { method, params, body } = listRequest(query);
+      const { method, params, body } = listRequest(wholeList(query));
       return pageOf<Row>(client, method, body, () => client.requestResponse(method, route, { query: params, body }));
     }) as Listable<Row>['page'],
     all: (async (query?: ListQuery<Row>) => {
+      if (keyless) {
+        return handle.list(query);
+      }
       if (descriptor.page?.max === undefined) {
         return handle.list({ ...query, limit: 'all' } as ListQuery<Row>);
       }

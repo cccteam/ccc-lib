@@ -41,6 +41,18 @@ const descriptor: ApiDescriptor = {
       page: { default: 20, max: 100 },
       order: [{ field: 'expiresOn', direction: 'asc' }],
     },
+    // A key-less resource (no @primarykey): served whole on every request, list alone,
+    // no read, no page.
+    StandingOrders: {
+      resource: 'StandingOrders' as Resource,
+      property: 'standingOrders',
+      route: 'standing-orders',
+      scope: 'global',
+      consolidated: false,
+      keys: [],
+      operations: ['list'],
+      page: { default: 50 },
+    },
   },
   methods: {},
 };
@@ -266,5 +278,37 @@ describe('all', () => {
     const api = createClient<{ missions: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
     expect(await api.missions.all({ sort: { field: 'deadline' as never, direction: 'desc' }, limit: 200 })).toEqual([{ id: 'a' }]);
     expect(requests.map((r) => r.url)).toEqual([first]);
+  });
+});
+
+describe('key-less resource', () => {
+  it('lists the whole resource with no limit and no cursor, whatever the query carries', async () => {
+    const whole = '/api/standing-orders';
+    const sorted = '/api/standing-orders?sort=section';
+    const { transport, requests } = scripted({
+      [whole]: { rows: [{ id: 'a' }, { id: 'b' }] },
+      [sorted]: { rows: [{ id: 'b' }, { id: 'a' }] },
+    });
+    const api = createClient<{ standingOrders: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
+
+    // AnyResourceHandle types its key as string[], so a limit passes the type here; the
+    // generated handle's empty key tuple refuses it at compile time (keyless.types.spec.ts).
+    expect(await api.standingOrders.list({ limit: 10, cursor: 'v4.local.anything' })).toEqual([{ id: 'a' }, { id: 'b' }]);
+    expect(await api.standingOrders.list({ sort: { field: 'section' as never }, limit: 'all' })).toEqual([{ id: 'b' }, { id: 'a' }]);
+    expect(requests.map((r) => r.url)).toEqual([whole, sorted]);
+  });
+
+  it('answers the whole list as one page with no neighbors, and all() sends no limit', async () => {
+    const whole = '/api/standing-orders';
+    const { transport, requests } = scripted({ [whole]: { rows: [{ id: 'a' }, { id: 'b' }] } });
+    const api = createClient<{ standingOrders: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
+
+    const page = await api.standingOrders.page({ limit: 10 });
+    expect(page.rows).toEqual([{ id: 'a' }, { id: 'b' }]);
+    expect(page.more).toBe(false);
+    expect(page.next).toBeUndefined();
+    expect(page.prev).toBeUndefined();
+    expect(await api.standingOrders.all()).toEqual([{ id: 'a' }, { id: 'b' }]);
+    expect(requests.map((r) => r.url)).toEqual([whole, whole]);
   });
 });

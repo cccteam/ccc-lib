@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../out-tsc/resource-spec",
+    "noEmit": true,
+    "types": []
+  },
+  "include": ["src/**/*.spec.ts", "bun-test.d.ts"],
+  "exclude": ["src/batch.spec.ts", "src/permissions.spec.ts"]
+}

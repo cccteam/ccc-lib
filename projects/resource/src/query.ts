@@ -87,15 +87,13 @@ export interface Sort<Row> {
 }
 
 /**
- * The reserved list parameters. The server answers one page — `limit` rows, or the
- * resource's declared default when omitted (see ResourceDescriptor.page) — and names
- * the neighboring pages in its Link header; it rejects any parameter it does not know.
+ * The page parameters: the page size and the position. A resource with no primary key
+ * (an empty `keys` tuple in its descriptor) has no row identity for a cursor to anchor
+ * on, so the server serves it whole on every request and refuses both with a 400;
+ * `ListQuery` omits them where the handle's key type is the empty tuple, so a `limit` on
+ * such a handle does not compile, and the client sends neither for it at runtime.
  */
-export interface ListQuery<Row> {
-  filter?: Filter<Row>;
-  sort?: Sort<Row> | Sort<Row>[];
-  /** JSON field names to return; omitted means every field the caller may read. */
-  columns?: (keyof Row & string)[];
+export interface PageQuery {
   /**
    * The page size, up to the resource's declared maximum, or 'all' for every row on a
    * resource that declares no maximum. The server refuses 0 and a size over the maximum.
@@ -106,6 +104,14 @@ export interface ListQuery<Row> {
    * relations itself; set this only when replaying a URL the server issued.
    */
   cursor?: string;
+}
+
+/** The list parameters every resource takes, keyed or not. */
+export interface ListQueryBase<Row> {
+  filter?: Filter<Row>;
+  sort?: Sort<Row> | Sort<Row>[];
+  /** JSON field names to return; omitted means every field the caller may read. */
+  columns?: (keyof Row & string)[];
   /** Ask the first page for the total row count, answered in the Total-Count header. */
   count?: boolean;
   /**
@@ -117,6 +123,16 @@ export interface ListQuery<Row> {
   /** Ask the server to evaluate these per row and attach the capability envelope. */
   capabilities?: Capability[];
 }
+
+/**
+ * The reserved list parameters. The server answers one page — `limit` rows, or the
+ * resource's declared default when omitted (see ResourceDescriptor.page) — and names
+ * the neighboring pages in its Link header; it rejects any parameter it does not know.
+ * `Key` is the handle's key tuple: the empty tuple is a key-less resource, served whole,
+ * whose query carries no page (PageQuery); every other key admits one.
+ */
+export type ListQuery<Row, Key extends readonly unknown[] = readonly unknown[]> = ListQueryBase<Row> &
+  (Key extends readonly [] ? unknown : PageQuery);
 
 export interface ReadOptions<Row> {
   columns?: (keyof Row & string)[];

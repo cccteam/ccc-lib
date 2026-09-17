@@ -53,6 +53,7 @@
     "prestart": "npx --yes tsx ./projects/showcase-app/src/environments/initialize-env.ts",
     "start": "ng serve showcase-app --no-hmr",
     "lint": "ng lint",
+    "typecheck:resource": "tsc --noEmit -p projects/resource/tsconfig.spec.json",
     "build": "ng build resource && ng build resource-angular",
     "test:e2e": "playwright test",
     "prestart:password": "npx --yes tsx ./projects/showcase-app-password/src/environments/initialize-env.ts",
