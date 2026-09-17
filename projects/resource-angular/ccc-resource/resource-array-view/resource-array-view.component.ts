@@ -18,13 +18,22 @@ import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansi
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ArrayConfig, ColumnConfig, RecordData, RESOURCE_META, ViewConfig } from '@cccteam/resource-angular/types';
+import { readMode } from '@cccteam/resource';
 import {
   ActionAccessControlWrapperComponent,
   ActionButtonContext,
 } from '../actions/action-button-smart/action-access-control-wrapper.component';
 import { ResourceCreateComponent } from '../resource-create/resource-create.component';
+import { listEmptyMessage, pageLabel } from '../resource-list/list-request';
 import { ResourceStore } from '../resource-store.service';
 
+/**
+ * The children of one row, each drawn as a form. How the children are read is the
+ * listed resource's descriptor's statement alone, its declared maximum page size
+ * (readMode): with none the children are read whole in one request; with one the view
+ * holds one server page at the descriptor's default size, Previous and Next by the
+ * server's cursors, and never gathers every child.
+ */
 @Component({
   selector: 'ccc-resource-array-view',
   templateUrl: './resource-array-view.component.html',
@@ -55,8 +64,35 @@ export class ResourceArrayViewComponent implements OnInit {
   /* eslint-disable  @typescript-eslint/no-explicit-any */
   compoundResourceComponent = input.required<Type<any>>();
 
+  /** The listed resource's generated descriptor; a resource the API does not describe has none and is read whole. */
+  private descriptor = computed(() => {
+    const config = this.resourceConfig();
+    return this.store.client.descriptor.resources[config.connectorResource || config.primaryResource];
+  });
+
+  /** Whether the children are paged: the listed resource declares a maximum page size. */
+  paged = computed(() => {
+    const descriptor = this.descriptor();
+    return descriptor !== undefined && readMode(descriptor) === 'paged';
+  });
+
+  /** The children shown: the server's page on a paged source, the whole list otherwise. */
+  rows = computed<RecordData[]>(() => (this.paged() ? this.store.page().rows : this.store.listData()));
+
+  /** Whether the children have arrived. */
+  resolved = computed(() => (this.paged() ? this.store.pageStatus() === 'resolved' : this.store.listStatus() === 'resolved'));
+
+  /** What an empty view says: the server's refusal in its own words, else the plain text. */
+  emptyMessage = computed(() => listEmptyMessage(this.paged() ? this.store.pageError() : this.store.listError(), false));
+
+  /** The pager's label under a paged view: this page's range of the total. */
+  pagerLabel = computed(() => {
+    const page = this.store.page();
+    return pageLabel(page.offset, page.rows.length, page.total);
+  });
+
   showCreateButton = computed(() => {
-    const list = this.store.listData();
+    const list = this.rows();
     const resourceConfig = this.resourceConfig();
     const iteratedConfig = resourceConfig.iteratedConfig;
     if (list && resourceConfig?.viewType === 'OneToOne') {
@@ -135,7 +171,13 @@ export class ResourceArrayViewComponent implements OnInit {
 
         this.store.filter.set(filter);
         this.store.disableCacheForFilterPii.set(resourceConfig.disableCacheForFilterPii);
-        this.store.buildStoreListData();
+        // A paged source: the store holds one server page and the pager turns it. A whole
+        // source: one request, every child.
+        if (this.paged()) {
+          this.store.buildStorePage();
+        } else {
+          this.store.buildStoreListData();
+        }
       }
     });
   }
@@ -159,7 +201,11 @@ export class ResourceArrayViewComponent implements OnInit {
   }
 
   onCreateCompleted(): void {
-    this.store.reloadListData();
+    if (this.paged()) {
+      this.store.reloadPage();
+    } else {
+      this.store.reloadListData();
+    }
     this.setCreateMode(false);
   }
 }

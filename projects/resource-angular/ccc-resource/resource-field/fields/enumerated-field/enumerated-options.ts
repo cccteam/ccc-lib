@@ -1,4 +1,5 @@
 import { EnumeratedConfig } from '@cccteam/resource-angular/types';
+import { ApiError } from '@cccteam/resource';
 
 /** An option of an enumerated picker: the id it stores and the text shown for it. */
 export interface PickerOption {
@@ -35,10 +36,41 @@ export function matchOptions(options: readonly PickerOption[], query: string): P
 
 /**
  * The display of a stored value resolved from the option list — the path a picker takes
- * when the listed resource has no read handler (readDisabled), so no record can be
- * fetched by id: the matching option, or the id shown as itself when the list holds no
- * match, never a blank.
+ * on a source read whole (no maximum page size), where the list holds every row and a
+ * read route is not needed: the matching option, or the id shown as itself when the
+ * list holds no match, never a blank.
  */
 export function displayFromOptions(options: readonly PickerOption[], value: string): PickerOption {
   return options.find((option) => option.id === value) ?? { id: value, display: value };
+}
+
+/**
+ * The options a paged picker offers: the open page's rows, with the chosen value's own
+ * option ahead of them when the page does not hold it, so the control shows what is
+ * stored whichever page is open. The page alone when nothing is chosen.
+ */
+export function withChosen(page: readonly PickerOption[], chosen: PickerOption | undefined): PickerOption[] {
+  if (!chosen || page.some((option) => option.id === chosen.id)) {
+    return [...page];
+  }
+  return [chosen, ...page];
+}
+
+/**
+ * What a picker says when its request failed: the server's own words for a refusal (a
+ * 403 on the listed resource; a 400 on the request, a bounded source with no order and
+ * no configured sort, say), a plain sentence for any other failure, nothing while it
+ * works. A refused picker must never read as an empty list.
+ */
+export function pickerRefusal(error: unknown): string | undefined {
+  if (error === undefined || error === null) {
+    return undefined;
+  }
+  if (error instanceof ApiError && error.status === 403) {
+    return `This picker is not available to you: ${error.message}`;
+  }
+  if (error instanceof ApiError && error.status === 400) {
+    return `The server refused this picker's request: ${error.message}`;
+  }
+  return `This picker could not be loaded: ${error instanceof Error ? error.message : String(error)}`;
 }

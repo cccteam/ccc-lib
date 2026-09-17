@@ -96,7 +96,9 @@ export interface Sort<Row> {
 export interface PageQuery {
   /**
    * The page size, up to the resource's declared maximum, or 'all' for every row on a
-   * resource that declares no maximum. The server refuses 0 and a size over the maximum.
+   * resource that declares no maximum, the one list request that needs no order. The
+   * server refuses 0, a size over the maximum, and 'all' where a maximum is declared; a
+   * resource with a maximum is read a page at a time and never whole (see readMode).
    */
   limit?: number | 'all';
   /**
@@ -180,7 +182,6 @@ export function listSearchParams<Row>(query: ListQuery<Row> | undefined): URLSea
 /** The response headers a paged list carries. */
 export const LinkHeader = 'link';
 export const TotalCountHeader = 'total-count';
-export const PageMoreHeader = 'page-more';
 
 /**
  * Parses a Link header (RFC 8288) into relation → URL reference, exactly as the

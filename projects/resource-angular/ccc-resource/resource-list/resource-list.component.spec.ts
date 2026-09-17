@@ -1,6 +1,6 @@
 import { ApiError, FieldMeta, ResourceMeta } from '@cccteam/resource';
 import { PageTurn } from '@cccteam/resource-angular/ccc-grid';
-import { filterEligibility, listEmptyMessage, PagePosition, positionAfter } from './list-request';
+import { filterEligibility, listEmptyMessage, pageLabel, PagePosition, positionAfter } from './list-request';
 
 // The list component's pure parts: which columns the server filters, where the page
 // sits after a turn, and what an empty table says. The component itself is the wiring
@@ -85,6 +85,22 @@ describe('listEmptyMessage', () => {
   for (const tt of cases) {
     it(tt.name, () => {
       expect(listEmptyMessage(tt.error, tt.noColumns)).toBe(tt.want);
+    });
+  }
+});
+
+describe('pageLabel', () => {
+  const cases: { name: string; offset: number; rows: number; total: number | undefined; want: string }[] = [
+    { name: 'the first page as a range of the total', offset: 0, rows: 25, total: 200, want: '1–25 of 200' },
+    { name: 'a later page counts from the rows before it', offset: 25, rows: 25, total: 200, want: '26–50 of 200' },
+    { name: 'the range alone when no total was asked', offset: 0, rows: 3, total: undefined, want: '1–3' },
+    { name: 'an empty list', offset: 0, rows: 0, total: 0, want: 'No rows' },
+    { name: 'an empty page of a list with rows elsewhere', offset: 50, rows: 0, total: 50, want: 'No rows here of 50' },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, () => {
+      expect(pageLabel(tt.offset, tt.rows, tt.total)).toBe(tt.want);
     });
   }
 });

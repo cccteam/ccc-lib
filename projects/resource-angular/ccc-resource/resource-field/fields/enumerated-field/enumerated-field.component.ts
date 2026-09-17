@@ -18,9 +18,12 @@ import {
   Resource,
   RootConfig,
 } from '@cccteam/resource-angular/types';
+import { pickerSort, readMode } from '@cccteam/resource';
 import { concatFunctions, hyphenConcat } from '../../../concat-fns';
+import { PagedListRequest } from '../../../paged-list';
+import { pageLabel } from '../../../resource-list/list-request';
 import { BaseInputComponent } from '../../base-field.directive';
-import { displayFromOptions, matchOptions, optionColumns, PickerOption } from './enumerated-options';
+import { displayFromOptions, matchOptions, optionColumns, PickerOption, pickerRefusal, withChosen } from './enumerated-options';
 
 /**
  * The picker for a field that holds another resource's identifier. Which resource it
@@ -29,6 +32,18 @@ import { displayFromOptions, matchOptions, optionColumns, PickerOption } from '.
  * carries a fixed value set the picker renders with no request. The configuration
  * narrows and presents those rows — `filter`, `sorts`, the display columns — and never
  * chooses another resource.
+ *
+ * How the resource is read is the generated descriptor's statement alone: its declared
+ * maximum page size (readMode). A source with no maximum is read whole in one request,
+ * the options are every row, and the chosen value's display resolves from that list, so
+ * a source with no read route serves. A source with a maximum is paged one server page
+ * at a time, Previous and Next by the server's cursors inside the panel, sorted by the
+ * configured sorts, else the source's @order, else the display column, and the chosen
+ * value is read by key and shown ahead of the page's options, so the control shows what
+ * is stored whichever page is open. `searchable` narrows a whole source's options in the
+ * browser; a paged source renders the paged panel, since narrowing one page would hide
+ * the rest (a server-side search is cccteam/backlog#101). A request the server refuses
+ * shows the refusal in its words under the field, never an empty list.
  */
 @Component({
   selector: 'ccc-enumerated-field',
@@ -85,13 +100,18 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
   });
 
   /**
-   * True when the listed resource has no read handler, so a single record cannot be
-   * fetched by id — a computed catalog served from Go, say. The current value's display
-   * then resolves from the option list instead.
+   * The listed resource's generated descriptor, which says how it is read. A resource
+   * the generated API does not describe (one registered by hand) has none and is read whole.
    */
-  private readDisabled = computed(() => {
+  private descriptor = computed(() => {
     const resource = this.resource();
-    return resource ? this.resourceMeta(resource)?.readDisabled === true : false;
+    return resource ? this.store.client.descriptor.resources[resource] : undefined;
+  });
+
+  /** Whether the source is paged: its descriptor declares a maximum page size. */
+  paged = computed(() => {
+    const descriptor = this.descriptor();
+    return descriptor !== undefined && readMode(descriptor) === 'paged';
   });
 
   viewDetails = computed(() => {
@@ -105,6 +125,33 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
   /** The columns the option list asks for: the id plus whatever the display concatenates. */
   private columns = computed(() => optionColumns(this.fieldConfig().enumeratedConfig));
 
+  /** The display column shown first: the sort a paged source with no @order pages by. */
+  private displayColumn = computed((): string | undefined => {
+    const config = this.fieldConfig().enumeratedConfig;
+    return config.listDisplay[0] ?? config.viewDisplay[0];
+  });
+
+  rootResourceRef = computed(() => {
+    const rootConfig = this.activatedRoute.snapshot.data['config'] as RootConfig;
+    const uuid = (this.activatedRoute.snapshot.params['uuid'] || '') as string;
+    const rootMeta = this.resourceMeta(rootConfig.parentConfig.primaryResource);
+    return this.store.resourceView(signal(rootMeta.route), signal(uuid));
+  });
+
+  /** The configured filter over the options, evaluated against the root or the parent row as configured. */
+  private optionFilter = computed((): string => {
+    const config = this.fieldConfig().enumeratedConfig;
+    return (
+      (config.filterType === 'rootResource'
+        ? config.filter?.(this.rootResourceRef()?.value() || {})
+        : config.filter?.(this.relatedData() || {})) ?? ''
+    );
+  });
+
+  /**
+   * The chosen row read by key, on a paged source: the row the field names, whichever
+   * page is open. A paged source serves a read; the generator refuses one that does not.
+   */
   singleEnumResourceRef = computed(() => {
     this.editMode();
     if (this.showField() === false) {
@@ -117,42 +164,60 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     this.reloadSignal();
     const fieldValue = this.form().get(this.fieldConfig().name)?.value;
 
-    if (fieldValue && route && resource && !this.readDisabled()) {
+    if (fieldValue && route && resource && this.paged()) {
       return untracked(() => this.store.resourceView(signal(route), signal(fieldValue)));
     }
     return undefined;
   });
 
-  rootResourceRef = computed(() => {
-    const rootConfig = this.activatedRoute.snapshot.data['config'] as RootConfig;
-    const uuid = (this.activatedRoute.snapshot.params['uuid'] || '') as string;
-    const rootMeta = this.resourceMeta(rootConfig.parentConfig.primaryResource);
-    return this.store.resourceView(signal(rootMeta.route), signal(uuid));
-  });
-
+  /** Every row of a whole source, read in one request; nothing on a paged source. */
   enumResourceRef = computed(() => {
-    if (this.showField() === false || !this.resource()) return undefined;
+    if (this.showField() === false || !this.resource() || this.paged()) return undefined;
     const enumeratedMeta = this.resourceMeta(this.resource() as Resource);
     const config = this.fieldConfig().enumeratedConfig;
-    const filter =
-      config.filterType === 'rootResource'
-        ? config?.filter?.(this.rootResourceRef()?.value() || {})
-        : config?.filter?.(this.relatedData() || {});
     return this.store.resourceList(
       signal(enumeratedMeta.route),
-      signal(filter),
+      signal(this.optionFilter()),
       this.columns,
       signal(config.disableCacheForFilterPii),
       this.sorts,
     );
   });
 
-  /** Every option the listed resource answered, in the mode's display. */
+  /**
+   * The paged source's request while the picker is open for editing: the page the panel
+   * shows, in the picker's sort. Nothing in view mode, where the chosen row is read by key.
+   */
+  private pageRequest = computed((): PagedListRequest | undefined => {
+    const descriptor = this.descriptor();
+    if (!this.paged() || !descriptor || this.showField() === false || this.editMode() !== 'edit') {
+      return undefined;
+    }
+    const config = this.fieldConfig().enumeratedConfig;
+    const configured = config.sorts.map((sort) => ({ field: sort.field as string, direction: sort.direction }));
+    return {
+      route: this.resourceMeta(this.resource() as Resource).route,
+      filter: this.optionFilter(),
+      sensitive: config.disableCacheForFilterPii,
+      columns: this.columns(),
+      sorts: pickerSort<Record<string, unknown>>(descriptor, configured, this.displayColumn()),
+    };
+  });
+
+  /** The pager over a paged source, following pageRequest; nothing on a whole source. */
+  pager = computed(() => (this.paged() ? this.store.resourcePage(this.pageRequest) : undefined));
+
+  /** Every option a whole source answered, in the mode's display. */
   private allEnumOptions = computed((): PickerOption[] => {
     const records = this.enumResourceRef()?.value();
     if (!records || !records.length) return [];
     return records.map((record) => this.toEnumerated(record as Record<string, string>, this.fieldConfig()));
   });
+
+  /** The open page's rows on a paged source, in the mode's display. */
+  private pageOptions = computed((): PickerOption[] =>
+    (this.pager()?.rows() ?? []).map((record) => this.toEnumerated(record as Record<string, string>, this.fieldConfig())),
+  );
 
   singleEnumDisplayText = computed(() => {
     const showField = this.showField();
@@ -170,9 +235,9 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     if (fixed) {
       return fixed.find((option) => option.id === value)?.display ?? defaultEmptyFieldValue;
     }
-    // With no read handler to fetch the record by id, the display comes from the
-    // option list; a value the list does not hold shows as itself.
-    if (this.readDisabled()) {
+    // A whole source holds every row in its list: the display comes from there, and a
+    // value the list does not hold shows as itself.
+    if (!this.paged()) {
       return value ? displayFromOptions(this.allEnumOptions(), value).display : defaultEmptyFieldValue;
     }
     const singleEnumResourceRef = this.singleEnumResourceRef();
@@ -213,11 +278,11 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
       return fixed.filter((option) => option.id === currentValue).map(toOption);
     }
     if (!currentValue) return [];
-    if (this.readDisabled()) {
+    if (!this.paged()) {
       return [displayFromOptions(this.allEnumOptions(), String(currentValue))];
     }
     const record = this.singleEnumResourceRef()?.value();
-    if (!record) return [];
+    if (!record || Object.keys(record).length === 0) return [];
     return [this.toEnumerated(record as Record<string, string>, this.fieldConfig())];
   });
 
@@ -227,17 +292,22 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     if (fixed) {
       return fixed.map(toOption);
     }
+    if (this.paged()) {
+      // The page's rows, with the chosen row ahead of them when this page does not hold it.
+      return withChosen(this.pageOptions(), this.singleEnumValue()?.[0]);
+    }
     const options = this.allEnumOptions();
     if (!options.length) return this.singleEnumValue() || [];
     return options;
   });
 
-  // The searchable autocomplete narrows the loaded options client-side, by display text
-  // or by id (so an identifier can be pasted); the server has no substring search.
+  // The searchable autocomplete narrows a whole source's loaded options client-side, by
+  // display text or by id (so an identifier can be pasted); the server has no substring
+  // search. A paged source renders the paged panel and never narrows here.
   availableEnumOptions = computed(() => {
     const editMode = this.editMode() === 'edit';
     const loaded = editMode ? this.listEnumValues() : this.singleEnumValue();
-    const options = editMode && loaded ? matchOptions(loaded, this.query()) : loaded;
+    const options = editMode && loaded && !this.paged() ? matchOptions(loaded, this.query()) : loaded;
     const meta = this.fieldMeta();
     const metaRequired = 'required' in meta && meta.required;
 
@@ -246,6 +316,24 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     }
 
     return options;
+  });
+
+  /** The pager's label inside a paged picker's panel: this page's range of the total. */
+  pagerLabel = computed(() => {
+    const pager = this.pager();
+    if (!pager) return '';
+    const page = pager.page();
+    return pageLabel(page.offset, pager.rows().length, page.total);
+  });
+
+  /** What the picker says when its request was refused or failed; nothing while it works. */
+  refusal = computed((): string | undefined => {
+    const pager = this.pager();
+    if (pager) {
+      return pager.status() === 'error' ? pickerRefusal(pager.error()) : undefined;
+    }
+    const ref = this.enumResourceRef();
+    return ref && ref.status() === 'error' ? pickerRefusal(ref.error()) : undefined;
   });
 
   toEnumerated(resource: Record<string, string>, element: FieldElement): PickerOption {

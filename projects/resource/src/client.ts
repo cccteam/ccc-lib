@@ -14,17 +14,7 @@ import { Capability, PermissionDigestState, WithCapabilities, rowCapabilities } 
 import { BatchResult, Operation, OperationRoute, operationRoute } from './operations';
 import { ClientResponse, PermissionStore, Requester, RequestOptions, ResponseRequester } from './permissions';
 import { dryRunHeader } from './transport';
-import {
-  LinkHeader,
-  ListQuery,
-  PageMoreHeader,
-  ReadOptions,
-  Sort,
-  TotalCountHeader,
-  listSearchParams,
-  parseLinkHeader,
-  readSearchParams,
-} from './query';
+import { LinkHeader, ListQuery, ReadOptions, TotalCountHeader, listSearchParams, parseLinkHeader, readSearchParams } from './query';
 import { ApiError, HttpMethod, Transport, fetchTransport } from './transport';
 
 export interface ClientOptions {
@@ -80,16 +70,15 @@ export type Returned<Row, Query> = Query extends { capabilities: Capability[] } 
 /**
  * One page of a list. `next` and `prev` follow the server's Link relations exactly as
  * issued and are absent where no such page exists; `total` answers a `count: true`
- * request on a first page; `more` marks a page of a list that is not sorted (no sort,
- * no declared order) whose rows did not fit — the server issues no cursor there, so
- * paging further requires a sort. A key-less resource (an empty `keys` tuple) is served
- * whole on every request: its one page is the whole list, with no `next`, no `prev`,
- * and `more` never set.
+ * request on a first page. Every paged request carries an order (the resource's
+ * declared `@order` or the request's sort; the server refuses one with neither), so a
+ * page always has the relations that exist. A key-less resource (an empty `keys`
+ * tuple) is served whole on every request: its one page is the whole list, with no
+ * `next` and no `prev`.
  */
 export interface Page<Row> {
   rows: Row[];
   total?: number;
-  more: boolean;
   next?: () => Promise<Page<Row>>;
   prev?: () => Promise<Page<Row>>;
   /**
@@ -103,12 +92,17 @@ export interface Page<Row> {
 /**
  * The list operations of a handle. `Key` is the resource's key tuple: on the empty
  * tuple, a key-less resource served whole, the query type carries no `limit` and no
- * `cursor` (ListQuery), so a page asked of such a handle does not compile.
+ * `cursor` (ListQuery), so a page asked of such a handle does not compile. There is no
+ * operation that reads every row of a resource with a maximum page size: the maximum is
+ * declared to keep the whole set out of memory, so such a resource is read one server
+ * page at a time (`page`), and a resource with no maximum is read whole with
+ * `list({ limit: 'all' })` (see readMode and wholeListQuery).
  */
 export interface Listable<Row, Key extends readonly unknown[] = readonly unknown[]> {
   /**
-   * One page of rows, the resource's default page when the query names no limit; the
-   * whole list on a key-less resource.
+   * One page of rows, the resource's default page when the query names no limit; every
+   * row with `limit: 'all'` on a resource with no maximum; the whole list on a key-less
+   * resource.
    */
   list<Query extends ListQuery<Row, Key> | undefined = undefined>(query?: Query): Promise<Returned<Row, Query>[]>;
   /**
@@ -116,16 +110,6 @@ export interface Listable<Row, Key extends readonly unknown[] = readonly unknown
    * a key-less resource the one page is the whole list and has no neighbors.
    */
   page<Query extends ListQuery<Row, Key> | undefined = undefined>(query?: Query): Promise<Page<Returned<Row, Query>>>;
-  /**
-   * Every row. Asks `limit: 'all'` where the resource declares no maximum page size,
-   * and nothing at all on a key-less resource, which is served whole as it is;
-   * otherwise walks the pages to the end in the query's sort, or in the resource's
-   * declared order when the query names none, so an export sees each row once. A
-   * resource with a maximum and no declared order cannot be walked without a sort:
-   * the server serves one unsorted page and no cursor, and `all()` throws naming
-   * the sort it needs rather than answering that page as if it were every row.
-   */
-  all<Query extends ListQuery<Row, Key> | undefined = undefined>(query?: Query): Promise<Returned<Row, Query>[]>;
 }
 
 export interface Readable<Row, Key extends unknown[]> {
@@ -581,28 +565,6 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
       const { method, params, body } = listRequest(wholeList(query));
       return pageOf<Row>(client, method, body, () => client.requestResponse(method, route, { query: params, body }));
     }) as Listable<Row>['page'],
-    all: (async (query?: ListQuery<Row>) => {
-      if (keyless) {
-        return handle.list(query);
-      }
-      if (descriptor.page?.max === undefined) {
-        return handle.list({ ...query, limit: 'all' } as ListQuery<Row>);
-      }
-      const rows: Row[] = [];
-      let page = await handle.page({ ...query, sort: walkSort(descriptor, query?.sort), count: false } as ListQuery<Row>);
-      if (page.more) {
-        throw new Error(
-          `${descriptor.resource}: all() cannot walk every row: the resource declares a maximum page size and no order, so the server serves one unsorted page and no cursor; pass a sort`,
-        );
-      }
-      for (;;) {
-        rows.push(...page.rows);
-        if (!page.next) {
-          return rows;
-        }
-        page = await page.next();
-      }
-    }) as Listable<Row>['all'],
     read: (async (key: Key, options?: ReadOptions<Row>) =>
       client.request<Row>('GET', `${route}${keySegments(key)}`, { query: readSearchParams(options) })) as Readable<
       Row,
@@ -621,25 +583,6 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     ops,
   };
   return handle;
-}
-
-/**
- * The sort a paged walk sends: the caller's when the query names one, and nothing
- * otherwise. A resource that declares an `@order` is paged by it on the server; one
- * that declares none is not sorted, and the request goes as given: the server serves
- * the first page with `more` set where the rows did not fit, and no cursor, until
- * the caller sorts. The client fabricates no sort of its own, the primary key's
- * included, since an order nobody asked for is random for UUID keys. The same rule
- * serves a table over one page and an export over every page.
- */
-export function walkSort<Row>(
-  _descriptor: ResourceDescriptor,
-  sort: Sort<Row> | Sort<Row>[] | undefined,
-): Sort<Row> | Sort<Row>[] | undefined {
-  if (sort !== undefined && (!Array.isArray(sort) || sort.length > 0)) {
-    return sort;
-  }
-  return undefined;
 }
 
 /**
@@ -682,7 +625,6 @@ async function pageOf<Row>(
   return {
     rows: rows ?? [],
     total: total === undefined ? undefined : Number(total),
-    more: headers[PageMoreHeader] === 'true',
     next: relations['next'] ? follow(relations['next']) : undefined,
     prev: relations['prev'] ? follow(relations['prev']) : undefined,
     reload: () => pageOf<Row>(client, method, body, request),

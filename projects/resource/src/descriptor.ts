@@ -10,6 +10,11 @@ export type ResourceOperation = 'list' | 'read' | 'create' | 'patch' | 'remove' 
 /**
  * A resource's page sizes: the page a request without `limit` receives, and the
  * largest page it may ask for. A resource with no `max` also permits `limit: 'all'`.
+ * The maximum is also the switch every reader of a whole set reads (`readMode`): a
+ * resource with none is small enough to load and is read whole in one request; one
+ * with a maximum is read one server page at a time and never whole, its chosen row
+ * read by key. Declaring the maximum is the author's deliberate choice; nothing
+ * decides at runtime from an observed size.
  */
 export interface PageDescriptor {
   default: number;
@@ -47,8 +52,9 @@ export interface ResourceDescriptor {
   /**
    * The resource's declared `@order`, the order a list takes when the request names no
    * sort, with the primary key appended by the server so it is total. A resource that
-   * declares one issues cursors for a sort-less list; one that declares none is not
-   * sorted and issues no cursor, so a walk over it must send a sort (see walkSort).
+   * declares one is paged by it when the request names no sort; one that declares none
+   * needs a sort on every paged request, which the server refuses without one, and only
+   * `limit: 'all'` reads it unsorted.
    */
   order?: readonly OrderDescriptor[];
 }

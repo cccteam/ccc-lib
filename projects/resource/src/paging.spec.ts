@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { Resource } from './brands';
-import { createClient, resolveAbsolute, walkSort, AnyResourceHandle } from './client';
+import { createClient, resolveAbsolute, AnyResourceHandle } from './client';
 import { ApiDescriptor } from './descriptor';
 import { listSearchParams, parseLinkHeader } from './query';
 import { Transport, TransportRequest } from './transport';
@@ -139,7 +139,6 @@ describe('page', () => {
     const page = await api.missions.page({ sort: { field: 'deadline' as never }, limit: 2, count: true });
     expect(page.rows).toEqual([{ id: 'a' }, { id: 'b' }]);
     expect(page.total).toBe(3);
-    expect(page.more).toBe(false);
     expect(page.prev).toBeUndefined();
     expect(page.next).toBeDefined();
 
@@ -152,16 +151,6 @@ describe('page', () => {
     expect(back.rows).toEqual([{ id: 'a' }, { id: 'b' }]);
     expect(requests.map((r) => r.url)).toEqual([first, second, backToFirst]);
     expect(requests.every((r) => r.method === 'GET')).toBe(true);
-  });
-
-  it('marks a primary-key-ordered page that did not fit, with no relations', async () => {
-    const { transport } = scripted({
-      '/api/sectors': { rows: [{ id: 'a' }], headers: { 'page-more': 'true' } },
-    });
-    const api = createClient<{ sectors: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
-    const page = await api.sectors.page();
-    expect(page.more).toBe(true);
-    expect(page.next).toBeUndefined();
   });
 });
 
@@ -183,21 +172,6 @@ describe('page reload', () => {
     expect(turnedAgain.rows).toEqual([{ id: 'b' }]);
     expect(requests.map((r) => r.url)).toEqual([first, first, second, second]);
   });
-});
-
-describe('walkSort', () => {
-  const cases: { name: string; resource: string; sort: { field: string; direction?: 'asc' | 'desc' }[] | undefined; want: unknown }[] = [
-    { name: 'the caller\'s sort wins', resource: 'Consignments', sort: [{ field: 'mass', direction: 'desc' }], want: [{ field: 'mass', direction: 'desc' }] },
-    { name: 'a declared order sends nothing', resource: 'Consignments', sort: undefined, want: undefined },
-    { name: 'an empty sort counts as none', resource: 'Consignments', sort: [], want: undefined },
-    { name: 'no declared order sends nothing: the list is not sorted, never by a key nobody asked for', resource: 'Missions', sort: undefined, want: undefined },
-  ];
-
-  for (const tt of cases) {
-    it(tt.name, () => {
-      expect(walkSort(descriptor.resources[tt.resource], tt.sort as never)).toEqual(tt.want as never);
-    });
-  }
 });
 
 describe('sensitive filter', () => {
@@ -232,52 +206,14 @@ describe('sensitive filter', () => {
   });
 });
 
-describe('all', () => {
-  it('asks for every row at once where the resource declares no maximum', async () => {
+describe('whole read', () => {
+  it('is the explicit limit: all on a resource with no maximum, one request and no Link', async () => {
     const { transport, requests } = scripted({
       '/api/sectors?limit=all': { rows: [{ id: 'a' }, { id: 'b' }] },
     });
     const api = createClient<{ sectors: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
-    expect(await api.sectors.all()).toEqual([{ id: 'a' }, { id: 'b' }]);
+    expect(await api.sectors.list({ limit: 'all' })).toEqual([{ id: 'a' }, { id: 'b' }]);
     expect(requests).toHaveLength(1);
-  });
-
-  it('sends no sort where a maximum is declared and no order is, and refuses to pass off the unsorted first page as every row', async () => {
-    const first = '/api/missions';
-    const { transport, requests } = scripted({
-      [first]: { rows: [{ id: 'a' }, { id: 'b' }], headers: { 'page-more': 'true' } },
-    });
-    const api = createClient<{ missions: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
-    await expect(api.missions.all()).rejects.toThrow('Missions: all() cannot walk every row');
-    expect(requests.map((r) => r.url)).toEqual([first]);
-  });
-
-  it('answers the unsorted page where a maximum is declared, no order is, and every row fit', async () => {
-    const first = '/api/missions';
-    const { transport, requests } = scripted({ [first]: { rows: [{ id: 'a' }, { id: 'b' }] } });
-    const api = createClient<{ missions: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
-    expect(await api.missions.all()).toEqual([{ id: 'a' }, { id: 'b' }]);
-    expect(requests.map((r) => r.url)).toEqual([first]);
-  });
-
-  it('sends no sort where the resource declares an order, which the server pages by', async () => {
-    const first = '/api/consignments';
-    const second = '/api/consignments?cursor=v4.local.two';
-    const { transport, requests } = scripted({
-      [first]: { rows: [{ id: 'a' }], headers: { link: `<${second}>; rel="next"` } },
-      [second]: { rows: [{ id: 'b' }], headers: { link: `<${first}>; rel="prev"` } },
-    });
-    const api = createClient<{ consignments: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
-    expect(await api.consignments.all()).toEqual([{ id: 'a' }, { id: 'b' }]);
-    expect(requests.map((r) => r.url)).toEqual([first, second]);
-  });
-
-  it('keeps the caller\'s sort for the walk', async () => {
-    const first = '/api/missions?sort=deadline%3Adesc&limit=200';
-    const { transport, requests } = scripted({ [first]: { rows: [{ id: 'a' }] } });
-    const api = createClient<{ missions: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
-    expect(await api.missions.all({ sort: { field: 'deadline' as never, direction: 'desc' }, limit: 200 })).toEqual([{ id: 'a' }]);
-    expect(requests.map((r) => r.url)).toEqual([first]);
   });
 });
 
@@ -298,17 +234,15 @@ describe('key-less resource', () => {
     expect(requests.map((r) => r.url)).toEqual([whole, sorted]);
   });
 
-  it('answers the whole list as one page with no neighbors, and all() sends no limit', async () => {
+  it('answers the whole list as one page with no neighbors', async () => {
     const whole = '/api/standing-orders';
     const { transport, requests } = scripted({ [whole]: { rows: [{ id: 'a' }, { id: 'b' }] } });
     const api = createClient<{ standingOrders: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
 
     const page = await api.standingOrders.page({ limit: 10 });
     expect(page.rows).toEqual([{ id: 'a' }, { id: 'b' }]);
-    expect(page.more).toBe(false);
     expect(page.next).toBeUndefined();
     expect(page.prev).toBeUndefined();
-    expect(await api.standingOrders.all()).toEqual([{ id: 'a' }, { id: 'b' }]);
-    expect(requests.map((r) => r.url)).toEqual([whole, whole]);
+    expect(requests.map((r) => r.url)).toEqual([whole]);
   });
 });

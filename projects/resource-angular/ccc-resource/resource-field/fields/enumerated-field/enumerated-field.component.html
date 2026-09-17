@@ -5,7 +5,7 @@
       <div class="enumerated-field-container">
         <mat-form-field class="field {{ fieldClass() }}" [subscriptSizing]="'dynamic'">
           <mat-label>{{ fieldConfig().label }}</mat-label>
-          @if (fieldConfig().enumeratedConfig.searchable) {
+          @if (fieldConfig().enumeratedConfig.searchable && !paged()) {
             <input
               #input
               type="text"
@@ -35,7 +35,38 @@
                   <mat-option [value]="option?.id">{{ option?.display }}</mat-option>
                 }
               }
+              @if (pager(); as pager) {
+                <!-- A paged source: one server page at a time, Previous and Next by the
+                     server's cursors. A key pressed on a button stays with the button, so
+                     the select does not read it as typeahead or as a selection. -->
+                <div class="picker-pager">
+                  <span class="pager-rows">{{ pagerLabel() }}</span>
+                  <span class="pager-buttons">
+                    <button
+                      mat-icon-button
+                      type="button"
+                      aria-label="Previous page"
+                      [disabled]="!pager.page().hasPrev"
+                      (keydown)="$event.stopPropagation()"
+                      (click)="pager.turn('prev')">
+                      <mat-icon>chevron_left</mat-icon>
+                    </button>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      aria-label="Next page"
+                      [disabled]="!pager.page().hasNext"
+                      (keydown)="$event.stopPropagation()"
+                      (click)="pager.turn('next')">
+                      <mat-icon>chevron_right</mat-icon>
+                    </button>
+                  </span>
+                </div>
+              }
             </mat-select>
+          }
+          @if (refusal(); as refusal) {
+            <mat-hint class="picker-refusal">{{ refusal }}</mat-hint>
           }
         </mat-form-field>
       </div>
@@ -51,6 +82,9 @@
             type="text"
             [required]="hasRequiredValidator()"
             [value]="singleEnumDisplayText()" />
+          @if (refusal(); as refusal) {
+            <mat-hint class="picker-refusal">{{ refusal }}</mat-hint>
+          }
         </mat-form-field>
         @if (viewDetails()) {
           <a

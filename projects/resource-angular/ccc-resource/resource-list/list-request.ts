@@ -53,6 +53,19 @@ export function positionAfter(
 }
 
 /**
+ * The pager's label under a paged reader: the rows on this page as a range of the total
+ * the first page answered ("1–25 of 200"), the range alone when no total was asked, and
+ * "No rows" for an empty page.
+ */
+export function pageLabel(offset: number, rows: number, total: number | undefined): string {
+  if (rows === 0) {
+    return total === undefined || total === 0 ? 'No rows' : `No rows here of ${total}`;
+  }
+  const range = `${offset + 1}–${offset + rows}`;
+  return total === undefined ? range : `${range} of ${total}`;
+}
+
+/**
  * What the empty table says: the refusal when the digest leaves no column, the server's
  * own message when it refused the request (a 403 on the list, a 400 on a filter or page
  * size it will not serve) or the request failed, otherwise the plain empty-list text. A

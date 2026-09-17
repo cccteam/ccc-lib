@@ -8,6 +8,7 @@ export * from './empty-readonly-field/empty-readonly-field.component';
 export * from './format-fns';
 export * from './gui-constants';
 export * from './padding-element/padding-element.component';
+export * from './paged-list';
 export * from './resource-array-view/resource-array-view.component';
 export * from './resource-create/resource-create.component';
 export * from './resource-field/base-field.directive';

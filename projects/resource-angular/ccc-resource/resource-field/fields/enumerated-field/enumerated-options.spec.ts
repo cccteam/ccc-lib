@@ -1,6 +1,7 @@
 import { FieldName } from '@cccteam/resource-angular/types';
+import { ApiError } from '@cccteam/resource';
 
-import { displayFromOptions, matchOptions, optionColumns, PickerOption } from './enumerated-options';
+import { displayFromOptions, matchOptions, optionColumns, PickerOption, pickerRefusal, withChosen } from './enumerated-options';
 
 describe('optionColumns', () => {
   const cases: {
@@ -67,6 +68,47 @@ describe('displayFromOptions', () => {
   for (const tt of cases) {
     it(tt.name, () => {
       expect(displayFromOptions([standard], tt.value)).toEqual(tt.want);
+    });
+  }
+});
+
+describe('withChosen', () => {
+  const dockOne: PickerOption = { id: '60000000-0000-4000-8000-000000000001', display: 'Anvil Dock One' };
+  const quarantine: PickerOption = { id: '60000000-0000-4000-8000-000000000002', display: 'Quarantine Bay' };
+  const cinderYard: PickerOption = { id: '60000000-0000-4000-8000-000000000004', display: 'Cinder Yard' };
+  const cases: { name: string; page: PickerOption[]; chosen: PickerOption | undefined; want: PickerOption[] }[] = [
+    { name: 'the page alone when nothing is chosen', page: [dockOne, quarantine], chosen: undefined, want: [dockOne, quarantine] },
+    { name: 'the page alone when it holds the chosen row', page: [dockOne, quarantine], chosen: quarantine, want: [dockOne, quarantine] },
+    { name: 'the chosen row ahead of a page that does not hold it', page: [dockOne, quarantine], chosen: cinderYard, want: [cinderYard, dockOne, quarantine] },
+    { name: 'the chosen row alone on an empty page', page: [], chosen: cinderYard, want: [cinderYard] },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, () => {
+      expect(withChosen(tt.page, tt.chosen)).toEqual(tt.want);
+    });
+  }
+});
+
+describe('pickerRefusal', () => {
+  const cases: { name: string; error: unknown; want: string | undefined }[] = [
+    { name: 'nothing while the picker works', error: undefined, want: undefined },
+    {
+      name: 'a 403 says the picker is not available, in the server\'s words',
+      error: new ApiError('GET', '/api/sectors/anvil/client-rosters', 403, { message: 'no List grant on ClientRosters' }),
+      want: 'This picker is not available to you: no List grant on ClientRosters',
+    },
+    {
+      name: 'a 400 says the server refused the request, in its words: the way out is on the struct or in the config',
+      error: new ApiError('GET', '/api/berths', 400, { message: 'Berths serves at most 50 rows per page and declares no order; add a sort' }),
+      want: 'The server refused this picker\'s request: Berths serves at most 50 rows per page and declares no order; add a sort',
+    },
+    { name: 'any other failure is a plain sentence', error: new Error('network down'), want: 'This picker could not be loaded: network down' },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, () => {
+      expect(pickerRefusal(tt.error)).toBe(tt.want);
     });
   }
 });

@@ -21,14 +21,19 @@ import { NotificationService } from '@cccteam/resource-angular/ui-notification-s
 import {
   AnyResourceHandle,
   BatchResult,
+  Domain,
+  keyBatches,
+  keyLookupQuery,
   ListQuery,
   Operation,
   Page,
+  readMode,
   Resource as ClientResource,
   ResourceDescriptor,
-  walkSort,
+  wholeListQuery,
 } from '@cccteam/resource';
 import { from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
+import { PagedList, PagedListRequest } from './paged-list';
 import { PagePosition, positionAfter } from './resource-list/list-request';
 
 /** One page of the listed resource as the table shows it, positioned in the server's list. */
@@ -209,14 +214,15 @@ export class ResourceStore {
     const handle = this.handleFor(query.route);
     // No limit unless the page names one, so the descriptor's default applies; no sort
     // unless the page names one, so a declared @order applies, and a resource declaring
-    // none is served unsorted, its first page with no cursor until a header is clicked
-    // — the client's walk rule.
+    // none is refused by the server until the config names a sort or a header is
+    // clicked, in the server's own words (see listEmptyMessage). The client fabricates
+    // no sort of its own.
     const sorts = query.sorts.map((s) => ({ field: s.field as string, direction: s.direction }));
     const request: ListQuery<RecordData> = {
       filter: query.filter !== '' ? query.filter : undefined,
       sensitiveFilter: query.sensitive || undefined,
       columns: query.columns.length > 0 ? query.columns : undefined,
-      sort: walkSort(handle.descriptor, sorts) as ListQuery<RecordData>['sort'],
+      sort: sorts.length > 0 ? (sorts as ListQuery<RecordData>['sort']) : undefined,
       limit: query.limit,
       count: true,
     };
@@ -352,19 +358,28 @@ export class ResourceStore {
    * serve the whole library.
    */
   private handleFor(route: string): AnyResourceHandle {
+    return this.defineScoped(this.descriptorFor(route));
+  }
+
+  /**
+   * The descriptor behind a route (see handleFor), without binding a handle: what a
+   * reader consults before it asks anything, the read mode above all.
+   */
+  private descriptorFor(route: string): ResourceDescriptor {
     const known = Object.values(this.client.descriptor.resources).find(
       (r) => r.route === route || this.metadataRoute(r) === route,
     );
-    const descriptor: ResourceDescriptor = known ?? {
-      resource: route as ClientResource,
-      property: route,
-      route,
-      scope: 'global',
-      consolidated: false,
-      keys: ['id'],
-      operations: ['list', 'read'],
-    };
-    return this.defineScoped(descriptor);
+    return (
+      known ?? {
+        resource: route as ClientResource,
+        property: route,
+        route,
+        scope: 'global',
+        consolidated: false,
+        keys: ['id'],
+        operations: ['list', 'read'],
+      }
+    );
   }
 
   /**
@@ -464,6 +479,15 @@ export class ResourceStore {
     });
   }
 
+  /**
+   * The display values a list's referenced-resource columns show, resolved on the read
+   * mode of the referenced resource (readMode). A source with no maximum is read whole
+   * once, `limit=all`, and mapped, whatever keys the page holds, so turning the page asks
+   * nothing more of it. A source with a maximum is asked for one `filter=<key>:in:(…)`
+   * page per batch of the page's keys, each batch no larger than its maximum (and than
+   * `batchSize`), each answered by the key's index in one request; nothing is walked and
+   * nothing is read whole.
+   */
   resourceListByKeys(
     route: Signal<string>,
     keyField: Signal<string>,
@@ -479,31 +503,40 @@ export class ResourceStore {
       return rxResource({
         defaultValue: [] as RecordData[],
         injector: this.injector,
-        params: () => ({
-          route: route(),
-          keyField: keyField(),
-          keys: keys(),
-          columns: columns(),
-          domain: this.domain(),
-        }),
+        params: () => {
+          const resourceRoute = route();
+          const paged = resourceRoute !== '' && readMode(this.descriptorFor(resourceRoute)) === 'paged';
+          return {
+            route: resourceRoute,
+            keyField: keyField(),
+            // A whole source is read once for every page: the keys are not a parameter.
+            keys: paged ? keys() : [],
+            paged,
+            columns: columns(),
+            domain: this.domain(),
+          };
+        },
         stream: ({ params }) => {
-          if (!params.route || !params.keyField || params.keys.length === 0) {
+          if (!params.route || !params.keyField) {
             return of([] as RecordData[]);
           }
-          const batches: string[][] = [];
-          for (let i = 0; i < params.keys.length; i += batchSize) {
-            batches.push(params.keys.slice(i, i + batchSize));
+          const handle = this.handleFor(params.route);
+          const columnsAsked = params.columns.length > 0 ? params.columns : undefined;
+          if (!params.paged) {
+            return from(
+              handle.list(wholeListQuery<RecordData>(handle.descriptor, { columns: columnsAsked }) as never) as Promise<RecordData[]>,
+            );
           }
-          return from(batches).pipe(
+          if (params.keys.length === 0) {
+            return of([] as RecordData[]);
+          }
+          return from(keyBatches(handle.descriptor, params.keys, batchSize)).pipe(
             mergeMap(
               (batch) =>
-                this.list<RecordData>(
-                  params.route,
-                  `${params.keyField}:in:(${batch.join(',')})`,
-                  false,
-                  params.columns,
-                  [],
-                  batch.length,
+                from(
+                  handle.list(
+                    keyLookupQuery<RecordData>(handle.descriptor, params.keyField, batch, columnsAsked) as never,
+                  ) as Promise<RecordData[]>,
                 ),
               ResourceStore.BATCH_REQUEST_CONCURRENCY,
             ),
@@ -516,15 +549,42 @@ export class ResourceStore {
   }
 
   /**
-   * Lists a resource through the client for the readers that want every row — the
-   * array view, the pickers, the referenced-resource columns. With a limit the server's
-   * first page of that size is the answer. Without one the client's all() reads every
-   * row — limit=all where the resource declares no maximum, otherwise a walk through
-   * the pages in the configured sorts, or in the declared order when none is
-   * configured; a resource with a maximum and no order cannot be walked without a
-   * sort, and the client refuses rather than answering one unsorted page. A PII
-   * filter travels in the request body. The list
-   * component does not read here: it holds one server page (see buildStorePage).
+   * One server page of a resource, for a reader that pages a bounded source (a picker
+   * over a resource with a maximum page size): the first page, with its count, whenever
+   * the request changes, and Previous and Next by the server's relations. The request is
+   * bound to the selected tenant and goes through the client like every other read.
+   */
+  resourcePage(request: Signal<PagedListRequest | undefined>): PagedList<RecordData> {
+    const params = computed(() => {
+      const current = request();
+      return current ? { ...current, domain: this.domain() } : undefined;
+    });
+    return untracked(
+      () =>
+        PagedList.over<RecordData, PagedListRequest & { domain: Domain | undefined }>(this.injector, params, (p) => {
+          const handle = this.handleFor(p.route);
+          const query: ListQuery<RecordData> = {
+            filter: p.filter && p.filter.trim() !== '' ? p.filter : undefined,
+            sensitiveFilter: p.sensitive || undefined,
+            columns: p.columns && p.columns.length > 0 ? p.columns : undefined,
+            sort: p.sorts && p.sorts.length > 0 ? (p.sorts as ListQuery<RecordData>['sort']) : undefined,
+            limit: p.limit,
+            count: true,
+          };
+          return handle.page(query as never) as Promise<Page<RecordData>>;
+        }),
+    );
+  }
+
+  /**
+   * Lists a resource through the client for the readers that want a whole set — the
+   * array view, the pickers, the referenced-resource lookups — on the resource's read
+   * mode (readMode). A source with no maximum is read whole, `limit=all`, in one
+   * request. A source with a maximum is never read whole, so the answer is one server
+   * page, the descriptor's default, and a bounded source with no `@order` and no sort is
+   * refused by the server in its own words, which the reader shows. A caller that names
+   * a limit gets that page on either. A PII filter travels in the request body. The
+   * list component does not read here: it holds one server page (see buildStorePage).
    */
   private list<T>(
     resourceRoute: string,
@@ -542,8 +602,11 @@ export class ResourceStore {
       sort: sort && sort.length > 0 ? sort.map((s) => ({ field: s.field as string, direction: s.direction })) : undefined,
       limit: limit && limit > 0 ? limit : undefined,
     };
-    const rows = query.limit ? handle.list(query as never) : handle.all(query as never);
-    return from(rows as Promise<T[]>);
+    const request =
+      query.limit !== undefined || readMode(handle.descriptor) === 'paged'
+        ? query
+        : wholeListQuery<RecordData>(handle.descriptor, query as ListQuery<RecordData>);
+    return from(handle.list(request as never) as Promise<T[]>);
   }
 
   rpcCall<T>(rpcConfig: RPCConfig, body: T): Observable<T> {

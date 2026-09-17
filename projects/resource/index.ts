@@ -7,5 +7,6 @@ export * from './src/mutations';
 export * from './src/operations';
 export * from './src/permissions';
 export * from './src/query';
+export * from './src/reading';
 export * from './src/store';
 export * from './src/transport';

@@ -58,13 +58,10 @@ server's `Link` relations exactly as issued, and are absent where no such page e
 `total` answers a `count: true` request on a first page from the `Total-Count` header;
 `reload()` repeats the request that produced the page — the first page's parameters, or
 the cursor a relation handed out — so a table refreshes the page it is on after a write.
-`all()` returns every row: `limit: 'all'` where the resource declares no maximum page
-size, otherwise a walk through the pages to the end in the query's sort, or in the
-resource's declared order when the query names none and the descriptor carries one
-(`descriptor.order`, the `@order` annotation). A resource with a maximum and no declared
-order cannot be walked without a sort, and `all()` throws naming that rather than
-answering the one unsorted page the server serves. `walkSort(descriptor, sort)` is the
-sort a walk sends: the caller's, else nothing, never a fabricated primary-key sort.
+Every paged request carries an order: the resource's declared `@order`
+(`descriptor.order`), or a `sort` on the request. The server refuses a paged request
+with neither (400, naming the resource and the way out), so a page never hides that more
+rows exist without saying where they are, and every page has the relations that exist.
 
 ```ts
 let page = await station.missions.page({ sort: { field: 'deadline' }, limit: 25, count: true });
@@ -72,8 +69,27 @@ console.log(page.total); // every mission the filter admits
 while (page.next) {
   page = await page.next(); // the server's own URL, cursor included
 }
+```
 
-const everything = await api.suppliers.all({ sort: { field: 'name' } });
+The resource's declared maximum page size (`descriptor.page.max`) is the switch every
+reader of a whole set reads, and the author's deliberate choice. No maximum: the
+resource is small enough to load, and `list({ limit: 'all' })` answers every row in one
+request, sorted or not — the one order-free list; a picker over such a source reads it
+whole and resolves the chosen row from the list, so a source with no read route serves
+it. A maximum: the resource is read one server page at a time and never whole; a
+picker pages it with Previous and Next by the server's cursors, sorted by its `@order`
+or else by the picker's display column, and reads the chosen row by key (a source with a
+maximum serves a read; the generator refuses one that does not); a lookup that resolves
+display values for a page of keys asks for one `filter=id:in:(…)` page over them, served
+by the key's index. There is no operation that reads every row of a bounded resource:
+the maximum was declared to keep the whole set out of memory, and nothing in the client
+walks past it. `readMode(descriptor)` answers `'whole'` or `'paged'`, and
+`wholeListQuery`, `pickerSort`, `keyBatches`, and `keyLookupQuery` are the requests
+each side makes, shared by every reader.
+
+```ts
+const hulls = await api.shipClasses.list({ limit: 'all' }); // no maximum: the whole catalog
+const hangars = await sector.hangars.page({ count: true }); // a maximum: one page, Previous and Next
 ```
 
 A filter naming a PII field must not travel in a URL: pass `sensitiveFilter: true` and the
@@ -82,12 +98,8 @@ same way.
 
 A page position is a sealed cursor the server issues; a client never assembles one,
 and a cursor presented with a different filter, sort, limit, or tenant is refused.
-`offset` no longer exists. A list with no sort on a resource with no declared order is
-not sorted (the server writes no `ORDER BY`, and a computed list keeps its body's order)
-and issues no cursor: `page.more` marks that its rows did not fit, and paging further
-requires a sort. A grid on such a resource shows the first page until the user sorts a
-column. A resource over a declared maximum page
-size refuses the request (400) rather than clamping it, and refuses `limit: 'all'`.
+`offset` no longer exists. A resource over a declared maximum page size refuses the
+request (400) rather than clamping it, and refuses `limit: 'all'`.
 
 A filter may name only the fields the server filters, and the generated field metadata
 says which: `FieldMeta.filterable` is `'always'` on an indexed table or view field and on

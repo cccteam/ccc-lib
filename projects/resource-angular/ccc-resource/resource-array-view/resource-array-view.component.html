@@ -37,8 +37,8 @@
           (complete)="onCreateCompleted()">
         </ccc-resource-create>
       }
-      @if (store.listStatus() === 'resolved') {
-        @for (resource of store.listData(); track resource['id']; let i = $index) {
+      @if (resolved()) {
+        @for (resource of rows(); track resource['id']; let i = $index) {
           @let resourceId = (resource[resourceConfig().connectorField] || resource['id']) + '';
 
           @if (parentData() && resourceConfig().iteratedConfig && resourceId && i + 1 <= resourceConfig().limit) {
@@ -61,8 +61,21 @@
         </div>
       }
 
-      @if (store.listData().length === 0) {
-        <div>No records found</div>
+      @if (rows().length === 0) {
+        <div>{{ emptyMessage() }}</div>
+      }
+      @if (paged()) {
+        <div class="array-pager">
+          <span class="pager-rows">{{ pagerLabel() }}</span>
+          <span class="pager-buttons">
+            <button type="button" mat-button [disabled]="!store.page().hasPrev" (click)="store.turnPage('prev')">
+              <mat-icon>chevron_left</mat-icon> Previous
+            </button>
+            <button type="button" mat-button [disabled]="!store.page().hasNext" (click)="store.turnPage('next')">
+              Next <mat-icon iconPositionEnd>chevron_right</mat-icon>
+            </button>
+          </span>
+        </div>
       }
     </mat-expansion-panel>
   </div>
@@ -71,8 +84,8 @@
     <ccc-resource-create [resourceConfig]="createConfig()" [parentData]="parentData()" (complete)="onCreateCompleted()">
     </ccc-resource-create>
   }
-  @if (store.listStatus() === 'resolved') {
-    @for (resource of store.listData(); track resource['id']; let i = $index) {
+  @if (resolved()) {
+    @for (resource of rows(); track resource['id']; let i = $index) {
       @if (parentData() && resourceConfig().iteratedConfig && resource['id'] && i + 1 <= resourceConfig().limit) {
         <ng-container
           *ngComponentOutlet="
@@ -93,7 +106,20 @@
     </div>
   }
 
-  @if (store.listData().length === 0) {
-    <div>No records found</div>
+  @if (rows().length === 0) {
+    <div>{{ emptyMessage() }}</div>
+  }
+  @if (paged()) {
+    <div class="array-pager">
+      <span class="pager-rows">{{ pagerLabel() }}</span>
+      <span class="pager-buttons">
+        <button type="button" mat-button [disabled]="!store.page().hasPrev" (click)="store.turnPage('prev')">
+          <mat-icon>chevron_left</mat-icon> Previous
+        </button>
+        <button type="button" mat-button [disabled]="!store.page().hasNext" (click)="store.turnPage('next')">
+          Next <mat-icon iconPositionEnd>chevron_right</mat-icon>
+        </button>
+      </span>
+    </div>
   }
 }

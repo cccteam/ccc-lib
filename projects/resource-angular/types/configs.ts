@@ -244,12 +244,22 @@ export interface EnumeratedConfigOptions {
    * @default 'parentResource'
    */
   filterType?: FilterType;
+  /**
+   * The order the options are listed in. On a source with a maximum page size (paged) it
+   * is the sort the picker pages by; none, and the source's declared `@order` applies,
+   * else the first display column ascending, since every paged request carries an order.
+   */
   sorts?: FieldSort[];
   listDisplay?: FieldName[];
   viewDisplay: FieldName[];
   viewConcatFn?: ConcatFn;
   listConcatFn?: ConcatFn;
   viewDetails?: boolean;
+  /**
+   * Narrow the loaded options by typing, on a source read whole (no maximum page size).
+   * A source with a maximum renders the paged panel instead: narrowing one page would
+   * hide the rest, and a server-side search is not built yet (cccteam/backlog#101).
+   */
   searchable?: boolean;
 }
 
