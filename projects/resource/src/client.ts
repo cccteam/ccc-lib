@@ -34,6 +34,14 @@ export interface ResourceHandleBase<Row, Key extends unknown[]> {
   readonly domain?: Domain;
   /** The absolute URL of the collection, or of one row when a key is given. */
   url(key?: Key): string;
+  /**
+   * The absolute URL of a row's file: the `@file` route under the row's read route,
+   * `content` by default. Nothing fetches; put it in an `<img src>` or an `<a href>` and
+   * the browser fetches it with the session, revalidating a kept copy with the route's
+   * validator. A segment the descriptor does not list is an error: the route does not
+   * exist.
+   */
+  fileUrl(key: Key, segment?: string): string;
   /** The operation path (route plus key segments, no API prefix) used in mutation bodies. */
   path(key?: Key): string;
   /** The row's primary key, in route order. */
@@ -517,6 +525,12 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     descriptor,
     domain: scopeDomain,
     url: (key?: Key) => `${client.baseUrl}/${route}${keySegments(key)}`,
+    fileUrl: (key: Key, segment = 'content') => {
+      if (!descriptor.files?.includes(segment)) {
+        throw new Error(`${descriptor.resource} serves no file under ${segment}: its files are [${descriptor.files?.join(', ') ?? ''}]`);
+      }
+      return `${client.baseUrl}/${route}${keySegments(key)}/${segment}`;
+    },
     path,
     keyOf: (row: Row) => descriptor.keys.map((field) => (row as Record<string, unknown>)[field]) as Key,
     can: (permission) => client.permissions.can(digestScope(permission)),

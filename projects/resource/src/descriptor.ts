@@ -57,6 +57,13 @@ export interface ResourceDescriptor {
    * `limit: 'all'` reads it unsorted.
    */
   order?: readonly OrderDescriptor[];
+  /**
+   * The resource's `@file` segments: each is a file served at `<read route>/<segment>`,
+   * gated by `Read` on the resource and a `Read` grant on the segment as a field. The
+   * handle addresses one with `fileUrl(key, segment)`; the browser fetches it itself.
+   * Absent when the resource declares none.
+   */
+  files?: readonly string[];
 }
 
 /** One generated RPC method as the client needs to address it. */
