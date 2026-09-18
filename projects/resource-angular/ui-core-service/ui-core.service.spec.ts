@@ -44,7 +44,7 @@ describe('UiCoreService login messages', () => {
     TestBed.configureTestingModule({});
     const ui = TestBed.inject(UiCoreService);
     for (const code of sessionCodes) {
-      expect(ui.loginMessage(code)).withContext(code).not.toBe('');
+      expect(ui.loginMessage(code), code).not.toBe('');
     }
     expect(Object.keys(DEFAULT_LOGIN_MESSAGES).sort()).toEqual([...sessionCodes].sort());
   });

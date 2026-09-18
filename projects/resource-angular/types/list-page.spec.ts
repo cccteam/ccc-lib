@@ -95,9 +95,7 @@ describe('rowRouteTarget', () => {
   for (const tt of cases) {
     it(tt.name, () => {
       if (tt.wantThrows) {
-        expect(() => rowRouteTarget(tt.primary, tt.rowRoute, resourceMeta, pageRoute)).toThrowMatching(
-          (thrown: unknown) => thrown instanceof Error && thrown.message.includes(tt.wantThrows ?? ''),
-        );
+        expect(() => rowRouteTarget(tt.primary, tt.rowRoute, resourceMeta, pageRoute)).toThrow(tt.wantThrows);
         return;
       }
       expect(rowRouteTarget(tt.primary, tt.rowRoute, resourceMeta, pageRoute)).toEqual(tt.want);

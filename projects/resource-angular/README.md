@@ -67,11 +67,62 @@ ng build resource-angular
 
 ### Running Tests
 
-To run the library's tests, use the following command:
-
 ```bash
-ng test resource-angular
+bun run test:angular             # once, as CI runs it
+bun x ng test resource-angular   # watch mode
 ```
+
+The specs run on Angular's unit-test builder (`@angular/build:unit-test`) with Vitest under jsdom
+in Node; there is no browser to install. The builder initializes a library's TestBed zoneless, so a
+spec drives the component itself: `TestBed.tick()` runs change detection and the effects behind it
+(a resource's loader issues its request), the request is answered (`HttpTestingController`'s
+`flush`, or the scripted transport below), and `await TestBed.inject(ApplicationRef).whenStable()`
+settles the value. `fakeAsync`, `tick`, and `flush` from `@angular/core/testing` are not used:
+Zone is not loaded, and nothing in the library advances timers.
+
+#### The testing entry point
+
+`@cccteam/resource-angular/testing` exports `provideResourceTesting(options?)`: the providers a spec
+of a component over the library needs. `RESOURCE_CLIENT` is provided over a scripted transport
+(`scriptedTransport` from `@cccteam/resource/testing`), so no request leaves the test and every
+request is on record, and an empty router is provided, since the components read the route and
+link to others. By default the client is `createClient` over an empty descriptor at `/api`; an
+application passes its generated `createApi` as the `client` factory so the component under test
+reads the descriptor its pages read, and its own transport to script the answers and read the
+requests back:
+
+```ts
+import { ApplicationRef } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import { scriptedTransport } from '@cccteam/resource/testing';
+import { provideResourceTesting } from '@cccteam/resource-angular/testing';
+import { createApi } from './zz_gen_api';
+import { SquadronChannelComponent } from './squadron-channel.component';
+
+describe('SquadronChannelComponent', () => {
+  it('reads the squadron it is given and shows its callsign', async () => {
+    const transport = scriptedTransport({ status: 200, body: { id: 'sq-1', callsign: 'Anvil Two' } });
+    await TestBed.configureTestingModule({
+      imports: [SquadronChannelComponent],
+      providers: [provideResourceTesting({ transport, client: (t) => createApi({ baseUrl: '/api', transport: t }) })],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(SquadronChannelComponent);
+    fixture.componentRef.setInput('uuid', 'sq-1');
+    fixture.detectChanges();
+    await TestBed.inject(ApplicationRef).whenStable();
+
+    expect(transport.requests.map((r) => r.url)).toEqual(['/api/squadrons/sq-1']);
+    expect(fixture.nativeElement.textContent).toContain('Anvil Two');
+  });
+});
+```
+
+The client's error hook and error handler are not provided; a spec of the 401 redirect or the
+uncaught-error notice uses `provideResourceClient` with its own transport. A component that reads
+the page configuration from the route (`ActivatedRoute.snapshot.data['config']`) is given that
+snapshot by its spec; the library's `resource-list-create.component.spec.ts` shows the shape. The
+library's own creation specs (`*.component.spec.ts`) are the smallest examples.
 
 ### Known Issues
 

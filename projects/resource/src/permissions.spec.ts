@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { CreatePermission, Domain, Permission, Resource } from './brands';
-import { createClient } from './client';
+import { createClient, ResourceHandle } from './client';
 import { ApiDescriptor } from './descriptor';
 import { PermissionDigest } from './digest';
 import { fieldPermissionStates, PermissionsSnapshot } from './permissions';
@@ -91,8 +91,25 @@ const api: ApiDescriptor = {
   userDomainsRoute: 'user-domains',
 };
 
+interface IncidentReport {
+  id: string;
+  summary: string;
+  severity: string;
+  reporterContact: string;
+}
+interface TeamMembership {
+  teamId: string;
+  staffId: string;
+}
+interface Global {
+  teamMemberships: ResourceHandle<TeamMembership, [string, string], 'list' | 'create', TeamMembership>;
+}
+interface Station {
+  incidentReports: ResourceHandle<IncidentReport, [string], 'list' | 'create', Omit<IncidentReport, 'id'>>;
+}
+
 function testClient() {
-  const client = createClient(api, {
+  const client = createClient<Global, Station>(api, {
     baseUrl: '/api',
     transport: () => Promise.reject(new Error('no requests in this test')),
   });
@@ -108,20 +125,12 @@ function testClient() {
 
 describe('grantedFields', () => {
   it('a handle answers its own scope, sorted', () => {
-    const client = testClient() as ReturnType<typeof testClient> & {
-      domain(domain: string): {
-        incidentReports: { grantedFields(permission: Permission): readonly string[] | undefined };
-      };
-    };
-    const station = client.domain(alpha);
+    const station = testClient().domain(alpha);
     expect(station.incidentReports.grantedFields(CreatePermission)).toEqual(['severity', 'summary']);
   });
 
   it('undefined when the digest has no field-level entries: no information, not "no fields"', () => {
-    const client = testClient() as ReturnType<typeof testClient> & {
-      teamMemberships: { grantedFields(permission: Permission): readonly string[] | undefined };
-    };
-    expect(client.teamMemberships.grantedFields(CreatePermission)).toBeUndefined();
+    expect(testClient().teamMemberships.grantedFields(CreatePermission)).toBeUndefined();
   });
 
   it('the client resolves scope from the descriptor; a domain-scoped target with no domain answers undefined', () => {

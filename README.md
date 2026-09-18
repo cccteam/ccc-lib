@@ -53,8 +53,24 @@ ng build resource-angular
 
 ### Running Tests
 
-To run the library's tests, use the following command:
+`bun run test` runs both packages' suites once, the way CI does on every pull request:
 
 ```bash
-ng test resource-angular
+bun run test                     # both suites, once
+bun run test:resource            # @cccteam/resource: bun test over projects/resource/, then the spec type-check
+bun run test:angular             # @cccteam/resource-angular: ng test resource-angular --watch=false
+bun x ng test resource-angular   # the library suite in watch mode while developing
 ```
+
+The client's specs are written against `bun:test` and run in bun; `bun run typecheck:resource`
+compiles them with tsc so a `@ts-expect-error` line in a spec is an assertion that the types refuse
+a call. The library's specs run on Angular's unit-test builder (`@angular/build:unit-test`) with
+Vitest under jsdom in Node: no browser, no Karma. The builder initializes the TestBed zoneless, so
+a library spec never uses `fakeAsync`, `tick`, or `flush`: it runs change detection with
+`TestBed.tick()`, answers the request the component made, and settles with
+`await TestBed.inject(ApplicationRef).whenStable()`.
+
+Each package publishes a testing entry point for an application's own specs:
+[`@cccteam/resource/testing`](projects/resource/README.md#testing) exports `scriptedTransport`, and
+[`@cccteam/resource-angular/testing`](projects/resource-angular/README.md#running-tests) exports
+`provideResourceTesting`.

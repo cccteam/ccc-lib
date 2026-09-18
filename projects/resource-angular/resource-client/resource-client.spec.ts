@@ -25,6 +25,10 @@ import {
 @Component({ template: '' })
 class BlankComponent {}
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 const descriptor: ApiDescriptor = {
   resources: {},
   methods: {},
@@ -126,31 +130,31 @@ describe('provideResourceClient', () => {
 
     for (const tt of cases) {
       it(tt.name, async () => {
-        const navigate = spyOn(router, 'navigate').and.resolveTo(true);
+        const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
         const pending = client.request('GET', 'missions');
         http.expectOne('/api/missions').flush({ message: 'refused' }, { status: tt.status, statusText: 'refused' });
-        await expectAsync(pending).toBeRejectedWithError(ApiError);
+        await expect(pending).rejects.toThrow(ApiError);
         expect(TestBed.inject(LOGIN_REDIRECT_URL)()).toBe(tt.wantRedirect);
-        expect(navigate.calls.allArgs().map((args) => args[0])).toEqual(tt.wantNavigations);
+        expect(navigate.mock.calls.map((args) => args[0])).toEqual(tt.wantNavigations);
       });
     }
   });
 
   it('a 401 on the login page itself moves nothing and keeps no URL', async () => {
     await router.navigateByUrl('/login');
-    const navigate = spyOn(router, 'navigate').and.resolveTo(true);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     const pending = client.request('GET', 'missions');
     http.expectOne('/api/missions').flush({ message: 'refused' }, { status: 401, statusText: 'Unauthorized' });
-    await expectAsync(pending).toBeRejectedWithError(ApiError);
+    await expect(pending).rejects.toThrow(ApiError);
     expect(TestBed.inject(LOGIN_REDIRECT_URL)()).toBe('');
     expect(navigate).not.toHaveBeenCalled();
   });
 
   it('a declared answer resolves, moves nothing, and raises no notice', async () => {
-    const navigate = spyOn(router, 'navigate').and.resolveTo(true);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     const pending = client.request<{ fee: number }>('POST', 'complete-mission', { body: {}, accept: [409] });
     http.expectOne('/api/complete-mission').flush({ fee: 3 }, { status: 409, statusText: 'Conflict' });
-    await expectAsync(pending).toBeResolvedTo({ fee: 3 });
+    await expect(pending).resolves.toEqual({ fee: 3 });
     expect(navigate).not.toHaveBeenCalled();
     expect(messages()).toEqual([]);
   });
@@ -223,14 +227,14 @@ describe('ResourceErrorHandler', () => {
   for (const tt of cases) {
     it(tt.name, () => {
       TestBed.configureTestingModule({ providers: [{ provide: ErrorHandler, useClass: ResourceErrorHandler }] });
-      const consoleError = spyOn(console, 'error');
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
       TestBed.inject(ErrorHandler).handleError(tt.error);
 
       const notifications = TestBed.inject(NotificationService).notifications();
       expect(notifications.map((n) => n.message)).toEqual(tt.wantMessages);
       expect(notifications.every((n) => n.type === AlertType.ERROR)).toBe(true);
-      expect(consoleError.calls.count()).toBe(tt.wantConsole ? 1 : 0);
+      expect(consoleError.mock.calls.length).toBe(tt.wantConsole ? 1 : 0);
     });
   }
 });
@@ -264,7 +268,7 @@ describe('httpClientTransport', () => {
       expect(ui.isLoading()).toBe(true);
       tt.respond(TestBed.inject(HttpTestingController).expectOne('/api/missions'));
       if (tt.rejects) {
-        await expectAsync(pending).toBeRejected();
+        await expect(pending).rejects.toBeInstanceOf(HttpErrorResponse);
       } else {
         await pending;
       }

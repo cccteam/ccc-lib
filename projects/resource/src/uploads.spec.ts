@@ -2,7 +2,8 @@ import { describe, expect, it } from 'bun:test';
 import { Method } from './brands';
 import { createClient, formatByteSize, UploadMethodHandle, uploadFilePart, uploadRequestPart } from './client';
 import { ApiDescriptor } from './descriptor';
-import { ApiError, fetchTransport, Transport, TransportRequest } from './transport';
+import { ApiError, fetchTransport, Transport } from './transport';
+import { ScriptedTransport, scriptedTransport } from '@cccteam/resource/testing';
 
 // The upload handle's contract: the body travels as the request part first with a
 // JSON type, each file as a file part, the local size check refuses over the
@@ -33,13 +34,9 @@ interface Api {
   attachMissionDocument: UploadMethodHandle<{ missionId: string; title: string }, Attached>;
 }
 
-function scripted(): { transport: Transport; requests: TransportRequest[] } {
-  const requests: TransportRequest[] = [];
-  const transport: Transport = async (request) => {
-    requests.push(request);
-    return { status: 200, body: { documentIds: ['d1', 'd2'] } };
-  };
-  return { transport, requests };
+/** The server's answer to the upload: two documents attached. */
+function attaching(): ScriptedTransport {
+  return scriptedTransport({ status: 200, body: { documentIds: ['d1', 'd2'] } });
 }
 
 function api(transport: Transport): Api {
@@ -48,13 +45,16 @@ function api(transport: Transport): Api {
 
 describe('an upload method', () => {
   it('sends the request part first as JSON, then one file part per file', async () => {
-    const { transport, requests } = scripted();
+    const transport = attaching();
     const brief = new File(['%PDF-1.7 brief'], 'brief.pdf', { type: 'application/pdf' });
     const chart = new Blob(['PNG']);
-    const attached = await api(transport).attachMissionDocument.upload({ missionId: 'm1', title: 'Brief' }, [brief, chart]);
+    const attached = await api(transport).attachMissionDocument.upload({ missionId: 'm1', title: 'Brief' }, [
+      brief,
+      chart,
+    ]);
     expect(attached).toEqual({ documentIds: ['d1', 'd2'] });
-    expect(requests[0].url).toBe('/api/attach-mission-document');
-    const form = requests[0].body as FormData;
+    expect(transport.requests[0].url).toBe('/api/attach-mission-document');
+    const form = transport.requests[0].body as FormData;
     expect(form).toBeInstanceOf(FormData);
     const entries = [...form.entries()];
     expect(entries.map(([name]) => name)).toEqual([uploadRequestPart, uploadFilePart, uploadFilePart]);
@@ -67,7 +67,7 @@ describe('an upload method', () => {
   });
 
   it('refuses locally over the declared maximum, in the shape of the server 413', async () => {
-    const { transport, requests } = scripted();
+    const transport = attaching();
     const big = new Blob([new Uint8Array(1025)]);
     const call = () => api(transport).attachMissionDocument.upload({ missionId: 'm1', title: 'Big' }, [big]);
     expect(call).toThrow(ApiError);
@@ -78,13 +78,13 @@ describe('an upload method', () => {
       expect(error.status).toBe(413);
       expect(error.message).toBe('the upload exceeds the declared maximum of 1KB');
     }
-    expect(requests).toHaveLength(0);
+    expect(transport.requests).toHaveLength(0);
   });
 
   it('still executes as JSON through execute', async () => {
-    const { transport, requests } = scripted();
+    const transport = attaching();
     await api(transport).attachMissionDocument.execute({ missionId: 'm1', title: 'Brief' });
-    expect(requests[0].body).toEqual({ missionId: 'm1', title: 'Brief' });
+    expect(transport.requests[0].body).toEqual({ missionId: 'm1', title: 'Brief' });
   });
 });
 

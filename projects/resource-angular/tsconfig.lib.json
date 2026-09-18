@@ -7,7 +7,8 @@
     "paths": {
       "@cccteam/resource-angular/*": ["projects/resource-angular/*"],
       "@cccteam/resource-angular": ["projects/resource-angular/index.ts"],
-      "@cccteam/resource": ["dist/resource"]
+      "@cccteam/resource": ["dist/resource"],
+      "@cccteam/resource/testing": ["dist/resource/testing"]
     },
     "sourceMap": true,
     "outDir": "../../out-tsc/lib",

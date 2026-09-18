@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideResourceTesting } from '@cccteam/resource-angular/testing';
 
 import { RpcButtonComponent } from './rpc-button.component';
 
@@ -10,7 +10,7 @@ describe('RpcButtonComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [RpcButtonComponent],
-      providers: [provideRouter([])],
+      providers: [provideResourceTesting()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(RpcButtonComponent);

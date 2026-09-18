@@ -150,6 +150,37 @@ Angular binding returns the browser to the login page on a 401 and raises one gl
 notice for an `ApiError` nobody caught. A transport also hands back the response headers
 by lower-cased name; paged lists read `Link` and `Total-Count` from them.
 
+## Testing
+
+The specs are written against `bun:test` and run with `bun test projects/resource/` (the trailing
+slash keeps bun off the Angular library beside it); `bun run typecheck:resource` compiles them with
+tsc over `projects/resource/tsconfig.spec.json`, so a `@ts-expect-error` line in a spec is an
+assertion that the types refuse a call. `bun run test:resource` runs both.
+
+`@cccteam/resource/testing` exports `scriptedTransport`, a `Transport` for a spec of code over the
+client. It records every request in `requests` and answers each from its script: a fixed response
+answered to every request, or a responder `(request) => TransportResponse` that decides per
+request; with no script, every request is a 200 with no body. The client judges the answers as it
+judges a server's, so a scripted 409 becomes `ApiError` or a declared answer, and scripted `Link`
+and `Total-Count` headers position a page.
+
+```ts
+import { scriptedTransport } from '@cccteam/resource/testing';
+import { createApi } from './zz_gen_api';
+
+const transport = scriptedTransport((request) =>
+  request.url === '/api/missions?limit=all'
+    ? { status: 200, body: [{ id: 'm1', title: 'Anvil run' }] }
+    : { status: 404, body: { message: `unscripted ${request.url}` } },
+);
+const api = createApi({ baseUrl: '/api', transport });
+
+const missions = await api.missions.list({ limit: 'all' });
+
+expect(missions).toEqual([{ id: 'm1', title: 'Anvil run' }]);
+expect(transport.requests.map((r) => [r.method, r.url])).toEqual([['GET', '/api/missions?limit=all']]);
+```
+
 ## Escape hatches
 
 - `api.request(method, path, options)` issues any request under `baseUrl`.

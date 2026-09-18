@@ -1,18 +1,29 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { Resource } from '@cccteam/resource';
+import { provideResourceTesting } from '@cccteam/resource-angular/testing';
+import { viewConfig } from '@cccteam/resource-angular/types';
 
 import { ResourceViewComponent } from './resource-view.component';
 
-xdescribe('ResourceViewComponent', () => {
+describe('ResourceViewComponent', () => {
   let component: ResourceViewComponent;
   let fixture: ComponentFixture<ResourceViewComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ResourceViewComponent],
+      // The expansion panel binds [@.disabled], which needs an animation renderer.
+      providers: [provideResourceTesting(), provideNoopAnimations()],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ResourceViewComponent);
     component = fixture.componentInstance;
+    fixture.componentRef.setInput('uuid', 'sq-1');
+    fixture.componentRef.setInput(
+      'config',
+      viewConfig({ primaryResource: 'Squadrons' as Resource, elements: [], showBackButton: false }),
+    );
     fixture.detectChanges();
   });
 

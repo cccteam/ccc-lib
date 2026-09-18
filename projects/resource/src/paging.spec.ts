@@ -3,7 +3,7 @@ import { Resource } from './brands';
 import { createClient, resolveAbsolute, AnyResourceHandle } from './client';
 import { ApiDescriptor } from './descriptor';
 import { listSearchParams, parseLinkHeader } from './query';
-import { Transport, TransportRequest } from './transport';
+import { ScriptedTransport, scriptedTransport } from '@cccteam/resource/testing';
 
 const descriptor: ApiDescriptor = {
   permissionDigestRoute: 'permission-digest',
@@ -61,26 +61,21 @@ interface Row {
   id: string;
 }
 
-/** A transport scripted by URL: each entry answers one request with rows and headers. */
-function scripted(pages: Record<string, { rows: Row[]; headers?: Record<string, string> }>): {
-  transport: Transport;
-  requests: TransportRequest[];
-} {
-  const requests: TransportRequest[] = [];
-  const transport: Transport = async (request) => {
-    requests.push(request);
+/** A transport scripted by URL: each entry answers one request with rows and headers, an unscripted URL is a 404. */
+function scripted(pages: Record<string, { rows: Row[]; headers?: Record<string, string> }>): ScriptedTransport {
+  return scriptedTransport((request) => {
     const page = pages[request.url];
     if (!page) {
       return { status: 404, body: { message: `unscripted ${request.url}` } };
     }
     return { status: 200, body: page.rows, headers: page.headers ?? {} };
-  };
-  return { transport, requests };
+  });
 }
 
 describe('parseLinkHeader', () => {
   it('reads each relation and its URL exactly as written', () => {
-    const header = '</api/missions?sort=deadline&limit=4&cursor=v4.local.aaa>; rel="next", </api/missions?sort=deadline&limit=4&cursor=v4.local.bbb>; rel="prev"';
+    const header =
+      '</api/missions?sort=deadline&limit=4&cursor=v4.local.aaa>; rel="next", </api/missions?sort=deadline&limit=4&cursor=v4.local.bbb>; rel="prev"';
     expect(parseLinkHeader(header)).toEqual({
       next: '/api/missions?sort=deadline&limit=4&cursor=v4.local.aaa',
       prev: '/api/missions?sort=deadline&limit=4&cursor=v4.local.bbb',
@@ -120,7 +115,7 @@ describe('page', () => {
     const first = '/api/missions?sort=deadline&limit=2&count=true';
     const second = '/api/missions?sort=deadline&limit=2&cursor=v4.local.two';
     const backToFirst = '/api/missions?sort=deadline&limit=2&cursor=v4.local.one';
-    const { transport, requests } = scripted({
+    const transport = scripted({
       [first]: {
         rows: [{ id: 'a' }, { id: 'b' }],
         headers: { 'total-count': '3', link: `<${second}>; rel="next"` },
@@ -149,8 +144,8 @@ describe('page', () => {
 
     const back = await next.prev!();
     expect(back.rows).toEqual([{ id: 'a' }, { id: 'b' }]);
-    expect(requests.map((r) => r.url)).toEqual([first, second, backToFirst]);
-    expect(requests.every((r) => r.method === 'GET')).toBe(true);
+    expect(transport.requests.map((r) => r.url)).toEqual([first, second, backToFirst]);
+    expect(transport.requests.every((r) => r.method === 'GET')).toBe(true);
   });
 });
 
@@ -158,7 +153,7 @@ describe('page reload', () => {
   it('repeats the request that produced the page: the first page by its parameters, a later one by its cursor', async () => {
     const first = '/api/missions?sort=deadline&count=true';
     const second = '/api/missions?sort=deadline&cursor=v4.local.two';
-    const { transport, requests } = scripted({
+    const transport = scripted({
       [first]: { rows: [{ id: 'a' }], headers: { link: `<${second}>; rel="next"`, 'total-count': '2' } },
       [second]: { rows: [{ id: 'b' }], headers: { link: `<${first}>; rel="prev"` } },
     });
@@ -170,7 +165,7 @@ describe('page reload', () => {
     const turned = await again.next!();
     const turnedAgain = await turned.reload();
     expect(turnedAgain.rows).toEqual([{ id: 'b' }]);
-    expect(requests.map((r) => r.url)).toEqual([first, first, second, second]);
+    expect(transport.requests.map((r) => r.url)).toEqual([first, first, second, second]);
   });
 });
 
@@ -178,7 +173,7 @@ describe('sensitive filter', () => {
   it('posts the filter in the body and follows the walk with the same body', async () => {
     const first = '/api/missions?sort=deadline&limit=1';
     const second = '/api/missions?sort=deadline&limit=1&cursor=v4.local.two';
-    const { transport, requests } = scripted({
+    const transport = scripted({
       [first]: { rows: [{ id: 'a' }], headers: { link: `<${second}>; rel="next"` } },
       [second]: { rows: [{ id: 'b' }] },
     });
@@ -192,28 +187,28 @@ describe('sensitive filter', () => {
     });
     const next = await page.next!();
     expect(next.rows).toEqual([{ id: 'b' }]);
-    expect(requests.map((r) => [r.method, r.url, r.body])).toEqual([
+    expect(transport.requests.map((r) => [r.method, r.url, r.body])).toEqual([
       ['POST', first, { filter: 'contactEmail:eq:cleo@halvard.example' }],
       ['POST', second, { filter: 'contactEmail:eq:cleo@halvard.example' }],
     ]);
   });
 
   it('stays a GET when the query carries no filter', async () => {
-    const { transport, requests } = scripted({ '/api/sectors': { rows: [] } });
+    const transport = scripted({ '/api/sectors': { rows: [] } });
     const api = createClient<{ sectors: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
     await api.sectors.list({ sensitiveFilter: true });
-    expect(requests[0].method).toBe('GET');
+    expect(transport.requests[0].method).toBe('GET');
   });
 });
 
 describe('whole read', () => {
   it('is the explicit limit: all on a resource with no maximum, one request and no Link', async () => {
-    const { transport, requests } = scripted({
+    const transport = scripted({
       '/api/sectors?limit=all': { rows: [{ id: 'a' }, { id: 'b' }] },
     });
     const api = createClient<{ sectors: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
     expect(await api.sectors.list({ limit: 'all' })).toEqual([{ id: 'a' }, { id: 'b' }]);
-    expect(requests).toHaveLength(1);
+    expect(transport.requests).toHaveLength(1);
   });
 });
 
@@ -221,28 +216,40 @@ describe('key-less resource', () => {
   it('lists the whole resource with no limit and no cursor, whatever the query carries', async () => {
     const whole = '/api/standing-orders';
     const sorted = '/api/standing-orders?sort=section';
-    const { transport, requests } = scripted({
+    const transport = scripted({
       [whole]: { rows: [{ id: 'a' }, { id: 'b' }] },
       [sorted]: { rows: [{ id: 'b' }, { id: 'a' }] },
     });
-    const api = createClient<{ standingOrders: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
+    const api = createClient<{ standingOrders: AnyResourceHandle<Row> }, unknown>(descriptor, {
+      baseUrl: '/api',
+      transport,
+    });
 
     // AnyResourceHandle types its key as string[], so a limit passes the type here; the
     // generated handle's empty key tuple refuses it at compile time (keyless.types.spec.ts).
-    expect(await api.standingOrders.list({ limit: 10, cursor: 'v4.local.anything' })).toEqual([{ id: 'a' }, { id: 'b' }]);
-    expect(await api.standingOrders.list({ sort: { field: 'section' as never }, limit: 'all' })).toEqual([{ id: 'b' }, { id: 'a' }]);
-    expect(requests.map((r) => r.url)).toEqual([whole, sorted]);
+    expect(await api.standingOrders.list({ limit: 10, cursor: 'v4.local.anything' })).toEqual([
+      { id: 'a' },
+      { id: 'b' },
+    ]);
+    expect(await api.standingOrders.list({ sort: { field: 'section' as never }, limit: 'all' })).toEqual([
+      { id: 'b' },
+      { id: 'a' },
+    ]);
+    expect(transport.requests.map((r) => r.url)).toEqual([whole, sorted]);
   });
 
   it('answers the whole list as one page with no neighbors', async () => {
     const whole = '/api/standing-orders';
-    const { transport, requests } = scripted({ [whole]: { rows: [{ id: 'a' }, { id: 'b' }] } });
-    const api = createClient<{ standingOrders: AnyResourceHandle<Row> }, unknown>(descriptor, { baseUrl: '/api', transport });
+    const transport = scripted({ [whole]: { rows: [{ id: 'a' }, { id: 'b' }] } });
+    const api = createClient<{ standingOrders: AnyResourceHandle<Row> }, unknown>(descriptor, {
+      baseUrl: '/api',
+      transport,
+    });
 
     const page = await api.standingOrders.page({ limit: 10 });
     expect(page.rows).toEqual([{ id: 'a' }, { id: 'b' }]);
     expect(page.next).toBeUndefined();
     expect(page.prev).toBeUndefined();
-    expect(requests.map((r) => r.url)).toEqual([whole]);
+    expect(transport.requests.map((r) => r.url)).toEqual([whole]);
   });
 });
