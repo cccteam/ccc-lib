@@ -138,11 +138,17 @@ is advisory material for what to render.
 ## Transports
 
 `fetchTransport()` is the default. A framework routes requests through its own HTTP
-stack by passing a `Transport`; @cccteam/resource-angular ships `httpClientTransport` so Angular apps
-keep their interceptors. A transport resolves for every HTTP status; the client turns
-4xx and 5xx into `ApiError`, which carries the decoded body. A transport also hands back
-the response headers by lower-cased name; paged lists read `Link` and `Total-Count`
-from them.
+stack by passing a `Transport`; @cccteam/resource-angular ships `httpClientTransport`, which
+rides Angular's `HttpClient` for its XSRF cookie echo and counts each request as activity.
+A transport carries the request and judges nothing: it resolves for every HTTP status and
+rejects only when no response came at all. The client is the one place a response becomes
+an error. A 4xx or 5xx that a method did not declare as an answer becomes `ApiError`, which
+carries the decoded body and, as its `message`, the server's `message` field (else `HTTP
+<status>`); `ClientOptions.onError` observes every such error before it is thrown, and a
+declared answer (`accept`) resolves instead. The framework renders those events: the
+Angular binding returns the browser to the login page on a 401 and raises one global
+notice for an `ApiError` nobody caught. A transport also hands back the response headers
+by lower-cased name; paged lists read `Link` and `Total-Count` from them.
 
 ## Escape hatches
 

@@ -1,13 +1,11 @@
-import { HttpClient } from '@angular/common/http';
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { RESOURCE_CLIENT, httpClientTransport, storeSignal } from '@cccteam/resource-angular/resource-client';
+import { RESOURCE_CLIENT, storeSignal } from '@cccteam/resource-angular/resource-client';
 import {
-  API_URL,
   Domain,
   FRONTEND_LOGIN_PATH,
+  LOGIN_REDIRECT_URL,
   LOGOUT_ACTION,
   Method,
-  PERMISSION_DIGEST_PATH,
   PermissionDigest,
   PermissionDigestState,
   PermissionScope,
@@ -15,18 +13,17 @@ import {
   RESOURCE_DOMAIN,
   SESSION_PATH,
   SessionInfo,
-  USER_DOMAINS_PATH,
 } from '@cccteam/resource-angular/types';
-import { ClientBase, createClient, fieldPermissionStates, permissionState, PermissionStore } from '@cccteam/resource';
+import { ClientBase, fieldPermissionStates, permissionState, PermissionStore } from '@cccteam/resource';
 import { from, map, Observable, of, switchMap, tap } from 'rxjs';
 
 /**
  * Session and permission state for the application.
  *
- * Permissions are owned by a @cccteam/resource PermissionStore — the application's
- * client when it provides one (RESOURCE_CLIENT), otherwise a library-private client
- * over the configured digest and user-domains paths. One cache serves the app's own
- * pages and the library's guard, directive, and forms. The store holds the per-scope
+ * Permissions are owned by a @cccteam/resource PermissionStore: the application's
+ * client's (RESOURCE_CLIENT, provided through provideResourceClient; an application
+ * that provides none fails at startup naming the way in). One cache serves the app's
+ * own pages and the library's guard, directive, and forms. The store holds the per-scope
  * permission digest (the session user's structural grant enumeration — granted,
  * conditional, or absent for denied) and the user's domains (every tenant where they
  * hold at least one grant — the tenant picker's source). On authentication the global
@@ -38,20 +35,14 @@ import { from, map, Observable, of, switchMap, tap } from 'rxjs';
   providedIn: 'root',
 })
 export class AuthService {
-  private apiUrl = inject(API_URL);
   private loginUrl = inject(FRONTEND_LOGIN_PATH);
   private sessionUrl = inject(SESSION_PATH);
   private logoutAction = inject(LOGOUT_ACTION);
   /** The selected tenant, which a domain-scoped question naming no domain is asked in. */
   private domain = inject(RESOURCE_DOMAIN);
 
-  http = inject(HttpClient);
-
-  /**
-   * The client every request of this service goes through: the app's when provided,
-   * else a private one over the same interceptor-aware transport.
-   */
-  private readonly client: ClientBase = inject(RESOURCE_CLIENT, { optional: true }) ?? this.privateClient();
+  /** The client every request of this service goes through: the application's. */
+  private readonly client: ClientBase = inject(RESOURCE_CLIENT);
 
   /** The permission cache: the client's. */
   readonly permissions: PermissionStore = this.client.permissions;
@@ -61,7 +52,13 @@ export class AuthService {
   private sessionInfoSignal = signal({} as SessionInfo);
   private permissionsLoaded = false;
 
-  redirectUrl = signal('');
+  /**
+   * The URL the browser returns to after the next login (LOGIN_REDIRECT_URL): the login
+   * guard writes the route it turned away from, the client's error hook writes the
+   * attempted URL when a 401 sends the browser to the login page, and the login page
+   * reads it once and clears it.
+   */
+  redirectUrl = inject(LOGIN_REDIRECT_URL);
   authenticated = this.authenticatedSignal.asReadonly();
   sessionInfo = this.sessionInfoSignal.asReadonly();
 
@@ -214,22 +211,5 @@ export class AuthService {
   private clearPermissions(): void {
     this.permissionsLoaded = false;
     this.permissions.clear();
-  }
-
-  /**
-   * The fallback client for apps that provide no RESOURCE_CLIENT: no generated
-   * descriptor, just the two library-owned permission routes, over the same
-   * interceptor-aware transport.
-   */
-  private privateClient() {
-    return createClient(
-      {
-        resources: {},
-        methods: {},
-        permissionDigestRoute: inject(PERMISSION_DIGEST_PATH),
-        userDomainsRoute: inject(USER_DOMAINS_PATH),
-      },
-      { baseUrl: this.apiUrl, transport: httpClientTransport(this.http) },
-    );
   }
 }

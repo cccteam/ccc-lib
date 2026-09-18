@@ -1,4 +1,4 @@
-import { InjectionToken, Provider, signal, Signal } from '@angular/core';
+import { InjectionToken, Provider, signal, Signal, WritableSignal } from '@angular/core';
 import { Domain, Permission, Resource } from './permissions';
 import { MethodMeta, ResourceMeta } from './resource-meta';
 
@@ -27,18 +27,17 @@ export const SESSION_PATH = new InjectionToken<string>('SESSION_PATH', { factory
 export const API_URL = new InjectionToken<string>('API_URL', { factory: () => '/api' });
 
 /**
- * The path to the generated permission digest endpoint, relative to API_URL.
- * @defaultValue 'permission-digest'
+ * The URL the browser returns to after the next login, and `AuthService.redirectUrl`.
+ * Runtime state, not configuration: the login guard writes the route it turned away
+ * from, the client's error hook writes BASE_URL plus the current route when a 401 sends
+ * the browser to FRONTEND_LOGIN_PATH, and the login page reads it once and clears it.
+ * It lives below AuthService so the client adapter can write it without depending on
+ * the service that depends on the client.
+ * @defaultValue a signal holding the empty string
  */
-export const PERMISSION_DIGEST_PATH = new InjectionToken<string>('PERMISSION_DIGEST_PATH', {
-  factory: () => 'permission-digest',
+export const LOGIN_REDIRECT_URL = new InjectionToken<WritableSignal<string>>('LOGIN_REDIRECT_URL', {
+  factory: () => signal(''),
 });
-
-/**
- * The path to the generated user-domains endpoint, relative to API_URL.
- * @defaultValue 'user-domains'
- */
-export const USER_DOMAINS_PATH = new InjectionToken<string>('USER_DOMAINS_PATH', { factory: () => 'user-domains' });
 
 /**
  * The available permissions in the system.
@@ -139,7 +138,8 @@ export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
   internal_error: 'Sign-in failed because of a problem on our side. Please try again.',
   login_refused: 'Sign-in was refused for this account.',
   no_oidc_cookie: 'Sign-in could not be completed because the browser lost its sign-in cookie. Please try again.',
-  invalid_state: 'Sign-in could not be completed because it did not match the sign-in this browser started. Please try again.',
+  invalid_state:
+    'Sign-in could not be completed because it did not match the sign-in this browser started. Please try again.',
   invalid_pkce: 'Sign-in could not be completed because its verification code was missing. Please try again.',
   token_exchange_failed: 'The identity provider did not complete the sign-in. Please try again.',
   no_id_token: 'The identity provider did not return an identity token. Please try again.',

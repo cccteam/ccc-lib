@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { createClient } from '@cccteam/resource';
+import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 
 import { ActionAccessControlWrapperComponent } from './action-access-control-wrapper.component';
 
@@ -9,6 +11,21 @@ describe('ActionAccessControlWrapperComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [ActionAccessControlWrapperComponent],
+      // The application's client is required; a bare one over an empty descriptor serves the stub.
+      providers: [
+        {
+          provide: RESOURCE_CLIENT,
+          useValue: createClient(
+            {
+              resources: {},
+              methods: {},
+              permissionDigestRoute: 'permission-digest',
+              userDomainsRoute: 'user-domains',
+            },
+            { baseUrl: '/api' },
+          ),
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(ActionAccessControlWrapperComponent);

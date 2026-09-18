@@ -25,10 +25,13 @@ export interface TransportResponse {
 }
 
 /**
- * Transport carries one request to the server. It resolves for every HTTP status —
- * the client turns 4xx/5xx into ApiError — and rejects only when no response could
- * be obtained at all. Swap it to route requests through a framework HTTP stack
- * (interceptors, loading indicators, auth redirects) without touching the client.
+ * Transport carries one request to the server and nothing more. It resolves for every
+ * HTTP status and rejects only when no response could be obtained at all; it judges
+ * nothing. The client is the one place a response becomes an error: a 4xx or 5xx that
+ * is not a declared answer becomes ApiError, observed by `ClientOptions.onError` before
+ * it is thrown. A framework swaps the transport to ride its own HTTP stack (a cookie
+ * echo, a loading indicator) and renders the client's events: the 401 the hook
+ * reports, the ApiError nobody caught.
  */
 export type Transport = (request: TransportRequest) => Promise<TransportResponse>;
 
