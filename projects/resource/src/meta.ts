@@ -137,6 +137,14 @@ export interface FieldMeta {
    * in every mode. Emitted by the ccc TypeScript generator.
    */
   readOnly?: boolean;
+  /**
+   * The server never returns this field: it is write-only (`conditions:"input_only"`),
+   * accepted on create and update and absent from every list and read response, and a
+   * `columns=` naming it is refused. The generated row interface has no property for it
+   * while the Create and Patch shapes carry it, so a create or edit form renders a blank
+   * input for it and a view renders nothing. Emitted by the ccc TypeScript generator.
+   */
+  writeOnly?: boolean;
 }
 
 export interface ResourceMeta {
