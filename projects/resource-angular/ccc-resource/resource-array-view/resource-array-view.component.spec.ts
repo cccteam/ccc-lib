@@ -25,9 +25,11 @@ describe('ResourceArrayViewComponent', () => {
       arrayConfig({
         primaryResource: 'Squadrons' as Resource,
         iteratedConfig: viewConfig({ primaryResource: 'Squadrons' as Resource, elements: [] }),
-        listFilter: () => '',
+        listFilter: (row: { id: string }): string => `id:ne:${row.id}`,
       }),
     );
+    // The children belong to a row the page hands over; the view asks nothing without it.
+    fixture.componentRef.setInput('parentData', { id: 'sq-1' });
     fixture.detectChanges();
   });
 

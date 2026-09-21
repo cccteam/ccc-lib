@@ -258,13 +258,26 @@ export class ResourceStore {
   }
 
   private resourceViewRef = signal<ResourceRef<RecordData> | undefined>(undefined);
+  /**
+   * The viewed row whenever the reader holds one: from its first answer and through a
+   * reload (a reload keeps the row on screen), empty while the reader is idle, loading,
+   * or in error. A page decides what depends on the row with rowPresent, not with this.
+   */
   viewData = computed(() => {
     const ref = this.resourceViewRef();
-    if (ref && ref.status() === 'resolved') {
+    if (ref?.hasValue()) {
       return ref.value();
     }
     return {} as RecordData;
   });
+  /**
+   * Whether the row is on hand: true from the reader's first answer and through a
+   * reload, false while it is idle (no key yet), loading for the first time, or in
+   * error. The compound page draws the row's children only under it, so no child asks
+   * for anything with a row that is not there yet, and a reload of the row does not take
+   * the children down.
+   */
+  rowPresent = computed(() => this.resourceViewRef()?.hasValue() ?? false);
   viewStatus = computed(() => {
     return this.resourceViewRef()?.status();
   });
@@ -301,7 +314,16 @@ export class ResourceStore {
     this.resourceListRef()?.reload();
   }
 
+  /**
+   * Starts holding the whole list (or the one server page of a bounded source) for the
+   * store's route, filter, sorts, and PII flag; from here on a change to any of them
+   * asks again. Idempotent: one reader per store, however often a component's effect
+   * calls this, and no reload after building, since a fresh reader loads on creation.
+   */
   buildStoreListData(): void {
+    if (untracked(() => this.resourceListRef()) !== undefined) {
+      return;
+    }
     const route = this.route();
     const name = this.resourceName();
     if (!route || name === '') {
@@ -316,21 +338,22 @@ export class ResourceStore {
       ),
     );
 
-    const ref = this.resourceList(this.route, this.filter, uniqueColumns, this.disableCacheForFilterPii, this.sorts);
-    this.resourceListRef.set(ref);
-    this.reloadListData();
+    this.resourceListRef.set(
+      this.resourceList(this.route, this.filter, uniqueColumns, this.disableCacheForFilterPii, this.sorts),
+    );
   }
 
+  /**
+   * Starts holding the row the store's route and key name: idle, with no request, until
+   * both are set, one read when they are, and one more whenever either changes.
+   * Idempotent: the reader is built once per store, so a component's effect may call
+   * this on every run and a second component sharing the store adds no reader.
+   */
   buildStoreViewData(): void {
-    const route = this.route();
-    const uuid = this.uuid();
-    if (!route || !uuid || uuid === 'undefined') {
+    if (untracked(() => this.resourceViewRef()) !== undefined) {
       return;
     }
-
-    const ref = this.resourceView(this.route, this.uuid);
-    this.resourceViewRef.set(ref);
-    this.reloadListData();
+    this.resourceViewRef.set(this.resourceView(this.route, this.uuid));
   }
 
   /**
@@ -420,22 +443,31 @@ export class ResourceStore {
     return result;
   }
 
+  /**
+   * One row, read by route and key. The params track both signals and the tenant, so a
+   * change to any of them reads again; while the route or the key is empty (or the
+   * string 'undefined', which a template renders for a missing value) the params are
+   * undefined, and the reader is idle with no value and no request. Nothing answers an
+   * empty key with an empty row, since an empty row would count as present.
+   */
   resourceView(route: Signal<string>, uuid: Signal<string>): ResourceRef<RecordData> {
     return untracked(
       () =>
         rxResource({
           injector: this.injector,
-          params: () => ({
-            route: route,
-            uuid: uuid,
-            domain: this.domain(),
-          }),
+          params: () => {
+            const currentRoute = route();
+            const key = uuid();
+            if (!currentRoute || !key || key === 'undefined') {
+              return undefined;
+            }
+            return { route: currentRoute, uuid: key, domain: this.domain() };
+          },
           stream: ({ params }) => {
-            if (!params.route() || !params.uuid() || params.uuid() === 'undefined') return of({} as RecordData);
             // The view is the edit surface: opt into the capability envelope so each
             // field and the delete button render from the row's own affordances.
             return from(
-              this.handleFor(String(params.route())).read([params.uuid()], {
+              this.handleFor(params.route).read([params.uuid], {
                 capabilities: ['Update', 'Delete'],
               }) as Promise<RecordData>,
             );
@@ -460,6 +492,7 @@ export class ResourceStore {
           route: route(),
           filter: filter(),
           columns: columns(),
+          sensitive: disableCacheForFilterPii(),
           sorts: sorts(),
           limit: limit(),
           domain: this.domain(),
@@ -469,7 +502,7 @@ export class ResourceStore {
           return this.list<RecordData>(
             String(params.route),
             params.filter,
-            disableCacheForFilterPii(),
+            params.sensitive,
             params.columns,
             params.sorts,
             params.limit,

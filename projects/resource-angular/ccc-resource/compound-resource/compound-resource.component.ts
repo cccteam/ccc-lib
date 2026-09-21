@@ -34,6 +34,7 @@ import { ResourceListCreateComponent } from '../resource-list-create/resource-li
 import { ResourceResolverComponent } from '../resource-resolver/resource-resolver.component';
 import { ResourceStore } from '../resource-store.service';
 import { ResourceViewComponent } from '../resource-view/resource-view.component';
+import { RowStoreDirective } from '../row-store.directive';
 
 @Component({
   selector: 'compound-resource',
@@ -52,9 +53,17 @@ import { ResourceViewComponent } from '../resource-view/resource-view.component'
     ResourceResolverComponent,
     ActionAccessControlWrapperComponent,
     RouterModule,
+    RowStoreDirective,
   ],
   providers: [ResourceStore],
 })
+/**
+ * A row page. The page owns the row: its store reads the row once, the primary view
+ * draws and writes through that same store, and the related configs (array views,
+ * child lists, resolvers, RPC buttons) exist only once the row is present and stay
+ * through a reload of it, so no child asks for anything from a row that has not
+ * arrived, and after a save every child reads the saved values.
+ */
 export class CompoundResourceComponent implements OnInit {
   location = inject(Location);
   route = inject(ActivatedRoute);
@@ -85,13 +94,20 @@ export class CompoundResourceComponent implements OnInit {
     return config && (config.type === 'ListView' || config.type === 'View') && config.elements.length > 0;
   });
 
+  /**
+   * The key of the row this page reads: the parent's value in `parentRelation.parentKey`
+   * when the primary config relates the row to a parent, else the page's own `uuid`.
+   * Resolved against the inherited parent row alone, never against the page's own row,
+   * so the key holds still once the row lands (the row rarely carries the parent's field,
+   * and a key that flipped to 'undefined' would idle the reader and take the page down).
+   */
   primaryConfigParentId = computed(() => {
     const config = this.primaryConfig();
-    const data = this.resolvedData();
     if (config.type === 'View' || config.type === 'ListView') {
       const parentKey = config.parentRelation?.parentKey;
-      if (parentKey !== '') {
-        return String(data[parentKey]);
+      const parent = this.parentData();
+      if (parentKey !== '' && parent !== undefined) {
+        return String(parent[parentKey]);
       }
     }
     return this.uuid();
@@ -159,12 +175,12 @@ export class CompoundResourceComponent implements OnInit {
   });
   hasRpcConfigs = computed(() => !!this.rpcConfigs() && this.rpcConfigs()!.length > 0);
 
-  resolvedData = computed(() => {
-    if (Object.keys(this.store.viewData()).length > 0) {
-      return this.store.viewData() as RecordData;
+  /** The row the page's children read: the page's row once present, else the inherited parent row, else empty. */
+  resolvedData = computed<RecordData>(() => {
+    if (this.store.rowPresent()) {
+      return this.store.viewData();
     }
-
-    return this.parentData() || ({} as RecordData);
+    return this.parentData() ?? ({} as RecordData);
   });
 
   ngOnInit(): void {
@@ -190,7 +206,7 @@ export class CompoundResourceComponent implements OnInit {
       }
       if (c.type === 'View' || c.type === 'ListView') {
         // The list component holds its own store and its own page; this store serves
-        // the row the page is on.
+        // the row the page is on. The build is idempotent: one reader, tracking the key.
         this.store.buildStoreViewData();
       }
     });

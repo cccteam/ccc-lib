@@ -241,3 +241,67 @@ describe('ResourceStore paged reader', () => {
     pager.destroy();
   });
 });
+
+describe('ResourceStore row reader', () => {
+  it('is idle without a key, reads once per key, builds once, and holds the row through a reload', async () => {
+    const c1 = '/api/ship-classes/c1?capabilities=Update%2CDelete';
+    const c2 = '/api/ship-classes/c2?capabilities=Update%2CDelete';
+    const script = scripted({
+      [c1]: { rows: { id: 'c1', designation: 'Cutter' } },
+      [c2]: { rows: { id: 'c2', designation: 'Tug' } },
+    });
+    const store = storeOver(script);
+    store.resourceMeta.set({ route: 'ship-classes', fields: [] });
+
+    // No key: the reader exists, idle, with no value and no request.
+    store.buildStoreViewData();
+    await settle(() => store.viewStatus() !== undefined);
+    expect(store.viewStatus()).toBe('idle');
+    expect(store.rowPresent()).toBe(false);
+    expect(store.viewData()).toEqual({});
+    expect(script.requests).toEqual([]);
+
+    // The string a template renders for a missing value is no key either.
+    store.uuid.set('undefined');
+    await settle(() => store.viewStatus() === 'idle');
+    expect(script.requests).toEqual([]);
+
+    // A key: one read, and the row is present.
+    store.uuid.set('c1');
+    await settle(() => store.rowPresent());
+    expect(script.requests.map((r) => r.url)).toEqual([c1]);
+    expect(store.viewData()).toEqual({ id: 'c1', designation: 'Cutter' });
+
+    // A second build adds no reader and no request.
+    store.buildStoreViewData();
+    await settle(() => store.rowPresent());
+    expect(script.requests.map((r) => r.url)).toEqual([c1]);
+
+    // A changed key reads again.
+    store.uuid.set('c2');
+    await settle(() => store.viewData()['id'] === 'c2');
+    expect(script.requests.map((r) => r.url)).toEqual([c1, c2]);
+
+    // A reload keeps the row on hand while it is in flight.
+    store.reloadViewData();
+    TestBed.tick();
+    expect(store.viewStatus()).toBe('reloading');
+    expect(store.rowPresent()).toBe(true);
+    expect(store.viewData()).toEqual({ id: 'c2', designation: 'Tug' });
+    await settle(() => store.viewStatus() === 'resolved');
+    expect(script.requests.map((r) => r.url)).toEqual([c1, c2, c2]);
+  });
+
+  it('holds no row while the read is refused', async () => {
+    const url = '/api/ship-classes/c9?capabilities=Update%2CDelete';
+    const script = scripted({ [url]: { status: 403, rows: { message: 'no' } } });
+    const store = storeOver(script);
+    store.resourceMeta.set({ route: 'ship-classes', fields: [] });
+    store.uuid.set('c9');
+    store.buildStoreViewData();
+    await settle(() => store.viewStatus() === 'error');
+    expect(store.rowPresent()).toBe(false);
+    expect(store.viewData()).toEqual({});
+    expect(store.viewError() instanceof ApiError).toBe(true);
+  });
+});

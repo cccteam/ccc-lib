@@ -55,7 +55,12 @@ export class ResourceArrayViewComponent implements OnInit {
   injector = inject(Injector);
 
   resourceConfig = input.required<ArrayConfig>();
-  parentData = input<RecordData>({});
+  /**
+   * The row the children belong to, whose values the config's listFilter is written
+   * against. No default: until the compound page hands the row over, the view asks for
+   * nothing, so no filter ever names a value the row does not have yet.
+   */
+  parentData = input<RecordData | undefined>();
   expPanel = viewChild<MatExpansionPanel, MatExpansionPanel>('expPanel', { read: MatExpansionPanel });
 
   emptyOneToOne = output<boolean>();
@@ -114,11 +119,12 @@ export class ResourceArrayViewComponent implements OnInit {
       return undefined;
     }
 
+    const parent = this.parentData() ?? ({} as RecordData);
     return {
       actionType: 'create',
       meta: this.store.resourceMeta(),
-      shouldRender: () => (showCreate && config.shouldRenderActions?.create?.(this.parentData())) ?? false,
-      resourceData: this.parentData(),
+      shouldRender: () => (showCreate && config.shouldRenderActions?.create?.(parent)) ?? false,
+      resourceData: parent,
     };
   });
 
@@ -162,22 +168,25 @@ export class ResourceArrayViewComponent implements OnInit {
   }
 
   constructor() {
+    // The filter follows the parent row: nothing until the row is on hand, then the
+    // configured listFilter over it, and the reader built once. A later change of the
+    // row (a reload after a save) re-runs this, sets the same filter string, and issues
+    // nothing; a changed filter asks again through the reader's own params.
     effect(() => {
       const parentData = this.parentData();
       const resourceConfig = this.resourceConfig();
+      if (parentData === undefined || !resourceConfig || !('listFilter' in resourceConfig)) {
+        return;
+      }
 
-      if (resourceConfig && 'listFilter' in resourceConfig && parentData) {
-        const filter = resourceConfig.listFilter(parentData);
-
-        this.store.filter.set(filter);
-        this.store.disableCacheForFilterPii.set(resourceConfig.disableCacheForFilterPii);
-        // A paged source: the store holds one server page and the pager turns it. A whole
-        // source: one request, every child.
-        if (this.paged()) {
-          this.store.buildStorePage();
-        } else {
-          this.store.buildStoreListData();
-        }
+      this.store.filter.set(resourceConfig.listFilter(parentData));
+      this.store.disableCacheForFilterPii.set(resourceConfig.disableCacheForFilterPii);
+      // A paged source: the store holds one server page and the pager turns it. A whole
+      // source: one request, every child.
+      if (this.paged()) {
+        this.store.buildStorePage();
+      } else {
+        this.store.buildStoreListData();
       }
     });
   }

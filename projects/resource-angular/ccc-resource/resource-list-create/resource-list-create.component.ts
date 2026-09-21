@@ -38,7 +38,13 @@ export class ResourceListCreateComponent {
   router = inject(Router);
   create = signal<boolean>(false);
   parentId = input<string>();
-  parentData = input<RecordData>({});
+  /**
+   * The parent row a child list is related to by `parentRelation`. No default: a child
+   * list draws its table only once the parent's key value is on hand, so it never asks
+   * for an unfiltered first page of the whole child resource; a root list, or one with
+   * no parent relation, draws at once.
+   */
+  parentData = input<RecordData | undefined>();
   searchParams = input<Record<string, string>[]>([]);
   resourceConfig = input<ListViewConfig>();
   isRootList = input<boolean>(true);
@@ -65,6 +71,9 @@ export class ResourceListCreateComponent {
     const parent = this.config().parentRelation?.parentKey;
     return this.parentData()?.[parent] || '';
   });
+
+  /** Whether the list may ask: at once when nothing relates it to a parent, else once the parent's key value is present. */
+  listReady = computed(() => this.childKey() === '' || this.parentKey() !== '');
 
   config = computed(() => {
     const inputConfig = this.resourceConfig();

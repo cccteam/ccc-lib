@@ -76,8 +76,16 @@ import { maxLengthValidator, metadataTypeCoercion } from '../resources-helpers';
   ],
   templateUrl: './resource-view.component.html',
   styleUrl: './resource-view.component.scss',
-  providers: [ResourceStore],
 })
+/**
+ * One row as a form. The view provides no store of its own: it injects the nearest
+ * ResourceStore. Inside the compound page's primary slot that is the page's store, so
+ * the form, the capabilities, the patch, the remove, and the reload all run against the
+ * row every other child of the page reads, and a save refreshes them all. A view over a
+ * different row (the compound's related-row branch, or one an application places by
+ * hand) sits on an element carrying `cccRowStore`, which provides its own store; a view
+ * with no store in scope fails at construction naming ResourceStore.
+ */
 export class ResourceViewComponent implements OnInit {
   resourceMeta = inject(RESOURCE_META);
   location = inject(Location);
@@ -441,15 +449,20 @@ export class ResourceViewComponent implements OnInit {
     });
   }
 
-  relatedId(): string {
-    const uuid = this.uuid();
-    const relatedData = this.relatedData();
-    const config = this.config();
-    if (config.parentRelation?.parentKey) {
-      return String(relatedData[config.parentRelation.parentKey]);
+  /**
+   * The key of the row this view reads. The compound page's primary view is handed the
+   * key the page resolved (compoundResourceView); any other view reads the related
+   * row's key off `relatedData` when its config relates it by `parentKey`, else its
+   * `uuid`. A computed, so the effect below re-runs when the key changes and not when
+   * `relatedData` changes identity.
+   */
+  relatedId = computed((): string => {
+    const parentKey = this.config().parentRelation?.parentKey;
+    if (!this.compoundResourceView() && parentKey) {
+      return String(this.relatedData()[parentKey]);
     }
-    return uuid;
-  }
+    return this.uuid();
+  });
 
   constructor() {
     effect(() => {
@@ -473,6 +486,9 @@ export class ResourceViewComponent implements OnInit {
         .subscribe();
     });
 
+    // The store setup: on a store of its own (cccRowStore) this is the only setup; on
+    // the compound page's shared store it repeats the page's values, and the idempotent
+    // build adds no reader.
     effect(() => {
       const id = this.relatedId();
       const create = this.showCreateForm();
@@ -485,6 +501,6 @@ export class ResourceViewComponent implements OnInit {
 
   createResource(): void {
     this.showCreateForm.set(false);
-    this.store.buildStoreViewData();
+    this.store.reloadViewData();
   }
 }

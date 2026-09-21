@@ -33,7 +33,7 @@
       @if (createMode()) {
         <ccc-resource-create
           [resourceConfig]="createConfig()"
-          [parentData]="parentData()"
+          [parentData]="parentData() ?? {}"
           (complete)="onCreateCompleted()">
         </ccc-resource-create>
       }
@@ -81,7 +81,7 @@
   </div>
 } @else {
   @if (createMode()) {
-    <ccc-resource-create [resourceConfig]="createConfig()" [parentData]="parentData()" (complete)="onCreateCompleted()">
+    <ccc-resource-create [resourceConfig]="createConfig()" [parentData]="parentData() ?? {}" (complete)="onCreateCompleted()">
     </ccc-resource-create>
   }
   @if (resolved()) {

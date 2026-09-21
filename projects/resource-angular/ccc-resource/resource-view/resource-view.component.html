@@ -11,7 +11,7 @@
         <div class="no-title-exp-panel-padding"></div>
       }
       <ng-container *ngTemplateOutlet="headerSlot"></ng-container>
-      @if (store.viewStatus() === 'resolved') {
+      @if (store.rowPresent()) {
         <div class="resource-container" [class.form-edit-mode]="editMode() === 'edit'">
           <form [formGroup]="form()">
             <div class="resource row">
@@ -44,7 +44,7 @@
     @if (!showCreateForm()) {
       <ng-container *ngTemplateOutlet="headerSlot"></ng-container>
     }
-    @if (store.viewStatus() === 'resolved') {
+    @if (store.rowPresent()) {
       <div class="resource-container base-container-bg" [class.form-edit-mode]="editMode() === 'edit'">
         <form [formGroup]="form()">
           <div class="resource row">
@@ -101,7 +101,7 @@
 <ng-template #headerSlot>
   <div class="header-container">
     <div class="state-buttons">
-      @if (store.viewStatus() === 'resolved') {
+      @if (store.rowPresent()) {
         @for (rpc of inlineRpcConfigs(); track rpc.context) {
           <action-access-control-wrapper [actionContext]="rpc.context">
             <ccc-rpc-button
