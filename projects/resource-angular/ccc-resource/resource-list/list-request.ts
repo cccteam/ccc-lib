@@ -1,10 +1,39 @@
 import { ApiError, Resource, ResourceMeta } from '@cccteam/resource';
 import { ColumnFilterability, PageTurn } from '@cccteam/resource-angular/ccc-grid';
-import { keyFields, ListViewConfig } from '@cccteam/resource-angular/types';
+import { ColumnConfig, keyFields, ListViewConfig } from '@cccteam/resource-angular/types';
 
 // The list page's pure parts around the server's page: which columns the server filters,
-// where the page sits after a turn, what an empty table says, and what a key-less
-// resource's page refuses.
+// where the page sits after a turn, what an empty table says, and what a page refuses: a
+// key-less resource's page size or row expansion, and a column over a write-only field.
+
+/**
+ * Refuses a list configuration naming a write-only field as a column, alone or among a
+ * concatenated column's own fields (`additionalIds` on this resource). The server never
+ * returns such a field and refuses a `columns=` that names it with a 400, so the column
+ * is a configuration error, thrown when the page is built naming the resource and the
+ * field, never a silently empty cell.
+ */
+export function refuseWriteOnlyColumns(resource: Resource, columns: readonly ColumnConfig[], meta: ResourceMeta | undefined): void {
+  const writeOnly = new Set((meta?.fields ?? []).filter((field) => field.writeOnly).map((field) => field.fieldName));
+  if (writeOnly.size === 0) {
+    return;
+  }
+  for (const column of columns) {
+    const named: string[] = [column.id];
+    if ('additionalIds' in column) {
+      for (const additional of column.additionalIds) {
+        if (additional.resource === undefined) {
+          named.push(additional.id);
+        }
+      }
+    }
+    for (const field of named) {
+      if (writeOnly.has(field)) {
+        throw new Error(`${resource}: listColumns names ${field}, which is write-only: a list never returns it`);
+      }
+    }
+  }
+}
 
 /**
  * Refuses a list configuration asking a key-less resource for what its page cannot have.

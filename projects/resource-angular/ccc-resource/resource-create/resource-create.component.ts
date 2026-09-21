@@ -41,7 +41,11 @@ import { camelCase } from '../concat-fns';
 import { flattenElements } from '../gui-constants';
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
 import { ResourceStore } from '../resource-store.service';
+import { rendererFor } from '../resource-field/renderer';
 import { maxLengthValidator, metadataTypeCoercion } from '../resources-helpers';
+
+/** The display types the create form presents and never takes: their control starts null and a null control leaves the add operation. */
+const READ_ONLY_SHAPES = new Set(['bytes', 'array', 'object']);
 
 @Component({
   selector: 'ccc-resource-create',
@@ -128,9 +132,14 @@ export class ResourceCreateComponent implements OnInit {
         continue;
       }
 
-      let control = new FormControl<DataType>('');
+      let control: FormControl<DataType | null> = new FormControl<DataType | null>('');
       if (field.displayType === 'boolean') {
         control = new FormControl<boolean>(false);
+      }
+      // A bytes, array, or object field has no editor yet: its control is null, which
+      // the cleaning step before ops.add leaves out, so the add sends no value for it.
+      if (READ_ONLY_SHAPES.has(rendererFor(field.displayType))) {
+        control = new FormControl<DataType | null>(null);
       }
 
       const findElement = allElements.find((element) => element.type === 'field' && element.name === field.fieldName);

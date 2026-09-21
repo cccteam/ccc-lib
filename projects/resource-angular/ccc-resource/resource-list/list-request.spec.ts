@@ -1,6 +1,15 @@
 import { ApiError, FieldMeta, Resource, ResourceMeta } from '@cccteam/resource';
 import { PageTurn } from '@cccteam/resource-angular/ccc-grid';
-import { filterEligibility, listEmptyMessage, pageLabel, PagePosition, positionAfter, refuseKeylessConfig } from './list-request';
+import { ColumnConfig } from '@cccteam/resource-angular/types';
+import {
+  filterEligibility,
+  listEmptyMessage,
+  pageLabel,
+  PagePosition,
+  positionAfter,
+  refuseKeylessConfig,
+  refuseWriteOnlyColumns,
+} from './list-request';
 
 // The list component's pure parts: which columns the server filters, where the page
 // sits after a turn, what an empty table says, and what a key-less resource's page
@@ -129,6 +138,51 @@ describe('refuseKeylessConfig', () => {
     it(tt.name, () => {
       const call = (): void => {
         refuseKeylessConfig('StandingOrders' as Resource, tt.config, tt.meta);
+      };
+      if (tt.wantThrows) {
+        expect(call).toThrow(tt.wantThrows);
+      } else {
+        expect(call).not.toThrow();
+      }
+    });
+  }
+});
+
+describe('refuseWriteOnlyColumns', () => {
+  const calls: ResourceMeta = {
+    route: 'distress-calls',
+    fields: [field('id', { primaryKey: { ordinalPosition: 0 } }), field('summary'), field('transcript', { writeOnly: true })],
+  };
+  const column = (id: string, additionalIds?: { id: string; resource?: Resource; field?: string }[]): ColumnConfig =>
+    (additionalIds ? { id, additionalIds } : { id }) as unknown as ColumnConfig;
+
+  const cases: { name: string; meta: ResourceMeta | undefined; columns: ColumnConfig[]; wantThrows?: RegExp }[] = [
+    { name: 'columns over returned fields pass', meta: calls, columns: [column('summary'), column('id')] },
+    {
+      name: 'a column over the write-only field is refused naming the resource and the field',
+      meta: calls,
+      columns: [column('summary'), column('transcript')],
+      wantThrows: /^DistressCalls: listColumns names transcript, which is write-only: a list never returns it$/,
+    },
+    {
+      name: 'a concatenated column reading the write-only field off this resource is refused',
+      meta: calls,
+      columns: [column('summary', [{ id: 'transcript' }])],
+      wantThrows: /names transcript, which is write-only/,
+    },
+    {
+      name: 'a concatenated column reading another resource\'s field of the same name passes',
+      meta: calls,
+      columns: [column('summary', [{ id: 'transcript', resource: 'Logs' as Resource, field: 'text' }])],
+    },
+    { name: 'a resource with no write-only field passes whatever is named', meta: boards, columns: [column('transcript')] },
+    { name: 'no metadata passes', meta: undefined, columns: [column('transcript')] },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, () => {
+      const call = (): void => {
+        refuseWriteOnlyColumns('DistressCalls' as Resource, tt.columns, tt.meta);
       };
       if (tt.wantThrows) {
         expect(call).toThrow(tt.wantThrows);

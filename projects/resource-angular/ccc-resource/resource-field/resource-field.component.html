@@ -1,23 +1,11 @@
 <div [class.hidden-field]="!showField()">
-  @if (showEmptyField()) {
+  @if (!hasControl()) {
+    <!-- The form owner left this field out: nothing to render and no control to bind. -->
+  } @else if (showEmptyField()) {
     <ccc-empty-readonly-field [label]="fieldConfig().label"></ccc-empty-readonly-field>
   } @else {
-    @switch (fieldMeta().displayType) {
+    @switch (renderer()) {
       @case ('date') {
-        <ccc-date-field
-          [form]="form()"
-          [fieldConfig]="fieldConfig()"
-          [editMode]="mode()"
-          [fieldClass]="fieldClass()"
-          [meta]="meta()"
-          [pristineValue]="pristineValue()"
-          [relatedData]="data()"
-          [fieldMeta]="fieldMeta()"
-          [showField]="showField()">
-        </ccc-date-field>
-      }
-
-      @case ('civildate') {
         <ccc-date-field
           [form]="form()"
           [fieldConfig]="fieldConfig()"
@@ -48,9 +36,6 @@
       @case ('boolean') {
         <ng-container *ngTemplateOutlet="booleanFragment"></ng-container>
       }
-      @case ('nullboolean') {
-        <ng-container *ngTemplateOutlet="booleanFragment"></ng-container>
-      }
 
       @case ('enumerated') {
         <ccc-enumerated-field
@@ -64,6 +49,48 @@
           [fieldMeta]="fieldMeta()"
           [showField]="showField()">
         </ccc-enumerated-field>
+      }
+
+      @case ('bytes') {
+        <ccc-bytes-field
+          [form]="form()"
+          [fieldConfig]="fieldConfig()"
+          [editMode]="mode()"
+          [fieldClass]="fieldClass()"
+          [meta]="meta()"
+          [pristineValue]="pristineValue()"
+          [relatedData]="data()"
+          [fieldMeta]="fieldMeta()"
+          [showField]="showField()">
+        </ccc-bytes-field>
+      }
+
+      @case ('array') {
+        <ccc-array-field
+          [form]="form()"
+          [fieldConfig]="fieldConfig()"
+          [editMode]="mode()"
+          [fieldClass]="fieldClass()"
+          [meta]="meta()"
+          [pristineValue]="pristineValue()"
+          [relatedData]="data()"
+          [fieldMeta]="fieldMeta()"
+          [showField]="showField()">
+        </ccc-array-field>
+      }
+
+      @case ('object') {
+        <ccc-object-field
+          [form]="form()"
+          [fieldConfig]="fieldConfig()"
+          [editMode]="mode()"
+          [fieldClass]="fieldClass()"
+          [meta]="meta()"
+          [pristineValue]="pristineValue()"
+          [relatedData]="data()"
+          [fieldMeta]="fieldMeta()"
+          [showField]="showField()">
+        </ccc-object-field>
       }
 
       @default {

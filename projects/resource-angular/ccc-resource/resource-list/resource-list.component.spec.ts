@@ -19,6 +19,10 @@ const field = (fieldName: string, extra: Partial<FieldMeta> = {}): FieldMeta =>
 
 const orders = 'StandingOrders' as Resource;
 const ships = 'Ships' as Resource;
+const calls = 'DistressCalls' as Resource;
+
+/** The base64 of 32 zero bytes: a SHA-256 digest. */
+const digest32 = btoa(String.fromCharCode(...new Array<number>(32).fill(0)));
 
 const metas: Record<string, ResourceMeta> = {
   [orders]: {
@@ -31,7 +35,17 @@ const metas: Record<string, ResourceMeta> = {
   } as ResourceMeta,
   [ships]: {
     route: 'ships',
-    fields: [field('id', { primaryKey: { ordinalPosition: 0 } }), field('name')],
+    fields: [
+      field('id', { primaryKey: { ordinalPosition: 0 } }),
+      field('name'),
+      field('cargoBays', { displayType: 'number[]' }),
+      field('digest', { displayType: 'bytes' }),
+      field('lastRefitAt', { displayType: 'date' }),
+    ],
+  } as ResourceMeta,
+  [calls]: {
+    route: 'distress-calls',
+    fields: [field('id', { primaryKey: { ordinalPosition: 0 } }), field('summary'), field('transcript', { writeOnly: true })],
   } as ResourceMeta,
 };
 
@@ -42,6 +56,7 @@ const descriptor: ApiDescriptor = {
   resources: {
     [orders]: { resource: orders, property: 'standingOrders', route: 'standing-orders', scope: 'global', consolidated: false, keys: [], operations: ['list'], page: { default: 50 } },
     [ships]: { resource: ships, property: 'ships', route: 'ships', scope: 'global', consolidated: false, keys: ['id'], operations: ['list', 'read'], page: { default: 25, max: 200 } },
+    [calls]: { resource: calls, property: 'distressCalls', route: 'distress-calls', scope: 'global', consolidated: false, keys: ['id'], operations: ['list', 'read'], page: { default: 10, max: 100 } },
   },
   methods: {},
 };
@@ -50,9 +65,9 @@ describe('ResourceListComponent', () => {
   let fixture: ComponentFixture<ResourceListComponent>;
   let transport: ScriptedTransport;
 
-  const create = async (options: Omit<ListViewConfigOptions, 'elements'>): Promise<void> => {
+  const create = async (options: Omit<ListViewConfigOptions, 'elements'>, rows: Record<string, unknown>[] = []): Promise<void> => {
     const config = listViewConfig({ elements: [], ...options });
-    transport = scriptedTransport({ status: 200, body: [] });
+    transport = scriptedTransport({ status: 200, body: rows, headers: { 'total-count': String(rows.length) } });
     await TestBed.configureTestingModule({
       imports: [ResourceListComponent],
       providers: [
@@ -120,6 +135,53 @@ describe('ResourceListComponent', () => {
       expect(transport.requests.map((request) => `${request.method} ${request.url}`)).toEqual([
         'GET /api/standing-orders?columns=section%2Cdirective&count=true',
       ]);
+    });
+  });
+
+  /** Waits for the store's page request, a plain promise the application's stability does not track, to land. */
+  const settle = async (): Promise<void> => {
+    await TestBed.inject(ApplicationRef).whenStable();
+    for (let i = 0; i < 50 && fixture.componentInstance.store.pageStatus() !== 'resolved'; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    fixture.detectChanges();
+  };
+
+  describe('writes each cell by its field\'s display type', () => {
+    it('a number array as its elements, a bytes value as its size, a date as a calendar date, and nothing configured otherwise', async () => {
+      const kestrel = { id: 's-1', name: 'Kestrel', cargoBays: [60, 60, 30], digest: digest32, lastRefitAt: '2026-09-21T12:00:00Z' };
+      await create(
+        {
+          primaryResource: ships,
+          listColumns: [
+            { id: 'name' as FieldName },
+            { id: 'cargoBays' as FieldName },
+            { id: 'digest' as FieldName },
+            { id: 'lastRefitAt' as FieldName },
+          ],
+        },
+        [kestrel],
+      );
+      fixture.detectChanges();
+      await settle();
+      const row = fixture.componentInstance.processedRowData()[0];
+      expect(row['name']).toBe('Kestrel');
+      expect(row['cargoBays']).toBe('60, 60, 30');
+      expect(row['digest']).toBe('32 B');
+      expect(row['lastRefitAt']).toBe('9/21/2026');
+      const cells = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('tr.ccc-row td.data-col')).map((td) =>
+        td.textContent?.trim(),
+      );
+      expect(cells).toEqual(['Kestrel', '60, 60, 30', '32 B', '9/21/2026']);
+      expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(digest32);
+    });
+  });
+
+  describe('refuses a column over a write-only field', () => {
+    it('naming the resource and the field, before anything is requested', async () => {
+      await create({ primaryResource: calls, listColumns: [{ id: 'summary' as FieldName }, { id: 'transcript' as FieldName }] });
+      expect(() => fixture.detectChanges()).toThrow(/^DistressCalls: listColumns names transcript, which is write-only: a list never returns it$/);
+      expect(transport.requests).toEqual([]);
     });
   });
 

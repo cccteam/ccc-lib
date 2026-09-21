@@ -23,12 +23,19 @@ import {
 } from '@cccteam/resource-angular/types';
 import { EmptyReadonlyFieldComponent } from '../empty-readonly-field/empty-readonly-field.component';
 import { ResourceStore } from '../resource-store.service';
+import { ArrayFieldComponent } from './fields/array-field/array-field.component';
 import { BooleanFieldComponent } from './fields/boolean-field/boolean-field.component';
+import { BytesFieldComponent } from './fields/bytes-field/bytes-field.component';
 import { DateFieldComponent } from './fields/date-field/date-field.component';
 import { EnumeratedFieldComponent } from './fields/enumerated-field/enumerated-field.component';
 import { NullBooleanFieldComponent } from './fields/nullboolean-field/nullboolean-field.component';
 import { NumberFieldComponent } from './fields/number-field/number-field.component';
+import { ObjectFieldComponent } from './fields/object-field/object-field.component';
 import { TextFieldComponent } from './fields/text-field/text-field.component';
+import { FieldRenderer, rendererFor } from './renderer';
+
+/** The renderers that present a value and never take one: their field is in view mode whatever the form's mode. */
+const READ_ONLY_RENDERERS: ReadonlySet<FieldRenderer> = new Set<FieldRenderer>(['bytes', 'array', 'object']);
 
 @Component({
   selector: 'ccc-resource-field',
@@ -38,6 +45,9 @@ import { TextFieldComponent } from './fields/text-field/text-field.component';
     TextFieldComponent,
     NumberFieldComponent,
     EnumeratedFieldComponent,
+    BytesFieldComponent,
+    ArrayFieldComponent,
+    ObjectFieldComponent,
     MatFormFieldModule,
     EmptyReadonlyFieldComponent,
     NullBooleanFieldComponent,
@@ -69,13 +79,20 @@ export class ResourceFieldComponent {
     );
   });
 
-  // A field is read-only when the config says so or when the server never accepts it
-  // (FieldMeta.readOnly: output-only, @state, tenant key) — structural, before any
-  // permission question. In edit mode the viewed row's capability envelope, when the
-  // read carried one, is the positive list of editable fields: a field absent from it
-  // stays in view mode for this row. Advisory — the server judges the patch.
+  /** The control that draws the field, from its display type (see rendererFor). */
+  renderer = computed<FieldRenderer>(() => {
+    return rendererFor(this.fieldMeta().displayType);
+  });
+
+  // A field is read-only when the config says so, when the server never accepts it
+  // (FieldMeta.readOnly: output-only, @state, tenant key), or when its shape has no
+  // editor yet (bytes, an array, an object: presented, never typed, so the control is
+  // never dirtied and the patch never carries it) — structural, before any permission
+  // question. In edit mode the viewed row's capability envelope, when the read carried
+  // one, is the positive list of editable fields: a field absent from it stays in view
+  // mode for this row. Advisory — the server judges the patch.
   mode = computed(() => {
-    if (this.fieldConfig().readOnly || this.fieldMeta().readOnly) {
+    if (this.fieldConfig().readOnly || this.fieldMeta().readOnly || READ_ONLY_RENDERERS.has(this.renderer())) {
       return 'view';
     }
     const editMode = this.editMode();
@@ -89,11 +106,25 @@ export class ResourceFieldComponent {
     return editMode;
   });
 
+  /**
+   * Whether the form has a control for this field. The form owner decides which fields
+   * exist: the create form omits controls the digest's field-level Create entries deny
+   * and the server-owned fields it never accepts, and every rendered input must be
+   * form-backed, so without a control the field renders nothing at all, not even the
+   * hidden control that keeps a hidden field in the group.
+   */
+  hasControl = computed(() => {
+    return this.form().get(this.fieldConfig().name) !== null;
+  });
+
   showField = computed(() => {
-    // A field the form has no control for never renders: the form owner decides which
-    // fields exist — the create form omits controls the digest's field-level Create
-    // entries deny — and every rendered input must be form-backed.
-    if (!this.form().get(this.fieldConfig().name)) {
+    if (!this.hasControl()) {
+      return false;
+    }
+    // A write-only field is never returned by the server, so a view has nothing to show
+    // for it: neither the control nor the empty placeholder. In create and edit it
+    // renders through its own display type with a blank value.
+    if (this.fieldMeta().writeOnly && this.mode() === 'view') {
       return false;
     }
 
@@ -162,8 +193,12 @@ export class ResourceFieldComponent {
       return false;
     }
 
-    const value = form.get(config.name)?.value;
+    const value: unknown = form.get(config.name)?.value;
     if (value === null || value === '') {
+      return true;
+    }
+    // An empty list has nothing to draw as chips: the placeholder, as for a null.
+    if (Array.isArray(value) && value.length === 0) {
       return true;
     }
 

@@ -376,6 +376,15 @@ export class ResourceViewComponent implements OnInit {
     // The client's changes() diffs the coerced raw form value against the viewed
     // row and refuses a diff outside the patchable fields — never a silent drop.
     const coercedRawValue = metadataTypeCoercion(this.form().getRawValue(), resourceMeta);
+    // A write-only field is never in the row, so it has no pristine value to differ
+    // from: an empty input is nothing typed and leaves the after image, where null
+    // would read as a clear; a typed value is the patch.
+    for (const field of resourceMeta.fields ?? []) {
+      const value = coercedRawValue[field.fieldName];
+      if (field.writeOnly && (value === null || value === '')) {
+        delete coercedRawValue[field.fieldName];
+      }
+    }
     let operation;
     try {
       operation = patchFromForm(this.store.handle(), this.store.viewData(), { getRawValue: () => coercedRawValue });

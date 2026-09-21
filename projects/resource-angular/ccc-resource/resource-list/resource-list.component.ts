@@ -59,10 +59,10 @@ import {
   spaceConcatWithoutResource,
   spaceHyphenConcatWithoutResource,
 } from '../concat-fns';
-import { applyFormatting, formatDateString } from '../format-fns';
+import { applyFormatting, formatByDisplayType, formatDateString } from '../format-fns';
 import { DeleteResourceConfirmationModalComponent } from '../delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
 import { ResourceStore } from '../resource-store.service';
-import { filterEligibility, listEmptyMessage, refuseKeylessConfig } from './list-request';
+import { filterEligibility, listEmptyMessage, refuseKeylessConfig, refuseWriteOnlyColumns } from './list-request';
 import { listableColumns } from './listable-columns';
 
 @Component({
@@ -439,6 +439,10 @@ export class ResourceListComponent implements OnInit {
           },
         });
       } else {
+        // A cell without a configured format is written by the field's display type: a
+        // size for bytes, the elements for an array, one-line JSON for an object, a
+        // calendar date for a date, the value's text for the rest.
+        const displayType = this.meta()?.fields?.find((field) => field.fieldName === col.id)?.displayType;
         columns.push({
           id: indexId,
           header: col.header,
@@ -447,9 +451,9 @@ export class ResourceListComponent implements OnInit {
           valueFormatter: (params) => {
             if (col.formatType) {
               const retValue = applyFormatting(col.formatType, params);
-              return retValue || col.emptyDataValue;
+              return retValue || (col.emptyDataValue as string);
             }
-            return params || col.emptyDataValue;
+            return formatByDisplayType(displayType, params) || (col.emptyDataValue as string);
           },
         });
       }
@@ -610,6 +614,9 @@ export class ResourceListComponent implements OnInit {
     // or a row expansion asked of it is a configuration error, raised here naming the
     // resource, before anything is requested.
     refuseKeylessConfig(this.config().primaryResource, this.config(), this.meta());
+    // A column over a write-only field would be a 400 from the server and an empty cell
+    // otherwise: a configuration error, raised here naming the resource and the field.
+    refuseWriteOnlyColumns(this.config().primaryResource, this.config().listColumns ?? [], this.meta());
     if (this.meta()) {
       // The store reads the listed resource and writes the write resource.
       this.store.resourceName.set(this.writeResourceName());
