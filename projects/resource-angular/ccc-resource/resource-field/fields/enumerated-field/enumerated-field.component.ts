@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
@@ -149,25 +149,41 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
   });
 
   /**
-   * The chosen row read by key, on a paged source: the row the field names, whichever
-   * page is open. A paged source serves a read; the generator refuses one that does not.
+   * The chosen value as the control holds it, followed as a signal by value: it moves
+   * when the user picks (select flips reloadSignal) or when the form is rebuilt over a
+   * row holding another value, and it stays put when the form is rebuilt over the same
+   * value or the mode toggles, so nothing downstream re-runs then. Empty for no value.
    */
-  singleEnumResourceRef = computed(() => {
-    this.editMode();
-    if (this.showField() === false) {
-      return undefined;
-    }
-
-    const route = this.route();
-    const resource = this.resource();
-
+  private readonly chosenValue = computed((): string => {
     this.reloadSignal();
-    const fieldValue = this.form().get(this.fieldConfig().name)?.value;
+    const value: unknown = this.form().get(this.fieldConfig().name)?.value;
+    return value === null || value === undefined ? '' : String(value);
+  });
 
-    if (fieldValue && route && resource && this.paged()) {
-      return untracked(() => this.store.resourceView(signal(route), signal(fieldValue)));
+  /**
+   * The route the chosen row is read from: the paged source's, while the field is shown.
+   * Empty for a whole source (its list holds every row), a fixed enumeration, and a
+   * hidden field, so the reader below stays idle with no request.
+   */
+  private readonly chosenRoute = computed((): string => {
+    if (this.showField() === false || !this.resource() || !this.paged()) {
+      return '';
     }
-    return undefined;
+    return this.route() ?? '';
+  });
+
+  /**
+   * The chosen row read by key, on a paged source: the row the field names, whichever
+   * page is open. One reader, built once, keyed on the route and the value alone: a
+   * change of the chosen value reads the new row, and nothing else does; an edit-mode
+   * toggle, a rebuild of the form group over the same value, and a reload of the page's
+   * row read nothing. A paged source serves a read; the generator refuses one that does not.
+   */
+  private readonly chosenRowRef = this.store.resourceView(this.chosenRoute, this.chosenValue);
+
+  /** The chosen row's reader while there is a row to read; undefined otherwise. */
+  singleEnumResourceRef = computed(() => {
+    return this.chosenRoute() !== '' && this.chosenValue() !== '' ? this.chosenRowRef : undefined;
   });
 
   /** Every row of a whole source, read in one request; nothing on a paged source. */
