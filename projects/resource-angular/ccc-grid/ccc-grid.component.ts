@@ -30,6 +30,7 @@ import {
   FilterOperator,
   GridPageState,
   PageTurn,
+  RowKey,
   SortRule,
   VirtualScrollConfig,
 } from './grid-types';
@@ -50,8 +51,12 @@ export const COMPANION_FILTER_HINT =
  * page. Nothing here filters, sorts, or slices rows in the browser: one paging model, the
  * server's. A filter control is drawn only on a column the generated metadata says the
  * server filters (`filterability`), with a companion-only column waiting until an indexed
- * filter is in the request. Selection is held as rows, so it spans pages. Virtual scroll
- * renders the one page it is given; row expansion is as before.
+ * filter is in the request. A row is identified by `rowKey`, the caller's function from a
+ * row to its identity (a list page passes the row's key fields joined), or by its position
+ * in the page when the caller passes none: the track expression, the selection, and the
+ * expansion are keyed by it, and nothing here assumes a field called `id`. Selection is
+ * held as rows, so it spans pages. Virtual scroll renders the one page it is given; row
+ * expansion is as before.
  */
 @Component({
   selector: 'ccc-grid',
@@ -97,6 +102,13 @@ export class AppGridComponent {
   externalFilterFields = input<string[]>([]);
   /** Where the rows sit in the server's list. The pager is drawn only when given. */
   page = input<GridPageState | undefined>(undefined);
+  /**
+   * A row's identity: what the track expression, the selection, and the expansion are
+   * keyed by. Given none, a row is identified by its position in the page, so a page
+   * whose rows carry no key (a key-less resource served whole) still selects and
+   * expands one row at a time.
+   */
+  rowKey = input<RowKey | undefined>(undefined);
 
   /** The selected rows, across pages. */
   selectedRows = output<RecordData[]>();
@@ -110,8 +122,14 @@ export class AppGridComponent {
   readonly filterOperators = FILTER_OPERATORS;
   readonly companionHint = COMPANION_FILTER_HINT;
 
+  /** The selected rows by their identity, so a selection survives the page's rows being replaced. */
   private readonly selected = signal<Map<unknown, RecordData>>(new Map());
   private readonly expandedIds = signal<Set<unknown>>(new Set());
+  /** Each row of the page to its identity, by `rowKey` or by position, computed once per page. */
+  private readonly rowKeys = computed<Map<RecordData, unknown>>(() => {
+    const key = this.rowKey();
+    return new Map(this.rowData().map((row: RecordData, index: number) => [row, key ? key(row, index) : index]));
+  });
   private readonly columnWidths = signal<Record<string, number>>({});
   /** The filter each open menu is editing, before it commits; keyed by column id. */
   private readonly drafts = signal<Record<string, ColumnFilter>>({});
@@ -182,6 +200,11 @@ export class AppGridComponent {
       }
 
       this.virtualScroll.setViewportHeight(container.clientHeight);
+      // An environment with no ResizeObserver (a spec under jsdom) keeps the one
+      // measurement; the browser follows the container as it resizes.
+      if (typeof ResizeObserver === 'undefined') {
+        return;
+      }
       const observer = new ResizeObserver((entries) => {
         const height = entries[0]?.contentRect.height;
         if (height !== undefined) {
@@ -203,19 +226,24 @@ export class AppGridComponent {
     this.virtualScroll.setScrollTop((event.target as HTMLElement).scrollTop);
   }
 
-  // Selection: held as rows keyed by id, so it spans the pages the source turns.
+  /** The row's identity, as `rowKey` answers it or its position in the page. */
+  keyOf(row: RecordData): unknown {
+    return this.rowKeys().get(row);
+  }
+
+  // Selection: held as rows keyed by their identity, so it spans the pages the source turns.
 
   allSelected = computed(() => {
     const rows = this.rowData();
-    return rows.length > 0 && rows.every((row: RecordData) => this.selected().has(row['id']));
+    return rows.length > 0 && rows.every((row: RecordData) => this.selected().has(this.keyOf(row)));
   });
 
   someSelected = computed(
-    () => !this.allSelected() && this.rowData().some((row: RecordData) => this.selected().has(row['id'])),
+    () => !this.allSelected() && this.rowData().some((row: RecordData) => this.selected().has(this.keyOf(row))),
   );
 
   isSelected(row: RecordData): boolean {
-    return this.selected().has(row['id']);
+    return this.selected().has(this.keyOf(row));
   }
 
   toggleRow(row: RecordData): void {
@@ -224,7 +252,7 @@ export class AppGridComponent {
       return;
     }
 
-    const id = row['id'];
+    const id = this.keyOf(row);
     const current = new Map(this.selected());
     if (mode === 'single') {
       const wasSelected = current.has(id);
@@ -247,9 +275,9 @@ export class AppGridComponent {
     const rows = this.rowData();
     const current = new Map(this.selected());
     if (this.allSelected()) {
-      rows.forEach((row: RecordData) => current.delete(row['id']));
+      rows.forEach((row: RecordData) => current.delete(this.keyOf(row)));
     } else {
-      rows.forEach((row: RecordData) => current.set(row['id'], row));
+      rows.forEach((row: RecordData) => current.set(this.keyOf(row), row));
     }
     this.selected.set(current);
     this.emitSelectedRows();
@@ -260,14 +288,14 @@ export class AppGridComponent {
   }
 
   isExpanded(row: RecordData): boolean {
-    return this.expandedIds().has(row['id']);
+    return this.expandedIds().has(this.keyOf(row));
   }
 
   toggleExpand(row: RecordData): void {
     if (this.enableVirtualScroll()) {
       return;
     }
-    const id = row['id'];
+    const id = this.keyOf(row);
     const current = new Set(this.expandedIds());
     if (current.has(id)) {
       current.delete(id);

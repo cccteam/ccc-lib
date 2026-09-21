@@ -776,8 +776,20 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
   showViewButton?: boolean;
   loadCreatedResource?: boolean;
   collapsible?: boolean;
+  /**
+   * Whether a row opens in place, by the listed resource's single key, to the
+   * `rowExpansionConfig`. Refused when the page is built on a resource with no primary
+   * key, naming the resource: a key-less row has no key to open by.
+   */
   enableRowExpansion?: boolean;
   rowExpansionConfig?: ChildResourceConfig;
+  /**
+   * Whether the grid renders the rows in view alone and scrolls the rest, measuring the
+   * row height from the first rows drawn. For a page served whole (a key-less resource,
+   * whose page is the whole list) it is what keeps a long list light; row expansion is
+   * switched off while it is on.
+   */
+  enableVirtualScroll?: boolean;
   listColumns: ColumnConfig[];
   relatedConfigs?: ChildResourceConfig[];
   /**
@@ -805,7 +817,9 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
    * Omitted, the resource's declared default applies, so the descriptor decides. A size
    * over the maximum is refused by the server and the list shows its message. The list
    * pages on the server: one page of rows is requested and rendered, First, Previous,
-   * and Next follow the server's cursors, and the browser never gathers every row.
+   * and Next follow the server's cursors, and the browser never gathers every row. A
+   * resource with no primary key is served whole and has no page, so a size on its page
+   * is refused when the page is built, naming the resource.
    */
   pageSize?: number;
 }
@@ -816,6 +830,8 @@ export interface ListViewConfig extends BaseConfig {
   collapsible: boolean;
   enableRowExpansion: boolean;
   rowExpansionConfig: ChildResourceConfig;
+  /** Whether the grid virtual-scrolls the page; see ListViewConfigOptions.enableVirtualScroll. */
+  enableVirtualScroll: boolean;
   listColumns: ColumnConfig[];
   relatedConfigs: ChildResourceConfig[];
   rowRoute?: FieldName;
@@ -859,6 +875,7 @@ export const listViewConfigDefaults = {
   },
   enableRowExpansion: false,
   rowExpansionConfig: {} as ChildResourceConfig,
+  enableVirtualScroll: false,
   showBackButton: true,
   filter: (): string => '',
   disableCacheForFilterPii: false,

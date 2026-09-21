@@ -26,6 +26,7 @@ import {
   ColumnFilter,
   filterFields,
   PageTurn,
+  RowKey,
   SortRule,
   withoutOrphanedCompanions,
 } from '@cccteam/resource-angular/ccc-grid';
@@ -61,7 +62,7 @@ import {
 import { applyFormatting, formatDateString } from '../format-fns';
 import { DeleteResourceConfirmationModalComponent } from '../delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
 import { ResourceStore } from '../resource-store.service';
-import { filterEligibility, listEmptyMessage } from './list-request';
+import { filterEligibility, listEmptyMessage, refuseKeylessConfig } from './list-request';
 import { listableColumns } from './listable-columns';
 
 @Component({
@@ -211,10 +212,32 @@ export class ResourceListComponent implements OnInit {
     }
     return this.auth.hasPermission({ resource: this.writeResourceName(), permission: DeletePermission });
   });
-  /** The row field an expanded row is opened by: the listed resource's single key. */
-  expansionKey = computed(() => (keyFields(this.meta())[0]?.fieldName ?? 'id') as FieldName);
+  /** The row field an expanded row is opened by: the listed resource's single key, none on a key-less resource. */
+  expansionKey = computed(() => keyFields(this.meta())[0]?.fieldName as FieldName | undefined);
   resourceRefMap = signal(new Map<string, ResourceRef<RecordData[]>>());
   primaryKeys = computed(() => keyFields(this.meta()));
+  /**
+   * Whether the listed resource has no primary key (a `@computed` or `@virtual` struct
+   * with no `@primarykey`): its list is served whole, so the page draws every row the
+   * server returned as one page, identified by position, with no page size, no row
+   * expansion, and no row route; a config asking for one of those is refused in ngOnInit.
+   */
+  keyless = computed(() => this.primaryKeys().length === 0);
+  /**
+   * How the grid identifies a row: the listed resource's key fields joined into one
+   * value, the same fields the handle's keyOf lifts, so selection and expansion are right
+   * on a compound key and on a key not named `id`; nothing on a key-less resource, whose
+   * rows the grid identifies by their position in the page.
+   */
+  rowKey = computed<RowKey | undefined>(() => {
+    const keys = this.primaryKeys();
+    if (keys.length === 0) {
+      return undefined;
+    }
+    return (row: RecordData): string => {
+      return JSON.stringify(keys.map((key) => row[key.fieldName]));
+    };
+  });
   /**
    * The digest's field-level List entries for the page's resource: the columns worth
    * asking for. A configured column outside them is denied, and a request naming it
@@ -583,6 +606,10 @@ export class ResourceListComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // A key-less resource's page is the whole list, identified by position: a page size
+    // or a row expansion asked of it is a configuration error, raised here naming the
+    // resource, before anything is requested.
+    refuseKeylessConfig(this.config().primaryResource, this.config(), this.meta());
     if (this.meta()) {
       // The store reads the listed resource and writes the write resource.
       this.store.resourceName.set(this.writeResourceName());

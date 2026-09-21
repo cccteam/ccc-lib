@@ -16,7 +16,9 @@
     <ccc-grid
       [rowData]="processedRowData()"
       [columnDefs]="columns()"
+      [rowKey]="rowKey()"
       [enableRowExpansion]="config().enableRowExpansion"
+      [enableVirtualScroll]="config().enableVirtualScroll"
       [detailTemplate]="expandedRowTemplate"
       [loading]="loadingRowData()"
       [emptyMessage]="emptyMessage()"
@@ -37,7 +39,7 @@
     *ngComponentOutlet="
       compoundResourceComponent();
       inputs: {
-        uuid: rowData[expansionKey()],
+        uuid: rowData[expansionKey()!],
         navAfterDelete: false,
         deleted: store.reloadPage.bind(store),
         resourceConfig: expansionConfig(),

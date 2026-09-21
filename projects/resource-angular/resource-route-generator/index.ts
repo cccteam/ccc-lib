@@ -3,6 +3,7 @@ import { AuthorizationGuard } from '@cccteam/resource-angular/auth-authorization
 import { canDeactivateGuard } from '@cccteam/resource-angular/guards';
 import { addNavItem, registerResourcePage } from '@cccteam/resource-angular/resource-nav';
 import {
+  keyFields,
   ListPermission,
   PermissionScope,
   ReadPermission,
@@ -28,7 +29,10 @@ import {
  * else. A domain-scoped resource's metadata route carries the tenant parameter in
  * braces, so such a page sets `routeData.route` to the path it should live at. The page
  * is registered as where the resource's rows open (resourcePageRoute), for the listed
- * resource and for its table, so another list's row route lands here.
+ * resource and for its table, so another list's row route lands here. A listed resource
+ * with no key field (a `@computed` or `@virtual` struct with no `@primarykey`) is served
+ * whole and has no row: its page gets no row route and is registered as nowhere a row
+ * opens, as `hasViewRoute: false` says for a keyed one.
  */
 export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Resource) => ResourceMeta): Route => {
   const resource = config.parentConfig.primaryResource as Resource;
@@ -50,8 +54,11 @@ export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Reso
 
   const pageRoute = config.routeData.route || meta.route;
   const rowResource = writeResource(resource, meta);
-  registerResourcePage(resource, pageRoute);
-  registerResourcePage(rowResource, pageRoute);
+  const keyless = keyFields(meta).length === 0;
+  if (!keyless) {
+    registerResourcePage(resource, pageRoute);
+    registerResourcePage(rowResource, pageRoute);
+  }
 
   const data = { config, scope } satisfies RouteResourceData;
   const viewData = { config, scope: { resource: rowResource, permission: ReadPermission } } satisfies RouteResourceData;
@@ -69,7 +76,7 @@ export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Reso
         },
       ],
     };
-    if (config.routeData.hasViewRoute !== false) {
+    if (config.routeData.hasViewRoute !== false && !keyless) {
       baseRoute.children?.push({
         path: ':uuid',
         data: viewData,
@@ -83,23 +90,23 @@ export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Reso
     return baseRoute;
   }
 
+  const rowRoute: Route = {
+    path: ':uuid',
+    data: viewData,
+    canActivate: [AuthorizationGuard],
+    loadComponent: () => import('@cccteam/resource-angular/ccc-resource').then((mod) => mod.CompoundResourceComponent),
+    canDeactivate: [canDeactivateGuard],
+  };
+  const listRoute: Route = {
+    path: '',
+    loadComponent: () => import('@cccteam/resource-angular/ccc-resource').then((mod) => mod.ResourceListCreateComponent),
+    canDeactivate: [canDeactivateGuard],
+  };
+
   return {
     path: meta.route,
     data,
     canActivate: [AuthorizationGuard],
-    children: [
-      {
-        path: ':uuid',
-        data: viewData,
-        canActivate: [AuthorizationGuard],
-        loadComponent: () => import('@cccteam/resource-angular/ccc-resource').then((mod) => mod.CompoundResourceComponent),
-        canDeactivate: [canDeactivateGuard],
-      },
-      {
-        path: '',
-        loadComponent: () => import('@cccteam/resource-angular/ccc-resource').then((mod) => mod.ResourceListCreateComponent),
-        canDeactivate: [canDeactivateGuard],
-      },
-    ],
+    children: keyless ? [listRoute] : [rowRoute, listRoute],
   } satisfies Route;
 };

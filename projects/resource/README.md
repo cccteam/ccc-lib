@@ -92,6 +92,17 @@ const hulls = await api.shipClasses.list({ limit: 'all' }); // no maximum: the w
 const hangars = await sector.hangars.page({ count: true }); // a maximum: one page, Previous and Next
 ```
 
+A resource whose descriptor lists `keys: []` (a `@computed` or `@virtual` struct with no
+`@primarykey`) is served whole on every request: its one page is the whole list, with no
+neighbors, and the client sends no `limit` and no `cursor` for it, whatever a caller typed
+past the type, since the server refuses both. It has no read route and no row identity,
+so its handle offers `list` alone. The Angular list page over such a resource is described
+in the `@cccteam/resource-angular` README ("A list page over a key-less resource").
+
+```ts
+const orders = await api.standingOrders.list(); // keys: [] — the whole book, in one response
+```
+
 A filter naming a PII field must not travel in a URL: pass `sensitiveFilter: true` and the
 list becomes a POST carrying the filter in its body, with paging relations followed the
 same way.

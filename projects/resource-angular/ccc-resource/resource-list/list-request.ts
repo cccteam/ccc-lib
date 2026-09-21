@@ -1,8 +1,39 @@
-import { ApiError, ResourceMeta } from '@cccteam/resource';
+import { ApiError, Resource, ResourceMeta } from '@cccteam/resource';
 import { ColumnFilterability, PageTurn } from '@cccteam/resource-angular/ccc-grid';
+import { keyFields, ListViewConfig } from '@cccteam/resource-angular/types';
 
 // The list page's pure parts around the server's page: which columns the server filters,
-// where the page sits after a turn, and what an empty table says.
+// where the page sits after a turn, what an empty table says, and what a key-less
+// resource's page refuses.
+
+/**
+ * Refuses a list configuration asking a key-less resource for what its page cannot have.
+ * A resource whose metadata carries no key field (a `@computed` or `@virtual` struct with
+ * no `@primarykey`) is served whole: its page is the whole list, every row identified by
+ * its position, so there is no page size to set and no key to open an expanded row by.
+ * A `pageSize` or `enableRowExpansion` on such a page is a configuration error and
+ * throws when the page is built, naming the resource and the reason, as `rowRouteTarget`
+ * does for a `rowRoute` naming no target. A keyed resource passes untouched.
+ */
+export function refuseKeylessConfig(
+  resource: Resource,
+  config: Pick<ListViewConfig, 'pageSize' | 'enableRowExpansion'>,
+  meta: ResourceMeta | undefined,
+): void {
+  if (keyFields(meta).length > 0) {
+    return;
+  }
+  if (config.pageSize !== undefined) {
+    throw new Error(
+      `${resource}: pageSize ${config.pageSize} is set, but the resource declares no primary key, so its list is served whole, no page size`,
+    );
+  }
+  if (config.enableRowExpansion) {
+    throw new Error(
+      `${resource}: enableRowExpansion is set, but the resource declares no primary key, so there is no key to open a row by`,
+    );
+  }
+}
 
 /**
  * Which of the table's columns the server filters: the generated metadata's `filterable`

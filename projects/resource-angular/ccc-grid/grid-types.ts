@@ -1,6 +1,15 @@
 import { FilterEligibility, FilterOperator } from '@cccteam/resource';
+import { RecordData } from '@cccteam/resource-angular/types';
 
 export type { FilterEligibility, FilterOperator } from '@cccteam/resource';
+
+/**
+ * A row's identity in the grid: what the row track expression, the selection, and the
+ * expansion are keyed by. The grid asks it for every row of the page with the row's
+ * position in the page; a list page hands it the row's key fields joined into one value,
+ * and a grid given none identifies each row by its position.
+ */
+export type RowKey = (row: RecordData, index: number) => unknown;
 
 /** One of the server's filter operators as the column filter menu offers it. */
 export interface FilterOperatorOption {

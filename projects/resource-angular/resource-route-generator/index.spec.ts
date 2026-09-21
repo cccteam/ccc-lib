@@ -2,6 +2,7 @@ import { Route } from '@angular/router';
 import { AuthorizationGuard } from '@cccteam/resource-angular/auth-authorization-guard';
 import { resourcePageRoute } from '@cccteam/resource-angular/resource-nav';
 import {
+  FieldMeta,
   ListPermission,
   listViewConfig,
   ReadPermission,
@@ -14,9 +15,15 @@ import {
 
 import { resourceRoutes } from './index';
 
+const field = (fieldName: string, extra: Partial<FieldMeta> = {}): FieldMeta =>
+  ({ fieldName, displayType: 'string', required: false, isIndex: false, ...extra }) as FieldMeta;
+/** A resource keyed by `id`, as the generated metadata says it. */
+const keyed = (route: string, extra: Partial<ResourceMeta> = {}): ResourceMeta =>
+  ({ route, fields: [field('id', { primaryKey: { ordinalPosition: 0 } })], ...extra }) as ResourceMeta;
+
 describe('resourceRoutes', () => {
   const clients = 'Clients' as Resource;
-  const meta = (): ResourceMeta => ({ route: 'clients' }) as ResourceMeta;
+  const meta = (): ResourceMeta => keyed('clients');
   // routeData is spread over the helper's defaults, so an absent key (not an undefined
   // value) is what leaves the default in place.
   const config = (routeData?: RootRouteData) =>
@@ -73,8 +80,8 @@ describe('resourceRoutes', () => {
     const boards = 'CrewBoards' as Resource;
     const crew = 'Crew' as Resource;
     const metas: Record<string, ResourceMeta> = {
-      [boards]: { route: 'sectors/{sectorID}/crew-boards', rowsOf: crew } as ResourceMeta,
-      [crew]: { route: 'sectors/{sectorID}/crew' } as ResourceMeta,
+      [boards]: keyed('sectors/{sectorID}/crew-boards', { rowsOf: crew }),
+      [crew]: keyed('sectors/{sectorID}/crew'),
     };
     const route = resourceRoutes(
       rootConfig({
@@ -97,5 +104,45 @@ describe('resourceRoutes', () => {
       expect(resourcePageRoute(boards)).toBe('sector/crew');
       expect(resourcePageRoute(crew)).toBe('sector/crew');
     });
+  });
+
+  // A listed resource with no key field is served whole and has no row: no row route
+  // under either form of the page route, and no page registered as where a row opens.
+  describe('over a key-less resource', () => {
+    const orders = 'StandingOrders' as Resource;
+    const ordersMeta = (): ResourceMeta =>
+      ({ route: 'standing-orders', readDisabled: true, fields: [field('section'), field('directive')] }) as ResourceMeta;
+    const ordersConfig = (routeData?: RootRouteData) =>
+      rootConfig({
+        ...(routeData ? { routeData } : {}),
+        nav: { navItem: { label: 'Standing Orders' } },
+        parentConfig: listViewConfig({ primaryResource: orders, listColumns: [], elements: [] }),
+      });
+
+    const cases: { name: string; routeData?: RootRouteData; wantPath: string }[] = [
+      { name: 'under the meta route', routeData: undefined, wantPath: 'standing-orders' },
+      { name: 'under a configured route', routeData: { route: 'hq/standing-orders' }, wantPath: 'hq/standing-orders' },
+    ];
+
+    for (const tt of cases) {
+      describe(tt.name, () => {
+        const route = resourceRoutes(ordersConfig(tt.routeData), ordersMeta);
+
+        it('guards the list route on List', () => {
+          expect(route.path).toBe(tt.wantPath);
+          expect(route.canActivate).toContain(AuthorizationGuard);
+          expect(scopeOf(route)).toEqual({ resource: orders, permission: ListPermission });
+          expect(route.children?.map((child) => child.path)).toEqual(['']);
+        });
+
+        it('has no row route', () => {
+          expect(rowRoute(route)).toBeUndefined();
+        });
+
+        it('registers no page as where a row opens', () => {
+          expect(resourcePageRoute(orders)).toBeUndefined();
+        });
+      });
+    }
   });
 });
