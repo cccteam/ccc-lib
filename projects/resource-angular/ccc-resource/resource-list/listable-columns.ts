@@ -28,3 +28,13 @@ export function listableColumns(
     return col.additionalIds.every((extra) => extra.resource !== undefined || granted(extra.id));
   });
 }
+
+/**
+ * Whether two column lists are the same columns in the same order, each by identity (the
+ * page's own configured column objects), so a digest re-evaluated to the same answer (a
+ * scope's digest landing, a reload) leaves the columns, and with them the list's request,
+ * as they are; a digest that grants a different set changes them.
+ */
+export function sameColumns(a: readonly ColumnConfig[], b: readonly ColumnConfig[]): boolean {
+  return a.length === b.length && a.every((column, i) => column === b[i]);
+}

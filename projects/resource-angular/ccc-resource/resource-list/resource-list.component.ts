@@ -63,7 +63,7 @@ import { applyFormatting, formatByDisplayType, formatDateString } from '../forma
 import { DeleteResourceConfirmationModalComponent } from '../delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
 import { ResourceStore } from '../resource-store.service';
 import { filterEligibility, listEmptyMessage, refuseKeylessConfig, refuseWriteOnlyColumns } from './list-request';
-import { listableColumns } from './listable-columns';
+import { listableColumns, sameColumns } from './listable-columns';
 
 @Component({
   standalone: true,
@@ -260,14 +260,19 @@ export class ResourceListComponent implements OnInit {
    * otherwise those whose fields the digest grants. Key fields are structural, never
    * grant-bearing, and always pass; a concatenated column passes when its own field and
    * every field it reads off this resource pass (fields of a referenced resource are
-   * read through that resource's own request).
+   * read through that resource's own request). Equal while the same columns: every digest
+   * load re-evaluates this, and one that changes the answer for none of them (another
+   * scope's digest landing after sign-in, a reload) leaves the columns as they are, so the
+   * store's request, which they are part of, is not asked again.
    */
-  listColumns = computed<ColumnConfig[]>(() =>
-    listableColumns(
-      this.configuredColumns(),
-      this.listableFields(),
-      new Set<string>(this.primaryKeys().map((pk) => pk.fieldName)),
-    ),
+  listColumns = computed<ColumnConfig[]>(
+    () =>
+      listableColumns(
+        this.configuredColumns(),
+        this.listableFields(),
+        new Set<string>(this.primaryKeys().map((pk) => pk.fieldName)),
+      ),
+    { equal: sameColumns },
   );
 
   /**

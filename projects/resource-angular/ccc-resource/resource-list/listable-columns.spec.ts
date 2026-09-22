@@ -6,7 +6,7 @@ import {
   singleColumnConfig,
 } from '@cccteam/resource-angular/types';
 
-import { listableColumns } from './listable-columns';
+import { listableColumns, sameColumns } from './listable-columns';
 
 describe('listableColumns', () => {
   const name = singleColumnConfig({ id: 'name' as FieldName });
@@ -86,6 +86,25 @@ describe('listableColumns', () => {
   for (const tt of cases) {
     it(tt.name, () => {
       expect(ids(listableColumns(tt.configured, tt.listable, tt.keys))).toEqual(tt.want);
+    });
+  }
+});
+
+describe('sameColumns', () => {
+  const name = singleColumnConfig({ id: 'name' as FieldName });
+  const trusted = singleColumnConfig({ id: 'trusted' as FieldName });
+
+  const cases: { name: string; a: ColumnConfig[]; b: ColumnConfig[]; want: boolean }[] = [
+    { name: 'the same column objects in the same order, in a new array', a: [name, trusted], b: [name, trusted], want: true },
+    { name: 'two empty lists', a: [], b: [], want: true },
+    { name: 'the same columns in another order', a: [name, trusted], b: [trusted, name], want: false },
+    { name: 'a column fewer', a: [name, trusted], b: [name], want: false },
+    { name: 'an equal column that is another object', a: [name], b: [singleColumnConfig({ id: 'name' as FieldName })], want: false },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, () => {
+      expect(sameColumns(tt.a, tt.b)).toBe(tt.want);
     });
   }
 });

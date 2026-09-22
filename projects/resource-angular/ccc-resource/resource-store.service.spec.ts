@@ -1,8 +1,8 @@
-import { signal } from '@angular/core';
+import { signal, WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
-import { FieldName, RESOURCE_DOMAIN } from '@cccteam/resource-angular/types';
+import { ColumnConfig, FieldName, RESOURCE_DOMAIN } from '@cccteam/resource-angular/types';
 import { ApiDescriptor, ApiError, createClient, Domain, Resource, Transport, TransportRequest } from '@cccteam/resource';
 import { ResourceStore } from './resource-store.service';
 
@@ -74,22 +74,22 @@ function scripted(pages: Record<string, { status?: number; rows: unknown; header
   return { transport, requests };
 }
 
-/** Runs change detection and lets pending microtasks land until `done` answers true. */
-async function settle(done: () => boolean): Promise<void> {
-  for (let i = 0; i < 50 && !done(); i++) {
+/** Runs change detection and lets pending microtasks land until `done` answers true, for at most `rounds` rounds. */
+async function settle(done: () => boolean, rounds = 50): Promise<void> {
+  for (let i = 0; i < rounds && !done(); i++) {
     TestBed.tick();
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
   TestBed.tick();
 }
 
-function storeOver(script: Scripted): ResourceStore {
+function storeOver(script: Scripted, domain: WritableSignal<Domain | undefined> = signal('anvil' as Domain)): ResourceStore {
   TestBed.configureTestingModule({
     providers: [
       provideRouter([]),
       ResourceStore,
       { provide: RESOURCE_CLIENT, useValue: createClient(descriptor, { baseUrl: '/api', transport: script.transport }) },
-      { provide: RESOURCE_DOMAIN, useValue: signal('anvil' as Domain) },
+      { provide: RESOURCE_DOMAIN, useValue: domain },
     ],
   });
   return TestBed.inject(ResourceStore);
@@ -304,4 +304,158 @@ describe('ResourceStore row reader', () => {
     expect(store.viewData()).toEqual({});
     expect(store.viewError() instanceof ApiError).toBe(true);
   });
+});
+
+describe('ResourceStore tenant scoping', () => {
+  // Every reader's request key carries the tenant only when the resource is domain-scoped:
+  // a reader over a global resource asks once and a change of the tenant asks nothing
+  // more, while a reader over a domain-scoped resource asks again, naming the new tenant.
+  const hangars = 'sectors/{sectorID}/hangars';
+  const shipClassRow = '/api/ship-classes/c1?capabilities=Update%2CDelete';
+  const anvilHangarRow = '/api/sectors/anvil/hangars/h1?capabilities=Update%2CDelete';
+  const bastionHangarRow = '/api/sectors/bastion/hangars/h1?capabilities=Update%2CDelete';
+  const shipClassList = '/api/ship-classes?columns=id%2Cdesignation&limit=all';
+  const anvilHangarList = '/api/sectors/anvil/hangars?columns=id%2Cname';
+  const bastionHangarList = '/api/sectors/bastion/hangars?columns=id%2Cname';
+  const shipClassPage = '/api/ship-classes?columns=designation&count=true';
+  const anvilHangarPage = '/api/sectors/anvil/hangars?columns=name&count=true';
+  const bastionHangarPage = '/api/sectors/bastion/hangars?columns=name&count=true';
+  const shipClassPaged = '/api/ship-classes?columns=id%2Cdesignation&count=true';
+  const anvilHangarPaged = '/api/sectors/anvil/hangars?columns=id%2Cname&count=true';
+  const bastionHangarPaged = '/api/sectors/bastion/hangars?columns=id%2Cname&count=true';
+  const anvilHangarKeys = '/api/sectors/anvil/hangars?filter=id%3Ain%3A%28h1%29&columns=id%2Cname&limit=1';
+  const bastionHangarKeys = '/api/sectors/bastion/hangars?filter=id%3Ain%3A%28h1%29&columns=id%2Cname&limit=1';
+
+  /** The store's list page over one resource, as the list component wires it. */
+  const listPage = (store: ResourceStore, name: string, route: string, column: string): (() => boolean) => {
+    store.resourceName.set(name as Resource);
+    store.resourceMeta.set({ route, fields: [] });
+    store.listColumns.set([{ id: column } as ColumnConfig]);
+    store.buildStorePage();
+    return () => store.pageStatus() === 'resolved';
+  };
+
+  const cases: {
+    name: string;
+    /** What each scripted URL answers. */
+    script: Record<string, unknown>;
+    /** Builds the reader over the store and answers whether it has settled. */
+    build: (store: ResourceStore) => { settled: () => boolean; destroy?: () => void };
+    /** The requests once the reader settles, and once the tenant has changed from anvil to bastion. */
+    wantFirst: string[];
+    wantAfter: string[];
+  }[] = [
+    {
+      name: 'the row reader over a global resource reads once across a change of the tenant',
+      script: { [shipClassRow]: { id: 'c1', designation: 'Cutter' } },
+      build: (store) => {
+        const ref = store.resourceView(signal('ship-classes'), signal('c1'));
+        return { settled: () => ref.status() === 'resolved' };
+      },
+      wantFirst: [shipClassRow],
+      wantAfter: [shipClassRow],
+    },
+    {
+      name: 'the row reader over a domain-scoped resource reads again, naming the new tenant',
+      script: { [anvilHangarRow]: { id: 'h1', name: 'Anvil Dock One' }, [bastionHangarRow]: { id: 'h1', name: 'Bastion Slip' } },
+      build: (store) => {
+        const ref = store.resourceView(signal(hangars), signal('h1'));
+        return { settled: () => ref.status() === 'resolved' };
+      },
+      wantFirst: [anvilHangarRow],
+      wantAfter: [anvilHangarRow, bastionHangarRow],
+    },
+    {
+      name: 'the list reader over a global resource reads once across a change of the tenant',
+      script: { [shipClassList]: [] },
+      build: (store) => {
+        const ref = store.resourceList(signal('ship-classes'), signal(''), signal(['id', 'designation']), signal(false), signal([]));
+        return { settled: () => ref.status() === 'resolved' };
+      },
+      wantFirst: [shipClassList],
+      wantAfter: [shipClassList],
+    },
+    {
+      name: 'the list reader over a domain-scoped resource reads again, naming the new tenant',
+      script: { [anvilHangarList]: [], [bastionHangarList]: [] },
+      build: (store) => {
+        const ref = store.resourceList(signal(hangars), signal(''), signal(['id', 'name']), signal(false), signal([]));
+        return { settled: () => ref.status() === 'resolved' };
+      },
+      wantFirst: [anvilHangarList],
+      wantAfter: [anvilHangarList, bastionHangarList],
+    },
+    {
+      name: 'the list page over a global resource asks for its first page once across a change of the tenant',
+      script: { [shipClassPage]: [] },
+      build: (store) => ({ settled: listPage(store, 'ShipClasses', 'ship-classes', 'designation') }),
+      wantFirst: [shipClassPage],
+      wantAfter: [shipClassPage],
+    },
+    {
+      name: 'the list page over a domain-scoped resource asks for a first page again, naming the new tenant',
+      script: { [anvilHangarPage]: [], [bastionHangarPage]: [] },
+      build: (store) => ({ settled: listPage(store, 'Hangars', hangars, 'name') }),
+      wantFirst: [anvilHangarPage],
+      wantAfter: [anvilHangarPage, bastionHangarPage],
+    },
+    {
+      name: 'the paged reader over a global resource asks for its first page once across a change of the tenant',
+      script: { [shipClassPaged]: [] },
+      build: (store) => {
+        const pager = store.resourcePage(signal({ route: 'ship-classes', columns: ['id', 'designation'] }));
+        return { settled: () => pager.status() === 'resolved', destroy: () => pager.destroy() };
+      },
+      wantFirst: [shipClassPaged],
+      wantAfter: [shipClassPaged],
+    },
+    {
+      name: 'the paged reader over a domain-scoped resource asks for a first page again, naming the new tenant',
+      script: { [anvilHangarPaged]: [], [bastionHangarPaged]: [] },
+      build: (store) => {
+        const pager = store.resourcePage(signal({ route: hangars, columns: ['id', 'name'] }));
+        return { settled: () => pager.status() === 'resolved', destroy: () => pager.destroy() };
+      },
+      wantFirst: [anvilHangarPaged],
+      wantAfter: [anvilHangarPaged, bastionHangarPaged],
+    },
+    {
+      name: 'the key lookup over a global resource reads once across a change of the tenant',
+      script: { [shipClassList]: [] },
+      build: (store) => {
+        const ref = store.resourceListByKeys(signal('ship-classes'), signal('id'), signal(['c1']), signal(['id', 'designation']));
+        return { settled: () => ref.status() === 'resolved' };
+      },
+      wantFirst: [shipClassList],
+      wantAfter: [shipClassList],
+    },
+    {
+      name: 'the key lookup over a domain-scoped resource reads again, naming the new tenant',
+      script: { [anvilHangarKeys]: [], [bastionHangarKeys]: [] },
+      build: (store) => {
+        const ref = store.resourceListByKeys(signal(hangars), signal('id'), signal(['h1']), signal(['id', 'name']));
+        return { settled: () => ref.status() === 'resolved' };
+      },
+      wantFirst: [anvilHangarKeys],
+      wantAfter: [anvilHangarKeys, bastionHangarKeys],
+    },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, async () => {
+      const script = scripted(Object.fromEntries(Object.entries(tt.script).map(([url, rows]) => [url, { rows }])));
+      const domain = signal<Domain | undefined>('anvil' as Domain);
+      const store = storeOver(script, domain);
+      const reader = tt.build(store);
+      await settle(reader.settled);
+      expect(script.requests.map((r) => r.url)).toEqual(tt.wantFirst);
+
+      domain.set('bastion' as Domain);
+      await settle(() => script.requests.length >= tt.wantAfter.length && reader.settled());
+      // A few more rounds, so a request the change should not cause has every chance to show.
+      await settle(() => false, 5);
+      expect(script.requests.map((r) => r.url)).toEqual(tt.wantAfter);
+      reader.destroy?.();
+    });
+  }
 });

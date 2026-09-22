@@ -1,10 +1,11 @@
-import { ApplicationRef } from '@angular/core';
+import { ApplicationRef, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
-import { ApiDescriptor, createClient, FieldMeta, Resource, ResourceMeta } from '@cccteam/resource';
+import { ApiDescriptor, ClientBase, createClient, Domain, FieldMeta, PermissionDigest, Resource, ResourceMeta, TransportRequest, TransportResponse } from '@cccteam/resource';
 import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing';
+import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 import { provideResourceTesting } from '@cccteam/resource-angular/testing';
-import { FieldName, listViewConfig, ListViewConfigOptions, RESOURCE_META, rootConfig } from '@cccteam/resource-angular/types';
+import { FieldName, listViewConfig, ListViewConfigOptions, RESOURCE_DOMAIN, RESOURCE_META, rootConfig } from '@cccteam/resource-angular/types';
 
 import { CompoundResourceComponent } from '../compound-resource/compound-resource.component';
 import { ResourceListComponent } from './resource-list.component';
@@ -196,6 +197,91 @@ describe('ResourceListComponent', () => {
       expect(key).toBeDefined();
       expect(key?.({ id: 's-1', name: 'Kestrel' }, 0)).toBe(JSON.stringify(['s-1']));
       expect(key?.({ id: 's-2', name: 'Kestrel' }, 1)).not.toBe(key?.({ id: 's-1', name: 'Kestrel' }, 0));
+    });
+  });
+
+  describe('asks for its first page once per request', () => {
+    // The page's request is its route, filter, columns, sorts, page size, and, for a
+    // domain-scoped resource alone, the tenant. Signals that re-evaluate to the same
+    // request (a digest landing that grants the same fields, the tenant changing under a
+    // global resource) ask for nothing again; one that changes the columns asks again.
+    const shipsUrl = '/api/ships?columns=name%2CcargoBays%2Cid&count=true';
+    const narrowedUrl = '/api/ships?columns=name%2Cid&count=true';
+    let digest: PermissionDigest;
+    let domain: ReturnType<typeof signal<Domain | undefined>>;
+
+    /** The digest granting List on the ships and the named fields, the id a key. */
+    const granting = (...fields: string[]): PermissionDigest => ({
+      [ships]: { List: 'granted' },
+      ...Object.fromEntries(fields.map((f) => [`${ships}.${f}`, { List: 'granted' }])),
+    });
+
+    const server = (request: TransportRequest): TransportResponse => {
+      const url = new URL(request.url, 'http://ships.test');
+      if (url.pathname === '/api/permission-digest') {
+        return { status: 200, body: digest };
+      }
+      if (url.pathname === '/api/ships') {
+        return { status: 200, body: [{ id: 's-1', name: 'Kestrel', cargoBays: [60] }], headers: { 'total-count': '1' } };
+      }
+      return { status: 404, body: { message: `unscripted ${request.url}` } };
+    };
+
+    const shipsRequests = (): string[] => transport.requests.map((r) => r.url).filter((url) => url.startsWith('/api/ships'));
+
+    /** A few rounds of change detection and settled promises, so a request nothing should cause has every chance to show. */
+    const rounds = async (n = 5): Promise<void> => {
+      for (let i = 0; i < n; i++) {
+        TestBed.tick();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+    };
+
+    beforeEach(async () => {
+      digest = granting('name', 'cargoBays');
+      domain = signal<Domain | undefined>('anvil' as Domain);
+      const config = listViewConfig({ elements: [], primaryResource: ships, listColumns: [{ id: 'name' as FieldName }, { id: 'cargoBays' as FieldName }] });
+      transport = scriptedTransport(server);
+      await TestBed.configureTestingModule({
+        imports: [ResourceListComponent],
+        providers: [
+          provideResourceTesting({ transport, client: (t) => createClient(descriptor, { baseUrl: '/api', transport: t }) }),
+          { provide: RESOURCE_META, useValue: (resource: Resource): ResourceMeta => metas[resource] },
+          { provide: RESOURCE_DOMAIN, useValue: domain },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { config: rootConfig({ parentConfig: config }) }, params: {}, queryParams: {} } },
+          },
+        ],
+      }).compileComponents();
+      // The global digest is on hand before the page renders, as after sign-in.
+      await TestBed.inject<ClientBase>(RESOURCE_CLIENT).permissions.loadDigest();
+      fixture = TestBed.createComponent(ResourceListComponent);
+      fixture.componentRef.setInput('compoundResourceComponent', CompoundResourceComponent);
+      fixture.componentRef.setInput('resourceConfig', config);
+      fixture.detectChanges();
+      await settle();
+    });
+
+    it('once across a digest granting the same fields again and a change of the tenant', async () => {
+      expect(shipsRequests()).toEqual([shipsUrl]);
+
+      await TestBed.inject<ClientBase>(RESOURCE_CLIENT).permissions.loadDigest();
+      await rounds();
+      expect(shipsRequests()).toEqual([shipsUrl]);
+
+      domain.set('bastion' as Domain);
+      await rounds();
+      expect(shipsRequests()).toEqual([shipsUrl]);
+      expect(fixture.componentInstance.columns().map((col) => col.id)).toEqual(['name', 'cargoBays']);
+    });
+
+    it('again, with the narrowed columns, when a digest grants fewer', async () => {
+      digest = granting('name');
+      await TestBed.inject<ClientBase>(RESOURCE_CLIENT).permissions.loadDigest();
+      await rounds();
+      expect(shipsRequests()).toEqual([shipsUrl, narrowedUrl]);
+      expect(fixture.componentInstance.columns().map((col) => col.id)).toEqual(['name']);
     });
   });
 });

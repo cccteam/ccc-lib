@@ -150,7 +150,7 @@ export class ResourceStore {
       ),
       sorts: this.sorts(),
       limit: this.pageSize(),
-      domain: this.domain(),
+      domain: this.scopedDomain(this.descriptorFor(route)),
     };
   });
 
@@ -424,7 +424,18 @@ export class ResourceStore {
    * resource asks for nothing until one is selected.
    */
   private defineScoped(descriptor: ResourceDescriptor): AnyResourceHandle {
-    return this.client.define(descriptor, descriptor.scope === 'domain' ? this.domain() : undefined);
+    return this.client.define(descriptor, this.scopedDomain(descriptor));
+  }
+
+  /**
+   * The tenant a request for the resource is bound to: the selected tenant when the
+   * resource is domain-scoped, undefined otherwise. Every reader's request key carries
+   * this rather than the tenant itself, so a global resource's key does not change when
+   * the tenant does (the reader asks once), while a domain-scoped resource's key does
+   * (the reader asks again, naming the new tenant).
+   */
+  private scopedDomain(descriptor: ResourceDescriptor): Domain | undefined {
+    return descriptor.scope === 'domain' ? this.domain() : undefined;
   }
 
   /**
@@ -444,11 +455,12 @@ export class ResourceStore {
   }
 
   /**
-   * One row, read by route and key. The params track both signals and the tenant, so a
-   * change to any of them reads again; while the route or the key is empty (or the
-   * string 'undefined', which a template renders for a missing value) the params are
-   * undefined, and the reader is idle with no value and no request. Nothing answers an
-   * empty key with an empty row, since an empty row would count as present.
+   * One row, read by route and key. The params track both signals and, for a
+   * domain-scoped resource, the tenant, so a change to any of them reads again; while the
+   * route or the key is empty (or the string 'undefined', which a template renders for a
+   * missing value) the params are undefined, and the reader is idle with no value and no
+   * request. Nothing answers an empty key with an empty row, since an empty row would
+   * count as present.
    */
   resourceView(route: Signal<string>, uuid: Signal<string>): ResourceRef<RecordData> {
     return untracked(
@@ -461,7 +473,7 @@ export class ResourceStore {
             if (!currentRoute || !key || key === 'undefined') {
               return undefined;
             }
-            return { route: currentRoute, uuid: key, domain: this.domain() };
+            return { route: currentRoute, uuid: key, domain: this.scopedDomain(this.descriptorFor(currentRoute)) };
           },
           stream: ({ params }) => {
             // The view is the edit surface: opt into the capability envelope so each
@@ -488,15 +500,18 @@ export class ResourceStore {
       return rxResource({
         defaultValue: [] as RecordData[],
         injector: this.injector,
-        params: () => ({
-          route: route(),
-          filter: filter(),
-          columns: columns(),
-          sensitive: disableCacheForFilterPii(),
-          sorts: sorts(),
-          limit: limit(),
-          domain: this.domain(),
-        }),
+        params: () => {
+          const currentRoute = route();
+          return {
+            route: currentRoute,
+            filter: filter(),
+            columns: columns(),
+            sensitive: disableCacheForFilterPii(),
+            sorts: sorts(),
+            limit: limit(),
+            domain: this.scopedDomain(this.descriptorFor(currentRoute)),
+          };
+        },
         stream: ({ params }) => {
           if (!params.route) return of([] as RecordData[]);
           return this.list<RecordData>(
@@ -538,7 +553,8 @@ export class ResourceStore {
         injector: this.injector,
         params: () => {
           const resourceRoute = route();
-          const paged = resourceRoute !== '' && readMode(this.descriptorFor(resourceRoute)) === 'paged';
+          const descriptor = this.descriptorFor(resourceRoute);
+          const paged = resourceRoute !== '' && readMode(descriptor) === 'paged';
           return {
             route: resourceRoute,
             keyField: keyField(),
@@ -546,7 +562,7 @@ export class ResourceStore {
             keys: paged ? keys() : [],
             paged,
             columns: columns(),
-            domain: this.domain(),
+            domain: this.scopedDomain(descriptor),
           };
         },
         stream: ({ params }) => {
@@ -585,12 +601,13 @@ export class ResourceStore {
    * One server page of a resource, for a reader that pages a bounded source (a picker
    * over a resource with a maximum page size): the first page, with its count, whenever
    * the request changes, and Previous and Next by the server's relations. The request is
-   * bound to the selected tenant and goes through the client like every other read.
+   * bound to the selected tenant when the resource is domain-scoped and goes through the
+   * client like every other read.
    */
   resourcePage(request: Signal<PagedListRequest | undefined>): PagedList<RecordData> {
     const params = computed(() => {
       const current = request();
-      return current ? { ...current, domain: this.domain() } : undefined;
+      return current ? { ...current, domain: this.scopedDomain(this.descriptorFor(current.route)) } : undefined;
     });
     return untracked(
       () =>
