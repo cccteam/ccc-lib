@@ -3,12 +3,13 @@
   "version": "0.0.1",
   "repository": {
     "type": "git",
-    "url": "git://github.com/cccteam/ccc-lib.git"
+    "url": "git+https://github.com/cccteam/ccc-lib.git",
+    "directory": "projects/resource-angular"
   },
   "peerDependencies": {
     "@angular/common": "^21.0.0",
     "@angular/core": "^21.0.0",
-    "@cccteam/resource": "^0.0.1"
+    "@cccteam/resource": "^0.0.2"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
