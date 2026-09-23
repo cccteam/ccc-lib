@@ -60,10 +60,10 @@ jobs:
             exit 1
           fi
 
+      # Authentication is OIDC trusted publishing: each package's settings on npmjs.com name this
+      # workflow file as a trusted publisher, and npm exchanges the job's identity token for a
+      # short-lived publish credential. A package name that does not exist yet cannot be created
+      # this way (nor by a token or a staged publish): its first version is published by a person
+      # with two-factor authentication, and this workflow takes over from the second version.
       - run: npm publish --access public --provenance
         working-directory: ./dist/${{ steps.package.outputs.name }}
-        env:
-          # Bootstrap only: a short-lived granular token with publish rights on the @cccteam scope,
-          # for the first publish of each package. Once both packages carry a trusted publisher
-          # for this workflow file, revoke the token, delete the secret, and remove this env block.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
