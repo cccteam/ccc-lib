@@ -1,0 +1,139 @@
+<div [class.hidden-field]="!showField()">
+  @if (!hasControl()) {
+    <!-- The form owner left this field out: nothing to render and no control to bind. -->
+  } @else if (showEmptyField()) {
+    <ccc-empty-readonly-field [label]="fieldConfig().label"></ccc-empty-readonly-field>
+  } @else {
+    @switch (renderer()) {
+      @case ('date') {
+        <ccc-date-field
+          [form]="form()"
+          [fieldConfig]="fieldConfig()"
+          [editMode]="mode()"
+          [fieldClass]="fieldClass()"
+          [meta]="meta()"
+          [pristineValue]="pristineValue()"
+          [relatedData]="data()"
+          [fieldMeta]="fieldMeta()"
+          [showField]="showField()">
+        </ccc-date-field>
+      }
+
+      @case ('number') {
+        <ccc-number-field
+          [form]="form()"
+          [fieldConfig]="fieldConfig()"
+          [editMode]="mode()"
+          [fieldClass]="fieldClass()"
+          [meta]="meta()"
+          [pristineValue]="pristineValue()"
+          [relatedData]="data()"
+          [fieldMeta]="fieldMeta()"
+          [showField]="showField()">
+        </ccc-number-field>
+      }
+
+      @case ('boolean') {
+        <ng-container *ngTemplateOutlet="booleanFragment"></ng-container>
+      }
+
+      @case ('enumerated') {
+        <ccc-enumerated-field
+          [form]="form()"
+          [fieldConfig]="fieldConfig()"
+          [editMode]="mode()"
+          [fieldClass]="fieldClass()"
+          [meta]="meta()"
+          [pristineValue]="pristineValue()"
+          [relatedData]="data()"
+          [fieldMeta]="fieldMeta()"
+          [showField]="showField()">
+        </ccc-enumerated-field>
+      }
+
+      @case ('bytes') {
+        <ccc-bytes-field
+          [form]="form()"
+          [fieldConfig]="fieldConfig()"
+          [editMode]="mode()"
+          [fieldClass]="fieldClass()"
+          [meta]="meta()"
+          [pristineValue]="pristineValue()"
+          [relatedData]="data()"
+          [fieldMeta]="fieldMeta()"
+          [showField]="showField()">
+        </ccc-bytes-field>
+      }
+
+      @case ('array') {
+        <ccc-array-field
+          [form]="form()"
+          [fieldConfig]="fieldConfig()"
+          [editMode]="mode()"
+          [fieldClass]="fieldClass()"
+          [meta]="meta()"
+          [pristineValue]="pristineValue()"
+          [relatedData]="data()"
+          [fieldMeta]="fieldMeta()"
+          [showField]="showField()">
+        </ccc-array-field>
+      }
+
+      @case ('object') {
+        <ccc-object-field
+          [form]="form()"
+          [fieldConfig]="fieldConfig()"
+          [editMode]="mode()"
+          [fieldClass]="fieldClass()"
+          [meta]="meta()"
+          [pristineValue]="pristineValue()"
+          [relatedData]="data()"
+          [fieldMeta]="fieldMeta()"
+          [showField]="showField()">
+        </ccc-object-field>
+      }
+
+      @default {
+        <ccc-text-field
+          [form]="form()"
+          [fieldConfig]="fieldConfig()"
+          [editMode]="mode()"
+          [fieldClass]="fieldClass()"
+          [meta]="meta()"
+          [pristineValue]="pristineValue()"
+          [relatedData]="data()"
+          [fieldMeta]="fieldMeta()"
+          [showField]="showField()">
+        </ccc-text-field>
+      }
+    }
+  }
+</div>
+
+<ng-template #booleanFragment>
+  @if (booleanEditDisplayType() === 'boolean') {
+    <ccc-boolean-field
+      [form]="form()"
+      [fieldConfig]="fieldConfig()"
+      [editMode]="mode()"
+      [fieldClass]="fieldClass()"
+      [meta]="meta()"
+      [pristineValue]="pristineValue()"
+      [relatedData]="data()"
+      [fieldMeta]="fieldMeta()"
+      [showField]="showField()">
+    </ccc-boolean-field>
+  } @else if (booleanEditDisplayType() === 'nullboolean') {
+    <ccc-nullboolean-field
+      [form]="form()"
+      [fieldConfig]="fieldConfig()"
+      [editMode]="mode()"
+      [fieldClass]="fieldClass()"
+      [meta]="meta()"
+      [pristineValue]="pristineValue()"
+      [relatedData]="data()"
+      [fieldMeta]="fieldMeta()"
+      [showField]="showField()">
+    </ccc-nullboolean-field>
+  }
+</ng-template>

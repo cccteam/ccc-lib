@@ -1,6 +1,11 @@
 # ccc-lib
 
-**ccc-lib** is a comprehensive Angular library developed by the [cccteam](https://cloudcomputingconsultants.com/). It is designed to provide a consistent and configurable foundation for building enterprise-level data-driven applications. By defining a configuration, you can dynamically generate entire application pages.
+This repository holds the browser side of the cccteam application platform, as two npm packages:
+
+- [`@cccteam/resource`](projects/resource/README.md): the framework-neutral client for generated APIs. `fetch` and promises, no Angular or RxJS.
+- [`@cccteam/resource-angular`](projects/resource-angular/README.md): the Angular binding over it. Components, fields, grids, guards, and services that render a page from a `resourceConfig`. Published as `@cccteam/ccc-lib` through 0.0.44; see its README for the rename and the deprecation still to do.
+
+The Angular library is a comprehensive foundation for building enterprise-level data-driven applications. By defining a configuration, you can dynamically generate entire application pages.
 
 ## Core Features
 
@@ -10,21 +15,22 @@
 
 ## Getting Started
 
-To install **ccc-lib** in your project, run the following command:
+To install the Angular library in your project, run the following command:
 
 ```bash
-npm install ccc-lib
+npm install @cccteam/resource @cccteam/resource-angular
 ```
 
-To run a full test environment, use [overmind](https://github.com/DarthSim/overmind):
-
-```bash
-overmind s
-```
+This repository holds the two packages and their specs, nothing else. Lodestar, the
+demonstration application in [cccteam/ccc](https://github.com/cccteam/ccc) at
+`resource/lodestar`, is the library's application: every library change is proven there,
+against a running server, through the yalc loop its `web/ccclib.sh` runs. `ccclib.sh local`
+builds both packages from this checkout and attaches them to Lodestar's workspace, and
+`ccclib.sh push` rebuilds them into every attached consumer.
 
 ## Core Concepts
 
-The central concept of **ccc-lib** is the `resourceConfig`. This configuration object defines the structure and behavior of a page or a part of a page. It specifies which components to render, how they are connected, and how they interact with data.
+The central concept of the Angular library is the `resourceConfig`. This configuration object defines the structure and behavior of a page or a part of a page. It specifies which components to render, how they are connected, and how they interact with data.
 
 The `compound-component` component is the engine that brings the `resourceConfig` to life. It dynamically creates and configures components based on the provided configuration, allowing for highly flexible and data-driven UIs.
 
@@ -42,13 +48,29 @@ The `compound-component` component is the engine that brings the `resourceConfig
 To build the library locally, use the Angular CLI:
 
 ```bash
-ng build ccc-lib
+ng build resource-angular
 ```
 
 ### Running Tests
 
-To run the library's tests, use the following command:
+`bun run test` runs both packages' suites once, the way CI does on every pull request:
 
 ```bash
-ng test ccc-lib
+bun run test                     # both suites, once
+bun run test:resource            # @cccteam/resource: bun test over projects/resource/, then the spec type-check
+bun run test:angular             # @cccteam/resource-angular: ng test resource-angular --watch=false
+bun x ng test resource-angular   # the library suite in watch mode while developing
 ```
+
+The client's specs are written against `bun:test` and run in bun; `bun run typecheck:resource`
+compiles them with tsc so a `@ts-expect-error` line in a spec is an assertion that the types refuse
+a call. The library's specs run on Angular's unit-test builder (`@angular/build:unit-test`) with
+Vitest under jsdom in Node: no browser, no Karma. The builder initializes the TestBed zoneless, so
+a library spec never uses `fakeAsync`, `tick`, or `flush`: it runs change detection with
+`TestBed.tick()`, answers the request the component made, and settles with
+`await TestBed.inject(ApplicationRef).whenStable()`.
+
+Each package publishes a testing entry point for an application's own specs:
+[`@cccteam/resource/testing`](projects/resource/README.md#testing) exports `scriptedTransport`, and
+[`@cccteam/resource-angular/testing`](projects/resource-angular/README.md#running-tests) exports
+`provideResourceTesting`.
