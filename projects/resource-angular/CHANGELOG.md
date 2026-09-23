@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.2](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.1...resource-angular/v0.0.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **resource-angular:** the package's repository link uses https and names its folder, and its client peer range follows @cccteam/resource 0.0.2 ([#114](https://github.com/cccteam/ccc-lib/issues/114)) ([eb29fe8](https://github.com/cccteam/ccc-lib/commit/eb29fe80bc5697cb31699cdd39ac2adb16f4ec55))
+
 ## [0.0.1](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.1...resource-angular/v0.0.1) (2026-09-23)
 
 
