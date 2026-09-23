@@ -5,6 +5,8 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
+      "@cccteam/ccc-lib/*": ["projects/ccc-lib/*"],
+      "@cccteam/ccc-lib": ["projects/ccc-lib/index.ts"],
       "@cccteam/resource-angular/*": ["projects/resource-angular/*"],
       "@cccteam/resource": ["projects/resource/index.ts"],
       "@cccteam/resource/testing": ["projects/resource/testing/index.ts"],

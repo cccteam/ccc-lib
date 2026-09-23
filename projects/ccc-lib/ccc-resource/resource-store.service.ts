@@ -1,0 +1,332 @@
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { computed, inject, Injectable, Injector, ResourceRef, Signal, signal, untracked } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
+import {
+  AlertType,
+  API_URL,
+  ColumnConfig,
+  CreateNotificationMessage,
+  FieldName,
+  FieldSort,
+  METHOD_META,
+  RecordData,
+  Resource,
+  ResourceMeta,
+  RPCConfig,
+} from '@cccteam/ccc-lib/types';
+import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
+import { from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
+import { Operation } from './resources-helpers';
+
+@Injectable()
+export class ResourceStore {
+  private static readonly BATCH_REQUEST_CONCURRENCY = 5;
+
+  resourceMeta = signal({} as ResourceMeta);
+  resourceName = signal<Resource>('' as Resource);
+  filter = signal<string>('');
+  disableCacheForFilterPii = signal(false);
+  searchTokens = signal<string>('');
+  sorts = signal<FieldSort[]>([]);
+  listColumns = signal<ColumnConfig[]>([]);
+  limit = signal<number | undefined>(undefined);
+  requireSearchToDisplayResults = signal(false);
+  uuid = signal<string>('');
+  error = signal<string>('');
+
+  notifications = inject(NotificationService);
+  http = inject(HttpClient);
+  router = inject(Router);
+  injector = inject(Injector);
+  apiUrl = inject(API_URL);
+  methodMeta = inject(METHOD_META);
+
+  private resourceListRef = signal<ResourceRef<RecordData[]> | undefined>(undefined);
+  listData = computed(() => {
+    const ref = this.resourceListRef();
+    if (ref && ref.status() === 'resolved') {
+      return ref.value();
+    }
+    return [];
+  });
+  listStatus = computed(() => {
+    return this.resourceListRef()?.status();
+  });
+
+  private resourceViewRef = signal<ResourceRef<RecordData> | undefined>(undefined);
+  viewData = computed(() => {
+    const ref = this.resourceViewRef();
+    if (ref && ref.status() === 'resolved') {
+      return ref.value();
+    }
+    return {} as RecordData;
+  });
+  viewStatus = computed(() => {
+    return this.resourceViewRef()?.status();
+  });
+
+  overrideRoute = signal<string>('');
+  resourceRoute = computed(() => this.resourceMeta()?.route);
+  route = computed(() => {
+    if (this.overrideRoute()) {
+      return this.overrideRoute();
+    }
+    const route = this.resourceRoute();
+    if (route) {
+      return route;
+    }
+    return '';
+  });
+
+  reloadViewData(): void {
+    this.resourceViewRef()?.reload();
+  }
+
+  reloadListData(): void {
+    this.resourceListRef()?.reload();
+  }
+
+  buildStoreListData(): void {
+    const route = this.route();
+    const name = this.resourceName();
+    if (!route || name === '') {
+      return;
+    }
+    const columnIds = this.listColumns().flatMap((col) => {
+      return [col.id];
+    });
+    const resourceMeta = this.resourceMeta();
+    if (resourceMeta && resourceMeta.fields.some((field) => field.fieldName === 'id')) {
+      columnIds.push('id' as FieldName);
+    }
+    const uniqueColumns = signal([...new Set([...columnIds])]);
+
+    const ref = this.resourceList(
+      this.route,
+      this.filter,
+      uniqueColumns,
+      this.disableCacheForFilterPii,
+      this.searchTokens,
+      this.sorts,
+      this.limit,
+    );
+    this.resourceListRef.set(ref);
+    this.reloadListData();
+  }
+
+  buildStoreViewData(): void {
+    const route = this.route();
+    const uuid = this.uuid();
+    if (!route || !uuid || uuid === 'undefined') {
+      return;
+    }
+
+    const ref = this.resourceView(this.route, this.uuid);
+    this.resourceViewRef.set(ref);
+    this.reloadListData();
+  }
+
+  routes = {
+    resources: (rootUrl: string, resources: string): string => `${rootUrl}/${resources}`,
+    resource: (rootUrl: string, resources: string, uuid: string): string => `${rootUrl}/${resources}/${uuid}`,
+    method: (rootUrl: string, method: string): string => `${rootUrl}/${method}`,
+  };
+
+  makePatches(operations: Operation[], route: string, resource: Resource): Observable<Record<string, unknown>> {
+    return this.patchMultiple(String(route), operations).pipe(
+      tap(() => {
+        this.notifications.addGlobalNotification({
+          message: `${resource} updated successfully`,
+          type: AlertType.SUCCESS,
+          duration: 5000,
+          link: '',
+        } satisfies CreateNotificationMessage);
+      }),
+    );
+  }
+
+  createPatch(operation: Operation, route: string, resource: Resource): Observable<Record<string, unknown>> {
+    return this.patchMultiple(String(route), [operation]).pipe(
+      tap(() => {
+        this.notifications.addGlobalNotification({
+          message: `${resource} created successfully`,
+          type: AlertType.SUCCESS,
+          duration: 5000,
+          link: '',
+        } satisfies CreateNotificationMessage);
+      }),
+    );
+  }
+
+  private patchMultiple(resourceRoute: string, data: Operation[]): Observable<Record<string, unknown>> {
+    return this.http.patch<Record<string, unknown>>(this.routes.resources(this.apiUrl, resourceRoute), data);
+  }
+
+  resourceView(route: Signal<string>, uuid: Signal<string>): ResourceRef<RecordData> {
+    return untracked(
+      () =>
+        rxResource({
+          injector: this.injector,
+          params: () => ({
+            route: route,
+            uuid: uuid,
+          }),
+          stream: ({ params }) => {
+            if (!params.route() || !params.uuid() || params.uuid() === 'undefined') return of({} as RecordData);
+            return this.http.get<RecordData>(
+              this.routes.resource(this.apiUrl, String(params.route()), params.uuid() || ''),
+            );
+          },
+        }) as ResourceRef<RecordData>,
+    );
+  }
+
+  resourceList(
+    route: Signal<string>,
+    filter: Signal<string> = signal(''),
+    columns: Signal<string[]> = signal([]),
+    disableCacheForFilterPii: Signal<boolean> = signal(false),
+    searchTokens: Signal<string> = signal(''),
+    sorts: Signal<FieldSort[]> = signal([]),
+    limit: Signal<number | undefined> = signal(undefined),
+    defaultEmpty = false,
+  ): ResourceRef<RecordData[]> {
+    return untracked(() => {
+      return rxResource({
+        defaultValue: [] as RecordData[],
+        injector: this.injector,
+        params: () => ({
+          route: route(),
+          filter: filter(),
+          columns: columns(),
+          searchTokens: searchTokens(),
+          sorts: sorts(),
+          limit: limit(),
+        }),
+        stream: ({ params }) => {
+          if (!params.route) return of([] as RecordData[]);
+          if (defaultEmpty && (!params.searchTokens || params.searchTokens.trim() === '')) {
+            return of([] as RecordData[]);
+          }
+          return this.list<RecordData>(
+            String(params.route),
+            params.filter,
+            disableCacheForFilterPii(),
+            params.columns,
+            params.searchTokens,
+            params.sorts,
+            params.limit,
+          );
+        },
+      }) as ResourceRef<RecordData[]>;
+    });
+  }
+
+  resourceListByKeys(
+    route: Signal<string>,
+    keyField: Signal<string>,
+    keys: Signal<string[]>,
+    columns: Signal<string[]> = signal([]),
+    batchSize = 200,
+  ): ResourceRef<RecordData[]> {
+    if (!Number.isInteger(batchSize) || batchSize <= 0) {
+      throw new Error(`resourceListByKeys: batchSize must be a positive integer, got ${batchSize}`);
+    }
+
+    return untracked(() => {
+      return rxResource({
+        defaultValue: [] as RecordData[],
+        injector: this.injector,
+        params: () => ({
+          route: route(),
+          keyField: keyField(),
+          keys: keys(),
+          columns: columns(),
+        }),
+        stream: ({ params }) => {
+          if (!params.route || !params.keyField || params.keys.length === 0) {
+            return of([] as RecordData[]);
+          }
+          const batches: string[][] = [];
+          for (let i = 0; i < params.keys.length; i += batchSize) {
+            batches.push(params.keys.slice(i, i + batchSize));
+          }
+          return from(batches).pipe(
+            mergeMap(
+              (batch) =>
+                this.list<RecordData>(
+                  params.route,
+                  `${params.keyField}:in:(${batch.join(',')})`,
+                  false,
+                  params.columns,
+                  '',
+                  [],
+                  batch.length,
+                ),
+              ResourceStore.BATCH_REQUEST_CONCURRENCY,
+            ),
+            toArray(),
+            map((results) => results.flat()),
+          );
+        },
+      }) as ResourceRef<RecordData[]>;
+    });
+  }
+
+  private list<T>(
+    resourceRoute: string,
+    filter?: string,
+    disableCacheForFilterPii?: boolean,
+    columns?: string[],
+    searchTokens?: string,
+    sort?: FieldSort[],
+    limit?: number,
+  ): Observable<T[]> {
+    const paramsObj: Record<string, string> = {};
+    if (filter && filter.trim() !== '') paramsObj['filter'] = filter;
+    if (limit && limit > 0) paramsObj['limit'] = String(limit);
+    if (columns && columns.length > 0) paramsObj['columns'] = columns.join(',');
+    if (searchTokens && searchTokens.trim() !== '') paramsObj['SearchTokens'] = searchTokens;
+    if (sort && sort.length > 0) {
+      paramsObj['sort'] = sort.map((s) => `${s.field}:${s.direction}`).join(',');
+    }
+    const params = new HttpParams({ fromObject: paramsObj });
+    if (disableCacheForFilterPii) {
+      const paramsObjWithoutFilter = { ...paramsObj };
+      delete paramsObjWithoutFilter['filter'];
+      return this.http.post<T[]>(
+        this.routes.resources(this.apiUrl, resourceRoute),
+        { filter: filter },
+        paramsObjWithoutFilter,
+      );
+    }
+    return this.http.get<T[]>(this.routes.resources(this.apiUrl, resourceRoute), { params });
+  }
+
+  rpcCall<T>(rpcConfig: RPCConfig, body: T): Observable<T> {
+    const methodData = this.methodMeta(rpcConfig.method);
+    if (!methodData) {
+      console.error('Method not found in methodMap:', rpcConfig.method);
+      return of({} as T);
+    }
+
+    return this.http.post<T>(this.routes.method(this.apiUrl, methodData.route), body).pipe(
+      tap(() => {
+        this.notifications.addGlobalNotification({
+          message: rpcConfig.successMessage ? rpcConfig.successMessage : `${rpcConfig.method} called successfully`,
+          type: AlertType.SUCCESS,
+          duration: 5000,
+          link: '',
+        } satisfies CreateNotificationMessage);
+        if (rpcConfig.afterMethodRedirect) {
+          if (typeof rpcConfig.afterMethodRedirect === 'string') {
+            this.router.navigate([rpcConfig.afterMethodRedirect]);
+          } else {
+            this.router.navigate(rpcConfig.afterMethodRedirect);
+          }
+        }
+      }),
+    );
+  }
+}

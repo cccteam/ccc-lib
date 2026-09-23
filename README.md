@@ -1,9 +1,10 @@
 # ccc-lib
 
-This repository holds the browser side of the cccteam application platform, as two npm packages:
+This repository holds the browser side of the cccteam application platform, as three npm packages:
 
 - [`@cccteam/resource`](projects/resource/README.md): the framework-neutral client for generated APIs. `fetch` and promises, no Angular or RxJS.
 - [`@cccteam/resource-angular`](projects/resource-angular/README.md): the Angular binding over it. Components, fields, grids, guards, and services that render a page from a `resourceConfig`. Published as `@cccteam/ccc-lib` through 0.0.44; see its README for the rename and the deprecation still to do.
+- [`@cccteam/ccc-lib`](projects/ccc-lib/README.md): the Angular library under its old name, restored at 0.0.44 to carry a few more fix releases for applications that have not moved to `@cccteam/resource-angular` yet. It builds on its own and shares no code with the other two.
 
 The Angular library is a comprehensive foundation for building enterprise-level data-driven applications. By defining a configuration, you can dynamically generate entire application pages.
 
@@ -21,7 +22,7 @@ To install the Angular library in your project, run the following command:
 npm install @cccteam/resource @cccteam/resource-angular
 ```
 
-This repository holds the two packages and their specs, nothing else. Lodestar, the
+This repository holds the three packages and their specs, nothing else. Lodestar, the
 demonstration application in [cccteam/ccc](https://github.com/cccteam/ccc) at
 `resource/lodestar`, is the library's application: every library change is proven there,
 against a running server, through the yalc loop its `web/ccclib.sh` runs. `ccclib.sh local`
@@ -49,11 +50,14 @@ To build the library locally, use the Angular CLI:
 
 ```bash
 ng build resource-angular
+ng build ccc-lib
 ```
 
 ### Running Tests
 
-`bun run test` runs both packages' suites once, the way CI does on every pull request:
+`bun run test` runs the two current packages' suites once, the way CI does on every pull request. The specs under `projects/ccc-lib` are the Jasmine specs of 0.0.44, written for Karma, and do not run here; CI lints and builds that package, as it did before the rename.
+
+The suites:
 
 ```bash
 bun run test                     # both suites, once
