@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.2](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.1...resource/v0.0.2) (2026-09-23)
+
+
+### Bug Fixes
+
+* **resource:** the package's repository link uses https and names its folder in the repository ([#111](https://github.com/cccteam/ccc-lib/issues/111)) ([04e8811](https://github.com/cccteam/ccc-lib/commit/04e88111b5a9f60d023dea8073d57cd8eb28ed15))
+
 ## [0.0.1](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.1...resource/v0.0.1) (2026-09-23)
 
 
