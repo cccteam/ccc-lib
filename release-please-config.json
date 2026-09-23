@@ -4,7 +4,7 @@
   "bump-patch-for-minor-pre-major": true,
   "include-v-in-tag": true,
   "tag-separator": "/",
-  "separate-pull-requests": true,
+  "separate-pull-requests": false,
   "plugins": [
     {
       "type": "node-workspace",
