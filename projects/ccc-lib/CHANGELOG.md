@@ -1,0 +1,221 @@
+# Changelog
+
+## [0.0.44](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.43...ccc-lib/v0.0.44) (2026-07-29)
+
+
+### Bug Fixes
+
+* ccc-grid filter menu interactions and sizing ([#104](https://github.com/cccteam/ccc-lib/issues/104)) ([870b0d8](https://github.com/cccteam/ccc-lib/commit/870b0d857b53e786fad5a44949fb677b47f7172a))
+
+## [0.0.43](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.42...ccc-lib/v0.0.43) (2026-07-28)
+
+
+### Features
+
+* Local implementation of ccc-grid ([#101](https://github.com/cccteam/ccc-lib/issues/101)) ([e686347](https://github.com/cccteam/ccc-lib/commit/e68634734b3387edc70448ea689c30f51c0306aa))
+
+## [0.0.42](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.41...ccc-lib/v0.0.42) (2026-07-27)
+
+
+### Bug Fixes
+
+* Allow large number of enumerated resources to be loaded. ([#102](https://github.com/cccteam/ccc-lib/issues/102)) ([03e1792](https://github.com/cccteam/ccc-lib/commit/03e1792ad703cade47224961d36a0a8c0ce85817))
+* use canActivateFn return type for authorization guard ([#97](https://github.com/cccteam/ccc-lib/issues/97)) ([e626cd9](https://github.com/cccteam/ccc-lib/commit/e626cd9c6d2d2bfe1f5e6ac97357b38091165a0c))
+
+## [0.0.41](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.40...ccc-lib/v0.0.41) (2026-06-04)
+
+
+### Code Refactoring
+
+* auth guard returns url tree instead of false + side effect ([#52](https://github.com/cccteam/ccc-lib/issues/52)) ([b96eafb](https://github.com/cccteam/ccc-lib/commit/b96eafb68933901894c77dc62cddd065dd20eaf8))
+
+## [0.0.40](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.39...ccc-lib/v0.0.40) (2026-05-12)
+
+
+### Features
+
+* Add new token for custom session data ([#90](https://github.com/cccteam/ccc-lib/issues/90)) ([edcb978](https://github.com/cccteam/ccc-lib/commit/edcb978a1f1e3b37faadfbc01e1a2fd90ee3f52e))
+
+## [0.0.39](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.38...ccc-lib/v0.0.39) (2026-05-08)
+
+
+### Bug Fixes
+
+* Fix extremely minor null check bug ([#88](https://github.com/cccteam/ccc-lib/issues/88)) ([370c205](https://github.com/cccteam/ccc-lib/commit/370c20509a3a11340a3203966d7fc6547b156298))
+
+## [0.0.38](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.37...ccc-lib/v0.0.38) (2026-05-08)
+
+
+### Features
+
+* Add method as a source for permissions ([#85](https://github.com/cccteam/ccc-lib/issues/85)) ([a560eb8](https://github.com/cccteam/ccc-lib/commit/a560eb862d6cf3d067701b08faa0bd346bc67b1a))
+* add new swr http resource wrapper ([#74](https://github.com/cccteam/ccc-lib/issues/74)) ([58c1fb5](https://github.com/cccteam/ccc-lib/commit/58c1fb5f183e571692c8314bea181a129c756b60))
+
+## [0.0.37](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.36...ccc-lib/v0.0.37) (2026-04-07)
+
+
+### Features
+
+* add Contentful attachment type ([#79](https://github.com/cccteam/ccc-lib/issues/79)) ([2c00355](https://github.com/cccteam/ccc-lib/commit/2c00355cf7f5a526bbb95b480998a45898cc451a))
+
+## [0.0.36](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.35...ccc-lib/v0.0.36) (2026-03-17)
+
+
+### Features
+
+* Indicate loading state for ListView data ([#76](https://github.com/cccteam/ccc-lib/issues/76)) ([94caf5d](https://github.com/cccteam/ccc-lib/commit/94caf5d4cb7d7bbb90241ab549cd8741b2c5ef0e))
+
+## [0.0.35](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.34...ccc-lib/v0.0.35) (2026-03-17)
+
+
+### Features
+
+* Add pageSize & showRowCount options for List Views ([#70](https://github.com/cccteam/ccc-lib/issues/70)) ([5447176](https://github.com/cccteam/ccc-lib/commit/54471768166af009f27ca583241651feb72561db))
+
+## [0.0.34](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.33...ccc-lib/v0.0.34) (2026-03-16)
+
+
+### Bug Fixes
+
+* Clean up stale resources ([#72](https://github.com/cccteam/ccc-lib/issues/72)) ([5e37090](https://github.com/cccteam/ccc-lib/commit/5e370905e6d3fda42214b289657cb7b88b78a0e0))
+
+## [0.0.33](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.32...ccc-lib/v0.0.33) (2026-03-16)
+
+
+### Features
+
+* Stale resource ([#69](https://github.com/cccteam/ccc-lib/issues/69)) ([eddae2a](https://github.com/cccteam/ccc-lib/commit/eddae2a2b0934158d96917d5498341a828c538ca))
+
+## [0.0.32](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.31...ccc-lib/v0.0.32) (2026-03-02)
+
+
+### Bug Fixes
+
+* Add entrypoint to new util ([#67](https://github.com/cccteam/ccc-lib/issues/67)) ([6274bf0](https://github.com/cccteam/ccc-lib/commit/6274bf028e3ba3318c11dba4defbf6f190cfaf78))
+
+## [0.0.31](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.30...ccc-lib/v0.0.31) (2026-03-02)
+
+
+### Features
+
+* Safe resource util ([#65](https://github.com/cccteam/ccc-lib/issues/65)) ([b11ee18](https://github.com/cccteam/ccc-lib/commit/b11ee18a8c728076e585c3f6277c0b2fdbe70c5e))
+
+## [0.0.30](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.29...ccc-lib/v0.0.30) (2026-02-26)
+
+
+### Features
+
+* **idle:** Add option to require confirmation to stay logged in ([#63](https://github.com/cccteam/ccc-lib/issues/63)) ([cf81fca](https://github.com/cccteam/ccc-lib/commit/cf81fcae7d1fb81b6bc6456a04668c64e5061341))
+
+## [0.0.29](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.28...ccc-lib/v0.0.29) (2026-02-25)
+
+
+### Features
+
+* Separate idle alert type ([#61](https://github.com/cccteam/ccc-lib/issues/61)) ([27c0678](https://github.com/cccteam/ccc-lib/commit/27c06786e49ecaa615835b1967d43db898037193))
+
+## [0.0.28](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.27...ccc-lib/v0.0.28) (2026-02-18)
+
+
+### Bug Fixes
+
+* Fix validatorsPresent utility func ([#59](https://github.com/cccteam/ccc-lib/issues/59)) ([d319d6d](https://github.com/cccteam/ccc-lib/commit/d319d6dd1a0e41c768e906d04d51af4763c76eac))
+
+## [0.0.27](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.26...ccc-lib/v0.0.27) (2026-02-10)
+
+
+### Features
+
+* Allow filtering and sorting ([#56](https://github.com/cccteam/ccc-lib/issues/56)) ([8431901](https://github.com/cccteam/ccc-lib/commit/84319014c0c5474ac22e810578275e6826aa378f))
+
+## [0.0.26](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.25...ccc-lib/v0.0.26) (2026-02-03)
+
+
+### Features
+
+* Add limit to `listViewConfig` ([#54](https://github.com/cccteam/ccc-lib/issues/54)) ([ee39a81](https://github.com/cccteam/ccc-lib/commit/ee39a811930b31cd4a58eda4477684b8ab143ddc))
+
+## [0.0.25](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.24...ccc-lib/v0.0.25) (2026-01-27)
+
+
+### Features
+
+* Add logout function tokens ([#46](https://github.com/cccteam/ccc-lib/issues/46)) ([ba37eb7](https://github.com/cccteam/ccc-lib/commit/ba37eb7daf3da8d8cfc0de886d5a6093f73f467d))
+* Add null value to select options when the resource is not required ([#45](https://github.com/cccteam/ccc-lib/issues/45)) ([07cd2c2](https://github.com/cccteam/ccc-lib/commit/07cd2c27eddb21ed6f07b15b05031b28c43771e3))
+
+## [0.0.24](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.23...ccc-lib/v0.0.24) (2025-12-11)
+
+
+### Features
+
+* Add login authentication guard ([#44](https://github.com/cccteam/ccc-lib/issues/44)) ([9a73031](https://github.com/cccteam/ccc-lib/commit/9a73031012ccc665b819c0fb871e29ce14ca1028))
+* Support Contentful's Document type for resource fields ([#42](https://github.com/cccteam/ccc-lib/issues/42)) ([57b643d](https://github.com/cccteam/ccc-lib/commit/57b643d64109f8f66e8c5a87dc7522121544b751))
+
+## [0.0.23](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.22...ccc-lib/v0.0.23) (2025-12-08)
+
+
+### Bug Fixes
+
+* Fix login behavior after reverting auth changes ([#40](https://github.com/cccteam/ccc-lib/issues/40)) ([52cfe23](https://github.com/cccteam/ccc-lib/commit/52cfe2328d53185c112aa7a3cf5e0de721df541f))
+
+## [0.0.22](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.21...ccc-lib/v0.0.22) (2025-12-08)
+
+
+### Features
+
+* Further package breakouts to reduce build size ([#38](https://github.com/cccteam/ccc-lib/issues/38)) ([d6b578b](https://github.com/cccteam/ccc-lib/commit/d6b578b8adb0d1202ab59a34a7a8dff04394b99f))
+
+## [0.0.21](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.20...ccc-lib/v0.0.21) (2025-12-08)
+
+
+### Features
+
+* Move guards and generators to new package ([39d40b9](https://github.com/cccteam/ccc-lib/commit/39d40b9218c09febda85075eef32eefc43db77fe))
+
+## [0.0.20](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.19...ccc-lib/v0.0.20) (2025-12-05)
+
+
+### Features
+
+* Remove unused package ([#34](https://github.com/cccteam/ccc-lib/issues/34)) ([6eac25c](https://github.com/cccteam/ccc-lib/commit/6eac25c3de0e804fe8cba58873d9edbb7107c111))
+
+## [0.0.19](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.18...ccc-lib/v0.0.19) (2025-12-05)
+
+
+### Bug Fixes
+
+* Refactor all exported paths ([#31](https://github.com/cccteam/ccc-lib/issues/31)) ([c1ee3cb](https://github.com/cccteam/ccc-lib/commit/c1ee3cbe7b13fe0976a80c27e224fe66e50d1fd0))
+
+## [0.0.18](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.17...ccc-lib/v0.0.18) (2025-12-04)
+
+
+### Features
+
+* Custom components ([#28](https://github.com/cccteam/ccc-lib/issues/28)) ([3692329](https://github.com/cccteam/ccc-lib/commit/36923290bb744dd2811a4a02efcf8189f50aabb4))
+
+## [0.0.17](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.16...ccc-lib/v0.0.17) (2025-12-03)
+
+
+### Features
+
+* Add custom types ([#26](https://github.com/cccteam/ccc-lib/issues/26)) ([93a4c52](https://github.com/cccteam/ccc-lib/commit/93a4c524bcd012c0a452ae5842ae9896294d0d79))
+
+## [0.0.16](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.15...ccc-lib/v0.0.16) (2025-12-03)
+
+
+### Features
+
+* Add Method and FieldName branded types ([#6](https://github.com/cccteam/ccc-lib/issues/6)) ([7915790](https://github.com/cccteam/ccc-lib/commit/79157903a06edc04fbbb041b19588949a7c78c53))
+* Add Resource components and utilities ([#11](https://github.com/cccteam/ccc-lib/issues/11)) ([c0ba979](https://github.com/cccteam/ccc-lib/commit/c0ba979a3b842fe80cdb448039bf2b3dcb5eefc1))
+* Release 0.15 and update readme ([#12](https://github.com/cccteam/ccc-lib/issues/12)) ([743cee4](https://github.com/cccteam/ccc-lib/commit/743cee4c9e4f05ddca3178b04b70a969f35cf557))
+* Showcase app ([#16](https://github.com/cccteam/ccc-lib/issues/16)) ([1740d99](https://github.com/cccteam/ccc-lib/commit/1740d990f3cb0a3146612d488594c72796294608))
+
+
+### Code Refactoring
+
+* Pull auth into package ([#3](https://github.com/cccteam/ccc-lib/issues/3)) ([18a6f32](https://github.com/cccteam/ccc-lib/commit/18a6f328f14d9b9a2ecea5735215f77f755aa609))
+
+
+### Code Upgrade
+
+* Angular 20 ([#9](https://github.com/cccteam/ccc-lib/issues/9)) ([1db02e5](https://github.com/cccteam/ccc-lib/commit/1db02e5300c82739ba4f6cff2b55ee0f851c4807))

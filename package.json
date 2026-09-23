@@ -42,7 +42,7 @@
   "scripts": {
     "lint": "ng lint",
     "typecheck:resource": "tsc --noEmit -p projects/resource/tsconfig.spec.json",
-    "build": "ng build resource && ng build resource-angular",
+    "build": "ng build resource && ng build resource-angular && ng build ccc-lib",
     "test": "bun run test:resource && bun run test:angular",
     "test:resource": "bun test projects/resource/ && bun run typecheck:resource",
     "test:angular": "ng test resource-angular --watch=false"

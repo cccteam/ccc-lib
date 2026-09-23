@@ -3,6 +3,38 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
+    "ccc-lib": {
+      "projectType": "library",
+      "root": "projects/ccc-lib",
+      "sourceRoot": "projects/ccc-lib",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:ng-packagr",
+          "options": {
+            "project": "projects/ccc-lib/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/ccc-lib/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/ccc-lib/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "projects/ccc-lib/**/*.ts",
+              "projects/ccc-lib/**/*.html"
+            ],
+            "eslintConfig": "projects/ccc-lib/eslint.config.js"
+          }
+        }
+      }
+    },
     "resource": {
       "projectType": "library",
       "root": "projects/resource",

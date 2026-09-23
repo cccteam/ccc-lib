@@ -1,9 +1,9 @@
 name: npm publish
 
 # Publishes the one package a release names. release-please cuts a release per package
-# (tags resource/v* and resource-angular/v*); this workflow builds the tagged commit and
-# publishes that package's dist folder to npm. The manual trigger re-publishes a tag after a
-# fixed registry setting.
+# (tags resource/v*, resource-angular/v*, and ccc-lib/v*); this workflow builds the tagged
+# commit and publishes that package's dist folder to npm. The manual trigger re-publishes a
+# tag after a fixed registry setting.
 
 on:
   release:
@@ -32,7 +32,8 @@ jobs:
           case "$TAG" in
             resource/v*)         echo "name=resource"         >> "$GITHUB_OUTPUT" ;;
             resource-angular/v*) echo "name=resource-angular" >> "$GITHUB_OUTPUT" ;;
-            *) echo "::error::'$TAG' is not a package release tag (resource/v* or resource-angular/v*)"; exit 1 ;;
+            ccc-lib/v*)          echo "name=ccc-lib"          >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::'$TAG' is not a package release tag (resource/v*, resource-angular/v*, or ccc-lib/v*)"; exit 1 ;;
           esac
           echo "version=${TAG#*/v}" >> "$GITHUB_OUTPUT"
 

@@ -1,0 +1,73 @@
+<div class="section {{ parentClass() }}" [class.hidden-field]="!showLayout()">
+  @let parentElement = element();
+  @if (children().length > 0) {
+    <div
+      class="section-elements dense-1 resource-layout-container"
+      [class]="layoutNestingDepth() % 2 === 0 ? 'resource-layout-container-even' : 'resource-layout-container-odd'">
+      @if (parentElement.type !== 'padding' && parentElement.label !== '') {
+        <div class="label">{{ parentElement.label }}</div>
+      }
+      @for (elementField of children(); track elementField) {
+        @let childElement = elementField;
+        @if (childElement.type === 'section') {
+          @if (layoutNestingDepth() < maxLayoutNestingDepth) {
+            <ccc-resource-layout-template
+              [layoutNestingDepth]="layoutNestingDepth() + 1"
+              [element]="childElement"
+              [meta]="meta()"
+              [fieldClass]="fieldClass()"
+              [editMode]="editMode()"
+              [form]="form()"
+              [formDataState]="formDataState()"
+              [pristineValue]="pristineValue()"
+              [relatedData]="relatedData()"
+              [parentClass]="parentClass()">
+            </ccc-resource-layout-template>
+          }
+        } @else if (childElement.type === 'field') {
+          <ccc-resource-field
+            [meta]="meta()"
+            [fieldClass]="fieldClass()"
+            [fieldConfig]="childElement"
+            [editMode]="editMode()"
+            [form]="form()"
+            [formDataState]="formDataState()"
+            [pristineValue]="pristineValue()"
+            [data]="relatedData()">
+          </ccc-resource-field>
+        } @else if (childElement.type === 'computedDisplayField') {
+          <ccc-computed-field
+            [fieldClass]="fieldClass()"
+            [fieldConfig]="childElement"
+            [formDataState]="formDataState()"></ccc-computed-field>
+        } @else if (childElement.type === 'padding') {
+          <ccc-padding-element [paddingElement]="childElement"></ccc-padding-element>
+        }
+      }
+    </div>
+  } @else {
+    @if (parentElement.type === 'field') {
+      <div
+        class="section-elements dense-1 resource-layout-container"
+        [class]="layoutNestingDepth() % 2 === 0 ? 'resource-layout-container-even' : 'resource-layout-container-odd'">
+        <ccc-resource-field
+          [meta]="meta()"
+          [fieldClass]="fieldClass()"
+          [fieldConfig]="parentElement"
+          [editMode]="editMode()"
+          [form]="form()"
+          [formDataState]="formDataState()"
+          [pristineValue]="pristineValue()"
+          [data]="relatedData()">
+        </ccc-resource-field>
+      </div>
+    } @else if (parentElement.type === 'computedDisplayField') {
+      <ccc-computed-field
+        [fieldClass]="fieldClass()"
+        [fieldConfig]="parentElement"
+        [formDataState]="formDataState()"></ccc-computed-field>
+    } @else if (parentElement.type === 'padding') {
+      <ccc-padding-element [paddingElement]="parentElement"></ccc-padding-element>
+    }
+  }
+</div>

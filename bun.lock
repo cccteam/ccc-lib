@@ -41,16 +41,30 @@
         "zone.js": "~0.15.0",
       },
     },
+    "projects/ccc-lib": {
+      "name": "@cccteam/ccc-lib",
+      "version": "0.0.44",
+      "dependencies": {
+        "date-fns": "^4.1.0",
+        "date-fns-tz": "^3.2.0",
+        "tslib": "^2.3.0",
+      },
+      "peerDependencies": {
+        "@angular/common": "^21.0.0",
+        "@angular/core": "^21.0.0",
+        "@contentful/rich-text-types": "^17.2.5",
+      },
+    },
     "projects/resource": {
       "name": "@cccteam/resource",
-      "version": "0.0.1",
+      "version": "0.0.2",
       "dependencies": {
         "tslib": "^2.3.0",
       },
     },
     "projects/resource-angular": {
       "name": "@cccteam/resource-angular",
-      "version": "0.0.44",
+      "version": "0.0.2",
       "dependencies": {
         "date-fns": "^4.1.0",
         "date-fns-tz": "^3.2.0",
@@ -186,9 +200,13 @@
 
     "@boundaries/elements": ["@boundaries/elements@1.2.0", "", { "dependencies": { "eslint-import-resolver-node": "0.3.9", "eslint-module-utils": "2.12.1", "handlebars": "4.7.8", "is-core-module": "2.16.1", "micromatch": "4.0.8" } }, "sha512-W65Gum02liMd3hmNrLmDBX1u5BmRMcunouFjLXyhxHnNY4YlK1kTxsgfflZ5XBGSnPnO0MkiUzAcoGzYrlx0RQ=="],
 
+    "@cccteam/ccc-lib": ["@cccteam/ccc-lib@workspace:projects/ccc-lib"],
+
     "@cccteam/resource": ["@cccteam/resource@workspace:projects/resource"],
 
     "@cccteam/resource-angular": ["@cccteam/resource-angular@workspace:projects/resource-angular"],
+
+    "@contentful/rich-text-types": ["@contentful/rich-text-types@17.2.7", "", {}, "sha512-aIdozk8vk5gsYcallOrwEiL6+GSlMXZorDOmiVELfpbVaXMJPJPlf2CBw3LUzviAqCw0UPQcKHHCwG7SdY7u5w=="],
 
     "@csstools/color-helpers": ["@csstools/color-helpers@6.1.0", "", {}, "sha512-064IFJdjTfUqnjpCVpMOdbr8FLQBhinbZj6yRv2An2E41O/pLEXqfFRWqGq/SxlE5PEUYTlvWsG2r8MswAVvkg=="],
 
