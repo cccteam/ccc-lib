@@ -5,6 +5,12 @@
   "include-v-in-tag": true,
   "tag-separator": "/",
   "separate-pull-requests": true,
+  "plugins": [
+    {
+      "type": "node-workspace",
+      "updatePeerDependencies": true
+    }
+  ],
   "changelog-sections": [
     {
       "type": "feat",
