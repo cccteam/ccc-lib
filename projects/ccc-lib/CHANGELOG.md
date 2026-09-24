@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.45](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.44...ccc-lib/v0.0.45) (2026-09-24)
+
+
+### Features
+
+* the first release of @cccteam/resource, a framework-neutral TypeScript client for the APIs the ccc resource package generates (typed reads, writes, and RPC methods, keyset paging, the permission digest and per-row capability envelope, a scripted transport for tests under @cccteam/resource/testing), and of @cccteam/resource-angular, its Angular binding (config-driven list, view, create, and edit pages, the server-paged grid, enumerated pickers, guards and menus gated on the permission digest, login refusal messages, provideResourceTesting under @cccteam/resource-angular/testing) ([1cf3a02](https://github.com/cccteam/ccc-lib/commit/1cf3a0280b3085b18eaf709bd8bafa27ea1057af))
+
+
+### Bug Fixes
+
+* allow enumerated fields to default to 10000 records ([#121](https://github.com/cccteam/ccc-lib/issues/121)) ([c16f54b](https://github.com/cccteam/ccc-lib/commit/c16f54b875446a188985112555c44b0e1a0f1172))
+
 ## [0.0.44](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.43...ccc-lib/v0.0.44) (2026-07-29)
 
 
