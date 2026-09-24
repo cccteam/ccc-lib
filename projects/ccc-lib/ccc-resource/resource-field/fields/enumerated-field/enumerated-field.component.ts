@@ -105,6 +105,7 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
       signal(config.disableCacheForFilterPii),
       this.query,
       this.sorts,
+      signal(config.limit),
     );
   });
 
