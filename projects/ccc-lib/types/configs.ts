@@ -232,6 +232,11 @@ export interface EnumeratedConfigOptions {
   listConcatFn?: ConcatFn;
   viewDetails?: boolean;
   searchable?: boolean;
+  /**
+   * The maximum number of options fetched for this enumerated field.
+   * @default 10000
+   */
+  limit?: number;
 }
 
 type FilterType = 'parentResource' | 'rootResource';
@@ -247,6 +252,7 @@ export interface EnumeratedConfig {
   listConcatFn: ConcatFn;
   viewDetails: boolean;
   searchable: boolean;
+  limit: number;
 }
 export function enumeratedConfig(config: EnumeratedConfigOptions): EnumeratedConfig {
   return {
@@ -254,6 +260,7 @@ export function enumeratedConfig(config: EnumeratedConfigOptions): EnumeratedCon
     ...config,
   } satisfies EnumeratedConfig;
 }
+export const enumeratedFieldDefaultLimit = 10000;
 export const enumeratedConfigDefaults = {
   overrideResource: '' as Resource,
   filter: (): string => '',
@@ -266,6 +273,7 @@ export const enumeratedConfigDefaults = {
   listConcatFn: 'hyphen-concat' as ConcatFn,
   viewDetails: false,
   searchable: false,
+  limit: enumeratedFieldDefaultLimit,
 };
 
 export type FieldDefault = ForeignKeyDefault | StaticDefault | null;
