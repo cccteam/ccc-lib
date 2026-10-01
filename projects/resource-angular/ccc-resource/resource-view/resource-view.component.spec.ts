@@ -396,4 +396,19 @@ describe('ResourceViewComponent over a row with untouched fields this build cann
     expect(component.form().get('summary')?.touched).toBe(true);
     expect(warnings()).toEqual([]);
   });
+
+  it('the refusal clears once the changed field passes, while an untouched field still fails', async () => {
+    await open('d-2');
+    type('summary', longSummary);
+    component.saveForm();
+    fixture.detectChanges();
+    expect(invalidMessage()).toBe('Please complete or fix required fields.');
+
+    type('summary', 'Beacon found');
+    fixture.detectChanges();
+    // The form as a whole still fails: the untouched notes field is empty and required.
+    expect(component.form().valid).toBe(false);
+    expect(component.displayFormInvalidMessage()).toBe(true);
+    expect(invalidMessage()).toBeNull();
+  });
 });

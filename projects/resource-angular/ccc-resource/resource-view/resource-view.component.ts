@@ -14,7 +14,7 @@ import {
   WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { AbstractControl, FormControl, FormGroup, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDividerModule } from '@angular/material/divider';
@@ -384,6 +384,27 @@ export class ResourceViewComponent implements OnInit {
     }
   }
 
+  /** The names of the fields whose values differ from the viewed row's: the fields the patch carries. */
+  private changedFieldNames(): string[] {
+    return Object.keys(sparseFormData(this.form(), this.pristineFormValues));
+  }
+
+  /** The controls of the changed fields (see changedFieldNames). */
+  private changedControls(): AbstractControl[] {
+    return this.changedFieldNames()
+      .map((name) => this.form().get(name))
+      .filter((control) => control !== null);
+  }
+
+  /**
+   * Whether a changed field fails this form's rules: what refuses a save, and what the
+   * refusal's message follows, so the message clears once the changed fields pass,
+   * whatever an untouched field holds. displayFormInvalidMessage says a save was refused.
+   */
+  changedFieldsInvalid(): boolean {
+    return this.changedControls().some((control) => control.invalid);
+  }
+
   saveForm(): void {
     // The patch carries only the fields whose values differ from the viewed row's, and
     // the server checks only those, so only they must pass this form's rules. A field the
@@ -391,18 +412,16 @@ export class ResourceViewComponent implements OnInit {
     // is one this build cannot produce but a newer release allows (a longer limit), or one
     // the page config requires and the row lacks (a field an RPC emptied), and either way
     // it is not this save's to fix. The view warns about it instead.
-    const changed = Object.keys(sparseFormData(this.form(), this.pristineFormValues));
-    const changedControls = changed.map((name) => this.form().get(name)).filter((control) => control !== null);
-    if (changedControls.some((control) => control.invalid)) {
+    if (this.changedFieldsInvalid()) {
       this.displayFormInvalidMessage.set(true);
-      for (const control of changedControls) {
+      for (const control of this.changedControls()) {
         control.markAsTouched();
       }
       return;
     }
 
     this.displayFormInvalidMessage.set(false);
-    this.warnAboutUnchangedInvalidFields(changed);
+    this.warnAboutUnchangedInvalidFields(this.changedFieldNames());
 
     const resourceMeta = this.store.resourceMeta();
     if (!resourceMeta) {
