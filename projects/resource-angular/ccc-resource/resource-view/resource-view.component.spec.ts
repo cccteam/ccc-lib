@@ -47,12 +47,13 @@ describe('ResourceViewComponent with no store in scope', () => {
   });
 });
 
-// A row with a write-only field, an object field, and an array field: the view draws
-// nothing for the write-only field and presents the two shapes read-only; in edit mode
-// the write-only field is a blank input and the two shapes stay read-only; a save sends
-// only what was typed, never the untouched array or object, and nothing at all when
+// A row with a write-only field, a cell masked for this reader, an object field, and an
+// array field: the view draws nothing for the write-only field and presents the two
+// shapes read-only; in edit mode the write-only field and the masked cell are blank
+// inputs and the two shapes stay read-only; a save sends only what was typed, never the
+// untouched array or object, never null for the masked cell, and nothing at all when
 // nothing was typed. The requests are pinned against a scripted client.
-describe('ResourceViewComponent over a write-only field and the read-only shapes', () => {
+describe('ResourceViewComponent over a write-only field, a masked cell, and the read-only shapes', () => {
   const calls = 'Calls' as Resource;
   const descriptor: ApiDescriptor = {
     permissionDigestRoute: 'permission-digest',
@@ -67,7 +68,7 @@ describe('ResourceViewComponent over a write-only field and the read-only shapes
         consolidated: false,
         keys: ['id'],
         operations: ['list', 'read', 'patch'],
-        patchable: ['summary', 'transcript', 'position', 'tags'],
+        patchable: ['summary', 'transcript', 'callerPhone', 'position', 'tags'],
       },
     },
   };
@@ -79,11 +80,16 @@ describe('ResourceViewComponent over a write-only field and the read-only shapes
       fieldMeta('id', { primaryKey: { ordinalPosition: 0 }, displayType: 'uuid' }),
       fieldMeta('summary'),
       fieldMeta('transcript', { writeOnly: true }),
+      fieldMeta('callerPhone'),
       fieldMeta('position', { displayType: 'object' }),
       fieldMeta('tags', { displayType: 'string[]' }),
     ],
   };
-  /** The row as the server returns it: no transcript, since the server never returns a write-only field. */
+  /**
+   * The row as the server returns it: no transcript, since the server never returns a
+   * write-only field, and no callerPhone, since the server leaves a cell that is masked
+   * for this reader out of the row, with no marker.
+   */
   const row = { id: 'c-1', summary: 'Beacon lost', position: { type: 'Point', coordinates: [1, 2] }, tags: ['a', 'b'] };
 
   let fixture: ComponentFixture<ResourceViewComponent>;
@@ -144,6 +150,7 @@ describe('ResourceViewComponent over a write-only field and the read-only shapes
         elements: [
           field({ name: 'summary' as FieldName, label: 'Summary' }),
           field({ name: 'transcript' as FieldName, label: 'Transcript' }),
+          field({ name: 'callerPhone' as FieldName, label: 'Caller phone' }),
           field({ name: 'position' as FieldName, label: 'Position' }),
           field({ name: 'tags' as FieldName, label: 'Tags' }),
         ],
@@ -188,7 +195,7 @@ describe('ResourceViewComponent over a write-only field and the read-only shapes
     expect(patches()).toEqual([{ transcript: 'Cadet on watch logged a debris field' }]);
   });
 
-  it('a save of another field sends no array and no object', async () => {
+  it('a save of another field sends no array, no object, and no null for the masked cell', async () => {
     component.setEditMode('edit');
     fixture.detectChanges();
     const summary = component.form().get('summary') as AbstractControl<unknown>;
@@ -197,5 +204,20 @@ describe('ResourceViewComponent over a write-only field and the read-only shapes
     component.saveForm();
     await settle(() => patches().length === 1);
     expect(patches()).toEqual([{ summary: 'Beacon found' }]);
+  });
+
+  it('the masked cell is a blank input in edit mode, and a value typed into it is the patch', async () => {
+    component.setEditMode('edit');
+    fixture.detectChanges();
+    const callerPhone = inputLabeled('Caller phone');
+    expect(callerPhone).not.toBeNull();
+    expect(callerPhone?.value).toBe('');
+
+    const control = component.form().get('callerPhone') as AbstractControl<unknown>;
+    control.setValue('555-0100');
+    control.markAsDirty();
+    component.saveForm();
+    await settle(() => patches().length === 1);
+    expect(patches()).toEqual([{ callerPhone: '555-0100' }]);
   });
 });
