@@ -22,6 +22,15 @@ export type PatchOf<H> = H extends { readonly ops: { patch(key: never, value: in
  * field the after image does not carry (or carries as undefined) is not part of the
  * form and is never compared.
  *
+ * A field the before image does not carry was never read: the server leaves a cell
+ * that is masked for this reader out of the row, with no marker, and never returns a
+ * write-only field. The control over such a field starts blank, so a blank control
+ * (null or an empty string) is nothing typed and not a change; read as a clear, it
+ * would empty the cell or fail the save. A value typed into it is sent, and the
+ * server's own check decides whether this reader may update the field. A cell that is
+ * NULL arrives as an explicit null, so clearing a value the row carries still
+ * registers.
+ *
  * A differing field outside the descriptor's patchable list throws, naming the
  * resource and field — key, server-owned, and immutable fields alike. Dropping it
  * silently would save something other than what the user sees; the error is the
@@ -37,6 +46,9 @@ export function changes<H extends DescribedHandle>(handle: H, before: object, af
     if (field === CapabilitiesProperty || proposed === undefined) {
       continue;
     }
+    if (beforeMap[field] === undefined && isBlank(proposed)) {
+      continue;
+    }
     if (equalContent(beforeMap[field], proposed)) {
       continue;
     }
@@ -49,6 +61,11 @@ export function changes<H extends DescribedHandle>(handle: H, before: object, af
   }
 
   return Object.keys(patch).length > 0 ? (patch as PatchOf<H>) : undefined;
+}
+
+/** A blank control: nothing typed, in either value a form gives it. */
+function isBlank(value: unknown): boolean {
+  return value === null || value === '';
 }
 
 /** Content equality: Dates by instant, plain objects and arrays structurally. */

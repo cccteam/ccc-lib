@@ -39,6 +39,39 @@ describe('changes', () => {
     expect(changes(handle, before, { title: 'Tune-up' })).toBeUndefined();
   });
 
+  // The server leaves a cell that is masked for its reader out of the row, with no
+  // marker, and never returns a write-only field: the control over such a field starts
+  // blank, and blank still is nothing typed, not a clear.
+  it('a field absent from the row and null in the form is not a change', () => {
+    const before = { id: 'a', title: 'Tune-up' };
+    const after = { id: 'a', title: 'Tune-up', summary: null };
+    expect(changes(handle, before, after)).toBeUndefined();
+  });
+
+  it('a field absent from the row and empty in the form is not a change', () => {
+    const before = { id: 'a', title: 'Tune-up' };
+    const after = { id: 'a', title: 'Tune-up', summary: '' };
+    expect(changes(handle, before, after)).toBeUndefined();
+  });
+
+  it('a field absent from the row and blank in the form is not a change even outside the patchable list', () => {
+    const before = { id: 'a', title: 'Tune-up' };
+    const after = { id: 'a', title: 'Tune-up', statusId: null };
+    expect(changes(handle, before, after)).toBeUndefined();
+  });
+
+  it('a value typed into the blank control over an absent field is a change', () => {
+    const before = { id: 'a', title: 'Tune-up' };
+    const after = { id: 'a', title: 'Tune-up', summary: 'typed' };
+    expect(changes(handle, before, after)).toEqual({ summary: 'typed' });
+  });
+
+  it('a null the row carries is a value: leaving it is no change, filling it is one', () => {
+    const before = { id: 'a', title: 'Tune-up', summary: null };
+    expect(changes(handle, before, { ...before })).toBeUndefined();
+    expect(changes(handle, before, { ...before, summary: 'filled' })).toEqual({ summary: 'filled' });
+  });
+
   it('an untouched date is not a change, whatever its representation', () => {
     const before = { id: 'a', dueAt: '2026-09-02T12:00:00Z' };
     const after = { id: 'a', dueAt: new Date('2026-09-02T12:00:00Z') };
