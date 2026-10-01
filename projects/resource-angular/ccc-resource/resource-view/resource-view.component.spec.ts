@@ -4,8 +4,18 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { ApiDescriptor, createClient, Resource, TransportRequest, TransportResponse } from '@cccteam/resource';
 import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing';
 import { provideResourceTesting } from '@cccteam/resource-angular/testing';
-import { field, FieldMeta, FieldName, RESOURCE_META, ResourceMeta, viewConfig } from '@cccteam/resource-angular/types';
+import {
+  AlertType,
+  field,
+  FieldMeta,
+  FieldName,
+  RecordData,
+  RESOURCE_META,
+  ResourceMeta,
+  viewConfig,
+} from '@cccteam/resource-angular/types';
 
+import { resourceValidators } from '../gui-constants';
 import { ResourceStore } from '../resource-store.service';
 import { ResourceViewComponent } from './resource-view.component';
 
@@ -219,5 +229,186 @@ describe('ResourceViewComponent over a write-only field, a masked cell, and the 
     component.saveForm();
     await settle(() => patches().length === 1);
     expect(patches()).toEqual([{ callerPhone: '555-0100' }]);
+  });
+});
+
+// A row with untouched fields this build's rules refuse: a value longer than the limit
+// this build knows for the field (a newer release raised it, and a newer app saved the
+// longer value), and a field the page config requires that the row lacks (an RPC emptied
+// it). The person edits another field. The save goes through with that field alone, since
+// the patch carries only the changed fields and the server checks only those, and the view
+// warns about each untouched field by its label and the rule it fails. A changed field
+// that fails still blocks the save, as before.
+describe('ResourceViewComponent over a row with untouched fields this build cannot validate', () => {
+  const dispatches = 'Dispatches' as Resource;
+  const descriptor: ApiDescriptor = {
+    permissionDigestRoute: 'permission-digest',
+    userDomainsRoute: 'user-domains',
+    methods: {},
+    resources: {
+      [dispatches]: {
+        resource: dispatches,
+        property: 'dispatches',
+        route: 'dispatches',
+        scope: 'global',
+        consolidated: false,
+        keys: ['id'],
+        operations: ['list', 'read', 'patch'],
+        patchable: ['summary', 'notes'],
+      },
+    },
+  };
+  /** The limit this build knows for the summary; the first row's value came from a release that allows more. */
+  const summaryLimit = 20;
+  const longSummary = 'Beacon lost near the outer reef';
+  const fieldMeta = (fieldName: string, extra: Partial<FieldMeta> = {}): FieldMeta =>
+    ({ fieldName, displayType: 'string', required: false, isIndex: false, ...extra }) as FieldMeta;
+  const meta: ResourceMeta = {
+    route: 'dispatches',
+    fields: [
+      fieldMeta('id', { primaryKey: { ordinalPosition: 0 }, displayType: 'uuid' }),
+      fieldMeta('summary', { maxLength: summaryLimit }),
+      fieldMeta('notes'),
+    ],
+  };
+  const rows: Record<string, RecordData> = {
+    'd-1': { id: 'd-1', summary: longSummary, notes: 'Cadet on watch' },
+    'd-2': { id: 'd-2', summary: 'Beacon lost', notes: null },
+  };
+
+  let fixture: ComponentFixture<ResourceViewComponent>;
+  let component: ResourceViewComponent;
+  let transport: ScriptedTransport;
+
+  const server = (request: TransportRequest): TransportResponse => {
+    const path = request.url.split('?')[0];
+    const row = rows[path.replace('/api/dispatches/', '')];
+    if (request.method === 'GET' && row) {
+      return { status: 200, body: row };
+    }
+    if (request.method === 'PATCH') {
+      return { status: 200, body: {} };
+    }
+    return { status: 404, body: { message: `unscripted ${request.method} ${request.url}` } };
+  };
+
+  /** Runs change detection and lets pending microtasks land until `done` answers true, or a few rounds pass. */
+  const settle = async (done: () => boolean): Promise<void> => {
+    for (let i = 0; i < 30 && !done(); i++) {
+      TestBed.tick();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    fixture.detectChanges();
+  };
+
+  /** The value of every patch operation sent so far. */
+  const patches = (): unknown[] =>
+    transport.requests
+      .filter((request) => request.method === 'PATCH')
+      .map((request) => (request.body as { value: unknown }[])[0].value);
+
+  /** The messages of the warnings the view raised: the notifications that are neither refusals nor successes. */
+  const warnings = (): string[] =>
+    component.notifications
+      .notifications()
+      .filter((notification) => notification.type === AlertType.INFO)
+      .map((notification) => notification.message);
+
+  /** The text of the view's own message that a refused save shows beside the buttons, or null when none shows. */
+  const invalidMessage = (): string | null =>
+    (fixture.nativeElement as HTMLElement).querySelector('.invalid.message')?.textContent?.trim() ?? null;
+
+  /** Opens the row in edit mode. */
+  const open = async (id: string): Promise<void> => {
+    transport = scriptedTransport(server);
+    await TestBed.configureTestingModule({
+      imports: [ResourceViewComponent],
+      providers: [
+        provideResourceTesting({ transport, client: (t) => createClient(descriptor, { baseUrl: '/api', transport: t }) }),
+        provideNoopAnimations(),
+        ResourceStore,
+        {
+          provide: RESOURCE_META,
+          useValue: (resource: Resource): ResourceMeta | undefined => (resource === dispatches ? meta : undefined),
+        },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ResourceViewComponent);
+    component = fixture.componentInstance;
+    fixture.componentRef.setInput('uuid', id);
+    fixture.componentRef.setInput(
+      'config',
+      viewConfig({
+        primaryResource: dispatches,
+        showBackButton: false,
+        elements: [
+          field({ name: 'summary' as FieldName, label: 'Summary' }),
+          field({ name: 'notes' as FieldName, label: 'Notes', validators: [resourceValidators.REQUIRED] }),
+        ],
+      }),
+    );
+    fixture.detectChanges();
+    await settle(() => component.store.rowPresent());
+    component.setEditMode('edit');
+    fixture.detectChanges();
+  };
+
+  const type = (name: string, value: string): void => {
+    const control = component.form().get(name) as AbstractControl<unknown>;
+    control.setValue(value);
+    control.markAsDirty();
+  };
+
+  it('an untouched value over the limit does not block the save of another field; the view warns', async () => {
+    await open('d-1');
+    type('notes', 'Cadet relieved');
+    component.saveForm();
+    await settle(() => patches().length === 1);
+    expect(patches()).toEqual([{ notes: 'Cadet relieved' }]);
+    expect(component.displayFormInvalidMessage()).toBe(false);
+    expect(invalidMessage()).toBeNull();
+    expect(warnings()).toEqual([
+      `Summary is ${longSummary.length} characters long, more than the ${summaryLimit} this form allows. ` +
+        'The save left it as it was.',
+    ]);
+  });
+
+  it('an untouched field the config requires but the row lacks does not block the save; the view warns', async () => {
+    await open('d-2');
+    type('summary', 'Beacon found');
+    component.saveForm();
+    await settle(() => patches().length === 1);
+    expect(patches()).toEqual([{ summary: 'Beacon found' }]);
+    expect(component.displayFormInvalidMessage()).toBe(false);
+    expect(invalidMessage()).toBeNull();
+    expect(warnings()).toEqual(['Notes is empty, which this form does not allow. The save left it as it was.']);
+  });
+
+  it('a changed field that fails still blocks the save, with the refusal and no warning', async () => {
+    await open('d-2');
+    type('summary', longSummary);
+    component.saveForm();
+    await settle(() => false);
+    expect(patches()).toEqual([]);
+    expect(component.displayFormInvalidMessage()).toBe(true);
+    expect(invalidMessage()).toBe('Please complete or fix required fields.');
+    expect(component.form().get('summary')?.touched).toBe(true);
+    expect(warnings()).toEqual([]);
+  });
+
+  it('the refusal clears once the changed field passes, while an untouched field still fails', async () => {
+    await open('d-2');
+    type('summary', longSummary);
+    component.saveForm();
+    fixture.detectChanges();
+    expect(invalidMessage()).toBe('Please complete or fix required fields.');
+
+    type('summary', 'Beacon found');
+    fixture.detectChanges();
+    // The form as a whole still fails: the untouched notes field is empty and required.
+    expect(component.form().valid).toBe(false);
+    expect(component.displayFormInvalidMessage()).toBe(true);
+    expect(invalidMessage()).toBeNull();
   });
 });

@@ -132,7 +132,7 @@
           @if (form().dirty) {
             <div class="unsaved message">You have unsaved changes!</div>
           }
-          @if (!form().valid && displayFormInvalidMessage()) {
+          @if (displayFormInvalidMessage() && changedFieldsInvalid()) {
             <div class="invalid message">Please complete or fix required fields.</div>
           }
           <button mat-raised-button color="primary" (click)="resetForm()">Cancel</button>
