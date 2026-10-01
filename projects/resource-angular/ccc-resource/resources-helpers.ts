@@ -1,5 +1,5 @@
 import { ModelSignal } from '@angular/core';
-import { FormControl, FormGroup, ValidatorFn, Validators } from '@angular/forms';
+import { FormControl, FormGroup, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { FieldMeta } from '@cccteam/resource';
 import {
   ConfigElement,
@@ -28,6 +28,31 @@ export function maxLengthValidator(field: FieldMeta): ValidatorFn | undefined {
     return undefined;
   }
   return Validators.maxLength(field.maxLength);
+}
+
+/**
+ * What a save says about a field the person did not change whose value fails this
+ * form's rules: the field by its label, then each rule it fails, then that the save left
+ * the field alone. The limit is the server's character limit as this build knows it; a
+ * newer release may allow more, and a newer app may have saved more. A rule from the
+ * library's own validators carries its message (errorMsg), Angular's maxlength and
+ * required are spelled out, and any other rule is named.
+ */
+export function unchangedFieldWarning(label: string, errors: ValidationErrors): string {
+  const clauses = Object.entries(errors).map(([rule, detail]) => {
+    if (rule === 'maxlength') {
+      const lengths = detail as { requiredLength: number; actualLength: number };
+      return `is ${lengths.actualLength} characters long, more than the ${lengths.requiredLength} this form allows`;
+    }
+    if (rule === 'required') {
+      return 'is empty, which this form does not allow';
+    }
+    if (rule === 'errorMsg') {
+      return `fails this form's rule: ${String(detail)}`;
+    }
+    return `fails this form's ${rule} rule`;
+  });
+  return `${label} ${clauses.join(', and ')}. The save left it as it was.`;
 }
 
 export const createFormGroup = (

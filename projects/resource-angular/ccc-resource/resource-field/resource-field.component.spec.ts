@@ -1,8 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl, FormGroup } from '@angular/forms';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { provideResourceTesting } from '@cccteam/resource-angular/testing';
 import { field, FieldMeta, FieldName, ResourceMeta, ValidDisplayTypes } from '@cccteam/resource-angular/types';
 
+import { resourceValidators } from '../gui-constants';
 import { ResourceStore } from '../resource-store.service';
 import { FieldRenderer } from './renderer';
 import { ResourceFieldComponent } from './resource-field.component';
@@ -127,5 +128,39 @@ describe('ResourceFieldComponent dispatch', () => {
     const element: HTMLElement = fixture.nativeElement;
     expect(element.querySelector('ccc-empty-readonly-field')).not.toBeNull();
     expect(element.querySelector('ccc-array-field')).toBeNull();
+  });
+});
+
+// A config whose validators are a function of the form's values replaces the control's
+// validators whenever the values change; the limit the field's metadata set stays with them.
+describe('ResourceFieldComponent with a validators function', () => {
+  it('keeps the limit beside the rules the function returns', async () => {
+    await TestBed.configureTestingModule({
+      imports: [ResourceFieldComponent],
+      providers: [provideResourceTesting(), ResourceStore],
+    }).compileComponents();
+    const callsign: FieldMeta = {
+      fieldName: 'callsign',
+      displayType: 'string',
+      required: false,
+      isIndex: false,
+      maxLength: 5,
+    };
+    // The control as the form owner built it: the limit from the metadata, and nothing from the config yet.
+    const control = new FormControl<string | null>('Kestrel', Validators.maxLength(5));
+    const fixture = TestBed.createComponent(ResourceFieldComponent);
+    fixture.componentRef.setInput('meta', { route: 'squadrons', fields: [callsign] } as ResourceMeta);
+    fixture.componentRef.setInput(
+      'fieldConfig',
+      field({ name: 'callsign' as FieldName, label: 'Callsign', validators: () => [resourceValidators.REQUIRED] }),
+    );
+    fixture.componentRef.setInput('form', new FormGroup({ callsign: control }));
+    fixture.componentRef.setInput('formDataState', { callsign: 'Kestrel' });
+    fixture.detectChanges();
+
+    expect(control.hasValidator(resourceValidators.REQUIRED)).toBe(true);
+    expect(control.errors).toEqual({ maxlength: { requiredLength: 5, actualLength: 7 } });
+    control.setValue('');
+    expect(control.errors).toEqual({ required: true });
   });
 });

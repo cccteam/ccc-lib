@@ -23,6 +23,7 @@ import {
 } from '@cccteam/resource-angular/types';
 import { EmptyReadonlyFieldComponent } from '../empty-readonly-field/empty-readonly-field.component';
 import { ResourceStore } from '../resource-store.service';
+import { maxLengthValidator } from '../resources-helpers';
 import { ArrayFieldComponent } from './fields/array-field/array-field.component';
 import { BooleanFieldComponent } from './fields/boolean-field/boolean-field.component';
 import { BytesFieldComponent } from './fields/bytes-field/bytes-field.component';
@@ -267,7 +268,10 @@ export class ResourceFieldComponent {
         const addValidators = !validatorsPresent(control, newValidators, this.previousValidatorCount);
 
         if (addValidators) {
-          control.setValidators(newValidators);
+          // The config's validators replace the control's, but the limit the field's
+          // metadata set stays: the server's character limit holds whatever the config says.
+          const maxLength = maxLengthValidator(this.fieldMeta());
+          control.setValidators(maxLength ? [...newValidators, maxLength] : newValidators);
           control.updateValueAndValidity();
         }
 

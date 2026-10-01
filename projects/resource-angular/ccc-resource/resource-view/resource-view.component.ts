@@ -52,7 +52,7 @@ import { ResourceCreateComponent } from '../resource-create/resource-create.comp
 import { ResourceLayoutComponent } from '../resource-layout/resource-layout.component';
 import { ResourceStore } from '../resource-store.service';
 import { patchFromForm } from '@cccteam/resource-angular/resource-client';
-import { maxLengthValidator, metadataTypeCoercion } from '../resources-helpers';
+import { maxLengthValidator, metadataTypeCoercion, unchangedFieldWarning } from '../resources-helpers';
 
 @Component({
   selector: 'ccc-resource-view',
@@ -359,14 +359,50 @@ export class ResourceViewComponent implements OnInit {
     }
   }
 
+  /**
+   * Raises one warning per field the person did not change whose value fails this
+   * form's rules, naming the field by its label and the rule it fails (see
+   * unchangedFieldWarning), through the same notifications the save's refusals use.
+   */
+  private warnAboutUnchangedInvalidFields(changed: string[]): void {
+    const labels = new Map<string, string>();
+    for (const element of flattenElements(this.config().elements)) {
+      if (element.type === 'field') {
+        labels.set(element.name, element.label);
+      }
+    }
+    for (const name of Object.keys(this.form().controls)) {
+      const errors = this.form().get(name)?.errors;
+      if (changed.includes(name) || !errors) {
+        continue;
+      }
+      this.notifications.addGlobalNotification({
+        message: unchangedFieldWarning(labels.get(name) || name, errors),
+        link: '',
+        type: AlertType.INFO,
+      });
+    }
+  }
+
   saveForm(): void {
-    if (!this.form().valid) {
+    // The patch carries only the fields whose values differ from the viewed row's, and
+    // the server checks only those, so only they must pass this form's rules. A field the
+    // person did not change does not block the save when its value fails them: the value
+    // is one this build cannot produce but a newer release allows (a longer limit), or one
+    // the page config requires and the row lacks (a field an RPC emptied), and either way
+    // it is not this save's to fix. The view warns about it instead.
+    const changed = Object.keys(sparseFormData(this.form(), this.pristineFormValues));
+    const changedControls = changed.map((name) => this.form().get(name)).filter((control) => control !== null);
+    if (changedControls.some((control) => control.invalid)) {
       this.displayFormInvalidMessage.set(true);
-      this.form().markAllAsTouched();
+      for (const control of changedControls) {
+        control.markAsTouched();
+      }
       return;
     }
 
     this.displayFormInvalidMessage.set(false);
+    this.warnAboutUnchangedInvalidFields(changed);
 
     const resourceMeta = this.store.resourceMeta();
     if (!resourceMeta) {
