@@ -1,5 +1,6 @@
 import { Route } from '@angular/router';
 import { AuthorizationGuard } from '@cccteam/resource-angular/auth-authorization-guard';
+import { featureMatch } from '@cccteam/resource-angular/auth-feature';
 import { canDeactivateGuard } from '@cccteam/resource-angular/guards';
 import { addNavItem, registerResourcePage } from '@cccteam/resource-angular/resource-nav';
 import {
@@ -32,7 +33,10 @@ import {
  * resource and for its table, so another list's row route lands here. A listed resource
  * with no key field (a `@computed` or `@virtual` struct with no `@primarykey`) is served
  * whole and has no row: its page gets no row route and is registered as nowhere a row
- * opens, as `hasViewRoute: false` says for a keyed one.
+ * opens, as `hasViewRoute: false` says for a keyed one. A resource behind a feature flag
+ * (the metadata's `feature`) gets a match guard from it: while the flag is off the router
+ * passes over the page and a dark URL falls to the application's wildcard, and the
+ * navigation item carries the flag too, so a `cccFeature`-gated menu hides it.
  */
 export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Resource) => ResourceMeta): Route => {
   const resource = config.parentConfig.primaryResource as Resource;
@@ -43,6 +47,11 @@ export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Reso
 
   const scope: PermissionScope = { resource, permission: ListPermission };
   config.nav.navItem.permission ??= scope;
+  if (meta.feature) {
+    config.nav.navItem.feature ??= meta.feature;
+  }
+  // The page is matched only while its flag is on; an ungated page is matched as any other.
+  const gated = (route: Route): Route => (meta.feature ? { ...route, canMatch: [featureMatch(meta.feature)] } : route);
 
   if (config.nav.group) {
     if (config.routeData.route) {
@@ -87,7 +96,7 @@ export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Reso
     }
     // A configured route stands with or without its row route; falling through would
     // discard it for the meta route and add the row route the config switched off.
-    return baseRoute;
+    return gated(baseRoute);
   }
 
   const rowRoute: Route = {
@@ -103,10 +112,10 @@ export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Reso
     canDeactivate: [canDeactivateGuard],
   };
 
-  return {
+  return gated({
     path: meta.route,
     data,
     canActivate: [AuthorizationGuard],
     children: keyless ? [listRoute] : [rowRoute, listRoute],
-  } satisfies Route;
+  } satisfies Route);
 };

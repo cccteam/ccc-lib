@@ -15,6 +15,7 @@ import { ResourceStore } from './resource-store.service';
 const descriptor: ApiDescriptor = {
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
+  features: { route: 'features' },
   domainRoute: { segment: 'sectors', param: 'sectorID' },
   resources: {
     // No maximum: read whole.

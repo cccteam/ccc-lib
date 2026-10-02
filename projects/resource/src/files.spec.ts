@@ -12,6 +12,7 @@ import { scriptedTransport } from '@cccteam/resource/testing';
 const descriptor: ApiDescriptor = {
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
+  features: { route: 'features' },
   domainRoute: { segment: 'sectors', param: 'sectorID' },
   resources: {
     MissionDocuments: {

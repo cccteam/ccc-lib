@@ -68,6 +68,7 @@ describe('ResourceViewComponent over a write-only field, a masked cell, and the 
   const descriptor: ApiDescriptor = {
     permissionDigestRoute: 'permission-digest',
     userDomainsRoute: 'user-domains',
+    features: { route: 'features' },
     methods: {},
     resources: {
       [calls]: {
@@ -244,6 +245,7 @@ describe('ResourceViewComponent over a row with untouched fields this build cann
   const descriptor: ApiDescriptor = {
     permissionDigestRoute: 'permission-digest',
     userDomainsRoute: 'user-domains',
+    features: { route: 'features' },
     methods: {},
     resources: {
       [dispatches]: {

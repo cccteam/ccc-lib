@@ -54,6 +54,7 @@ const metas: Record<string, ResourceMeta> = {
 const descriptor: ApiDescriptor = {
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
+  features: { route: 'features' },
   resources: {
     [orders]: { resource: orders, property: 'standingOrders', route: 'standing-orders', scope: 'global', consolidated: false, keys: [], operations: ['list'], page: { default: 50 } },
     [ships]: { resource: ships, property: 'ships', route: 'ships', scope: 'global', consolidated: false, keys: ['id'], operations: ['list', 'read'], page: { default: 25, max: 200 } },

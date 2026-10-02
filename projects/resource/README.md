@@ -246,6 +246,53 @@ them: the listener keeps its connection and resumes after a drop, so nothing is 
 it runs. `LiveOptions` on `createApi` (`live: { renewInterval, page, fetch, xsrf }`) are the
 knobs a spec turns; every one has a default.
 
+## Feature flags
+
+A feature can ship dark and be turned on per environment, without a release. The server
+holds a switch per declared flag, and the browser learns which switches are on once, when the
+session signs in, beside the permission digest; nothing polls, nothing is pushed, and a flip by
+someone else is seen at the next sign-in. The one exception is the person flipping, whose
+client reloads the set and the digest once the write succeeds, so their own pages follow at
+once.
+
+A feature with a resource or a method behind it needs nothing here: while its flag is off the
+server answers not-found on its routes and leaves it out of the digest, so every surface the
+digest hides is hidden, and the descriptor entry carries the flag's name as `feature` for the
+route guard the Angular binding adds. A gated field is left out of responses and of the digest
+too, and the generated row type makes it optional; its metadata carries `feature` as well. The
+generated `Feature` union in `zz_gen_api.ts` names every declared flag, so a misspelled flag
+fails to compile; the library's own types take a string and the application narrows.
+
+`api.features` is the enabled set. `enabled(name)` answers synchronously from the copy and
+never fetches: a flag the set does not hold is off, and so is every flag before the set has
+loaded, so a consumer that renders before sign-in fails closed. `refresh()` loads it from the
+descriptor's `features.route` (`GET <prefix>/features`, answering `{ enabled: [...] }`); a failed
+load empties the set and rethrows. `ensure(name)` loads first when the set has not loaded, for a
+route guard. `flags()` reads every declared flag with its description and state from the
+framework's `FeatureFlags` resource through the client's own handle, and `setFeature(name,
+enabled)` flips one through the generated `SetFeature` method, then reloads the set, the domains,
+and every cached digest; a refused flip rejects with the server's `ApiError` and refreshes
+nothing. `canSet()` is the digest's Execute entry for the method. `clear()` forgets the set at
+logout, and `subscribe` notifies a UI framework. `descriptor.features` is optional: a descriptor
+from a generator that predates feature flags carries none, and the API then serves no flags.
+`served` is false, the set stays empty and unloaded, `refresh()` resolves to nothing without a
+request, every flag answers off, and `flags()` and `setFeature()` refuse before any request,
+saying the API serves no feature flags. The absence is announced rather than silent: `enabled(name)`
+and `ensure(name)` reach `ClientOptions.warn` once per flag (the console by default) saying the
+flag was asked of an API that serves no feature flags and answers off, `refresh()` says it once
+for every flag, and each message names the regeneration that would serve them.
+
+```ts
+await api.features.refresh(); // once the session is authenticated, beside the digest
+
+if (api.features.enabled('debriefs')) {
+  // the feature's own code, for a feature with no resource behind it
+}
+
+const flags = await api.features.flags(); // every declared flag: name, description, enabled, updatedAt, updatedBy
+await api.features.setFeature('debriefs', true); // the set and the digest are current when this resolves
+```
+
 ## Transports
 
 `fetchTransport()` is the default. A framework routes requests through its own HTTP

@@ -72,6 +72,8 @@ export interface MethodMeta {
   /** Set when the method answers with a result body; absent methods resolve with nothing. */
   answers?: true;
   fields: RPCFieldMeta[];
+  /** The feature flag that gates the method, by name; absent on an ungated method. See MethodDescriptor.feature. */
+  feature?: string;
 }
 
 /** When the server accepts a filter on a field: on its own, or only beside an indexed field. */
@@ -145,6 +147,13 @@ export interface FieldMeta {
    * input for it and a view renders nothing. Emitted by the ccc TypeScript generator.
    */
   writeOnly?: boolean;
+  /**
+   * The feature flag that gates the field (`@feature` on the field), by name. While the
+   * flag is off the field is absent: omitted from every response, an unknown field in a
+   * request (400), and omitted from the digest, so a form over the digest's fields never
+   * draws it. The generated row type makes it optional. Absent on an ungated field.
+   */
+  feature?: string;
 }
 
 export interface ResourceMeta {
@@ -165,6 +174,12 @@ export interface ResourceMeta {
   updateDisabled?: boolean;
   deleteDisabled?: boolean;
   fields: FieldMeta[];
+  /**
+   * The feature flag that gates the resource, by name; absent on an ungated resource.
+   * The generated routes read it to skip the page while the flag is off. See
+   * ResourceDescriptor.feature.
+   */
+  feature?: string;
 }
 
 export type Meta = MethodMeta | ResourceMeta;

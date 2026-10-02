@@ -15,7 +15,7 @@ import {
   SESSION_PATH,
   SessionInfo,
 } from '@cccteam/resource-angular/types';
-import { ClientBase, fieldPermissionStates, permissionState, PermissionStore } from '@cccteam/resource';
+import { ClientBase, FeatureState, fieldPermissionStates, permissionState, PermissionStore } from '@cccteam/resource';
 import { from, map, Observable, of, switchMap, tap } from 'rxjs';
 
 /**
@@ -36,6 +36,17 @@ import { from, map, Observable, of, switchMap, tap } from 'rxjs';
  * (CHANGE_FEED) and the client's API serves live subscriptions, the first authenticated
  * answer starts the client's live session with it, and a logout stops it (unsubscribing
  * everything and revoking the feed's identity) before the session itself is logged out.
+ *
+ * Feature flags ride it too: the first authenticated answer loads the enabled set beside
+ * the digest, `featureEnabled` answers from it for the `cccFeature` directive, the
+ * `featureMatch` route guard, and the application's own code, and a logout forgets it.
+ * The set is loaded at sign-in and not polled: a flip by someone else is seen at the next
+ * sign-in, while the person flipping, through the feature flags dialog, has their own set
+ * and digest refreshed once the write succeeds. An API that serves no feature flags (its
+ * descriptor carries no features route) loads nothing: every flag answers off, so each
+ * gate stays closed, the dialog says the API serves none, and the first ask of each flag
+ * is announced through the client's warn hook (the console by default) naming the
+ * regeneration that would serve it.
  */
 @Injectable({
   providedIn: 'root',
@@ -56,7 +67,11 @@ export class AuthService {
   /** The permission cache: the client's. */
   readonly permissions: PermissionStore = this.client.permissions;
 
+  /** The enabled set of feature flags: the client's. */
+  readonly features: FeatureState = this.client.features;
+
   private snapshot = storeSignal(this.permissions.snapshot);
+  private featuresSnapshot = storeSignal(this.features.snapshot);
   private authenticatedSignal = signal(false);
   private sessionInfoSignal = signal({} as SessionInfo);
   private permissionsLoaded = false;
@@ -76,6 +91,13 @@ export class AuthService {
    * picker's source. Empty until the session authenticates.
    */
   domains = computed<readonly Domain[]>(() => this.snapshot().domains);
+
+  /**
+   * The names of the feature flags that are on in this environment, as loaded when the
+   * session authenticated and reloaded after the session user flipped one. Empty until
+   * the session authenticates.
+   */
+  enabledFeatures = computed<ReadonlySet<string>>(() => this.featuresSnapshot().enabled);
 
   /**
    * Whether the session user may exercise the scope's permission: true when the digest
@@ -134,6 +156,39 @@ export class AuthService {
   }
 
   /**
+   * Whether a feature flag is on: true when the enabled set holds the name. False before
+   * the set has loaded and for every name it does not hold, so consumers fail closed.
+   * Synchronous and signal-backed, so effects and computeds that call it re-evaluate when
+   * the set loads or is refreshed. No name means no requirement. On an API that serves no
+   * feature flags the set never changes, and the ask goes to the client's feature state,
+   * which answers off and announces the absence once under the flag's name.
+   */
+  featureEnabled(feature?: string): boolean {
+    if (!feature) {
+      return true;
+    }
+    const { enabled } = this.featuresSnapshot();
+    return this.features.served ? enabled.has(feature) : this.features.enabled(feature);
+  }
+
+  /**
+   * Answers whether a feature flag is on, loading the enabled set first if it has not
+   * loaded — the asynchronous form for the route match guard, which may run before the
+   * session's first check. A load the server refuses answers false.
+   */
+  ensureFeature(feature?: string): Observable<boolean> {
+    if (!feature) {
+      return of(true);
+    }
+    return from(this.features.ensure(feature));
+  }
+
+  /** Reloads the enabled set of feature flags; a failed load leaves every flag off. */
+  refreshFeatures(): Observable<readonly string[]> {
+    return from(this.features.refresh().catch(() => [] as readonly string[]));
+  }
+
+  /**
    * Answers a permission question, loading the scope's digest first if it is not
    * cached — the asynchronous form for route guards.
    */
@@ -189,9 +244,10 @@ export class AuthService {
 
   /**
    * Checks a user's session with the server. The first authenticated answer of a
-   * session also loads the global permission digest and the user's domains, and starts
-   * the live session when a change feed is provided; later checks (keepalives) leave the
-   * cached permissions and the feed alone. An unauthenticated answer ends both.
+   * session also loads the global permission digest, the user's domains, and the enabled
+   * set of feature flags when the API serves them, and starts the live session when a
+   * change feed is provided; later checks (keepalives) leave the cached permissions, the
+   * set, and the feed alone. An unauthenticated answer ends them all.
    *
    * @returns Observable with the user session info
    */
@@ -210,7 +266,11 @@ export class AuthService {
 
         this.permissionsLoaded = true;
         return from(
-          Promise.all([this.permissions.loadDigest(), this.permissions.loadDomains()])
+          Promise.all([
+            this.permissions.loadDigest(),
+            this.permissions.loadDomains(),
+            ...(this.features.served ? [this.features.refresh()] : []),
+          ])
             .catch(() => undefined)
             .then(() => this.startLive()),
         ).pipe(map(() => sessionInfo));
@@ -250,5 +310,6 @@ export class AuthService {
   private clearPermissions(): void {
     this.permissionsLoaded = false;
     this.permissions.clear();
+    this.features.clear();
   }
 }

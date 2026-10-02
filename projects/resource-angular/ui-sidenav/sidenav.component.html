@@ -24,20 +24,22 @@
   <div class="link-header">{{ navItem.label }}</div>
 </ng-template>
 <ng-template #linkTemplate let-navItem="navItem">
-  <a [routerLink]="navItem.routerLink" *cccHasPermission="navItem.permission">
-    <div class="nav-item" routerLinkActive="active-link">
-      <div class="link-button">
-        <div class="icon">
-          <mat-icon class="material-icons-outlined" [inline]="true">
-            {{ navItem.icon }}
-          </mat-icon>
-        </div>
-        <div class="text">
-          {{ navItem.label | titlecase }}
+  <ng-container *cccFeature="navItem.feature">
+    <a [routerLink]="navItem.routerLink" *cccHasPermission="navItem.permission">
+      <div class="nav-item" routerLinkActive="active-link">
+        <div class="link-button">
+          <div class="icon">
+            <mat-icon class="material-icons-outlined" [inline]="true">
+              {{ navItem.icon }}
+            </mat-icon>
+          </div>
+          <div class="text">
+            {{ navItem.label | titlecase }}
+          </div>
         </div>
       </div>
-    </div>
-  </a>
+    </a>
+  </ng-container>
 </ng-template>
 <ng-template #expandableTemplate let-navItem="navItem">
   <div class="nav-item" aria-hidden="true" (click)="navItem.isExpanded = !navItem.isExpanded">

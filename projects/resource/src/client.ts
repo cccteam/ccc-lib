@@ -11,6 +11,7 @@ import {
 } from './brands';
 import { ApiDescriptor, MethodDescriptor, ResourceDescriptor, ResourceOperation } from './descriptor';
 import { Capability, PermissionDigestState, WithCapabilities, rowCapabilities } from './digest';
+import { FeatureFlag, FeatureState, featureFlagsResource, setFeatureMethod } from './features';
 import {
   LiveOptions,
   LiveSession,
@@ -24,6 +25,7 @@ import { BatchResult, Operation, OperationRoute, operationRoute } from './operat
 import { ClientResponse, PermissionStore, Requester, RequestOptions, ResponseRequester } from './permissions';
 import { dryRunHeader } from './transport';
 import { LinkHeader, ListQuery, ReadOptions, TotalCountHeader, listSearchParams, parseLinkHeader, readSearchParams } from './query';
+import { readMode, wholeListQuery } from './reading';
 import { ApiError, HttpMethod, Transport, fetchTransport } from './transport';
 import { Warn, warnOnce } from './warnings';
 
@@ -288,6 +290,12 @@ export interface ClientBase {
    * is logged out. See LiveSession.
    */
   readonly live: LiveSession;
+  /**
+   * The enabled set of feature flags: loaded once at sign-in beside the digest, asked
+   * synchronously (`enabled(name)`), and refreshed by the person who flips a flag
+   * (`setFeature`). See FeatureState.
+   */
+  readonly features: FeatureState;
   /** Issues a request under baseUrl; the escape hatch for routes the generator did not describe. */
   readonly request: Requester;
   /** Issues a request and resolves with the headers too. */
@@ -336,12 +344,21 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
   });
   const warn = warnOnce(options.warn);
   const live = new LiveSession({ ...options.live, request, baseUrl, routes: descriptor.live, warn });
+  const features = new FeatureState({
+    request,
+    route: descriptor.features?.route,
+    setFeature: descriptor.methods[setFeatureMethod],
+    permissions,
+    flags: () => listFlags(base),
+    warn,
+  });
 
   const base: ClientBase = {
     descriptor,
     baseUrl,
     permissions,
     live,
+    features,
     request,
     requestResponse,
     batch: (operations) => batch(request, descriptor, operations),
@@ -409,6 +426,32 @@ function attachHandles(
       handles[method.property] = createMethodHandle(client, method, domain);
     }
   }
+}
+
+/**
+ * Every row of the feature flags resource, by name: read whole where the resource
+ * declares no maximum page size, else one server page at a time to the end (a few dozen
+ * flags at most, so the walk is short). An API whose descriptor has no such resource
+ * (one generated before flags existed, or written by hand) is refused naming it.
+ */
+async function listFlags(client: ClientBase): Promise<FeatureFlag[]> {
+  const descriptor = client.descriptor.resources[featureFlagsResource];
+  if (!descriptor) {
+    throw new Error(`this API declares no ${featureFlagsResource} resource; feature flags cannot be listed from here`);
+  }
+  const handle = createResourceHandle<FeatureFlag, [string]>(client, descriptor, undefined);
+  const sort = { field: 'name' as const };
+  if (readMode(descriptor) === 'whole') {
+    return handle.list(wholeListQuery<FeatureFlag>(descriptor, { sort }));
+  }
+  const rows: FeatureFlag[] = [];
+  let page = await handle.page({ sort, limit: descriptor.page?.max });
+  rows.push(...page.rows);
+  while (page.next) {
+    page = await page.next();
+    rows.push(...page.rows);
+  }
+  return rows;
 }
 
 /** The digest's field-level enumeration for a scope, as sorted names — undefined when it holds none. */

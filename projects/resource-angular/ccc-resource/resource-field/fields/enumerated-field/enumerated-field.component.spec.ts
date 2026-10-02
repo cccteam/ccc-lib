@@ -51,6 +51,7 @@ describe('EnumeratedFieldComponent over a paged source', () => {
   const descriptor: ApiDescriptor = {
     permissionDigestRoute: 'permission-digest',
     userDomainsRoute: 'user-domains',
+    features: { route: 'features' },
     methods: {},
     resources: {
       [wings]: {

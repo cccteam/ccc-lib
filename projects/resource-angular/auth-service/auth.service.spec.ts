@@ -1,5 +1,14 @@
 import { TestBed } from '@angular/core/testing';
-import { ApiDescriptor, ChangeFeed, createClient, LiveIdentity, LiveRoutes, subscribeHeader } from '@cccteam/resource';
+import {
+  ApiDescriptor,
+  ChangeFeed,
+  createClient,
+  LiveIdentity,
+  LiveRoutes,
+  noFeaturesRouteWarning,
+  subscribeHeader,
+  Warn,
+} from '@cccteam/resource';
 import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 import { CHANGE_FEED, LOGIN_REDIRECT_URL } from '@cccteam/resource-angular/types';
@@ -12,6 +21,7 @@ const descriptor: ApiDescriptor = {
   methods: {},
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
+  features: { route: 'features' },
 };
 
 const identity: LiveIdentity = {
@@ -44,7 +54,10 @@ class FakeFeed implements ChangeFeed {
   }
 }
 
-/** The session, digest, domains, and live routes, each answering; `authenticated` is what the session says. */
+/** The flags the features route says are on; a spec changes it between checks. */
+let enabledFeatures: string[] = ['debriefs'];
+
+/** The session, digest, domains, features, and live routes, each answering; `authenticated` is what the session says. */
 function serverWith(authenticated: boolean): ScriptedTransport {
   return scriptedTransport((request) => {
     switch (request.url) {
@@ -57,6 +70,8 @@ function serverWith(authenticated: boolean): ScriptedTransport {
         return { status: 200, body: {} };
       case '/api/user-domains':
         return { status: 200, body: [] };
+      case '/api/features':
+        return { status: 200, body: { enabled: enabledFeatures } };
       case '/api/live/token':
         return { status: 200, body: identity };
       case '/api/live/unsubscribe':
@@ -74,16 +89,20 @@ const liveRoutes: LiveRoutes = {
   tokenRoute: 'live/token',
 };
 
-function authOver(transport: ScriptedTransport, options: { live?: LiveRoutes; feed?: ChangeFeed } = {}): AuthService {
+function authOver(
+  transport: ScriptedTransport,
+  options: { live?: LiveRoutes; feed?: ChangeFeed; api?: ApiDescriptor; warn?: Warn } = {},
+): AuthService {
   TestBed.configureTestingModule({
     providers: [
       {
         provide: RESOURCE_CLIENT,
         useValue: createClient(
-          { ...descriptor, live: options.live },
+          { ...(options.api ?? descriptor), live: options.live },
           {
             baseUrl: '/api',
             transport,
+            warn: options.warn,
             live: {
               renewInterval: 60 * 60 * 1000,
               page: { addEventListener: () => undefined, removeEventListener: () => undefined },
@@ -125,6 +144,7 @@ describe('AuthService live session', () => {
       ['GET', '/api/user/session'],
       ['GET', '/api/permission-digest'],
       ['GET', '/api/user-domains'],
+      ['GET', '/api/features'],
       ['GET', '/api/live/token'],
     ]);
     expect(feed.started).toEqual([identity]);
@@ -191,6 +211,7 @@ describe('AuthService live session', () => {
         '/api/user/session',
         '/api/permission-digest',
         '/api/user-domains',
+        '/api/features',
       ]);
       expect(tt.feed?.started ?? []).toEqual([]);
       transport.requests.length = 0;
@@ -214,5 +235,156 @@ describe('AuthService live session', () => {
     expect(TestBed.inject(RESOURCE_CLIENT).live.active).toBe(false);
     expect(consoleError).toHaveBeenCalledTimes(1);
     consoleError.mockRestore();
+  });
+});
+
+describe('AuthService feature flags', () => {
+  beforeEach(() => {
+    enabledFeatures = ['debriefs'];
+  });
+
+  it('loads the enabled set beside the digest and the domains once the session first authenticates, and answers from it', async () => {
+    const transport = serverWith(true);
+    const auth = authOver(transport);
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    expect(auth.enabledFeatures().size).toBe(0);
+
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(transport.requests.map((r) => r.url)).toEqual([
+      '/api/user/session',
+      '/api/permission-digest',
+      '/api/user-domains',
+      '/api/features',
+    ]);
+    expect(auth.featureEnabled('debriefs')).toBe(true);
+    expect(auth.featureEnabled('manifests')).toBe(false);
+    expect(auth.featureEnabled(undefined)).toBe(true);
+    expect([...auth.enabledFeatures()]).toEqual(['debriefs']);
+
+    // A keepalive leaves the set alone.
+    await firstValueFrom(auth.checkUserSession());
+    expect(transport.requests.filter((r) => r.url === '/api/features')).toHaveLength(1);
+  });
+
+  it('logout forgets the enabled set', async () => {
+    const auth = authOver(serverWith(true));
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(auth.featureEnabled('debriefs')).toBe(true);
+    await firstValueFrom(auth.logout());
+    TestBed.tick();
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    expect(TestBed.inject(RESOURCE_CLIENT).features.loaded).toBe(false);
+  });
+
+  it('an unauthenticated answer forgets the enabled set', async () => {
+    let authenticated = true;
+    const transport = scriptedTransport((request) =>
+      request.url === '/api/user/session' ? { status: 200, body: { authenticated } } : serverWith(true)(request),
+    );
+    const auth = authOver(transport);
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(auth.featureEnabled('debriefs')).toBe(true);
+
+    authenticated = false;
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+  });
+
+  it('refreshFeatures reloads the set, and a flip elsewhere is seen only then', async () => {
+    const transport = serverWith(true);
+    const auth = authOver(transport);
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    enabledFeatures = ['debriefs', 'manifests'];
+    expect(auth.featureEnabled('manifests')).toBe(false);
+
+    expect(await firstValueFrom(auth.refreshFeatures())).toEqual(['debriefs', 'manifests']);
+    TestBed.tick();
+    expect(auth.featureEnabled('manifests')).toBe(true);
+  });
+
+  it('ensureFeature loads the set first when it has not loaded, and answers false without a name requirement only when a name is given', async () => {
+    const transport = serverWith(true);
+    const auth = authOver(transport);
+    expect(await firstValueFrom(auth.ensureFeature('debriefs'))).toBe(true);
+    expect(await firstValueFrom(auth.ensureFeature('manifests'))).toBe(false);
+    expect(await firstValueFrom(auth.ensureFeature(undefined))).toBe(true);
+    expect(transport.requests.map((r) => r.url)).toEqual(['/api/features']);
+  });
+
+  it('an API that serves no feature flags loads the digest and the domains alone, and every flag answers off', async () => {
+    const transport = serverWith(true);
+    const warnings: string[] = [];
+    const auth = authOver(transport, {
+      api: { ...descriptor, features: undefined },
+      warn: (message) => warnings.push(message),
+    });
+    const session = await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(session.authenticated).toBe(true);
+    expect(transport.requests.map((r) => r.url)).toEqual([
+      '/api/user/session',
+      '/api/permission-digest',
+      '/api/user-domains',
+    ]);
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    expect(auth.enabledFeatures().size).toBe(0);
+    expect(await firstValueFrom(auth.ensureFeature('debriefs'))).toBe(false);
+    expect(await firstValueFrom(auth.refreshFeatures())).toEqual([]);
+    expect(transport.requests.filter((r) => r.url === '/api/features')).toHaveLength(0);
+    expect(TestBed.inject(RESOURCE_CLIENT).features.loaded).toBe(false);
+    // The two asks of debriefs announced it once between them; the refresh announced every flag.
+    expect(warnings).toEqual([noFeaturesRouteWarning('debriefs'), noFeaturesRouteWarning()]);
+  });
+
+  it('the gates announce an API that serves no feature flags once per flag, through the client warn hook', async () => {
+    const warnings: string[] = [];
+    const auth = authOver(serverWith(true), {
+      api: { ...descriptor, features: undefined },
+      warn: (message) => warnings.push(message),
+    });
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    // Sign-in skipped the load and said nothing: no page has asked yet.
+    expect(warnings).toEqual([]);
+
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    expect(await firstValueFrom(auth.ensureFeature('debriefs'))).toBe(false);
+    expect(warnings).toEqual([noFeaturesRouteWarning('debriefs')]);
+    expect(warnings[0]).toBe(
+      'feature flag debriefs was asked of an API that serves no feature flags (the generated descriptor carries no features route): ' +
+        'it answers off; regenerate the client API with a resource generator that emits the features route',
+    );
+  });
+
+  it('the gates never announce anything on an API that serves feature flags', async () => {
+    const warnings: string[] = [];
+    const auth = authOver(serverWith(true), { warn: (message) => warnings.push(message) });
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(auth.featureEnabled('debriefs')).toBe(true);
+    expect(auth.featureEnabled('manifests')).toBe(false);
+    expect(await firstValueFrom(auth.ensureFeature('manifests'))).toBe(false);
+    expect(await firstValueFrom(auth.refreshFeatures())).toEqual(['debriefs']);
+    expect(warnings).toEqual([]);
+  });
+
+  it('a features route that fails leaves the session authenticated and every flag off', async () => {
+    const transport = scriptedTransport((request) =>
+      request.url === '/api/features' ? { status: 503, body: { message: 'unavailable' } } : serverWith(true)(request),
+    );
+    const auth = authOver(transport);
+    const session = await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(session.authenticated).toBe(true);
+    expect(auth.authenticated()).toBe(true);
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    expect(await firstValueFrom(auth.refreshFeatures())).toEqual([]);
   });
 });
