@@ -10,6 +10,7 @@ import {
   LiveSubscription,
   liveSubscription,
   mintLiveId,
+  noLiveRoutesWarning,
   PageEvents,
   sameSubscription,
   subscribeHeader,
@@ -194,6 +195,8 @@ function scripted(
 }
 
 interface Harness {
+  /** What the client's warn hook received, in order. */
+  warnings: string[];
   client: Client<Global, Sector>;
   transport: ScriptedTransport;
   feed: FakeFeed;
@@ -208,6 +211,7 @@ function harness(
   const transport = scripted(pages);
   const page = new FakePage();
   const keepalive: { url: string; init: RequestInit }[] = [];
+  const warnings: string[] = [];
   const fetchStandIn = (async (url: string | URL | Request, init?: RequestInit) => {
     keepalive.push({ url: String(url), init: init ?? {} });
     return new Response(null, { status: 204 });
@@ -215,9 +219,10 @@ function harness(
   const client = createClient<Global, Sector>(api, {
     baseUrl: '/api',
     transport,
+    warn: (message) => warnings.push(message),
     live: { renewInterval: 60 * 60 * 1000, page, fetch: fetchStandIn, xsrf: false },
   });
-  return { client, transport, feed: new FakeFeed(), page, keepalive };
+  return { client, transport, feed: new FakeFeed(), page, keepalive, warnings };
 }
 
 /** Each request as method, URL without the version, the version, and whether it carried the subscribe header. */
@@ -357,6 +362,7 @@ describe('the live option before and after the feed starts', () => {
     const ships = h.client.domain(anvil).ships;
     expect(h.client.live.enabled).toBe(true);
     expect(h.client.live.active).toBe(false);
+    expect(h.warnings).toEqual([]);
 
     await ships.list({ live: true });
     await ships.read(['s1'], { live: true });
@@ -407,6 +413,8 @@ describe('the live option before and after the feed starts', () => {
     ]);
     await expect(h.client.live.start(h.feed)).rejects.toThrow('serves no live subscriptions');
     expect(h.feed.started).toEqual([]);
+    // The live call and the start announced the absence in the same words, once between them.
+    expect(h.warnings).toEqual([noLiveRoutesWarning]);
   });
 
   it('starting twice starts the feed once', async () => {

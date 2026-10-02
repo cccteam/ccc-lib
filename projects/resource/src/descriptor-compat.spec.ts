@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import { Domain, ListPermission, Method, Resource } from './brands';
-import { AnyResourceHandle, createClient, MethodHandle } from './client';
+import { AnyResourceHandle, Client, createClient, MethodHandle } from './client';
 import { ApiDescriptor } from './descriptor';
-import { ChangeFeed, subscribeHeader } from './live';
+import { ChangeFeed, LiveIdentity, noLiveRoutesWarning, subscribeHeader } from './live';
 import { scriptedTransport } from '@cccteam/resource/testing';
 
 // The two directions of descriptor compatibility: the generator and this package
@@ -11,7 +11,9 @@ import { scriptedTransport } from '@cccteam/resource/testing';
 // else works. A newer generator's descriptor, carrying a field this package does not
 // know yet, is accepted by createClient when it arrives as a value, the way zz_gen_api.ts
 // hands it over: this file compiling under `tsc -p projects/resource/tsconfig.spec.json`
-// is that proof, and the runtime half confirms the client was built over it.
+// is that proof, and the runtime half confirms the client was built over it. Absence is
+// tolerated but announced: a live ask of a descriptor without `live` reaches the client's
+// warn hook once, in words that name the regeneration that would serve it.
 
 interface Row {
   id: string;
@@ -66,10 +68,10 @@ const older: ApiDescriptor = {
 
 const anvil = 'anvil' as Domain;
 
-/** Every route of the older API answering, so each part of the client can be exercised. */
+/** Every route answering by its path (a live request carries the version in its query), so each part of the client can be exercised. */
 function server() {
   return scriptedTransport((request) => {
-    switch (request.url) {
+    switch (request.url.replace(/\?.*$/, '')) {
       case '/api/ship-classes':
         return { status: 200, body: [{ id: 'sc1' }, { id: 'sc2' }] };
       case '/api/ship-classes/sc1':
@@ -82,11 +84,32 @@ function server() {
         return { status: 200, body: { ShipClasses: { List: 'granted' } } };
       case '/api/user-domains':
         return { status: 200, body: ['anvil'] };
+      case '/api/live/token':
+        return { status: 200, body: identity };
+      case '/api/live/unsubscribe':
+        return { status: 204, body: undefined };
       default:
         return { status: 404, body: { message: `unscripted ${request.url}` } };
     }
   });
 }
+
+const identity: LiveIdentity = {
+  uid: 'u-7',
+  token: '',
+  project: 'lab',
+  database: 'live',
+  apiKey: '',
+  emulator: 'localhost:8080',
+};
+
+/** A feed that starts and stops and reports nothing, for the API that serves live. */
+const quietFeed: ChangeFeed = {
+  start: async () => undefined,
+  stop: async () => undefined,
+  onChange: () => () => undefined,
+  onResync: () => () => undefined,
+};
 
 /** A feed that must never be started: the API under test serves no live subscriptions. */
 const feed: ChangeFeed = {
@@ -101,9 +124,15 @@ const feed: ChangeFeed = {
 describe('a descriptor from an older generator, without the live block', () => {
   it('builds a client where live is off and every other part works', async () => {
     const transport = server();
-    const client = createClient<Global, Sector>(older, { baseUrl: '/api', transport });
+    const warnings: string[] = [];
+    const client = createClient<Global, Sector>(older, {
+      baseUrl: '/api',
+      transport,
+      warn: (message) => warnings.push(message),
+    });
 
-    // Live is off: the session says so, a live call is a plain request, and no feed starts.
+    // Live is off: the session says so, a live call is a plain request, and no feed starts;
+    // the absence is announced once between the live call and the start.
     expect(client.live.enabled).toBe(false);
     expect(client.live.active).toBe(false);
     expect(await client.shipClasses.list({ live: true })).toEqual([{ id: 'sc1' }, { id: 'sc2' }]);
@@ -111,6 +140,7 @@ describe('a descriptor from an older generator, without the live block', () => {
     expect(transport.requests[0].headers?.[subscribeHeader]).toBeUndefined();
     await expect(client.live.start(feed)).rejects.toThrow('serves no live subscriptions');
     await client.live.stop();
+    expect(warnings).toEqual([noLiveRoutesWarning]);
 
     // Everything else works: global and domain handles, a method, the digest and its answers.
     expect(await client.shipClasses.read(['sc1'])).toEqual({ id: 'sc1' });
@@ -194,5 +224,107 @@ describe('a descriptor from a newer generator, with a field this package does no
     // @ts-expect-error a fresh object literal is checked for excess properties, and this package does not declare `exports`
     const typed: ApiDescriptor = { ...older, exports: unknownBlock };
     expect(typed.permissionDigestRoute).toBe('permission-digest');
+  });
+});
+
+/** A client over the API with the warn hook collecting what it receives. */
+function clientWith(api: ApiDescriptor): { client: Client<Global, Sector>; warnings: string[] } {
+  const warnings: string[] = [];
+  const client = createClient<Global, Sector>(api, {
+    baseUrl: '/api',
+    transport: server(),
+    warn: (message) => warnings.push(message),
+  });
+  return { client, warnings };
+}
+
+describe('the warn hook on an API that serves no live subscriptions', () => {
+  const asks: { name: string; ask: (client: Client<Global, Sector>) => Promise<unknown> }[] = [
+    {
+      name: 'a live list, asked twice',
+      ask: async (client) => {
+        await client.shipClasses.list({ live: true });
+        await client.shipClasses.list({ live: true });
+      },
+    },
+    {
+      name: 'a live read, asked twice',
+      ask: async (client) => {
+        await client.shipClasses.read(['sc1'], { live: true });
+        await client.shipClasses.read(['sc1'], { live: true });
+      },
+    },
+    {
+      name: 'a live page and its reload',
+      ask: async (client) => {
+        const page = await client.shipClasses.page({ live: true });
+        await page.reload();
+      },
+    },
+    { name: 'a live list in a domain', ask: (client) => client.domain(anvil).ships.list({ live: true }) },
+    {
+      name: 'starting a feed, twice',
+      ask: async (client) => {
+        await client.live.start(feed).catch(() => undefined);
+        await client.live.start(feed).catch(() => undefined);
+      },
+    },
+    {
+      name: 'a live list and then a feed start',
+      ask: async (client) => {
+        await client.shipClasses.list({ live: true });
+        await client.live.start(feed).catch(() => undefined);
+      },
+    },
+  ];
+
+  for (const tt of asks) {
+    it(`${tt.name} announces the absence once, naming the regeneration that would serve it`, async () => {
+      const { client, warnings } = clientWith(older);
+      await tt.ask(client);
+      expect(warnings).toEqual([noLiveRoutesWarning]);
+      expect(warnings[0]).toBe(
+        'this page asked for live updates, but the generated API descriptor carries no live block: the request is served plain ' +
+          'and nothing is subscribed; regenerate the client API with a resource generator that emits the live routes',
+      );
+    });
+  }
+
+  it('a plain request on such an API says nothing', async () => {
+    const { client, warnings } = clientWith(older);
+    await client.shipClasses.list();
+    await client.shipClasses.read(['sc1']);
+    await client.domain(anvil).ships.list();
+    await client.live.stop();
+    expect(warnings).toEqual([]);
+  });
+
+  it('a descriptor with the live block warns nothing: plain and silent before the feed runs, live after', async () => {
+    const { client, warnings } = clientWith(wrapped);
+    await client.shipClasses.list({ live: true });
+    expect(client.live.active).toBe(false);
+    await client.live.start(quietFeed);
+    expect(client.live.active).toBe(true);
+    await client.shipClasses.list({ live: true });
+    const page = await client.shipClasses.page({ live: true });
+    await page.reload();
+    await client.live.stop();
+    expect(warnings).toEqual([]);
+  });
+
+  it('the default hook is the console', async () => {
+    const seen: string[] = [];
+    const original = console.warn;
+    console.warn = (message: string) => {
+      seen.push(message);
+    };
+    try {
+      const client = createClient<Global, Sector>(older, { baseUrl: '/api', transport: server() });
+      await client.shipClasses.list({ live: true });
+      await client.shipClasses.list({ live: true });
+    } finally {
+      console.warn = original;
+    }
+    expect(seen).toEqual([noLiveRoutesWarning]);
   });
 });

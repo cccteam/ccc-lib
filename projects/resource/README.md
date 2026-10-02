@@ -58,8 +58,11 @@ and no others, and the client ignores a field it does not know. A newer client w
 added after the package's first release is optional (`live` is one), and an absent field means
 the API does not serve that feature. An application does nothing about a missing field: the
 feature is off, `api.live.enabled` is false for a descriptor without `live`, a live call is a
-plain request, and every other part of the client works as before. A browser build is red only
-when the application itself uses a client feature its generator does not emit yet.
+plain request, and every other part of the client works as before. The absence is announced
+rather than silent: the first live request against such a descriptor, or a `live.start`, reaches
+`ClientOptions.warn` once (the console by default) with a message saying the request is served
+plain and naming the regeneration that would serve it live. A browser build is red only when
+the application itself uses a client feature its generator does not emit yet.
 
 ## Paging
 
@@ -253,7 +256,10 @@ rejects only when no response came at all. The client is the one place a respons
 an error. A 4xx or 5xx that a method did not declare as an answer becomes `ApiError`, which
 carries the decoded body and, as its `message`, the server's `message` field (else `HTTP
 <status>`); `ClientOptions.onError` observes every such error before it is thrown, and a
-declared answer (`accept`) resolves instead. The framework renders those events: the
+declared answer (`accept`) resolves instead. `ClientOptions.warn`, beside it, receives each
+warning the client raises once per distinct message (`console.warn` by default): a page asked
+for something the generated descriptor says the API does not serve and was answered without
+it, the message naming the regeneration that would serve it. The framework renders those events: the
 Angular binding returns the browser to the login page on a 401 and raises one global
 notice for an `ApiError` nobody caught. A transport also hands back the response headers
 by lower-cased name; paged lists read `Link` and `Total-Count` from them.
