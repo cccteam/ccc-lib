@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.4](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.3...resource-angular/v0.0.4) (2026-10-02)
+
+
+### Features
+
+* feature flags in the browser: the client holds the enabled set loaded at sign-in and flips a flag through the generated SetFeature method, and an API that serves no feature flags answers every flag off and announces it once (@cccteam/resource); the cccFeature directive, the featureMatch route guard, the flag on menu items and the feature-flags dialog (@cccteam/resource-angular) ([#127](https://github.com/cccteam/ccc-lib/issues/127)) ([6a779c4](https://github.com/cccteam/ccc-lib/commit/6a779c42578dba5e87b4a34eb5fd97f65143b4d2))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.3 to ^0.0.4
+
 ## [0.0.3](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.2...resource-angular/v0.0.3) (2026-10-02)
 
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.4](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.3...resource/v0.0.4) (2026-10-02)
+
+
+### Features
+
+* feature flags in the browser: the client holds the enabled set loaded at sign-in and flips a flag through the generated SetFeature method, and an API that serves no feature flags answers every flag off and announces it once (@cccteam/resource); the cccFeature directive, the featureMatch route guard, the flag on menu items and the feature-flags dialog (@cccteam/resource-angular) ([#127](https://github.com/cccteam/ccc-lib/issues/127)) ([6a779c4](https://github.com/cccteam/ccc-lib/commit/6a779c42578dba5e87b4a34eb5fd97f65143b4d2))
+* the descriptor compatibility rule: the generator and the client package release in either order, every descriptor field added after the package's first release is optional and absent means not served, a descriptor from a newer generator compiles against an older client because the generated file hands it over as a value, and a page's ask for live updates of an API that serves none is answered plain and announced once through the new ClientOptions.warn hook (@cccteam/resource) ([#128](https://github.com/cccteam/ccc-lib/issues/128)) ([59c1655](https://github.com/cccteam/ccc-lib/commit/59c16552da134f0b77189f0bab6e2affc2760f14))
+
 ## [0.0.3](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.2...resource/v0.0.3) (2026-10-02)
 
 
