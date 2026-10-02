@@ -107,6 +107,7 @@
     "projects/resource-firestore": {
       "changelog-path": "CHANGELOG.md",
       "release-type": "node",
+      "initial-version": "0.0.1",
       "bump-minor-pre-major": true,
       "bump-patch-for-minor-pre-major": true,
       "draft": false,
