@@ -25,6 +25,7 @@ import { ClientResponse, PermissionStore, Requester, RequestOptions, ResponseReq
 import { dryRunHeader } from './transport';
 import { LinkHeader, ListQuery, ReadOptions, TotalCountHeader, listSearchParams, parseLinkHeader, readSearchParams } from './query';
 import { ApiError, HttpMethod, Transport, fetchTransport } from './transport';
+import { Warn, warnOnce } from './warnings';
 
 export interface ClientOptions {
   /** The API prefix every route is served under, e.g. `/api` or `https://host/api`. */
@@ -33,6 +34,12 @@ export interface ClientOptions {
   transport?: Transport;
   /** Observes every non-2xx response before it is thrown. */
   onError?: (error: ApiError) => void;
+  /**
+   * Receives each warning the client raises, once per distinct message: a page asked for
+   * something the generated API descriptor says the API does not serve, and the client
+   * answered without it, naming the regeneration that would serve it. `console.warn` by default.
+   */
+  warn?: Warn;
   /** The live session's knobs (renewal interval, page events, the keepalive fetch); every one has a default. */
   live?: LiveOptions;
 }
@@ -327,7 +334,8 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
     digest: descriptor.permissionDigestRoute,
     domains: descriptor.userDomainsRoute,
   });
-  const live = new LiveSession({ ...options.live, request, baseUrl, routes: descriptor.live });
+  const warn = warnOnce(options.warn);
+  const live = new LiveSession({ ...options.live, request, baseUrl, routes: descriptor.live, warn });
 
   const base: ClientBase = {
     descriptor,
@@ -663,14 +671,15 @@ function listRequest<Row>(query: ListQuery<Row> | undefined): {
  * The query and headers of one request as it is made. A request the caller asked to be
  * live adds the tab's subscribe header and the version parameter while the live session
  * is active — read now, so a repeat of the request carries the version current at the
- * repeat — and is the plain request otherwise.
+ * repeat — and is the plain request otherwise; on an API that serves no live
+ * subscriptions the session announces the plain answer once.
  */
 function liveRequest(
   live: LiveSession,
   wanted: LiveSubscription | undefined,
   params: URLSearchParams,
 ): Pick<RequestOptions, 'query' | 'headers'> {
-  if (!wanted || !live.active) {
+  if (!wanted || !live.requested()) {
     return { query: params };
   }
   const query = new URLSearchParams(params);
@@ -701,7 +710,7 @@ async function pageOf<Row>(
       method,
       body,
       () => {
-        const live = wanted && client.live.active;
+        const live = wanted && client.live.requested();
         const url = live ? versionedUrl(reference, client.live.version(wanted)) : reference;
         return client.requestResponse<Row[] | null>(method, url, {
           absolute: true,

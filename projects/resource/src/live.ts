@@ -2,6 +2,7 @@ import { Domain } from './brands';
 import { LiveRoutes, ResourceDescriptor } from './descriptor';
 import { Requester } from './permissions';
 import { XsrfOptions, defaultXsrf, readCookie } from './transport';
+import { Warn, warnOnce } from './warnings';
 
 /** The request header a live request carries: the tab's id. The server registers the subscription under it. */
 export const subscribeHeader = 'X-Subscribe';
@@ -25,6 +26,15 @@ export const liveSubscriptionTtl = 300_000;
 
 /** How long the server keeps a change document, in milliseconds; a page hidden longer than this resyncs on its return. */
 export const liveChangeTtl = 600_000;
+
+/**
+ * What the session announces, once per client, when a page asks for live updates of an
+ * API whose descriptor carries no live block: the request is served plain, and
+ * regenerating the client API is what would serve it live.
+ */
+export const noLiveRoutesWarning =
+  'this page asked for live updates, but the generated API descriptor carries no live block: the request is served plain ' +
+  'and nothing is subscribed; regenerate the client API with a resource generator that emits the live routes';
 
 /**
  * The Firestore identity the server mints for the session's principal, answered by the
@@ -128,6 +138,8 @@ export interface LiveSessionOptions extends LiveOptions {
   baseUrl: string;
   /** The live routes the API serves (the descriptor's `live` block); absent, the API serves no live subscriptions. */
   routes?: LiveRoutes;
+  /** Where a live ask of an API that serves none is announced; the client's once-per-message hook, the console by default. */
+  warn?: Warn;
 }
 
 /**
@@ -251,6 +263,7 @@ export class LiveSession {
   private readonly request: Requester;
   private readonly baseUrl: string;
   private readonly routes: LiveRoutes | undefined;
+  private readonly warn: Warn;
   private readonly renewInterval: number;
   private readonly xsrf: XsrfOptions | false;
   private readonly keepaliveFetch: typeof fetch | undefined;
@@ -266,6 +279,7 @@ export class LiveSession {
     this.request = options.request;
     this.baseUrl = options.baseUrl;
     this.routes = options.routes;
+    this.warn = options.warn ?? warnOnce();
     this.renewInterval = options.renewInterval ?? liveRenewInterval;
     this.xsrf = options.xsrf === undefined ? defaultXsrf : options.xsrf;
     this.keepaliveFetch = options.fetch ?? (typeof fetch === 'function' ? fetch.bind(globalThis) : undefined);
@@ -290,6 +304,21 @@ export class LiveSession {
   /** Whether a `{ live: true }` call carries the subscribe header and the version: the API serves live and a feed is running. */
   get active(): boolean {
     return this.enabled && this.started;
+  }
+
+  /**
+   * Answers `active` for a request the caller asked to be live, and announces the plain
+   * answer once when the API serves no live subscriptions: the page expected live updates
+   * it will not get, and a descriptor from a generator that emits the live routes would
+   * serve them. Before the feed runs on an API that serves live, the request is plain
+   * and nothing is said, since `start` is what makes it live.
+   */
+  requested(): boolean {
+    if (!this.routes) {
+      this.warn(noLiveRoutesWarning);
+      return false;
+    }
+    return this.started;
   }
 
   /**
@@ -399,11 +428,13 @@ export class LiveSession {
    * Starts live pages for the tab: fetches the identity the server minted, starts the
    * feed with it, wires its events to the watchers, begins renewing, listens for the page
    * leaving, and refetches every watched row and list by a fresh seed so each becomes
-   * live. Throws when the API serves no live subscriptions; does nothing when a feed is
-   * already running.
+   * live. On an API that serves no live subscriptions it announces the absence once (an
+   * application that provides a feed expects live pages) and throws; it does nothing when
+   * a feed is already running.
    */
   async start(feed: ChangeFeed): Promise<void> {
     if (!this.routes) {
+      this.warn(noLiveRoutesWarning);
       throw new Error(
         'this API serves no live subscriptions: its descriptor carries no live block, so no change feed can be started for it',
       );

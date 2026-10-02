@@ -100,6 +100,14 @@ export interface DomainRouteDescriptor {
  * Everything the client needs to know about one generated API. The ccc TypeScript
  * generator emits it; the runtime interprets it. Routes carry no API prefix — the
  * client's `baseUrl` supplies it.
+ *
+ * The generator and this package release in either order, so every field added after
+ * the package's first release is optional, and an absent one means the API does not
+ * serve that feature: the client does nothing for it and everything else works as
+ * before. `live` is such a field, and the next addition follows the same rule. A
+ * descriptor from a newer generator may carry a field this package does not know yet;
+ * the generated file hands the descriptor over as a value, which TypeScript checks
+ * against the fields declared here and no others, and the client ignores the rest.
  */
 export interface ApiDescriptor {
   resources: Record<string, ResourceDescriptor>;
