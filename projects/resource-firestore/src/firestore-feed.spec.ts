@@ -421,6 +421,71 @@ describe('events', () => {
     await feed.stop();
   });
 
+  it("one commit's row and list documents, one timestamp, two snapshots: two events; the same two replayed: none", async () => {
+    const { feed, events } = harness();
+    await feed.start(emulated);
+    const l = listener();
+    l.next(added());
+
+    // The server writes both with one server timestamp; the emulator delivered them 6 ms apart.
+    const instant = at(1_700_000_010, 250_000);
+    const row = doc('row|Ships|s1|1700000010', {
+      kind: 'row',
+      resource: 'Ships',
+      key: 's1',
+      deleted: false,
+      at: instant,
+    });
+    const list = doc('list|Ships|anvil|1700000010', { kind: 'list', resource: 'Ships', domain: 'anvil', at: instant });
+    l.next(added(list));
+    l.next(added(row));
+    expect(events).toEqual([
+      { kind: 'list', resource: 'Ships', domain: 'anvil', at: '1700000010000250' },
+      { kind: 'row', resource: 'Ships', key: 's1', deleted: false, at: '1700000010000250' },
+    ]);
+
+    // The same two again, as a replay would deliver them: nothing more.
+    l.next(
+      snapshot([
+        { type: 'modified', doc: list },
+        { type: 'added', doc: row },
+      ]),
+    );
+    expect(events).toHaveLength(2);
+
+    // A later instant replaces the set: a document there is new, and the earlier ids no longer matter.
+    const later = at(1_700_000_011);
+    l.next(added(doc('row|Ships|s2|1700000011', { kind: 'row', resource: 'Ships', key: 's2', at: later })));
+    l.next(added(doc('list|Ships|anvil|1700000011', { kind: 'list', resource: 'Ships', domain: 'anvil', at: later })));
+    expect(events.map((e) => [e.kind, e.key ?? e.domain, e.at])).toEqual([
+      ['list', 'anvil', '1700000010000250'],
+      ['row', 's1', '1700000010000250'],
+      ['row', 's2', '1700000011000000'],
+      ['list', 'anvil', '1700000011000000'],
+    ]);
+    await feed.stop();
+  });
+
+  it('a document at the primed instant that the priming snapshot held is not an event; one it did not hold is', async () => {
+    const { feed, events } = harness();
+    await feed.start(emulated);
+    const l = listener();
+    const instant = at(1_700_000_020);
+    const held = doc('list|Ships|anvil|1700000020', { kind: 'list', resource: 'Ships', domain: 'anvil', at: instant });
+    l.next(added(held));
+    l.next(
+      snapshot([
+        { type: 'modified', doc: held },
+        {
+          type: 'added',
+          doc: doc('row|Ships|s1|1700000020', { kind: 'row', resource: 'Ships', key: 's1', at: instant }),
+        },
+      ]),
+    );
+    expect(events.map((e) => [e.kind, e.key ?? e.domain])).toEqual([['row', 's1']]);
+    await feed.stop();
+  });
+
   it('a quiet stretch longer than the change documents live is not a resync: the next change is one event', async () => {
     const { feed, events, resyncs, clock } = harness({ resyncAfterHidden: 600_000 });
     await feed.start(emulated);

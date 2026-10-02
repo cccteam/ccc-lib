@@ -90,6 +90,13 @@ export class FirestoreChangeFeed implements ChangeFeed {
   private retry: ReturnType<typeof setTimeout> | undefined;
   private failures = 0;
   private lastSeen: TimestampLike | undefined;
+  /**
+   * The ids of the documents already delivered (or primed) at the `lastSeen` instant,
+   * replaced whenever it advances. One commit writes its row and list documents with one
+   * server timestamp, and a listener may deliver them in two snapshots, so a document at
+   * the last instant seen is new unless its id is here.
+   */
+  private seenAtLastSeen = new Set<string>();
   /** When the page went hidden, while it is; undefined while visible. */
   private hiddenSince: number | undefined;
   private readonly onVisibilityChange = (): void => {
@@ -139,6 +146,7 @@ export class FirestoreChangeFeed implements ChangeFeed {
     this.db = db;
     this.uid = identity.uid;
     this.lastSeen = undefined;
+    this.seenAtLastSeen = new Set();
     this.failures = 0;
     this.hiddenSince = this.visibility?.visibilityState === 'hidden' ? this.now() : undefined;
     this.visibility?.addEventListener('visibilitychange', this.onVisibilityChange);
@@ -163,6 +171,7 @@ export class FirestoreChangeFeed implements ChangeFeed {
     this.db = undefined;
     this.uid = '';
     this.lastSeen = undefined;
+    this.seenAtLastSeen = new Set();
     if (app) {
       try {
         await deleteApp(app);
@@ -245,34 +254,57 @@ export class FirestoreChangeFeed implements ChangeFeed {
     }, delay);
   }
 
-  /** The first snapshot of a listener: the latest change in it is the last seen, and nothing is emitted. */
+  /** The first snapshot of a listener: the latest change in it is the last seen, its documents at that instant are seen, and nothing is emitted. */
   private prime(snapshot: QuerySnapshot<DocumentData>): void {
     for (const doc of snapshot.docs) {
       const change = toChange(doc.data());
       if (change) {
-        this.lastSeen = laterOf(this.lastSeen, change.at);
+        this.advance(doc.id, change.at);
       }
     }
   }
 
-  /** A later snapshot: the documents added or moved past the last change seen are events, in `at` order. */
+  /**
+   * A later snapshot: the documents added or moved past the last change seen are events,
+   * in `at` order, and so is a document at that very instant not delivered yet.
+   */
   private deliver(snapshot: QuerySnapshot<DocumentData>): void {
-    const changes: Change[] = [];
+    const changes: { id: string; change: Change }[] = [];
     for (const entry of snapshot.docChanges()) {
       if (entry.type === 'removed') {
         continue;
       }
       const change = toChange(entry.doc.data());
-      if (change && (this.lastSeen === undefined || compare(change.at, this.lastSeen) > 0)) {
-        changes.push(change);
+      if (change && this.unseen(entry.doc.id, change.at)) {
+        changes.push({ id: entry.doc.id, change });
       }
     }
-    changes.sort((a, b) => compare(a.at, b.at));
-    for (const change of changes) {
-      this.lastSeen = laterOf(this.lastSeen, change.at);
+    changes.sort((a, b) => compare(a.change.at, b.change.at));
+    for (const { id, change } of changes) {
+      this.advance(id, change.at);
       for (const listener of [...this.changeListeners]) {
         listener(change.event);
       }
+    }
+  }
+
+  /** Whether a document at `at` has not been delivered: later than the last seen, or at that instant with an id not yet seen. */
+  private unseen(id: string, at: TimestampLike): boolean {
+    if (this.lastSeen === undefined) {
+      return true;
+    }
+    const order = compare(at, this.lastSeen);
+    return order > 0 || (order === 0 && !this.seenAtLastSeen.has(id));
+  }
+
+  /** Marks a document seen: a later instant replaces the last seen and its set of ids; the same instant adds the id. */
+  private advance(id: string, at: TimestampLike): void {
+    const order = this.lastSeen === undefined ? 1 : compare(at, this.lastSeen);
+    if (order > 0) {
+      this.lastSeen = at;
+      this.seenAtLastSeen = new Set([id]);
+    } else if (order === 0) {
+      this.seenAtLastSeen.add(id);
     }
   }
 
@@ -318,10 +350,6 @@ function isTimestamp(value: unknown): value is TimestampLike {
 
 function compare(a: TimestampLike, b: TimestampLike): number {
   return a.seconds === b.seconds ? a.nanoseconds - b.nanoseconds : a.seconds - b.seconds;
-}
-
-function laterOf(a: TimestampLike | undefined, b: TimestampLike): TimestampLike {
-  return a === undefined || compare(b, a) > 0 ? b : a;
 }
 
 /**
