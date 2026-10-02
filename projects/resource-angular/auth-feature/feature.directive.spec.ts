@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ApiDescriptor, createClient } from '@cccteam/resource';
+import { ApiDescriptor, createClient, noFeaturesRouteWarning } from '@cccteam/resource';
 import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 import { provideResourceTesting } from '@cccteam/resource-angular/testing';
@@ -32,19 +32,25 @@ describe('FeatureDirective', () => {
 
   async function host(
     api: ApiDescriptor = descriptor,
-  ): Promise<{ element: HTMLElement; component: HostComponent; transport: ScriptedTransport }> {
+  ): Promise<{ element: HTMLElement; component: HostComponent; transport: ScriptedTransport; warnings: string[] }> {
     const transport = scriptedTransport((request) =>
       request.url === '/api/features'
         ? { status: 200, body: { enabled } }
         : { status: 404, body: { message: `unscripted ${request.url}` } },
     );
+    const warnings: string[] = [];
     await TestBed.configureTestingModule({
       imports: [HostComponent],
-      providers: [provideResourceTesting({ transport, client: (t) => createClient(api, { baseUrl: '/api', transport: t }) })],
+      providers: [
+        provideResourceTesting({
+          transport,
+          client: (t) => createClient(api, { baseUrl: '/api', transport: t, warn: (message) => warnings.push(message) }),
+        }),
+      ],
     }).compileComponents();
     const fixture = TestBed.createComponent(HostComponent);
     fixture.detectChanges();
-    return { element: fixture.nativeElement as HTMLElement, component: fixture.componentInstance, transport };
+    return { element: fixture.nativeElement as HTMLElement, component: fixture.componentInstance, transport, warnings };
   }
 
   const rendered = (element: HTMLElement): boolean => element.querySelector('p') !== null;
@@ -88,14 +94,25 @@ describe('FeatureDirective', () => {
     expect(rendered(element)).toBe(true);
   });
 
-  it('renders nothing on an API that serves no feature flags, and a refresh asks nothing', async () => {
+  it('renders nothing on an API that serves no feature flags, a refresh asks nothing, and the absence is announced once per message', async () => {
     enabled = ['debriefs'];
-    const { element, transport } = await host({ ...descriptor, features: undefined });
+    const { element, transport, warnings } = await host({ ...descriptor, features: undefined });
     expect(rendered(element)).toBe(false);
+    expect(warnings).toEqual([noFeaturesRouteWarning('debriefs')]);
     await TestBed.inject(RESOURCE_CLIENT).features.refresh();
     TestBed.tick();
     expect(rendered(element)).toBe(false);
     expect(transport.requests).toHaveLength(0);
+    expect(warnings).toEqual([noFeaturesRouteWarning('debriefs'), noFeaturesRouteWarning()]);
+  });
+
+  it('announces nothing on an API that serves feature flags', async () => {
+    enabled = ['debriefs'];
+    const { element, warnings } = await host();
+    await TestBed.inject(RESOURCE_CLIENT).features.refresh();
+    TestBed.tick();
+    expect(rendered(element)).toBe(true);
+    expect(warnings).toEqual([]);
   });
 
   it('forgets the template when the set is cleared at logout', async () => {

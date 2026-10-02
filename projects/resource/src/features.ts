@@ -2,6 +2,7 @@ import { ExecutePermission, Method, Resource } from './brands';
 import { MethodDescriptor } from './descriptor';
 import { PermissionStore, Requester } from './permissions';
 import { Store } from './store';
+import { Warn, warnOnce } from './warnings';
 
 /**
  * The name of the generated method that flips a flag, as the descriptor's methods record
@@ -62,6 +63,8 @@ export interface FeatureStateOptions {
   permissions: PermissionStore;
   /** Reads every row of the feature flags resource through the client's own handle. */
   flags: () => Promise<FeatureFlag[]>;
+  /** Where an ask of an API that serves no feature flags is announced; the client's once-per-message hook, the console by default. */
+  warn?: Warn;
 }
 
 const nothing: FeaturesSnapshot = { enabled: new Set(), loaded: false };
@@ -69,6 +72,21 @@ const nothing: FeaturesSnapshot = { enabled: new Set(), loaded: false };
 /** The refusal of a read or a flip on an API that serves no feature flags. */
 const notServed =
   'this API serves no feature flags: its descriptor carries no features route, so none can be read or flipped from here';
+
+/**
+ * What the state announces, once per message per client, when a flag is asked of an API
+ * whose descriptor carries no features route: the flag answers off, and regenerating the
+ * client API is what would serve it. With a name the message names the flag; without one
+ * (a refresh) it speaks of every flag.
+ */
+export function noFeaturesRouteWarning(feature?: string): string {
+  const asked = feature === undefined ? 'the feature flags were' : `feature flag ${feature} was`;
+  const answer = feature === undefined ? 'every flag answers off' : 'it answers off';
+  return (
+    `${asked} asked of an API that serves no feature flags (the generated descriptor carries no features route): ` +
+    `${answer}; regenerate the client API with a resource generator that emits the features route`
+  );
+}
 
 /**
  * FeatureState owns the enabled set of feature flags: the names the server says are on
@@ -83,13 +101,18 @@ const notServed =
  * An API that serves no feature flags (its descriptor carries no `features` route, since
  * its generator predates them) keeps the set empty and unloaded: `refresh` resolves to
  * nothing without a request, every flag answers off, and `flags` and `setFeature` refuse
- * before any request, saying so.
+ * before any request, saying so. The absence is announced, not silent: `enabled`,
+ * `ensure`, and `refresh` each reach the client's warn hook once per message (the flag's
+ * name, or every flag for a refresh), naming the regeneration that would serve them.
  */
 export class FeatureState {
   readonly snapshot = new Store<FeaturesSnapshot>(nothing);
   private inflight: Promise<readonly string[]> | undefined;
+  private readonly warn: Warn;
 
-  constructor(private options: FeatureStateOptions) {}
+  constructor(private options: FeatureStateOptions) {
+    this.warn = options.warn ?? warnOnce();
+  }
 
   get(): FeaturesSnapshot {
     return this.snapshot.get();
@@ -104,8 +127,12 @@ export class FeatureState {
     return this.options.route !== undefined;
   }
 
-  /** Whether the named flag is on; false before the set has loaded. */
+  /** Whether the named flag is on; false before the set has loaded, and off, announced once, on an API that serves no flags. */
   enabled(feature: string): boolean {
+    if (!this.served) {
+      this.warn(noFeaturesRouteWarning(feature));
+      return false;
+    }
     return this.snapshot.get().enabled.has(feature);
   }
 
@@ -128,12 +155,13 @@ export class FeatureState {
    * Loads (or reloads) the enabled set from the features route. Concurrent calls share
    * one request. A failed load empties the set and leaves it unloaded, so every flag
    * answers off and the next `ensure` asks again, and rethrows so callers see the failure.
-   * On an API that serves no feature flags it resolves to nothing without a request, and
-   * the set stays unloaded.
+   * On an API that serves no feature flags it announces the absence once and resolves to
+   * nothing without a request, the set staying unloaded.
    */
   refresh(): Promise<readonly string[]> {
     const route = this.options.route;
     if (route === undefined) {
+      this.warn(noFeaturesRouteWarning());
       return Promise.resolve([]);
     }
     if (this.inflight) {
@@ -157,8 +185,15 @@ export class FeatureState {
     return load;
   }
 
-  /** Answers whether a flag is on, loading the set first when it has not loaded; a failed load answers false. */
+  /**
+   * Answers whether a flag is on, loading the set first when it has not loaded; a failed
+   * load answers false. On an API that serves no feature flags it answers off at once,
+   * announced under the flag's name, and loads nothing.
+   */
   async ensure(feature: string): Promise<boolean> {
+    if (!this.served) {
+      return this.enabled(feature);
+    }
     if (!this.loaded) {
       try {
         await this.refresh();

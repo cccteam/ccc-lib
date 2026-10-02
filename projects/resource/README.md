@@ -262,7 +262,10 @@ logout, and `subscribe` notifies a UI framework. `descriptor.features` is option
 from a generator that predates feature flags carries none, and the API then serves no flags.
 `served` is false, the set stays empty and unloaded, `refresh()` resolves to nothing without a
 request, every flag answers off, and `flags()` and `setFeature()` refuse before any request,
-saying the API serves no feature flags.
+saying the API serves no feature flags. The absence is announced rather than silent: `enabled(name)`
+and `ensure(name)` reach `ClientOptions.warn` once per flag (the console by default) saying the
+flag was asked of an API that serves no feature flags and answers off, `refresh()` says it once
+for every flag, and each message names the regeneration that would serve them.
 
 ```ts
 await api.features.refresh(); // once the session is authenticated, beside the digest
@@ -285,7 +288,10 @@ rejects only when no response came at all. The client is the one place a respons
 an error. A 4xx or 5xx that a method did not declare as an answer becomes `ApiError`, which
 carries the decoded body and, as its `message`, the server's `message` field (else `HTTP
 <status>`); `ClientOptions.onError` observes every such error before it is thrown, and a
-declared answer (`accept`) resolves instead. The framework renders those events: the
+declared answer (`accept`) resolves instead. `ClientOptions.warn`, beside it, receives each
+warning the client raises once per distinct message (`console.warn` by default): a page asked
+for something the generated descriptor says the API does not serve and was answered without
+it, the message naming the regeneration that would serve it. The framework renders those events: the
 Angular binding returns the browser to the login page on a 401 and raises one global
 notice for an `ApiError` nobody caught. A transport also hands back the response headers
 by lower-cased name; paged lists read `Link` and `Total-Count` from them.

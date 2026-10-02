@@ -12,3 +12,4 @@ export * from './src/query';
 export * from './src/reading';
 export * from './src/store';
 export * from './src/transport';
+export * from './src/warnings';

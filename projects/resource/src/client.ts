@@ -27,6 +27,7 @@ import { dryRunHeader } from './transport';
 import { LinkHeader, ListQuery, ReadOptions, TotalCountHeader, listSearchParams, parseLinkHeader, readSearchParams } from './query';
 import { readMode, wholeListQuery } from './reading';
 import { ApiError, HttpMethod, Transport, fetchTransport } from './transport';
+import { Warn, warnOnce } from './warnings';
 
 export interface ClientOptions {
   /** The API prefix every route is served under, e.g. `/api` or `https://host/api`. */
@@ -35,6 +36,12 @@ export interface ClientOptions {
   transport?: Transport;
   /** Observes every non-2xx response before it is thrown. */
   onError?: (error: ApiError) => void;
+  /**
+   * Receives each warning the client raises, once per distinct message: a page asked for
+   * something the generated API descriptor says the API does not serve, and the client
+   * answered without it, naming the regeneration that would serve it. `console.warn` by default.
+   */
+  warn?: Warn;
   /** The live session's knobs (renewal interval, page events, the keepalive fetch); every one has a default. */
   live?: LiveOptions;
 }
@@ -335,6 +342,7 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
     digest: descriptor.permissionDigestRoute,
     domains: descriptor.userDomainsRoute,
   });
+  const warn = warnOnce(options.warn);
   const live = new LiveSession({ ...options.live, request, baseUrl, routes: descriptor.live });
   const features = new FeatureState({
     request,
@@ -342,6 +350,7 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
     setFeature: descriptor.methods[setFeatureMethod],
     permissions,
     flags: () => listFlags(base),
+    warn,
   });
 
   const base: ClientBase = {

@@ -44,7 +44,9 @@ import { from, map, Observable, of, switchMap, tap } from 'rxjs';
  * sign-in, while the person flipping, through the feature flags dialog, has their own set
  * and digest refreshed once the write succeeds. An API that serves no feature flags (its
  * descriptor carries no features route) loads nothing: every flag answers off, so each
- * gate stays closed, and the dialog says the API serves none.
+ * gate stays closed, the dialog says the API serves none, and the first ask of each flag
+ * is announced through the client's warn hook (the console by default) naming the
+ * regeneration that would serve it.
  */
 @Injectable({
   providedIn: 'root',
@@ -157,13 +159,16 @@ export class AuthService {
    * Whether a feature flag is on: true when the enabled set holds the name. False before
    * the set has loaded and for every name it does not hold, so consumers fail closed.
    * Synchronous and signal-backed, so effects and computeds that call it re-evaluate when
-   * the set loads or is refreshed. No name means no requirement.
+   * the set loads or is refreshed. No name means no requirement. On an API that serves no
+   * feature flags the set never changes, and the ask goes to the client's feature state,
+   * which answers off and announces the absence once under the flag's name.
    */
   featureEnabled(feature?: string): boolean {
     if (!feature) {
       return true;
     }
-    return this.featuresSnapshot().enabled.has(feature);
+    const { enabled } = this.featuresSnapshot();
+    return this.features.served ? enabled.has(feature) : this.features.enabled(feature);
   }
 
   /**

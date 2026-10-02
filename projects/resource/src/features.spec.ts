@@ -2,7 +2,14 @@ import { describe, expect, it } from 'bun:test';
 import { Domain, Method, Resource } from './brands';
 import { ClientBase, createClient } from './client';
 import { ApiDescriptor } from './descriptor';
-import { FeatureFlag, FeatureFlip, featureFlagsResource, setFeatureMethod } from './features';
+import {
+  FeatureFlag,
+  FeatureFlip,
+  FeatureState,
+  featureFlagsResource,
+  noFeaturesRouteWarning,
+  setFeatureMethod,
+} from './features';
 import { ApiError, TransportRequest, TransportResponse } from './transport';
 import { ScriptedTransport, scriptedTransport } from '@cccteam/resource/testing';
 
@@ -11,7 +18,8 @@ import { ScriptedTransport, scriptedTransport } from '@cccteam/resource/testing'
 // the generated method with the set and the digest refreshed after the write, and the
 // declared flags listed through the client's own handle on the flags resource. An API
 // whose descriptor carries no features route serves no flags: nothing loads, every flag
-// is off, and a read or a flip is refused before any request.
+// is off, a read or a flip is refused before any request, and each ask of a flag reaches
+// the client's warn hook once, naming the regeneration that would serve it.
 
 const descriptor: ApiDescriptor = {
   permissionDigestRoute: 'permission-digest',
@@ -307,7 +315,8 @@ describe('FeatureState on an API that serves no feature flags', () => {
 
   it('is empty, off, and unloaded, and a refresh resolves to nothing without a request', async () => {
     const transport = serverWith(() => ['debriefs']);
-    const api = createClient(unserved, { baseUrl: '/api', transport });
+    const warnings: string[] = [];
+    const api = createClient(unserved, { baseUrl: '/api', transport, warn: (message) => warnings.push(message) });
     expect(api.features.served).toBe(false);
     expect(await api.features.refresh()).toEqual([]);
     expect(api.features.loaded).toBe(false);
@@ -315,6 +324,8 @@ describe('FeatureState on an API that serves no feature flags', () => {
     expect(api.features.names()).toEqual([]);
     expect(await api.features.ensure('debriefs')).toBe(false);
     expect(transport.requests).toHaveLength(0);
+    // The refresh announced every flag, the two asks of debriefs announced it once between them.
+    expect(warnings).toEqual([noFeaturesRouteWarning(), noFeaturesRouteWarning('debriefs')]);
   });
 
   const refusals: { name: string; call: (api: ClientBase) => Promise<unknown> }[] = [
@@ -325,9 +336,12 @@ describe('FeatureState on an API that serves no feature flags', () => {
   for (const tt of refusals) {
     it(`${tt.name} refuses before any request, saying the API serves no feature flags`, async () => {
       const transport = serverWith(() => ['debriefs']);
-      const api = createClient(unserved, { baseUrl: '/api', transport });
+      const warnings: string[] = [];
+      const api = createClient(unserved, { baseUrl: '/api', transport, warn: (message) => warnings.push(message) });
       await expect(tt.call(api)).rejects.toThrow('this API serves no feature flags');
       expect(transport.requests).toHaveLength(0);
+      // The refusal is the announcement; nothing reaches the warn hook besides.
+      expect(warnings).toEqual([]);
     });
   }
 
@@ -335,5 +349,126 @@ describe('FeatureState on an API that serves no feature flags', () => {
     const api = createClient(descriptor, { baseUrl: '/api', transport: serverWith(() => ['debriefs']) });
     expect(api.features.served).toBe(true);
     expect(await api.features.refresh()).toEqual(['debriefs']);
+  });
+});
+
+describe('FeatureState announces an API that serves no feature flags', () => {
+  const unserved: ApiDescriptor = { ...descriptor, features: undefined };
+  const named = noFeaturesRouteWarning('debriefs');
+  const generic = noFeaturesRouteWarning();
+
+  function clientWith(api: ApiDescriptor): { client: ClientBase; warnings: string[] } {
+    const warnings: string[] = [];
+    const client = createClient(api, {
+      baseUrl: '/api',
+      transport: serverWith(() => ['debriefs']),
+      warn: (message) => warnings.push(message),
+    });
+    return { client, warnings };
+  }
+
+  const asks: { name: string; ask: (features: FeatureState) => Promise<unknown> | unknown; want: string[] }[] = [
+    {
+      name: 'enabled, asked twice',
+      ask: (features) => {
+        features.enabled('debriefs');
+        features.enabled('debriefs');
+      },
+      want: [named],
+    },
+    {
+      name: 'ensure, asked twice',
+      ask: async (features) => {
+        await features.ensure('debriefs');
+        await features.ensure('debriefs');
+      },
+      want: [named],
+    },
+    {
+      name: 'refresh, asked twice',
+      ask: async (features) => {
+        await features.refresh();
+        await features.refresh();
+      },
+      want: [generic],
+    },
+    {
+      name: 'ensure and then enabled of the same flag',
+      ask: async (features) => {
+        await features.ensure('debriefs');
+        features.enabled('debriefs');
+      },
+      want: [named],
+    },
+    {
+      name: 'two flags, each announced once',
+      ask: (features) => {
+        features.enabled('debriefs');
+        features.enabled('manifests');
+        features.enabled('debriefs');
+      },
+      want: [named, noFeaturesRouteWarning('manifests')],
+    },
+    {
+      name: 'a refresh and then a flag: one message each',
+      ask: async (features) => {
+        await features.refresh();
+        features.enabled('debriefs');
+      },
+      want: [generic, named],
+    },
+  ];
+
+  for (const tt of asks) {
+    it(`${tt.name} reaches the warn hook once per message`, async () => {
+      const { client, warnings } = clientWith(unserved);
+      await tt.ask(client.features);
+      expect(warnings).toEqual(tt.want);
+    });
+  }
+
+  it('names the flag, or every flag, and the regeneration that would serve them', () => {
+    expect(named).toBe(
+      'feature flag debriefs was asked of an API that serves no feature flags (the generated descriptor carries no features route): ' +
+        'it answers off; regenerate the client API with a resource generator that emits the features route',
+    );
+    expect(generic).toBe(
+      'the feature flags were asked of an API that serves no feature flags (the generated descriptor carries no features route): ' +
+        'every flag answers off; regenerate the client API with a resource generator that emits the features route',
+    );
+  });
+
+  it('the asks that answer about the set itself stay silent: names, loaded, canSet, clear', () => {
+    const { client, warnings } = clientWith(unserved);
+    expect(client.features.names()).toEqual([]);
+    expect(client.features.loaded).toBe(false);
+    expect(client.features.canSet()).toBe(false);
+    client.features.clear();
+    expect(warnings).toEqual([]);
+  });
+
+  it('a descriptor with the features route warns nothing', async () => {
+    const { client, warnings } = clientWith(descriptor);
+    expect(client.features.enabled('debriefs')).toBe(false);
+    await client.features.refresh();
+    expect(await client.features.ensure('debriefs')).toBe(true);
+    expect(client.features.enabled('telemetry')).toBe(false);
+    expect(warnings).toEqual([]);
+  });
+
+  it('the default hook is the console', () => {
+    const seen: string[] = [];
+    const original = console.warn;
+    console.warn = (message: string) => {
+      seen.push(message);
+    };
+    try {
+      const api = createClient(unserved, { baseUrl: '/api', transport: serverWith(() => []) });
+      api.features.enabled('debriefs');
+      api.features.enabled('debriefs');
+    } finally {
+      console.warn = original;
+    }
+    expect(seen).toEqual([named]);
   });
 });

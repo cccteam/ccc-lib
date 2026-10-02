@@ -1,5 +1,14 @@
 import { TestBed } from '@angular/core/testing';
-import { ApiDescriptor, ChangeFeed, createClient, LiveIdentity, LiveRoutes, subscribeHeader } from '@cccteam/resource';
+import {
+  ApiDescriptor,
+  ChangeFeed,
+  createClient,
+  LiveIdentity,
+  LiveRoutes,
+  noFeaturesRouteWarning,
+  subscribeHeader,
+  Warn,
+} from '@cccteam/resource';
 import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 import { CHANGE_FEED, LOGIN_REDIRECT_URL } from '@cccteam/resource-angular/types';
@@ -82,7 +91,7 @@ const liveRoutes: LiveRoutes = {
 
 function authOver(
   transport: ScriptedTransport,
-  options: { live?: LiveRoutes; feed?: ChangeFeed; api?: ApiDescriptor } = {},
+  options: { live?: LiveRoutes; feed?: ChangeFeed; api?: ApiDescriptor; warn?: Warn } = {},
 ): AuthService {
   TestBed.configureTestingModule({
     providers: [
@@ -93,6 +102,7 @@ function authOver(
           {
             baseUrl: '/api',
             transport,
+            warn: options.warn,
             live: {
               renewInterval: 60 * 60 * 1000,
               page: { addEventListener: () => undefined, removeEventListener: () => undefined },
@@ -308,7 +318,11 @@ describe('AuthService feature flags', () => {
 
   it('an API that serves no feature flags loads the digest and the domains alone, and every flag answers off', async () => {
     const transport = serverWith(true);
-    const auth = authOver(transport, { api: { ...descriptor, features: undefined } });
+    const warnings: string[] = [];
+    const auth = authOver(transport, {
+      api: { ...descriptor, features: undefined },
+      warn: (message) => warnings.push(message),
+    });
     const session = await firstValueFrom(auth.checkUserSession());
     TestBed.tick();
     expect(session.authenticated).toBe(true);
@@ -323,6 +337,42 @@ describe('AuthService feature flags', () => {
     expect(await firstValueFrom(auth.refreshFeatures())).toEqual([]);
     expect(transport.requests.filter((r) => r.url === '/api/features')).toHaveLength(0);
     expect(TestBed.inject(RESOURCE_CLIENT).features.loaded).toBe(false);
+    // The two asks of debriefs announced it once between them; the refresh announced every flag.
+    expect(warnings).toEqual([noFeaturesRouteWarning('debriefs'), noFeaturesRouteWarning()]);
+  });
+
+  it('the gates announce an API that serves no feature flags once per flag, through the client warn hook', async () => {
+    const warnings: string[] = [];
+    const auth = authOver(serverWith(true), {
+      api: { ...descriptor, features: undefined },
+      warn: (message) => warnings.push(message),
+    });
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    // Sign-in skipped the load and said nothing: no page has asked yet.
+    expect(warnings).toEqual([]);
+
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    expect(await firstValueFrom(auth.ensureFeature('debriefs'))).toBe(false);
+    expect(warnings).toEqual([noFeaturesRouteWarning('debriefs')]);
+    expect(warnings[0]).toBe(
+      'feature flag debriefs was asked of an API that serves no feature flags (the generated descriptor carries no features route): ' +
+        'it answers off; regenerate the client API with a resource generator that emits the features route',
+    );
+  });
+
+  it('the gates never announce anything on an API that serves feature flags', async () => {
+    const warnings: string[] = [];
+    const auth = authOver(serverWith(true), { warn: (message) => warnings.push(message) });
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(auth.featureEnabled('debriefs')).toBe(true);
+    expect(auth.featureEnabled('manifests')).toBe(false);
+    expect(await firstValueFrom(auth.ensureFeature('manifests'))).toBe(false);
+    expect(await firstValueFrom(auth.refreshFeatures())).toEqual(['debriefs']);
+    expect(warnings).toEqual([]);
   });
 
   it('a features route that fails leaves the session authenticated and every flag off', async () => {

@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { ApiDescriptor, createClient } from '@cccteam/resource';
+import { ApiDescriptor, createClient, noFeaturesRouteWarning, Warn } from '@cccteam/resource';
 import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 
@@ -27,10 +27,10 @@ class DebriefsPageComponent {}
 @Component({ template: 'not found' })
 class NotFoundComponent {}
 
-function appOver(transport: ScriptedTransport, api: ApiDescriptor = descriptor): void {
+function appOver(transport: ScriptedTransport, api: ApiDescriptor = descriptor, warn?: Warn): void {
   TestBed.configureTestingModule({
     providers: [
-      { provide: RESOURCE_CLIENT, useValue: createClient(api, { baseUrl: '/api', transport }) },
+      { provide: RESOURCE_CLIENT, useValue: createClient(api, { baseUrl: '/api', transport, warn }) },
       provideRouter([
         { path: 'debriefs', canMatch: [featureMatch('debriefs')], component: DebriefsPageComponent },
         { path: '**', component: NotFoundComponent },
@@ -68,13 +68,15 @@ describe('featureMatch', () => {
     });
   }
 
-  it('an API that serves no feature flags: the URL falls to the wildcard and nothing is asked', async () => {
+  it('an API that serves no feature flags: the URL falls to the wildcard, nothing is asked, and the absence is announced once', async () => {
     const transport = featuresAnswer(200, ['debriefs']);
-    appOver(transport, { ...descriptor, features: undefined });
+    const warnings: string[] = [];
+    appOver(transport, { ...descriptor, features: undefined }, (message) => warnings.push(message));
     const harness = await RouterTestingHarness.create();
-    const activated = await harness.navigateByUrl('/debriefs');
-    expect(activated).toBeInstanceOf(NotFoundComponent);
+    expect(await harness.navigateByUrl('/debriefs')).toBeInstanceOf(NotFoundComponent);
+    expect(await harness.navigateByUrl('/debriefs')).toBeInstanceOf(NotFoundComponent);
     expect(transport.requests).toHaveLength(0);
+    expect(warnings).toEqual([noFeaturesRouteWarning('debriefs')]);
   });
 
   it('an unrelated URL is not affected and asks for nothing', async () => {
