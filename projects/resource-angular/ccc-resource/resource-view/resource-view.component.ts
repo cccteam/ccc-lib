@@ -557,6 +557,7 @@ export class ResourceViewComponent implements OnInit {
       const id = this.relatedId();
       const create = this.showCreateForm();
       this.store.uuid.set(id);
+      this.store.live.set(this.config().live === true);
       if (!create) {
         this.store.buildStoreViewData();
       }

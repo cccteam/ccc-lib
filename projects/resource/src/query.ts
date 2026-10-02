@@ -124,6 +124,14 @@ export interface ListQueryBase<Row> {
   sensitiveFilter?: boolean;
   /** Ask the server to evaluate these per row and attach the capability envelope. */
   capabilities?: Capability[];
+  /**
+   * Ask for a live list: the request carries the tab's subscribe header, so the server
+   * registers the tab for changes to the resource in the handle's domain, and the version
+   * parameter, so the browser's cache answers a repeat inside the window. A page-level
+   * choice, for list pages; pickers, exports, and one-off lookups leave it unset. Takes
+   * effect only while the client's live session is active (see LiveSession).
+   */
+  live?: boolean;
 }
 
 /**
@@ -139,6 +147,14 @@ export type ListQuery<Row, Key extends readonly unknown[] = readonly unknown[]> 
 export interface ReadOptions<Row> {
   columns?: (keyof Row & string)[];
   capabilities?: Capability[];
+  /**
+   * Ask for a live row: the request carries the tab's subscribe header, so the server
+   * registers the tab for changes to this row, and the version parameter, so the
+   * browser's cache answers a repeat inside the window. For record pages; edit forms and
+   * one-off lookups leave it unset. Takes effect only while the client's live session is
+   * active (see LiveSession).
+   */
+  live?: boolean;
 }
 
 export function listSearchParams<Row>(query: ListQuery<Row> | undefined): URLSearchParams {

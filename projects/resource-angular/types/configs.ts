@@ -822,6 +822,16 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
    * is refused when the page is built, naming the resource.
    */
   pageSize?: number;
+  /**
+   * Whether the list page stays current without polling: each list request subscribes
+   * the tab to changes of the resource in its domain, and the page refetches when the
+   * change feed reports one (and the row page it opens does the same for its row). The
+   * browser caches a live answer for five minutes, so a page left and reopened inside
+   * the window asks the server for nothing. It takes effect only when the application
+   * provides a change feed (CHANGE_FEED) and the outlet serves live subscriptions;
+   * otherwise the page asks as a plain one. Default false.
+   */
+  live?: boolean;
 }
 export interface ListViewConfig extends BaseConfig {
   type: 'ListView';
@@ -845,6 +855,8 @@ export interface ListViewConfig extends BaseConfig {
   showRowCount: boolean;
   /** The server page size; see ListViewConfigOptions.pageSize. */
   pageSize?: number;
+  /** Whether the list page and its row page are live; see ListViewConfigOptions.live. */
+  live: boolean;
 }
 
 export function listViewConfig(config: ListViewConfigOptions): ListViewConfig {
@@ -888,6 +900,7 @@ export const listViewConfigDefaults = {
     delete: (): boolean => true,
   },
   showRowCount: true,
+  live: false,
 } satisfies ListViewConfig;
 
 export type ViewType = 'OneToOne' | 'OneToMany';
@@ -898,6 +911,15 @@ export interface ViewConfigOptions extends BaseConfigOptions {
   relatedConfigs?: ChildResourceConfig[];
   rpcConfigs?: RPCConfig[];
   shouldRenderActions?: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
+  /**
+   * Whether the record page stays current without polling: the read subscribes the tab
+   * to changes of the row, and the page refetches when the change feed reports one. The
+   * browser caches a live answer for five minutes, so a page left and reopened inside
+   * the window asks the server for nothing. It takes effect only when the application
+   * provides a change feed (CHANGE_FEED) and the outlet serves live subscriptions;
+   * otherwise the page asks as a plain one. Default false.
+   */
+  live?: boolean;
 }
 export interface ViewConfig extends BaseConfig {
   type: 'View';
@@ -915,6 +937,8 @@ export interface ViewConfig extends BaseConfig {
    * precedence and is based on a user's attributes
    */
   shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
+  /** Whether the record page is live; see ViewConfigOptions.live. */
+  live: boolean;
 }
 
 export function viewConfig(config: ViewConfigOptions): ViewConfig {
@@ -948,6 +972,7 @@ export const viewConfigDefaults = {
   },
   showBackButton: true,
   rpcConfigs: [],
+  live: false,
 } satisfies ViewConfig;
 
 export interface arrayConfigOptions {

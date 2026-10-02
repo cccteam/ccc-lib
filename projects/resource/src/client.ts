@@ -11,6 +11,15 @@ import {
 } from './brands';
 import { ApiDescriptor, MethodDescriptor, ResourceDescriptor, ResourceOperation } from './descriptor';
 import { Capability, PermissionDigestState, WithCapabilities, rowCapabilities } from './digest';
+import {
+  LiveOptions,
+  LiveSession,
+  LiveSubscription,
+  liveSubscription,
+  subscribeHeader,
+  versionParam,
+  versionedUrl,
+} from './live';
 import { BatchResult, Operation, OperationRoute, operationRoute } from './operations';
 import { ClientResponse, PermissionStore, Requester, RequestOptions, ResponseRequester } from './permissions';
 import { dryRunHeader } from './transport';
@@ -24,6 +33,8 @@ export interface ClientOptions {
   transport?: Transport;
   /** Observes every non-2xx response before it is thrown. */
   onError?: (error: ApiError) => void;
+  /** The live session's knobs (renewal interval, page events, the keepalive fetch); every one has a default. */
+  live?: LiveOptions;
 }
 
 /** What every resource handle offers, whatever operations the resource supports. */
@@ -46,6 +57,13 @@ export interface ResourceHandleBase<Row, Key extends unknown[]> {
   path(key?: Key): string;
   /** The row's primary key, in route order. */
   keyOf(row: Row): Key;
+  /**
+   * What a live request of this handle subscribes to: the list (resource and domain, no
+   * domain for a global resource) with no key, or one row (resource and key, and the
+   * handle's domain when the resource is domain-scoped) with one. A store hands it to
+   * `client.live.watch` beside the refetch the change should run.
+   */
+  subscription(key?: Key): LiveSubscription;
   /** Asks the digest of this handle's scope. Conditional grants answer true. */
   can(permission: Permission): boolean;
   state(permission: Permission): PermissionDigestState | undefined;
@@ -257,6 +275,12 @@ export interface ClientBase {
   readonly descriptor: ApiDescriptor;
   readonly baseUrl: string;
   readonly permissions: PermissionStore;
+  /**
+   * The tab's live session: start it with a change feed once the session is
+   * authenticated, watch rows and lists on it, and stop it at logout before the session
+   * is logged out. See LiveSession.
+   */
+  readonly live: LiveSession;
   /** Issues a request under baseUrl; the escape hatch for routes the generator did not describe. */
   readonly request: Requester;
   /** Issues a request and resolves with the headers too. */
@@ -303,11 +327,13 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
     digest: descriptor.permissionDigestRoute,
     domains: descriptor.userDomainsRoute,
   });
+  const live = new LiveSession({ ...options.live, request, baseUrl, routes: descriptor.live });
 
   const base: ClientBase = {
     descriptor,
     baseUrl,
     permissions,
+    live,
     request,
     requestResponse,
     batch: (operations) => batch(request, descriptor, operations),
@@ -533,6 +559,7 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     },
     path,
     keyOf: (row: Row) => descriptor.keys.map((field) => (row as Record<string, unknown>)[field]) as Key,
+    subscription: (key?: Key) => liveSubscription(descriptor, scopeDomain, key),
     can: (permission) => client.permissions.can(digestScope(permission)),
     state: (permission) => client.permissions.state(digestScope(permission)),
     grantedFields: (permission) => definedFields(client.permissions, digestScope(permission)),
@@ -573,17 +600,32 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     },
     list: (async (query?: ListQuery<Row>) => {
       const { method, params, body } = listRequest(wholeList(query));
-      return (await client.request<Row[] | null>(method, route, { query: params, body })) ?? [];
+      const wanted = query?.live ? liveSubscription(descriptor, scopeDomain) : undefined;
+      return (
+        (await client.request<Row[] | null>(method, route, { ...liveRequest(client.live, wanted, params), body })) ?? []
+      );
     }) as Listable<Row>['list'],
     page: ((query?: ListQuery<Row>) => {
       const { method, params, body } = listRequest(wholeList(query));
-      return pageOf<Row>(client, method, body, () => client.requestResponse(method, route, { query: params, body }));
+      const wanted = query?.live ? liveSubscription(descriptor, scopeDomain) : undefined;
+      // The live parts are read when each request is made, not when the page was asked
+      // for, so a reload and a turn carry the version current at that moment.
+      return pageOf<Row>(
+        client,
+        method,
+        body,
+        () => client.requestResponse(method, route, { ...liveRequest(client.live, wanted, params), body }),
+        wanted,
+      );
     }) as Listable<Row>['page'],
-    read: (async (key: Key, options?: ReadOptions<Row>) =>
-      client.request<Row>('GET', `${route}${keySegments(key)}`, { query: readSearchParams(options) })) as Readable<
-      Row,
-      Key
-    >['read'],
+    read: (async (key: Key, options?: ReadOptions<Row>) => {
+      const wanted = options?.live ? liveSubscription(descriptor, scopeDomain, key) : undefined;
+      return client.request<Row>(
+        'GET',
+        `${route}${keySegments(key)}`,
+        liveRequest(client.live, wanted, readSearchParams(options)),
+      );
+    }) as Readable<Row, Key>['read'],
     create: async (value) => {
       const result = await mutate(ops.add(value));
       return result[descriptor.property]?.[0] ?? result['iDs']?.[0];
@@ -618,30 +660,63 @@ function listRequest<Row>(query: ListQuery<Row> | undefined): {
 }
 
 /**
+ * The query and headers of one request as it is made. A request the caller asked to be
+ * live adds the tab's subscribe header and the version parameter while the live session
+ * is active — read now, so a repeat of the request carries the version current at the
+ * repeat — and is the plain request otherwise.
+ */
+function liveRequest(
+  live: LiveSession,
+  wanted: LiveSubscription | undefined,
+  params: URLSearchParams,
+): Pick<RequestOptions, 'query' | 'headers'> {
+  if (!wanted || !live.active) {
+    return { query: params };
+  }
+  const query = new URLSearchParams(params);
+  query.set(versionParam, live.version(wanted));
+  return { query, headers: { [subscribeHeader]: live.tab } };
+}
+
+/**
  * Reads one list response into a Page, with `next` and `prev` following the Link
  * relations as issued — by the same method and with the same body, so a filter carried
  * in the body travels with the walk — and `reload` repeating the request that produced
- * the page.
+ * the page. A live page's relations carry the subscribe header and the version too: the
+ * list subscription is the resource in the domain, whatever page of it is open.
  */
 async function pageOf<Row>(
   client: ClientBase,
   method: HttpMethod,
   body: unknown,
   request: () => Promise<ClientResponse<Row[] | null>>,
+  wanted?: LiveSubscription,
 ): Promise<Page<Row>> {
   const { body: rows, headers } = await request();
   const relations = parseLinkHeader(headers[LinkHeader]);
   const total = headers[TotalCountHeader];
   const follow = (reference: string) => () =>
-    pageOf<Row>(client, method, body, () =>
-      client.requestResponse<Row[] | null>(method, reference, { absolute: true, body }),
+    pageOf<Row>(
+      client,
+      method,
+      body,
+      () => {
+        const live = wanted && client.live.active;
+        const url = live ? versionedUrl(reference, client.live.version(wanted)) : reference;
+        return client.requestResponse<Row[] | null>(method, url, {
+          absolute: true,
+          body,
+          headers: live ? { [subscribeHeader]: client.live.tab } : undefined,
+        });
+      },
+      wanted,
     );
   return {
     rows: rows ?? [],
     total: total === undefined ? undefined : Number(total),
     next: relations['next'] ? follow(relations['next']) : undefined,
     prev: relations['prev'] ? follow(relations['prev']) : undefined,
-    reload: () => pageOf<Row>(client, method, body, request),
+    reload: () => pageOf<Row>(client, method, body, request, wanted),
   };
 }
 

@@ -10,6 +10,7 @@
       "@cccteam/resource-angular/*": ["projects/resource-angular/*"],
       "@cccteam/resource": ["projects/resource/index.ts"],
       "@cccteam/resource/testing": ["projects/resource/testing/index.ts"],
+      "@cccteam/resource-firestore": ["projects/resource-firestore/index.ts"],
       "@cccteam/resource-angular": ["projects/resource-angular/index.ts"]
     },
     "outDir": "./dist/out-tsc",

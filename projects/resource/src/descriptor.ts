@@ -109,4 +109,22 @@ export interface ApiDescriptor {
   consolidatedRoute?: string;
   permissionDigestRoute: string;
   userDomainsRoute: string;
+  /**
+   * The live routes this outlet serves, when it serves live subscriptions: the generator
+   * writes the block on every browser descriptor, and its presence is what says live is
+   * served. Absent, a `{ live: true }` call is handled exactly as a plain one, and no
+   * change feed can be started for the client.
+   */
+  live?: LiveRoutes;
+}
+
+/**
+ * The routes of a live outlet, under the API prefix like every other route: where a tab
+ * renews its subscriptions, where it unsubscribes, and where it fetches the identity the
+ * server minted for the change feed.
+ */
+export interface LiveRoutes {
+  renewRoute: string;
+  unsubscribeRoute: string;
+  tokenRoute: string;
 }
