@@ -49,6 +49,21 @@ await api.batch([api.clients.ops.patch([clientId], { trusted: true })]);
 - Filters and sorts are typed against the row's fields. The server's filter grammar
   is available directly as a string when needed.
 
+## Descriptor compatibility
+
+The generator and this package release in either order. A descriptor from a newer generator
+works with an older client: the generated file writes the descriptor as a value that its
+`createApi` hands to the client, TypeScript checks it against the fields the client declares
+and no others, and the client ignores a field it does not know. A newer client works with an older descriptor: every field
+added after the package's first release is optional (`live` is one), and an absent field means
+the API does not serve that feature. An application does nothing about a missing field: the
+feature is off, `api.live.enabled` is false for a descriptor without `live`, a live call is a
+plain request, and every other part of the client works as before. The absence is announced
+rather than silent: the first live request against such a descriptor, or a `live.start`, reaches
+`ClientOptions.warn` once (the console by default) with a message saying the request is served
+plain and naming the regeneration that would serve it live. A browser build is red only when
+the application itself uses a client feature its generator does not emit yet.
+
 ## Paging
 
 A list is served one page at a time. `list()` returns one page of rows — the query's
