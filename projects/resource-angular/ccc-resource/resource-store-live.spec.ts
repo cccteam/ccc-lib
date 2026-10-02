@@ -29,7 +29,7 @@ const descriptor: ApiDescriptor = {
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
   domainRoute: { segment: 'sectors', param: 'sectorID' },
-  live: true,
+  live: { renewRoute: 'live/renew', unsubscribeRoute: 'live/unsubscribe', tokenRoute: 'live/token' },
   resources: {
     Ships: {
       resource: 'Ships' as Resource,
@@ -200,7 +200,7 @@ describe('ResourceStore live row', () => {
     store.buildStoreViewData();
     await settle(() => store.rowPresent());
     expect(dataRequests(script.requests)).toEqual([{ url: s1, version: undefined, subscribed: false }]);
-    expect(client.live.subscriptions()).toEqual([{ resource: 'Ships', key: 's1' }]);
+    expect(client.live.subscriptions()).toEqual([{ resource: 'Ships', key: 's1', domain: 'anvil' }]);
 
     // The feed starts: the row is asked again, live, by the seed.
     await client.live.start(feed);
@@ -262,7 +262,7 @@ describe('ResourceStore live row', () => {
     await settle(() => store.viewData()['id'] === 's1');
     store.uuid.set('s2');
     await settle(() => store.viewData()['id'] === 's2');
-    expect(client.live.subscriptions()).toEqual([{ resource: 'Ships', key: 's2' }]);
+    expect(client.live.subscriptions()).toEqual([{ resource: 'Ships', key: 's2', domain: 'anvil' }]);
     const before = script.requests.length;
     feed.emit({ kind: 'row', resource: 'Ships', key: 's1', at: '1700000000000005' });
     await settle(() => false, 5);
@@ -381,7 +381,7 @@ describe('ResourceStore live list page', () => {
     await settle(() => store.pageStatus() === 'resolved' && store.rowPresent());
     expect(client.live.subscriptions()).toEqual([
       { resource: 'Ships', domain: 'anvil' },
-      { resource: 'Ships', key: 's1' },
+      { resource: 'Ships', key: 's1', domain: 'anvil' },
     ]);
     TestBed.resetTestingModule();
     expect(client.live.subscriptions()).toEqual([]);

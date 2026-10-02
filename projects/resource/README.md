@@ -155,12 +155,14 @@ pages ask; pickers, edit forms, exports, reports, and one-off lookups do not, an
 that did not ask is handled exactly as before.
 
 What a live request opts into. The tab subscribes to changes of that row (the resource and
-key) or that list (the resource in the handle's domain; filter, sort, and cursor are not part
-of it, so any change to the resource in the domain refetches the page). The server registers
-the subscription before it runs the query, and only when the request is permitted; a refused
-request subscribes nothing. The tab renews its subscriptions every two minutes, the server
-re-checking each against the permission digest, so a revoked grant ends a subscription at the
-next renewal and the refetch is refused meanwhile. The answer is cacheable by the browser for
+key, and for a domain-scoped resource the domain it was read in, where the server re-checks
+Read; the row itself is one whatever domain it was read in) or that list (the resource in the
+handle's domain; filter, sort, and cursor are not part of it, so any change to the resource in
+the domain refetches the page). The server registers the subscription before it runs the
+query, and only when the request is permitted; a refused request subscribes nothing. The tab
+renews its subscriptions every two minutes (at most a thousand in one renewal, the server's
+limit), the server re-checking each against the permission digest, so a revoked grant ends a
+subscription at the next renewal and the refetch is refused meanwhile. The answer is cacheable by the browser for
 five minutes, keyed by a version the client carries in the URL: a seed the tab minted, then
 the timestamp of the last change seen for that row or list. A change the server publishes
 reaches the tab through a change feed, one listener per tab over the user's own change set,
@@ -179,10 +181,12 @@ request did not subscribe to, and the publisher checks no permission, since the 
 already did. It evaluates no filter on the client: a list change is a refetch, whatever the
 filter. It writes nothing to the database for versioning, and it does not work offline.
 
-The shape. The generated descriptor says whether the outlet serves it (`descriptor.live`);
-on one that does not, a live call is plain and no feed can be started. `list`, `page`, and
-`read` take `{ live: true }`. `api.live` is the tab's `LiveSession`: `start(feed)` fetches
-the identity the server minted (`GET <prefix>/live/token`), starts the feed with it, and
+The shape. The generated descriptor says whether the outlet serves it: `descriptor.live` is
+the block naming the outlet's live routes (`renewRoute`, `unsubscribeRoute`, `tokenRoute`),
+present on every browser descriptor and absent elsewhere; without it a live call is plain and
+no feed can be started. `list`, `page`, and `read` take `{ live: true }`. `api.live` is the
+tab's `LiveSession`: `start(feed)` fetches the identity the server minted (the token route,
+`GET <prefix>/live/token`), starts the feed with it, and
 refetches every watched row and list by a fresh seed, so a page mounted before the feed ran
 becomes live; `stop()` is the logout path (every subscription of the user deleted and the
 feed's identity revoked with `{ all: true }`, the feed stopped, a fresh seed), run before the

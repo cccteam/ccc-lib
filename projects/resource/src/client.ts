@@ -59,8 +59,9 @@ export interface ResourceHandleBase<Row, Key extends unknown[]> {
   keyOf(row: Row): Key;
   /**
    * What a live request of this handle subscribes to: the list (resource and domain, no
-   * domain for a global resource) with no key, or one row (resource and key) with one.
-   * A store hands it to `client.live.watch` beside the refetch the change should run.
+   * domain for a global resource) with no key, or one row (resource and key, and the
+   * handle's domain when the resource is domain-scoped) with one. A store hands it to
+   * `client.live.watch` beside the refetch the change should run.
    */
   subscription(key?: Key): LiveSubscription;
   /** Asks the digest of this handle's scope. Conditional grants answer true. */
@@ -326,7 +327,7 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
     digest: descriptor.permissionDigestRoute,
     domains: descriptor.userDomainsRoute,
   });
-  const live = new LiveSession({ ...options.live, request, baseUrl, enabled: descriptor.live === true });
+  const live = new LiveSession({ ...options.live, request, baseUrl, routes: descriptor.live });
 
   const base: ClientBase = {
     descriptor,

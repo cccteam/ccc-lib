@@ -1,5 +1,5 @@
 import { Domain } from './brands';
-import { ResourceDescriptor } from './descriptor';
+import { LiveRoutes, ResourceDescriptor } from './descriptor';
 import { Requester } from './permissions';
 import { XsrfOptions, defaultXsrf, readCookie } from './transport';
 
@@ -14,25 +14,21 @@ export const subscribeHeader = 'X-Subscribe';
  */
 export const versionParam = '_v';
 
-/** The live routes of a session-serving outlet, under its API prefix. */
-export const liveRoutes = {
-  token: 'live/token',
-  renew: 'live/renew',
-  unsubscribe: 'live/unsubscribe',
-} as const;
-
 /** How often a tab renews its live subscriptions, in milliseconds. */
 export const liveRenewInterval = 120_000;
+
+/** How many subscriptions one renewal carries at most; the server refuses a longer body. */
+export const liveRenewLimit = 1000;
 
 /** How long the server holds a subscription after it was written or renewed, in milliseconds. */
 export const liveSubscriptionTtl = 300_000;
 
-/** How long the server keeps a change document, in milliseconds; a gap longer than this is a resync. */
+/** How long the server keeps a change document, in milliseconds; a page hidden longer than this resyncs on its return. */
 export const liveChangeTtl = 600_000;
 
 /**
- * The Firestore identity the server mints for the session's principal, answered by
- * `GET <prefix>/live/token` and handed to the feed's `start`. Against the emulator
+ * The Firestore identity the server mints for the session's principal, answered by the
+ * descriptor's token route and handed to the feed's `start`. Against the emulator
  * (`emulator` set) `token` is empty and the browser connects with a mock user token for
  * `uid`; in production `emulator` is empty and `token` is a custom token the browser
  * signs in with.
@@ -81,10 +77,13 @@ export interface ChangeFeed {
 }
 
 /**
- * What a live request subscribes to, and what a tab renews: a row is its resource and
- * key; a list is its resource and domain, with no domain for a global resource. Filter,
- * sort, and cursor are not part of it: any change to the resource in the domain refetches
- * the page.
+ * What a live request subscribes to, and what a tab renews. A list is its resource and
+ * domain, with no domain for a global resource. A row is its resource and key, and, for a
+ * domain-scoped resource, the domain it was read in: the server re-checks Read in that
+ * domain at each renewal (a domain-scoped resource holds no grant in the global scope), while
+ * its own record of the row ignores the domain, so two tabs reading one row in two domains
+ * share it. A row of a global resource carries no domain. Filter, sort, and cursor are not
+ * part of a subscription: any change to the resource in the domain refetches the page.
  */
 export interface LiveSubscription {
   resource: string;
@@ -127,23 +126,32 @@ export interface LiveOptions {
 export interface LiveSessionOptions extends LiveOptions {
   request: Requester;
   baseUrl: string;
-  /** Whether the API serves live subscriptions (the descriptor's `live`). */
-  enabled: boolean;
+  /** The live routes the API serves (the descriptor's `live` block); absent, the API serves no live subscriptions. */
+  routes?: LiveRoutes;
 }
 
-/** The subscription of a handle's list, or of one of its rows when a key is given: the one place the key's string form is decided. */
+/**
+ * The subscription of a handle's list, or of one of its rows when a key is given: the one
+ * place the key's string form (the parts joined with `/` in route order) and the domain a
+ * row carries are decided. `domain` is the handle's: set for a domain-scoped resource,
+ * undefined for a global one.
+ */
 export function liveSubscription(
   descriptor: ResourceDescriptor,
   domain: Domain | undefined,
   key?: readonly unknown[],
 ): LiveSubscription {
+  const subscription: LiveSubscription = { resource: descriptor.resource };
   if (key !== undefined) {
-    return { resource: descriptor.resource, key: key.map(String).join('/') };
+    subscription.key = key.map(String).join('/');
   }
-  return domain === undefined ? { resource: descriptor.resource } : { resource: descriptor.resource, domain };
+  if (domain !== undefined) {
+    subscription.domain = domain;
+  }
+  return subscription;
 }
 
-/** Whether two subscriptions name the same row or list. */
+/** Whether two subscriptions name the same row or list, in the same domain. */
 export function sameSubscription(a: LiveSubscription | undefined, b: LiveSubscription | undefined): boolean {
   if (a === undefined || b === undefined) {
     return a === b;
@@ -151,8 +159,20 @@ export function sameSubscription(a: LiveSubscription | undefined, b: LiveSubscri
   return subscriptionKey(a) === subscriptionKey(b);
 }
 
+/** The subscription as the server distinguishes it: resource, key, and domain. */
 function subscriptionKey(subscription: LiveSubscription): string {
   return `${subscription.resource}|${subscription.key ?? ''}|${subscription.domain ?? ''}`;
+}
+
+/**
+ * The row or list a version belongs to. A row's version is the row's whatever domain it was
+ * read in (a row event names no domain, and the server keeps one record per row); a list's
+ * is the resource's in its domain.
+ */
+function versionKey(subscription: LiveSubscription): string {
+  return subscription.key === undefined
+    ? `list|${subscription.resource}|${subscription.domain ?? ''}`
+    : `row|${subscription.resource}|${subscription.key}`;
 }
 
 const base64url = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
@@ -215,15 +235,14 @@ interface Watcher {
 export class LiveSession {
   /** The tab's id, minted once per tab. */
   readonly tab = mintLiveId();
-  /** Whether the API serves live subscriptions (the descriptor's `live`). */
-  readonly enabled: boolean;
 
   private seedValue = mintLiveId();
   private feed: ChangeFeed | undefined;
   private feedReleases: (() => void)[] = [];
   private timer: ReturnType<typeof setInterval> | undefined;
+  /** The watchers by subscription (resource, key, domain), the grain the server renews at. */
   private readonly watchers = new Map<string, Set<Watcher>>();
-  /** The latest `at` seen per row or list. Kept past the watcher's release, so a remount asks by the same version and the browser's cache can answer. */
+  /** The latest `at` seen per row or list (versionKey). Kept past the watcher's release, so a remount asks by the same version and the browser's cache can answer. */
   private readonly lastSeen = new Map<string, string>();
   /** The latest `at` of a resource-level event per resource: every row and list of it is at least that version. */
   private readonly resourceSeen = new Map<string, string>();
@@ -231,6 +250,7 @@ export class LiveSession {
   private readonly dropped = new Set<string>();
   private readonly request: Requester;
   private readonly baseUrl: string;
+  private readonly routes: LiveRoutes | undefined;
   private readonly renewInterval: number;
   private readonly xsrf: XsrfOptions | false;
   private readonly keepaliveFetch: typeof fetch | undefined;
@@ -245,11 +265,16 @@ export class LiveSession {
   constructor(options: LiveSessionOptions) {
     this.request = options.request;
     this.baseUrl = options.baseUrl;
-    this.enabled = options.enabled;
+    this.routes = options.routes;
     this.renewInterval = options.renewInterval ?? liveRenewInterval;
     this.xsrf = options.xsrf === undefined ? defaultXsrf : options.xsrf;
     this.keepaliveFetch = options.fetch ?? (typeof fetch === 'function' ? fetch.bind(globalThis) : undefined);
     this.page = options.page ?? (typeof window === 'undefined' ? undefined : window);
+  }
+
+  /** Whether the API serves live subscriptions: its descriptor carries the live block naming the routes. */
+  get enabled(): boolean {
+    return this.routes !== undefined;
   }
 
   /** The version a row or list is asked by before any change arrived for it: minted when the feed starts and at logout. */
@@ -297,12 +322,15 @@ export class LiveSession {
   /** The version a request for the row or list carries: the latest change seen for it, else the seed. */
   version(subscription: LiveSubscription): string {
     return (
-      later(this.lastSeen.get(subscriptionKey(subscription)), this.resourceSeen.get(subscription.resource)) ??
-      this.seedValue
+      later(this.lastSeen.get(versionKey(subscription)), this.resourceSeen.get(subscription.resource)) ?? this.seedValue
     );
   }
 
-  /** The tab's current live subscriptions: every watched row and list the server has not dropped. */
+  /**
+   * The tab's current live subscriptions, as the renewal sends them: every watched row and
+   * list the server has not dropped, each as its resource, key, and domain and nothing
+   * else, since the server refuses a field it does not know.
+   */
   subscriptions(): LiveSubscription[] {
     const current: LiveSubscription[] = [];
     for (const [key, held] of this.watchers) {
@@ -311,7 +339,15 @@ export class LiveSession {
       }
       const [first] = held;
       if (first) {
-        current.push(first.subscription);
+        const { resource, key: rowKey, domain } = first.subscription;
+        const subscription: LiveSubscription = { resource };
+        if (rowKey !== undefined) {
+          subscription.key = rowKey;
+        }
+        if (domain !== undefined) {
+          subscription.domain = domain;
+        }
+        current.push(subscription);
       }
     }
     return current;
@@ -319,31 +355,32 @@ export class LiveSession {
 
   /**
    * Dispatches one change: the watchers of the row or list it names refetch with its
-   * `at`; a resource event reaches every watcher of the resource. The version is recorded
-   * whether or not anything watches, so a page mounted later asks by it.
+   * `at`; a row event reaches the row's watchers in every domain, since the row is one
+   * whatever domain it was read in; a resource event reaches every watcher of the
+   * resource. The version is recorded whether or not anything watches, so a page mounted
+   * later asks by it.
    */
   dispatch(event: ChangeEvent): void {
     if (event.kind === 'resource') {
       this.resourceSeen.set(event.resource, later(this.resourceSeen.get(event.resource), event.at) ?? event.at);
-      for (const [, held] of this.watchers) {
-        for (const watcher of [...held]) {
-          if (watcher.subscription.resource === event.resource) {
-            watcher.refetch(this.version(watcher.subscription), event);
-          }
-        }
-      }
+      this.refetchEach((subscription) => subscription.resource === event.resource, event);
       return;
     }
-    const subscription: LiveSubscription =
-      event.kind === 'row'
-        ? { resource: event.resource, key: event.key ?? '' }
-        : { resource: event.resource, domain: event.domain || undefined };
-    const key = subscriptionKey(subscription);
-    this.lastSeen.set(key, later(this.lastSeen.get(key), event.at) ?? event.at);
-    const version = this.version(subscription);
-    for (const watcher of [...(this.watchers.get(key) ?? [])]) {
-      watcher.refetch(version, event);
+    if (event.kind === 'row') {
+      const key = event.key ?? '';
+      this.record(versionKey({ resource: event.resource, key }), event.at);
+      this.refetchEach((subscription) => subscription.resource === event.resource && subscription.key === key, event);
+      return;
     }
+    const domain = event.domain || undefined;
+    this.record(versionKey({ resource: event.resource, domain }), event.at);
+    this.refetchEach(
+      (subscription) =>
+        subscription.resource === event.resource &&
+        subscription.key === undefined &&
+        (subscription.domain || undefined) === domain,
+      event,
+    );
   }
 
   /** Forgets every version seen, mints a fresh seed, and refetches every watched row and list by it. */
@@ -366,15 +403,15 @@ export class LiveSession {
    * already running.
    */
   async start(feed: ChangeFeed): Promise<void> {
-    if (!this.enabled) {
+    if (!this.routes) {
       throw new Error(
-        'this API serves no live subscriptions: its descriptor does not say live, so no change feed can be started for it',
+        'this API serves no live subscriptions: its descriptor carries no live block, so no change feed can be started for it',
       );
     }
     if (this.feed) {
       return;
     }
-    const identity = await this.request<LiveIdentity>('GET', liveRoutes.token, { headers: this.headers() });
+    const identity = await this.request<LiveIdentity>('GET', this.routes.tokenRoute, { headers: this.headers() });
     await feed.start(identity);
     this.feed = feed;
     this.feedReleases = [feed.onChange((event) => this.dispatch(event)), feed.onResync(() => this.resync())];
@@ -389,17 +426,18 @@ export class LiveSession {
   /**
    * Renews the tab's current subscriptions with the server, which re-checks each against
    * the digest, and drops the ones it reports dropped: they are not renewed again until a
-   * watcher asks for them anew. Nothing is sent while no feed runs or nothing is watched.
+   * watcher asks for them anew. At most liveRenewLimit subscriptions travel in one
+   * renewal, the server's limit. Nothing is sent while no feed runs or nothing is watched.
    */
   async renew(): Promise<RenewResponse | undefined> {
-    if (!this.feed) {
+    if (!this.feed || !this.routes) {
       return undefined;
     }
-    const subscriptions = this.subscriptions();
+    const subscriptions = this.subscriptions().slice(0, liveRenewLimit);
     if (subscriptions.length === 0) {
       return undefined;
     }
-    const response = await this.request<RenewResponse | null>('POST', liveRoutes.renew, {
+    const response = await this.request<RenewResponse | null>('POST', this.routes.renewRoute, {
       body: { tab: this.tab, subscriptions },
       headers: this.headers(),
     });
@@ -430,13 +468,15 @@ export class LiveSession {
         release();
       }
       this.feedReleases = [];
-      try {
-        await this.request<unknown>('POST', liveRoutes.unsubscribe, {
-          body: { tab: this.tab, all: true },
-          headers: this.headers(),
-        });
-      } catch {
-        // Best effort: the server's TTL ends what this could not.
+      if (this.routes) {
+        try {
+          await this.request<unknown>('POST', this.routes.unsubscribeRoute, {
+            body: { tab: this.tab, all: true },
+            headers: this.headers(),
+          });
+        } catch {
+          // Best effort: the server's TTL ends what this could not.
+        }
       }
       try {
         await feed.stop();
@@ -456,7 +496,7 @@ export class LiveSession {
    * feed runs; a page restored from the back-forward cache renews at once instead.
    */
   leave(): void {
-    if (!this.feed || !this.keepaliveFetch) {
+    if (!this.feed || !this.routes || !this.keepaliveFetch) {
       return;
     }
     const headers: Record<string, string> = {
@@ -470,7 +510,7 @@ export class LiveSession {
         headers[this.xsrf.headerName] = token;
       }
     }
-    void this.keepaliveFetch(`${this.baseUrl}/${liveRoutes.unsubscribe}`, {
+    void this.keepaliveFetch(`${this.baseUrl}/${this.routes.unsubscribeRoute}`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ tab: this.tab, all: false }),
@@ -482,5 +522,21 @@ export class LiveSession {
   /** The subscribe header every live-route request carries, so each shows the tab on its request log line. */
   private headers(): Record<string, string> {
     return { [subscribeHeader]: this.tab };
+  }
+
+  /** Records a version for a row or list, never moving it back. */
+  private record(key: string, at: string): void {
+    this.lastSeen.set(key, later(this.lastSeen.get(key), at) ?? at);
+  }
+
+  /** Refetches every watcher whose subscription the predicate admits, each by its own version. */
+  private refetchEach(admits: (subscription: LiveSubscription) => boolean, event: ChangeEvent): void {
+    for (const [, held] of this.watchers) {
+      for (const watcher of [...held]) {
+        if (admits(watcher.subscription)) {
+          watcher.refetch(this.version(watcher.subscription), event);
+        }
+      }
+    }
   }
 }

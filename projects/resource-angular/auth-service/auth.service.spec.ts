@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { ApiDescriptor, ChangeFeed, createClient, LiveIdentity, subscribeHeader } from '@cccteam/resource';
+import { ApiDescriptor, ChangeFeed, createClient, LiveIdentity, LiveRoutes, subscribeHeader } from '@cccteam/resource';
 import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 import { CHANGE_FEED, LOGIN_REDIRECT_URL } from '@cccteam/resource-angular/types';
@@ -67,7 +67,14 @@ function serverWith(authenticated: boolean): ScriptedTransport {
   });
 }
 
-function authOver(transport: ScriptedTransport, options: { live?: boolean; feed?: ChangeFeed } = {}): AuthService {
+/** The live block a browser descriptor carries when the outlet serves live subscriptions. */
+const liveRoutes: LiveRoutes = {
+  renewRoute: 'live/renew',
+  unsubscribeRoute: 'live/unsubscribe',
+  tokenRoute: 'live/token',
+};
+
+function authOver(transport: ScriptedTransport, options: { live?: LiveRoutes; feed?: ChangeFeed } = {}): AuthService {
   TestBed.configureTestingModule({
     providers: [
       {
@@ -112,7 +119,7 @@ describe('AuthService live session', () => {
   it('starts the feed with the identity the API minted once the session first authenticates, and not again on a keepalive', async () => {
     const transport = serverWith(true);
     const feed = new FakeFeed();
-    const auth = authOver(transport, { live: true, feed });
+    const auth = authOver(transport, { live: liveRoutes, feed });
     await firstValueFrom(auth.checkUserSession());
     expect(transport.requests.map((r) => [r.method, r.url])).toEqual([
       ['GET', '/api/user/session'],
@@ -132,7 +139,7 @@ describe('AuthService live session', () => {
   it('logout ends the live session first, every subscription and the identity, then logs the session out', async () => {
     const transport = serverWith(true);
     const feed = new FakeFeed();
-    const auth = authOver(transport, { live: true, feed });
+    const auth = authOver(transport, { live: liveRoutes, feed });
     await firstValueFrom(auth.checkUserSession());
     const client = TestBed.inject(RESOURCE_CLIENT);
     const tab = client.live.tab;
@@ -155,7 +162,7 @@ describe('AuthService live session', () => {
       request.url === '/api/user/session' ? { status: 200, body: { authenticated } } : serverWith(true)(request),
     );
     const feed = new FakeFeed();
-    const auth = authOver(transport, { live: true, feed });
+    const auth = authOver(transport, { live: liveRoutes, feed });
     await firstValueFrom(auth.checkUserSession());
     expect(feed.started).toHaveLength(1);
 
@@ -166,8 +173,8 @@ describe('AuthService live session', () => {
     expect(TestBed.inject(RESOURCE_CLIENT).live.started).toBe(false);
   });
 
-  const quiet: { name: string; live: boolean | undefined; feed: FakeFeed | undefined }[] = [
-    { name: 'no feed provided: nothing live is asked, whatever the API serves', live: true, feed: undefined },
+  const quiet: { name: string; live: LiveRoutes | undefined; feed: FakeFeed | undefined }[] = [
+    { name: 'no feed provided: nothing live is asked, whatever the API serves', live: liveRoutes, feed: undefined },
     {
       name: 'a feed provided to an API that serves no live: nothing live is asked, and nothing fails',
       live: undefined,
@@ -200,7 +207,7 @@ describe('AuthService live session', () => {
       }
     })();
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const auth = authOver(transport, { live: true, feed });
+    const auth = authOver(transport, { live: liveRoutes, feed });
     const session = await firstValueFrom(auth.checkUserSession());
     expect(session.authenticated).toBe(true);
     expect(auth.authenticated()).toBe(true);

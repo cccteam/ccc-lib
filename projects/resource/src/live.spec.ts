@@ -6,6 +6,7 @@ import {
   ChangeEvent,
   ChangeFeed,
   LiveIdentity,
+  liveRenewLimit,
   LiveSubscription,
   liveSubscription,
   mintLiveId,
@@ -27,7 +28,7 @@ const descriptor: ApiDescriptor = {
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
   domainRoute: { segment: 'sectors', param: 'sectorID' },
-  live: true,
+  live: { renewRoute: 'live/renew', unsubscribeRoute: 'live/unsubscribe', tokenRoute: 'live/token' },
   resources: {
     Ships: {
       resource: 'Ships' as Resource,
@@ -292,14 +293,14 @@ describe('liveSubscription', () => {
       want: { resource: 'Berths' },
     },
     {
-      name: 'a row is the resource and key, no domain',
+      name: 'a row of a domain-scoped resource is the resource and key in the domain it was read in',
       descriptor: ships,
       domain: anvil,
       key: ['s1'],
-      want: { resource: 'Ships', key: 's1' },
+      want: { resource: 'Ships', key: 's1', domain: 'anvil' },
     },
     {
-      name: 'a compound key joins its parts in route order',
+      name: 'a row of a global resource carries no domain, and a compound key joins its parts in route order',
       descriptor: berths,
       key: ['h1', 3],
       want: { resource: 'Berths', key: 'h1/3' },
@@ -314,9 +315,24 @@ describe('liveSubscription', () => {
     });
   }
 
-  it('sameSubscription compares the row or list named, treating an absent domain as the global one', () => {
+  it('sameSubscription compares the resource, the key, and the domain, treating an absent domain as the global one', () => {
     expect(sameSubscription({ resource: 'Ships', key: 's1' }, { resource: 'Ships', key: 's1' })).toBe(true);
     expect(sameSubscription({ resource: 'Ships', key: 's1' }, { resource: 'Ships', key: 's2' })).toBe(false);
+    expect(
+      sameSubscription(
+        { resource: 'Ships', key: 's1', domain: 'anvil' },
+        { resource: 'Ships', key: 's1', domain: 'anvil' },
+      ),
+    ).toBe(true);
+    expect(
+      sameSubscription(
+        { resource: 'Ships', key: 's1', domain: 'anvil' },
+        { resource: 'Ships', key: 's1', domain: 'bastion' },
+      ),
+    ).toBe(false);
+    expect(sameSubscription({ resource: 'Ships', key: 's1', domain: 'anvil' }, { resource: 'Ships', key: 's1' })).toBe(
+      false,
+    );
     expect(sameSubscription({ resource: 'Berths' }, { resource: 'Berths', domain: undefined })).toBe(true);
     expect(sameSubscription({ resource: 'Ships', domain: 'anvil' }, { resource: 'Ships' })).toBe(false);
     expect(sameSubscription(undefined, undefined)).toBe(true);
@@ -326,7 +342,7 @@ describe('liveSubscription', () => {
   it('a handle answers its own list and row subscriptions', () => {
     const { client } = harness({});
     expect(client.domain(anvil).ships.subscription()).toEqual({ resource: 'Ships', domain: 'anvil' });
-    expect(client.domain(anvil).ships.subscription(['s1'])).toEqual({ resource: 'Ships', key: 's1' });
+    expect(client.domain(anvil).ships.subscription(['s1'])).toEqual({ resource: 'Ships', key: 's1', domain: 'anvil' });
     expect(client.shipClasses.subscription()).toEqual({ resource: 'ShipClasses' });
     expect(client.berths.subscription(['h1', 3])).toEqual({ resource: 'Berths', key: 'h1/3' });
   });
@@ -468,6 +484,39 @@ describe('dispatch', () => {
     await live.stop();
   });
 
+  it("a row event, which names no domain, reaches the row's watchers in every domain it was read in, and the row has one version", async () => {
+    const h = harness({});
+    const live = h.client.live;
+    const refetches: { who: string; version: string }[] = [];
+    live.watch(h.client.domain(anvil).ships.subscription(['s1']), (version) =>
+      refetches.push({ who: 'anvil s1', version }),
+    );
+    live.watch(h.client.domain('bastion' as Domain).ships.subscription(['s1']), (version) =>
+      refetches.push({ who: 'bastion s1', version }),
+    );
+    live.watch(h.client.domain(anvil).ships.subscription(['s2']), (version) =>
+      refetches.push({ who: 'anvil s2', version }),
+    );
+    await live.start(h.feed);
+    refetches.length = 0;
+    h.feed.emit({ kind: 'row', resource: 'Ships', key: 's1', at: '1700000000000012' });
+    expect(refetches).toEqual([
+      { who: 'anvil s1', version: '1700000000000012' },
+      { who: 'bastion s1', version: '1700000000000012' },
+    ]);
+    expect(live.version({ resource: 'Ships', key: 's1', domain: 'anvil' })).toBe('1700000000000012');
+    expect(live.version({ resource: 'Ships', key: 's1', domain: 'bastion' })).toBe('1700000000000012');
+    expect(live.version({ resource: 'Ships', key: 's1' })).toBe('1700000000000012');
+    expect(live.version({ resource: 'Ships', key: 's2', domain: 'anvil' })).toBe(live.seed);
+    // The two are two subscriptions to renew, since the server re-checks Read in each domain.
+    expect(live.subscriptions()).toEqual([
+      { resource: 'Ships', key: 's1', domain: 'anvil' },
+      { resource: 'Ships', key: 's1', domain: 'bastion' },
+      { resource: 'Ships', key: 's2', domain: 'anvil' },
+    ]);
+    await live.stop();
+  });
+
   it('a global list event with no domain reaches the global list watcher', async () => {
     const h = harness({});
     const versions: string[] = [];
@@ -584,20 +633,26 @@ describe('renew', () => {
     expect(renew.body).toEqual({
       tab: client.live.tab,
       subscriptions: [
-        { resource: 'Ships', key: 's1' },
-        { resource: 'Ships', key: 's2' },
+        { resource: 'Ships', key: 's1', domain: 'anvil' },
+        { resource: 'Ships', key: 's2', domain: 'anvil' },
         { resource: 'Ships', domain: 'anvil' },
         { resource: 'ShipClasses' },
       ],
     });
     expect(JSON.stringify(renew.body)).not.toContain('"domain":""');
-    expect(answer?.dropped).toEqual([{ resource: 'Ships', key: 's2' }]);
+    // Each subscription carries the three fields the server knows and nothing else.
+    expect(
+      (renew.body as { subscriptions: object[] }).subscriptions.every((s) =>
+        Object.keys(s).every((k) => ['resource', 'key', 'domain'].includes(k)),
+      ),
+    ).toBe(true);
+    expect(answer?.dropped).toEqual([{ resource: 'Ships', key: 's2', domain: 'anvil' }]);
     expect(answer?.expiresAt).toBe('2026-10-02T12:05:00Z');
 
     // The dropped row is not renewed again; the first watcher's release keeps s1 current through the second.
     releaseS1();
     expect(client.live.subscriptions()).toEqual([
-      { resource: 'Ships', key: 's1' },
+      { resource: 'Ships', key: 's1', domain: 'anvil' },
       { resource: 'Ships', domain: 'anvil' },
       { resource: 'ShipClasses' },
     ]);
@@ -612,6 +667,22 @@ describe('renew', () => {
         .sort(),
     ).toEqual(['', 'anvil', 's1', 's2']);
     await client.live.stop();
+  });
+
+  it("a renewal carries at most the server's limit, and a subscription with fields of its own is sent as the three the server knows", async () => {
+    const h = harness({});
+    await h.client.live.start(h.feed);
+    for (let i = 0; i < liveRenewLimit + 5; i++) {
+      h.client.live.watch({ resource: 'ShipClasses', key: `c${i}` }, () => undefined);
+    }
+    h.client.live.watch({ resource: 'Berths', key: 'b1', note: 'mine' } as LiveSubscription, () => undefined);
+    await h.client.live.renew();
+    const renew = h.transport.requests.find((r) => r.url === '/api/live/renew')!;
+    const body = renew.body as { subscriptions: LiveSubscription[] };
+    expect(body.subscriptions).toHaveLength(liveRenewLimit);
+    expect(h.client.live.subscriptions()).toHaveLength(liveRenewLimit + 6);
+    expect(h.client.live.subscriptions().at(-1)).toEqual({ resource: 'Berths', key: 'b1' });
+    await h.client.live.stop();
   });
 
   it('the renew timer runs on the interval', async () => {
