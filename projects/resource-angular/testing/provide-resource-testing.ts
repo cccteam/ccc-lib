@@ -27,6 +27,7 @@ const emptyDescriptor: ApiDescriptor = {
   methods: {},
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
+  features: { route: 'features' },
 };
 
 /**

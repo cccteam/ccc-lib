@@ -21,6 +21,7 @@ describe('ActionAccessControlWrapperComponent', () => {
               methods: {},
               permissionDigestRoute: 'permission-digest',
               userDomainsRoute: 'user-domains',
+              features: { route: 'features' },
             },
             { baseUrl: '/api' },
           ),

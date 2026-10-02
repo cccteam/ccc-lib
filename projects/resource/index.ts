@@ -2,6 +2,7 @@ export * from './src/brands';
 export * from './src/client';
 export * from './src/descriptor';
 export * from './src/digest';
+export * from './src/features';
 export * from './src/live';
 export * from './src/meta';
 export * from './src/mutations';

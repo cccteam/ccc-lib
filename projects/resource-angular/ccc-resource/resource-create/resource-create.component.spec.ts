@@ -39,6 +39,7 @@ describe('ResourceCreateComponent over the read-only shapes and a write-only fie
   const descriptor: ApiDescriptor = {
     permissionDigestRoute: 'permission-digest',
     userDomainsRoute: 'user-domains',
+    features: { route: 'features' },
     methods: {},
     resources: {
       [probes]: {

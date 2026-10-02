@@ -12,6 +12,7 @@ const descriptor: ApiDescriptor = {
   methods: {},
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
+  features: { route: 'features' },
 };
 
 const identity: LiveIdentity = {
@@ -44,7 +45,10 @@ class FakeFeed implements ChangeFeed {
   }
 }
 
-/** The session, digest, domains, and live routes, each answering; `authenticated` is what the session says. */
+/** The flags the features route says are on; a spec changes it between checks. */
+let enabledFeatures: string[] = ['debriefs'];
+
+/** The session, digest, domains, features, and live routes, each answering; `authenticated` is what the session says. */
 function serverWith(authenticated: boolean): ScriptedTransport {
   return scriptedTransport((request) => {
     switch (request.url) {
@@ -57,6 +61,8 @@ function serverWith(authenticated: boolean): ScriptedTransport {
         return { status: 200, body: {} };
       case '/api/user-domains':
         return { status: 200, body: [] };
+      case '/api/features':
+        return { status: 200, body: { enabled: enabledFeatures } };
       case '/api/live/token':
         return { status: 200, body: identity };
       case '/api/live/unsubscribe':
@@ -125,6 +131,7 @@ describe('AuthService live session', () => {
       ['GET', '/api/user/session'],
       ['GET', '/api/permission-digest'],
       ['GET', '/api/user-domains'],
+      ['GET', '/api/features'],
       ['GET', '/api/live/token'],
     ]);
     expect(feed.started).toEqual([identity]);
@@ -191,6 +198,7 @@ describe('AuthService live session', () => {
         '/api/user/session',
         '/api/permission-digest',
         '/api/user-domains',
+        '/api/features',
       ]);
       expect(tt.feed?.started ?? []).toEqual([]);
       transport.requests.length = 0;
@@ -214,5 +222,97 @@ describe('AuthService live session', () => {
     expect(TestBed.inject(RESOURCE_CLIENT).live.active).toBe(false);
     expect(consoleError).toHaveBeenCalledTimes(1);
     consoleError.mockRestore();
+  });
+});
+
+describe('AuthService feature flags', () => {
+  beforeEach(() => {
+    enabledFeatures = ['debriefs'];
+  });
+
+  it('loads the enabled set beside the digest and the domains once the session first authenticates, and answers from it', async () => {
+    const transport = serverWith(true);
+    const auth = authOver(transport);
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    expect(auth.enabledFeatures().size).toBe(0);
+
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(transport.requests.map((r) => r.url)).toEqual([
+      '/api/user/session',
+      '/api/permission-digest',
+      '/api/user-domains',
+      '/api/features',
+    ]);
+    expect(auth.featureEnabled('debriefs')).toBe(true);
+    expect(auth.featureEnabled('manifests')).toBe(false);
+    expect(auth.featureEnabled(undefined)).toBe(true);
+    expect([...auth.enabledFeatures()]).toEqual(['debriefs']);
+
+    // A keepalive leaves the set alone.
+    await firstValueFrom(auth.checkUserSession());
+    expect(transport.requests.filter((r) => r.url === '/api/features')).toHaveLength(1);
+  });
+
+  it('logout forgets the enabled set', async () => {
+    const auth = authOver(serverWith(true));
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(auth.featureEnabled('debriefs')).toBe(true);
+    await firstValueFrom(auth.logout());
+    TestBed.tick();
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    expect(TestBed.inject(RESOURCE_CLIENT).features.loaded).toBe(false);
+  });
+
+  it('an unauthenticated answer forgets the enabled set', async () => {
+    let authenticated = true;
+    const transport = scriptedTransport((request) =>
+      request.url === '/api/user/session' ? { status: 200, body: { authenticated } } : serverWith(true)(request),
+    );
+    const auth = authOver(transport);
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(auth.featureEnabled('debriefs')).toBe(true);
+
+    authenticated = false;
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+  });
+
+  it('refreshFeatures reloads the set, and a flip elsewhere is seen only then', async () => {
+    const transport = serverWith(true);
+    const auth = authOver(transport);
+    await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    enabledFeatures = ['debriefs', 'manifests'];
+    expect(auth.featureEnabled('manifests')).toBe(false);
+
+    expect(await firstValueFrom(auth.refreshFeatures())).toEqual(['debriefs', 'manifests']);
+    TestBed.tick();
+    expect(auth.featureEnabled('manifests')).toBe(true);
+  });
+
+  it('ensureFeature loads the set first when it has not loaded, and answers false without a name requirement only when a name is given', async () => {
+    const transport = serverWith(true);
+    const auth = authOver(transport);
+    expect(await firstValueFrom(auth.ensureFeature('debriefs'))).toBe(true);
+    expect(await firstValueFrom(auth.ensureFeature('manifests'))).toBe(false);
+    expect(await firstValueFrom(auth.ensureFeature(undefined))).toBe(true);
+    expect(transport.requests.map((r) => r.url)).toEqual(['/api/features']);
+  });
+
+  it('a features route that fails leaves the session authenticated and every flag off', async () => {
+    const transport = scriptedTransport((request) =>
+      request.url === '/api/features' ? { status: 503, body: { message: 'unavailable' } } : serverWith(true)(request),
+    );
+    const auth = authOver(transport);
+    const session = await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(session.authenticated).toBe(true);
+    expect(auth.authenticated()).toBe(true);
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    expect(await firstValueFrom(auth.refreshFeatures())).toEqual([]);
   });
 });

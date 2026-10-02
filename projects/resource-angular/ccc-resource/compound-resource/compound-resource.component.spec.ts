@@ -56,6 +56,7 @@ describe('CompoundResourceComponent', () => {
 const descriptor: ApiDescriptor = {
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
+  features: { route: 'features' },
   resources: {
     Squadrons: {
       resource: 'Squadrons' as Resource,

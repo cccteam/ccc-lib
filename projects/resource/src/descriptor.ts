@@ -64,6 +64,15 @@ export interface ResourceDescriptor {
    * Absent when the resource declares none.
    */
   files?: readonly string[];
+  /**
+   * The feature flag that gates the resource (`@feature` on the struct), by name. While
+   * the flag is off the resource is absent: its routes answer the outlet's not-found
+   * handler, and the permission digest omits it, so a page over it is hidden by the
+   * digest alone; the generated routes also skip it (a dark URL falls to the
+   * application's wildcard). The generated `Feature` union in the application's
+   * zz_gen_api.ts narrows this string; absent on an ungated resource.
+   */
+  feature?: string;
 }
 
 /** One generated RPC method as the client needs to address it. */
@@ -88,6 +97,12 @@ export interface MethodDescriptor {
    * bounded by `maxBytes`. The handle gains `upload(body, files)`.
    */
   upload?: { maxBytes: number };
+  /**
+   * The feature flag that gates the method (`@feature` on the method), by name. While
+   * the flag is off the method is absent: its route answers not-found and the digest
+   * omits its Execute entry. Absent on an ungated method.
+   */
+  feature?: string;
 }
 
 /** The domain route pair domain-scoped routes are served under: `<segment>/<domain>/...`. */
@@ -110,12 +125,24 @@ export interface ApiDescriptor {
   permissionDigestRoute: string;
   userDomainsRoute: string;
   /**
+   * Where the enabled set of feature flags is read (`GET <prefix>/features`, answering
+   * `{ enabled: [...] }`): the generator writes the block on every descriptor, since
+   * every outlet serves the route to a signed-in caller. The client loads the set once
+   * at sign-in, beside the digest, and again after the person flips a flag.
+   */
+  features: FeaturesRoute;
+  /**
    * The live routes this outlet serves, when it serves live subscriptions: the generator
    * writes the block on every browser descriptor, and its presence is what says live is
    * served. Absent, a `{ live: true }` call is handled exactly as a plain one, and no
    * change feed can be started for the client.
    */
   live?: LiveRoutes;
+}
+
+/** The route the enabled set of feature flags is read from, under the API prefix like every other route. */
+export interface FeaturesRoute {
+  route: string;
 }
 
 /**

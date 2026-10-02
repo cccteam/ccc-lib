@@ -89,6 +89,7 @@ const api: ApiDescriptor = {
   domainRoute: { segment: 'waystations', param: 'waystationID' },
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
+  features: { route: 'features' },
 };
 
 interface IncidentReport {

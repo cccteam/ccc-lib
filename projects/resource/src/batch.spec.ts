@@ -17,6 +17,7 @@ const descriptor: ApiDescriptor = {
   consolidatedRoute: 'resources',
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
+  features: { route: 'features' },
   resources: {
     Missions: {
       resource: 'Missions' as Resource,

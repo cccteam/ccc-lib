@@ -19,6 +19,13 @@ export interface MenuItem {
    * routes fill it with the resource's List permission unless the config set one.
    */
   permission?: PermissionScope;
+  /**
+   * The feature flag the item's destination sits behind, by name (a member of the
+   * generated `Feature` union); a navigation that gates its items with `cccFeature`
+   * hides the item while the flag is off. Resource routes fill it from the metadata's
+   * `feature` when the resource is gated.
+   */
+  feature?: string;
 }
 
 export interface RouteResourceData {

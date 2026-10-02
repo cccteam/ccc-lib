@@ -1,6 +1,11 @@
-import { Route } from '@angular/router';
+import { TestBed } from '@angular/core/testing';
+import { CanMatchFn, Route } from '@angular/router';
+import { createClient } from '@cccteam/resource';
+import { scriptedTransport } from '@cccteam/resource/testing';
 import { AuthorizationGuard } from '@cccteam/resource-angular/auth-authorization-guard';
 import { resourcePageRoute } from '@cccteam/resource-angular/resource-nav';
+import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
+import { provideResourceTesting } from '@cccteam/resource-angular/testing';
 import {
   FieldMeta,
   ListPermission,
@@ -12,6 +17,7 @@ import {
   RootRouteData,
   RouteResourceData,
 } from '@cccteam/resource-angular/types';
+import { firstValueFrom, isObservable } from 'rxjs';
 
 import { resourceRoutes } from './index';
 
@@ -32,6 +38,7 @@ describe('resourceRoutes', () => {
       nav: { navItem: { label: 'Clients' } },
       parentConfig: listViewConfig({ primaryResource: clients, listColumns: [], elements: [] }),
     });
+  const config_ = config;
   const scopeOf = (route: Route | undefined) => (route?.data as RouteResourceData | undefined)?.scope;
   const rowRoute = (route: Route) => route.children?.find((child) => child.path === ':uuid');
 
@@ -144,5 +151,92 @@ describe('resourceRoutes', () => {
         });
       });
     }
+  });
+
+  // A resource behind a feature flag is matched only while the flag is on: the route
+  // carries a match guard from the metadata's feature, under either form of the page
+  // route, and the navigation item carries the flag so a gated menu hides it. An ungated
+  // resource carries neither.
+  describe('behind a feature flag', () => {
+    const debriefs = 'Debriefs' as Resource;
+    const gatedMeta = (): ResourceMeta => keyed('debriefs', { feature: 'debriefs' });
+    const gatedConfig = (routeData?: RootRouteData) =>
+      rootConfig({
+        ...(routeData ? { routeData } : {}),
+        nav: { navItem: { label: 'Debriefs' } },
+        parentConfig: listViewConfig({ primaryResource: debriefs, listColumns: [], elements: [] }),
+      });
+
+    const cases: { name: string; routeData?: RootRouteData }[] = [
+      { name: 'under the meta route', routeData: undefined },
+      { name: 'under a configured route', routeData: { route: 'ops/debriefs' } },
+    ];
+
+    for (const tt of cases) {
+      describe(tt.name, () => {
+        it('carries a match guard and names the flag on the navigation item', () => {
+          const config = gatedConfig(tt.routeData);
+          const route = resourceRoutes(config, gatedMeta);
+          expect(route.canMatch).toHaveLength(1);
+          expect(route.canActivate).toContain(AuthorizationGuard);
+          expect(config.nav.navItem.feature).toBe('debriefs');
+        });
+      });
+    }
+
+    it('the guard answers from the enabled set, loading it first, so a dark URL falls to the wildcard', async () => {
+      const route = resourceRoutes(gatedConfig(), gatedMeta);
+      const [guard] = route.canMatch as CanMatchFn[];
+      let enabled: string[] = [];
+      const transport = scriptedTransport((request) =>
+        request.url === '/api/features'
+          ? { status: 200, body: { enabled } }
+          : { status: 404, body: { message: `unscripted ${request.url}` } },
+      );
+      TestBed.configureTestingModule({
+        providers: [
+          provideResourceTesting({
+            transport,
+            client: (t) =>
+              createClient(
+                {
+                  resources: {},
+                  methods: {},
+                  permissionDigestRoute: 'permission-digest',
+                  userDomainsRoute: 'user-domains',
+                  features: { route: 'features' },
+                },
+                { baseUrl: '/api', transport: t },
+              ),
+          }),
+        ],
+      });
+      const answer = async (): Promise<unknown> => {
+        const result = TestBed.runInInjectionContext(() => guard(route, []));
+        return isObservable(result) ? firstValueFrom(result) : result;
+      };
+      expect(await answer()).toBe(false);
+      expect(transport.requests.map((r) => r.url)).toEqual(['/api/features']);
+
+      enabled = ['debriefs'];
+      await TestBed.inject(RESOURCE_CLIENT).features.refresh();
+      expect(await answer()).toBe(true);
+    });
+
+    it('keeps a feature the config named on the navigation item', () => {
+      const config = rootConfig({
+        nav: { navItem: { label: 'Debriefs', feature: 'ops_console' } },
+        parentConfig: listViewConfig({ primaryResource: debriefs, listColumns: [], elements: [] }),
+      });
+      resourceRoutes(config, gatedMeta);
+      expect(config.nav.navItem.feature).toBe('ops_console');
+    });
+
+    it('an ungated resource carries no match guard and no flag', () => {
+      const config = config_();
+      const route = resourceRoutes(config, meta);
+      expect(route.canMatch).toBeUndefined();
+      expect(config.nav.navItem.feature).toBeUndefined();
+    });
   });
 });

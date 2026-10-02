@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { RouterModule } from '@angular/router';
 
+import { FeatureDirective } from '@cccteam/resource-angular/auth-feature';
 import { HasPermissionDirective } from '@cccteam/resource-angular/auth-has-permission';
 import { PermissionScope } from '@cccteam/resource-angular/types';
 import { UiCoreService } from '@cccteam/resource-angular/ui-core-service';
@@ -16,6 +17,8 @@ export interface NavItem {
   label: string;
   icon?: string;
   permission?: PermissionScope;
+  /** The feature flag a link sits behind, by name; the link is hidden while the flag is off. */
+  feature?: string;
   children?: NavItem[];
   isExpanded?: boolean;
   attentionCount?: Signal<number>;
@@ -35,6 +38,7 @@ export type NavGroups = Record<string, NavItem[]>;
     MatButtonModule,
     MatSidenavModule,
     HasPermissionDirective,
+    FeatureDirective,
   ],
 })
 export class SidenavComponent {

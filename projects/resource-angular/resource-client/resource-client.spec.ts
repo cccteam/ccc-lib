@@ -34,6 +34,7 @@ const descriptor: ApiDescriptor = {
   methods: {},
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
+  features: { route: 'features' },
 };
 
 function messages(): string[] {
