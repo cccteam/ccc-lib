@@ -146,6 +146,87 @@ or one per domain), loaded on demand and cached for the session.
 Never poll a check endpoint per field. Enforcement stays server-side; everything here
 is advisory material for what to render.
 
+## Live pages
+
+A page that asks for a live list or a live row stays current without polling and without
+refetching while nothing changed, and a page left and opened again inside a short window is
+served by the browser with no request. Asking is a page-level decision: list pages and record
+pages ask; pickers, edit forms, exports, reports, and one-off lookups do not, and a request
+that did not ask is handled exactly as before.
+
+What a live request opts into. The tab subscribes to changes of that row (the resource and
+key) or that list (the resource in the handle's domain; filter, sort, and cursor are not part
+of it, so any change to the resource in the domain refetches the page). The server registers
+the subscription before it runs the query, and only when the request is permitted; a refused
+request subscribes nothing. The tab renews its subscriptions every two minutes, the server
+re-checking each against the permission digest, so a revoked grant ends a subscription at the
+next renewal and the refetch is refused meanwhile. The answer is cacheable by the browser for
+five minutes, keyed by a version the client carries in the URL: a seed the tab minted, then
+the timestamp of the last change seen for that row or list. A change the server publishes
+reaches the tab through a change feed, one listener per tab over the user's own change set,
+and the row or list refetches with the change's timestamp as its version, so the browser's
+cache answers a repeat and never a stale one.
+
+What it costs. One feed listener per tab. One renewal request every two minutes while any
+live row or list is held. One request per change to a watched row or list, the whole page
+again for a list change. One unsubscribe when the page leaves (a keepalive request) and one
+at logout. The server holds no connection and keeps scaling to zero.
+
+What it never does. It caches nothing without the version parameter, so a plain request is
+never served stale. It never serves one user another's cache: the seed is minted when the
+feed starts and again at logout. It delivers no change for a row or list the user's permitted
+request did not subscribe to, and the publisher checks no permission, since the subscription
+already did. It evaluates no filter on the client: a list change is a refetch, whatever the
+filter. It writes nothing to the database for versioning, and it does not work offline.
+
+The shape. The generated descriptor says whether the outlet serves it (`descriptor.live`);
+on one that does not, a live call is plain and no feed can be started. `list`, `page`, and
+`read` take `{ live: true }`. `api.live` is the tab's `LiveSession`: `start(feed)` fetches
+the identity the server minted (`GET <prefix>/live/token`), starts the feed with it, and
+refetches every watched row and list by a fresh seed, so a page mounted before the feed ran
+becomes live; `stop()` is the logout path (every subscription of the user deleted and the
+feed's identity revoked with `{ all: true }`, the feed stopped, a fresh seed), run before the
+session is logged out; `watch(subscription, refetch)` holds a row or list live and returns
+the release; `handle.subscription(key?)` is the subscription a handle's list or row makes.
+A live request carries `X-Subscribe: <tab>` and `_v=<version>`; every request to a live route
+carries the header too, so each shows the tab on its request log line. The `ChangeFeed`
+interface (`start`, `stop`, `onChange`, `onResync`) and `ChangeEvent` (`row`, `list`, or
+`resource`, with `at` as unix microseconds) are the seam the feed implements;
+[`@cccteam/resource-firestore`](../resource-firestore/README.md) is the Firestore one, and
+this package depends on no SDK.
+
+```ts
+import { firestoreChangeFeed } from '@cccteam/resource-firestore';
+
+const api = createApi({ baseUrl: '/api' });
+await api.live.start(firestoreChangeFeed()); // once the session is authenticated
+
+// A list page: the first live request subscribes the tab; the watcher refetches on a change.
+const station = api.domain('ws-alpha');
+let page = await station.workOrders.page({ sort: { field: 'dueAt' }, limit: 25, live: true });
+const release = api.live.watch(station.workOrders.subscription(), async () => {
+  page = await page.reload(); // the same page, by its cursor, with the change's version
+});
+
+// A record page: the row, by its key.
+let order = await station.workOrders.read([orderId], { live: true });
+const releaseRow = api.live.watch(station.workOrders.subscription([orderId]), async () => {
+  order = await station.workOrders.read([orderId], { live: true });
+});
+
+release();
+releaseRow();
+await api.live.stop(); // at logout, before the session is logged out
+```
+
+Everything is refetched by a fresh seed on three occasions and no other: when the live
+session starts; when the feed's listener recovers after an error; and when the page becomes
+visible again after being hidden longer than the change document's ten-minute life, since a
+browser throttles or drops a background page's connection. A quiet stretch is not one of
+them: the listener keeps its connection and resumes after a drop, so nothing is missed while
+it runs. `LiveOptions` on `createApi` (`live: { renewInterval, page, fetch, xsrf }`) are the
+knobs a spec turns; every one has a default.
+
 ## Transports
 
 `fetchTransport()` is the default. A framework routes requests through its own HTTP

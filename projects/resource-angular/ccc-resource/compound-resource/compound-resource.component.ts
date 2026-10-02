@@ -206,7 +206,9 @@ export class CompoundResourceComponent implements OnInit {
       }
       if (c.type === 'View' || c.type === 'ListView') {
         // The list component holds its own store and its own page; this store serves
-        // the row the page is on. The build is idempotent: one reader, tracking the key.
+        // the row the page is on, live when the config says so. The build is idempotent:
+        // one reader, tracking the key.
+        this.store.live.set(c.live === true);
         this.store.buildStoreViewData();
       }
     });

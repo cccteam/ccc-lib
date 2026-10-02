@@ -1,4 +1,16 @@
-import { computed, effect, EffectRef, inject, Injectable, Injector, ResourceRef, Signal, signal, untracked } from '@angular/core';
+import {
+  computed,
+  DestroyRef,
+  effect,
+  EffectRef,
+  inject,
+  Injectable,
+  Injector,
+  ResourceRef,
+  Signal,
+  signal,
+  untracked,
+} from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import {
@@ -25,11 +37,14 @@ import {
   keyBatches,
   keyLookupQuery,
   ListQuery,
+  liveSubscription,
+  LiveSubscription,
   Operation,
   Page,
   readMode,
   Resource as ClientResource,
   ResourceDescriptor,
+  sameSubscription,
   wholeListQuery,
 } from '@cccteam/resource';
 import { from, map, mergeMap, Observable, of, tap, toArray } from 'rxjs';
@@ -71,6 +86,14 @@ export class ResourceStore {
   columnFilters = signal<ColumnFilter[]>([]);
   /** Set while the page has nothing to ask for (the digest grants none of its columns): no request is made. */
   listSuspended = signal(false);
+  /**
+   * Whether the page asked to be live (`live: true` on its ListViewConfig or ViewConfig).
+   * The list page's requests and the row's read then carry the client's live option, and
+   * the page and the row are refetched when the client's live session reports a change
+   * to them, or a resync. Nothing changes until the application's live session runs
+   * (see LiveSession in @cccteam/resource): until then the requests are plain.
+   */
+  live = signal(false);
   uuid = signal<string>('');
   error = signal<string>('');
 
@@ -81,6 +104,7 @@ export class ResourceStore {
   methodMeta = inject(METHOD_META);
   /** The selected tenant, which every request for a domain-scoped resource is bound to. */
   domain = inject(RESOURCE_DOMAIN);
+  private destroyRef = inject(DestroyRef);
 
   private resourceListRef = signal<ResourceRef<RecordData[]> | undefined>(undefined);
   listData = computed(() => {
@@ -151,12 +175,25 @@ export class ResourceStore {
       sorts: this.sorts(),
       limit: this.pageSize(),
       domain: this.scopedDomain(this.descriptorFor(route)),
+      live: this.live(),
     };
   });
 
   /**
+   * The list page's live subscription, the resource in the selected tenant, while the
+   * page is live and has a route; undefined otherwise. Equal answers hold the watcher
+   * still, so a filter or a sort changing re-registers nothing.
+   */
+  private readonly pageSubscription = computed(
+    () => (this.live() && this.resourceName() !== '' ? this.listSubscription(this.route()) : undefined),
+    { equal: sameSubscription },
+  );
+
+  /**
    * Starts holding the server's page for the list: from here on, whenever the request the
-   * signals describe changes, the store asks for a first page. Idempotent.
+   * signals describe changes, the store asks for a first page, and while the page is live
+   * a change the feed reports to the resource in the tenant requests the page again by
+   * its own cursor. Idempotent.
    */
   buildStorePage(): void {
     if (this.pageEffect) {
@@ -171,6 +208,7 @@ export class ResourceStore {
         { injector: this.injector },
       ),
     );
+    this.watchLive(this.pageSubscription, () => this.reloadPage());
   }
 
   /** The first page of the current request, with the count. */
@@ -225,6 +263,7 @@ export class ResourceStore {
       sort: sorts.length > 0 ? (sorts as ListQuery<RecordData>['sort']) : undefined,
       limit: query.limit,
       count: true,
+      live: query.live || undefined,
     };
     void this.runPageRequest(() => handle.page(request as never) as Promise<Page<RecordData>>, 'first', 0);
   }
@@ -353,7 +392,7 @@ export class ResourceStore {
     if (untracked(() => this.resourceViewRef()) !== undefined) {
       return;
     }
-    this.resourceViewRef.set(this.resourceView(this.route, this.uuid));
+    this.resourceViewRef.set(this.resourceView(this.route, this.uuid, this.live));
   }
 
   /**
@@ -439,6 +478,62 @@ export class ResourceStore {
   }
 
   /**
+   * The live subscription of a list over the route: the resource in the selected tenant
+   * when it is domain-scoped, the resource alone when global. Undefined with no route, or
+   * for a domain-scoped resource with no tenant selected, which asks for nothing anyway.
+   */
+  private listSubscription(route: string): LiveSubscription | undefined {
+    if (!route) {
+      return undefined;
+    }
+    const descriptor = this.descriptorFor(route);
+    const domain = this.scopedDomain(descriptor);
+    if (descriptor.scope === 'domain' && domain === undefined) {
+      return undefined;
+    }
+    return liveSubscription(descriptor, domain);
+  }
+
+  /** The live subscription of one row over the route, by its key; undefined on the same terms as listSubscription, and with no key. */
+  private rowSubscription(route: string, key: string): LiveSubscription | undefined {
+    if (!route || !key || key === 'undefined') {
+      return undefined;
+    }
+    const descriptor = this.descriptorFor(route);
+    const domain = this.scopedDomain(descriptor);
+    if (descriptor.scope === 'domain' && domain === undefined) {
+      return undefined;
+    }
+    return liveSubscription(descriptor, domain, [key]);
+  }
+
+  /**
+   * Holds the row or list `subscription` names on the client's live session for as long
+   * as the signal names it: a change the feed reports to it, or a resync, runs `refetch`.
+   * A new answer from the signal releases the old hold and takes the new; undefined holds
+   * nothing. Released with the store.
+   */
+  private watchLive(subscription: Signal<LiveSubscription | undefined>, refetch: () => void): void {
+    let release: (() => void) | undefined;
+    const ref = untracked(() =>
+      effect(
+        () => {
+          const current = subscription();
+          untracked(() => {
+            release?.();
+            release = current ? this.client.live.watch(current, () => refetch()) : undefined;
+          });
+        },
+        { injector: this.injector },
+      ),
+    );
+    this.destroyRef.onDestroy(() => {
+      release?.();
+      ref.destroy();
+    });
+  }
+
+  /**
    * Sends operations through the client's consolidated endpoint as one transaction
    * and reports success. The client raises ApiError on refusal, so the notification
    * fires only on commit.
@@ -460,32 +555,48 @@ export class ResourceStore {
    * route or the key is empty (or the string 'undefined', which a template renders for a
    * missing value) the params are undefined, and the reader is idle with no value and no
    * request. Nothing answers an empty key with an empty row, since an empty row would
-   * count as present.
+   * count as present. While `live` is set the read carries the client's live option (so
+   * the first live read subscribes the tab to the row) and the row is held on the live
+   * session: a change the feed reports to it reads it again by the change's version.
    */
-  resourceView(route: Signal<string>, uuid: Signal<string>): ResourceRef<RecordData> {
-    return untracked(
-      () =>
-        rxResource({
-          injector: this.injector,
-          params: () => {
-            const currentRoute = route();
-            const key = uuid();
-            if (!currentRoute || !key || key === 'undefined') {
-              return undefined;
-            }
-            return { route: currentRoute, uuid: key, domain: this.scopedDomain(this.descriptorFor(currentRoute)) };
-          },
-          stream: ({ params }) => {
-            // The view is the edit surface: opt into the capability envelope so each
-            // field and the delete button render from the row's own affordances.
-            return from(
-              this.handleFor(params.route).read([params.uuid], {
-                capabilities: ['Update', 'Delete'],
-              }) as Promise<RecordData>,
-            );
-          },
-        }) as ResourceRef<RecordData>,
-    );
+  resourceView(
+    route: Signal<string>,
+    uuid: Signal<string>,
+    live: Signal<boolean> = signal(false),
+  ): ResourceRef<RecordData> {
+    return untracked(() => {
+      const ref = rxResource({
+        injector: this.injector,
+        params: () => {
+          const currentRoute = route();
+          const key = uuid();
+          if (!currentRoute || !key || key === 'undefined') {
+            return undefined;
+          }
+          return {
+            route: currentRoute,
+            uuid: key,
+            domain: this.scopedDomain(this.descriptorFor(currentRoute)),
+            live: live(),
+          };
+        },
+        stream: ({ params }) => {
+          // The view is the edit surface: opt into the capability envelope so each
+          // field and the delete button render from the row's own affordances.
+          return from(
+            this.handleFor(params.route).read([params.uuid], {
+              capabilities: ['Update', 'Delete'],
+              live: params.live || undefined,
+            }) as Promise<RecordData>,
+          );
+        },
+      }) as ResourceRef<RecordData>;
+      this.watchLive(
+        computed(() => (live() ? this.rowSubscription(route(), uuid()) : undefined), { equal: sameSubscription }),
+        () => ref.reload(),
+      );
+      return ref;
+    });
   }
 
   resourceList(

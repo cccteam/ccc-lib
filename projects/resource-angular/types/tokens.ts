@@ -1,4 +1,5 @@
 import { InjectionToken, Provider, signal, Signal, WritableSignal } from '@angular/core';
+import { ChangeFeed } from '@cccteam/resource';
 import { Domain, Permission, Resource } from './permissions';
 import { MethodMeta, ResourceMeta } from './resource-meta';
 
@@ -102,6 +103,17 @@ export const IDLE_WARNING_DURATION = new InjectionToken<number>('IDLE_WARNING_DU
  * @defaultValue 30 seconds
  */
 export const IDLE_KEEPALIVE_DURATION = new InjectionToken<number>('IDLE_KEEPALIVE_DURATION', { factory: () => 30 });
+
+/**
+ * The change feed live pages listen to: `firestoreChangeFeed()` from
+ * @cccteam/resource-firestore, provided once in the application's providers. With it,
+ * AuthService starts the client's live session when the session first authenticates
+ * (fetching the feed's identity from the API) and stops it at logout, before the session
+ * is logged out, and every page configured `live: true` stays current. Without it no page
+ * is live, whatever its config says.
+ * @defaultValue none: live pages are off
+ */
+export const CHANGE_FEED = new InjectionToken<ChangeFeed>('CHANGE_FEED');
 
 /**
  * A function to be called when the user logs out.

@@ -109,4 +109,11 @@ export interface ApiDescriptor {
   consolidatedRoute?: string;
   permissionDigestRoute: string;
   userDomainsRoute: string;
+  /**
+   * Whether this outlet serves live subscriptions: the live routes (`live/token`,
+   * `live/renew`, `live/unsubscribe`) and the subscribe header on list and read requests.
+   * The generator writes it per outlet; absent or false, a `{ live: true }` call is handled
+   * exactly as a plain one, and no change feed can be started for the client.
+   */
+  live?: boolean;
 }

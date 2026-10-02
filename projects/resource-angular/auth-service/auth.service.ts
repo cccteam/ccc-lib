@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { RESOURCE_CLIENT, storeSignal } from '@cccteam/resource-angular/resource-client';
 import {
+  CHANGE_FEED,
   Domain,
   FRONTEND_LOGIN_PATH,
   LOGIN_REDIRECT_URL,
@@ -30,6 +31,11 @@ import { from, map, Observable, of, switchMap, tap } from 'rxjs';
  * digest and the domains load once; a tenant's digest loads on demand (`loadDigest`)
  * and stays cached. Answers are advisory UI material — what to render — and fail
  * closed: nothing loaded means nothing permitted. Enforcement stays server-side.
+ *
+ * Live pages ride the same session: when the application provides a change feed
+ * (CHANGE_FEED) and the client's API serves live subscriptions, the first authenticated
+ * answer starts the client's live session with it, and a logout stops it (unsubscribing
+ * everything and revoking the feed's identity) before the session itself is logged out.
  */
 @Injectable({
   providedIn: 'root',
@@ -43,6 +49,9 @@ export class AuthService {
 
   /** The client every request of this service goes through: the application's. */
   private readonly client: ClientBase = inject(RESOURCE_CLIENT);
+
+  /** The change feed live pages listen to, when the application provides one. */
+  private readonly changeFeed = inject(CHANGE_FEED, { optional: true });
 
   /** The permission cache: the client's. */
   readonly permissions: PermissionStore = this.client.permissions;
@@ -155,12 +164,14 @@ export class AuthService {
   }
 
   /**
-   * Logs a user out and calls the configured logout action.
+   * Logs a user out and calls the configured logout action. The live session ends first
+   * (every subscription of the principal deleted, the feed's identity revoked, the feed
+   * stopped, a fresh seed minted), then the session is logged out.
    *
    * @returns Observable with a boolean indicating whether they were logged out.
    */
   logout(): Observable<boolean> {
-    return from(this.client.request<unknown>('DELETE', this.sessionUrl))
+    return from(this.stopLive().then(() => this.client.request<unknown>('DELETE', this.sessionUrl)))
       .pipe(map(() => true))
       .pipe(
         tap(() => {
@@ -178,8 +189,9 @@ export class AuthService {
 
   /**
    * Checks a user's session with the server. The first authenticated answer of a
-   * session also loads the global permission digest and the user's domains; later
-   * checks (keepalives) leave the cached permissions alone.
+   * session also loads the global permission digest and the user's domains, and starts
+   * the live session when a change feed is provided; later checks (keepalives) leave the
+   * cached permissions and the feed alone. An unauthenticated answer ends both.
    *
    * @returns Observable with the user session info
    */
@@ -192,16 +204,43 @@ export class AuthService {
       switchMap((sessionInfo) => {
         if (!sessionInfo?.authenticated) {
           this.clearPermissions();
-          return of(sessionInfo);
+          return from(this.stopLive()).pipe(map(() => sessionInfo));
         }
         if (this.permissionsLoaded) return of(sessionInfo);
 
         this.permissionsLoaded = true;
         return from(
-          Promise.all([this.permissions.loadDigest(), this.permissions.loadDomains()]).catch(() => undefined),
+          Promise.all([this.permissions.loadDigest(), this.permissions.loadDomains()])
+            .catch(() => undefined)
+            .then(() => this.startLive()),
         ).pipe(map(() => sessionInfo));
       }),
     );
+  }
+
+  /**
+   * Starts the client's live session with the provided change feed, when there is one and
+   * the API serves live subscriptions. A feed that fails to start is reported on the
+   * console and the pages stay plain; nothing about the session itself depends on it.
+   */
+  private async startLive(): Promise<void> {
+    if (!this.changeFeed || !this.client.live.enabled || this.client.live.started) {
+      return;
+    }
+    try {
+      await this.client.live.start(this.changeFeed);
+    } catch (error) {
+      console.error('The change feed could not start; pages stay plain:', error);
+    }
+  }
+
+  /** Ends the live session, best effort: a feed that was never started sends nothing. */
+  private async stopLive(): Promise<void> {
+    try {
+      await this.client.live.stop();
+    } catch (error) {
+      console.error('The live session could not be stopped cleanly:', error);
+    }
   }
 
   loginRoute(): string {

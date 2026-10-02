@@ -103,6 +103,37 @@
           }
         }
       }
+    },
+    "resource-firestore": {
+      "projectType": "library",
+      "root": "projects/resource-firestore",
+      "sourceRoot": "projects/resource-firestore",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:ng-packagr",
+          "options": {
+            "project": "projects/resource-firestore/ng-package.json"
+          },
+          "configurations": {
+            "production": {
+              "tsConfig": "projects/resource-firestore/tsconfig.lib.prod.json"
+            },
+            "development": {
+              "tsConfig": "projects/resource-firestore/tsconfig.lib.json"
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "lint": {
+          "builder": "@angular-eslint/builder:lint",
+          "options": {
+            "lintFilePatterns": [
+              "projects/resource-firestore/**/*.ts"
+            ],
+            "eslintConfig": "projects/resource-firestore/eslint.config.js"
+          }
+        }
+      }
     }
   },
   "cli": {
