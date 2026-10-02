@@ -12,7 +12,8 @@ import { featureFlagsDialogDefaults, openFeatureFlagsDialog } from './open-featu
 // The dialog lists every flag with its description and how long it has been on, flips
 // one through the generated method when the digest grants it (the client then refreshing
 // the set and the digest, the dialog reading the flags again), shows a read-only list
-// without the grant, and shows a refusal inline in the server's words.
+// without the grant, and shows a refusal inline in the server's words; on an API that
+// serves no feature flags it says so in place of the list.
 
 const descriptor: ApiDescriptor = {
   resources: {
@@ -212,6 +213,15 @@ describe('FeatureFlagsDialogComponent', () => {
     expect(rowsOf(fixture)).toHaveLength(0);
     expect(fixture.componentInstance.error()).toMatch(/declares no FeatureFlags resource/);
     expect(textOf(fixture)).toContain('declares no FeatureFlags resource');
+    expect(transport.requests.filter((r) => r.url.startsWith('/api/feature-flags'))).toHaveLength(0);
+  });
+
+  it('an API that serves no feature flags says so inline instead of a list, asking for nothing', async () => {
+    const transport = serverWith(writingServer(true));
+    const fixture = await dialogOver(transport, { ...descriptor, features: undefined });
+    expect(rowsOf(fixture)).toHaveLength(0);
+    expect(fixture.componentInstance.error()).toMatch(/serves no feature flags/);
+    expect(textOf(fixture)).toContain('this API serves no feature flags');
     expect(transport.requests.filter((r) => r.url.startsWith('/api/feature-flags'))).toHaveLength(0);
   });
 

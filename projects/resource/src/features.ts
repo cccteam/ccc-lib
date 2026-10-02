@@ -49,8 +49,13 @@ export interface FeaturesSnapshot {
 /** What createClient hands the feature state. */
 export interface FeatureStateOptions {
   request: Requester;
-  /** The route the enabled set is read from: the descriptor's `features.route`. */
-  route: string;
+  /**
+   * The route the enabled set is read from: the descriptor's `features.route`. Absent on
+   * an API that serves no feature flags (a descriptor from a generator that predates
+   * them): the set stays empty and unloaded, a refresh asks nothing, and the flags can be
+   * neither read nor flipped from here.
+   */
+  route?: string;
   /** The generated flip method's descriptor entry; absent on an API that declares none, where a flip is refused before any request. */
   setFeature?: MethodDescriptor;
   /** The digest cache a flip refreshes afterwards, since a flip changes what the digest carries. */
@@ -61,6 +66,10 @@ export interface FeatureStateOptions {
 
 const nothing: FeaturesSnapshot = { enabled: new Set(), loaded: false };
 
+/** The refusal of a read or a flip on an API that serves no feature flags. */
+const notServed =
+  'this API serves no feature flags: its descriptor carries no features route, so none can be read or flipped from here';
+
 /**
  * FeatureState owns the enabled set of feature flags: the names the server says are on
  * in this environment. It loads once at sign-in, beside the permission digest, from the
@@ -70,6 +79,11 @@ const nothing: FeaturesSnapshot = { enabled: new Set(), loaded: false };
  * someone else is seen at the next sign-in, by design. The one exception is the person
  * flipping, whose `setFeature` refreshes this set and the digest once the write succeeds,
  * so their own pages follow at once.
+ *
+ * An API that serves no feature flags (its descriptor carries no `features` route, since
+ * its generator predates them) keeps the set empty and unloaded: `refresh` resolves to
+ * nothing without a request, every flag answers off, and `flags` and `setFeature` refuse
+ * before any request, saying so.
  */
 export class FeatureState {
   readonly snapshot = new Store<FeaturesSnapshot>(nothing);
@@ -83,6 +97,11 @@ export class FeatureState {
 
   subscribe(listener: (snapshot: FeaturesSnapshot) => void): () => void {
     return this.snapshot.subscribe(listener);
+  }
+
+  /** Whether the API serves feature flags: its descriptor carries the features route. */
+  get served(): boolean {
+    return this.options.route !== undefined;
   }
 
   /** Whether the named flag is on; false before the set has loaded. */
@@ -109,13 +128,19 @@ export class FeatureState {
    * Loads (or reloads) the enabled set from the features route. Concurrent calls share
    * one request. A failed load empties the set and leaves it unloaded, so every flag
    * answers off and the next `ensure` asks again, and rethrows so callers see the failure.
+   * On an API that serves no feature flags it resolves to nothing without a request, and
+   * the set stays unloaded.
    */
   refresh(): Promise<readonly string[]> {
+    const route = this.options.route;
+    if (route === undefined) {
+      return Promise.resolve([]);
+    }
     if (this.inflight) {
       return this.inflight;
     }
     const load = this.options
-      .request<{ enabled?: string[] | null } | null>('GET', this.options.route)
+      .request<{ enabled?: string[] | null } | null>('GET', route)
       .then((body) => body?.enabled ?? [])
       .catch((error: unknown) => {
         this.snapshot.set(nothing);
@@ -144,8 +169,14 @@ export class FeatureState {
     return this.enabled(feature);
   }
 
-  /** Every declared flag with its state, read from the feature flags resource through the client. */
-  flags(): Promise<FeatureFlag[]> {
+  /**
+   * Every declared flag with its state, read from the feature flags resource through the
+   * client. An API that serves no feature flags refuses before any request.
+   */
+  async flags(): Promise<FeatureFlag[]> {
+    if (!this.served) {
+      throw new Error(notServed);
+    }
     return this.options.flags();
   }
 
@@ -153,10 +184,13 @@ export class FeatureState {
    * Flips one flag through the generated method, and once the write succeeds reloads the
    * enabled set and every cached digest and the domains, so the pages of the person
    * flipping follow at once. A refused flip (an unknown name, a missing grant) rejects with
-   * the server's ApiError and refreshes nothing. An API that declares no flip method
-   * refuses before any request is sent.
+   * the server's ApiError and refreshes nothing. An API that serves no feature flags, or
+   * declares no flip method, refuses before any request is sent.
    */
   async setFeature(name: string, enabled: boolean): Promise<FeatureFlip> {
+    if (!this.served) {
+      throw new Error(notServed);
+    }
     const method = this.options.setFeature;
     if (!method) {
       throw new Error(`this API declares no ${setFeatureMethod} method; feature flags cannot be flipped from here`);

@@ -80,13 +80,16 @@ const liveRoutes: LiveRoutes = {
   tokenRoute: 'live/token',
 };
 
-function authOver(transport: ScriptedTransport, options: { live?: LiveRoutes; feed?: ChangeFeed } = {}): AuthService {
+function authOver(
+  transport: ScriptedTransport,
+  options: { live?: LiveRoutes; feed?: ChangeFeed; api?: ApiDescriptor } = {},
+): AuthService {
   TestBed.configureTestingModule({
     providers: [
       {
         provide: RESOURCE_CLIENT,
         useValue: createClient(
-          { ...descriptor, live: options.live },
+          { ...(options.api ?? descriptor), live: options.live },
           {
             baseUrl: '/api',
             transport,
@@ -301,6 +304,25 @@ describe('AuthService feature flags', () => {
     expect(await firstValueFrom(auth.ensureFeature('manifests'))).toBe(false);
     expect(await firstValueFrom(auth.ensureFeature(undefined))).toBe(true);
     expect(transport.requests.map((r) => r.url)).toEqual(['/api/features']);
+  });
+
+  it('an API that serves no feature flags loads the digest and the domains alone, and every flag answers off', async () => {
+    const transport = serverWith(true);
+    const auth = authOver(transport, { api: { ...descriptor, features: undefined } });
+    const session = await firstValueFrom(auth.checkUserSession());
+    TestBed.tick();
+    expect(session.authenticated).toBe(true);
+    expect(transport.requests.map((r) => r.url)).toEqual([
+      '/api/user/session',
+      '/api/permission-digest',
+      '/api/user-domains',
+    ]);
+    expect(auth.featureEnabled('debriefs')).toBe(false);
+    expect(auth.enabledFeatures().size).toBe(0);
+    expect(await firstValueFrom(auth.ensureFeature('debriefs'))).toBe(false);
+    expect(await firstValueFrom(auth.refreshFeatures())).toEqual([]);
+    expect(transport.requests.filter((r) => r.url === '/api/features')).toHaveLength(0);
+    expect(TestBed.inject(RESOURCE_CLIENT).features.loaded).toBe(false);
   });
 
   it('a features route that fails leaves the session authenticated and every flag off', async () => {

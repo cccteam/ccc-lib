@@ -10,7 +10,8 @@ import { featureMatch } from './feature-match';
 
 // A route behind featureMatch is matched only while its flag is on; off, the router
 // passes over it and the URL falls to the wildcard. A deep link before the set has
-// loaded loads it first, and a load the server refuses answers off.
+// loaded loads it first, and a load the server refuses answers off. An API that serves
+// no feature flags answers off without asking.
 
 const descriptor: ApiDescriptor = {
   resources: {},
@@ -26,10 +27,10 @@ class DebriefsPageComponent {}
 @Component({ template: 'not found' })
 class NotFoundComponent {}
 
-function appOver(transport: ScriptedTransport): void {
+function appOver(transport: ScriptedTransport, api: ApiDescriptor = descriptor): void {
   TestBed.configureTestingModule({
     providers: [
-      { provide: RESOURCE_CLIENT, useValue: createClient(descriptor, { baseUrl: '/api', transport }) },
+      { provide: RESOURCE_CLIENT, useValue: createClient(api, { baseUrl: '/api', transport }) },
       provideRouter([
         { path: 'debriefs', canMatch: [featureMatch('debriefs')], component: DebriefsPageComponent },
         { path: '**', component: NotFoundComponent },
@@ -66,6 +67,15 @@ describe('featureMatch', () => {
       expect(transport.requests.filter((r) => r.url === '/api/features')).toHaveLength(tt.wantLoads);
     });
   }
+
+  it('an API that serves no feature flags: the URL falls to the wildcard and nothing is asked', async () => {
+    const transport = featuresAnswer(200, ['debriefs']);
+    appOver(transport, { ...descriptor, features: undefined });
+    const harness = await RouterTestingHarness.create();
+    const activated = await harness.navigateByUrl('/debriefs');
+    expect(activated).toBeInstanceOf(NotFoundComponent);
+    expect(transport.requests).toHaveLength(0);
+  });
 
   it('an unrelated URL is not affected and asks for nothing', async () => {
     const transport = featuresAnswer(200, []);

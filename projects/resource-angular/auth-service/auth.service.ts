@@ -42,7 +42,9 @@ import { from, map, Observable, of, switchMap, tap } from 'rxjs';
  * `featureMatch` route guard, and the application's own code, and a logout forgets it.
  * The set is loaded at sign-in and not polled: a flip by someone else is seen at the next
  * sign-in, while the person flipping, through the feature flags dialog, has their own set
- * and digest refreshed once the write succeeds.
+ * and digest refreshed once the write succeeds. An API that serves no feature flags (its
+ * descriptor carries no features route) loads nothing: every flag answers off, so each
+ * gate stays closed, and the dialog says the API serves none.
  */
 @Injectable({
   providedIn: 'root',
@@ -238,9 +240,9 @@ export class AuthService {
   /**
    * Checks a user's session with the server. The first authenticated answer of a
    * session also loads the global permission digest, the user's domains, and the enabled
-   * set of feature flags, and starts the live session when a change feed is provided;
-   * later checks (keepalives) leave the cached permissions, the set, and the feed alone.
-   * An unauthenticated answer ends them all.
+   * set of feature flags when the API serves them, and starts the live session when a
+   * change feed is provided; later checks (keepalives) leave the cached permissions, the
+   * set, and the feed alone. An unauthenticated answer ends them all.
    *
    * @returns Observable with the user session info
    */
@@ -259,7 +261,11 @@ export class AuthService {
 
         this.permissionsLoaded = true;
         return from(
-          Promise.all([this.permissions.loadDigest(), this.permissions.loadDomains(), this.features.refresh()])
+          Promise.all([
+            this.permissions.loadDigest(),
+            this.permissions.loadDomains(),
+            ...(this.features.served ? [this.features.refresh()] : []),
+          ])
             .catch(() => undefined)
             .then(() => this.startLive()),
         ).pipe(map(() => sessionInfo));

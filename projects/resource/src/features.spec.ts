@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { Domain, Method, Resource } from './brands';
-import { createClient } from './client';
+import { ClientBase, createClient } from './client';
 import { ApiDescriptor } from './descriptor';
 import { FeatureFlag, FeatureFlip, featureFlagsResource, setFeatureMethod } from './features';
 import { ApiError, TransportRequest, TransportResponse } from './transport';
@@ -9,7 +9,9 @@ import { ScriptedTransport, scriptedTransport } from '@cccteam/resource/testing'
 // The enabled set of feature flags: loaded from the features route and asked
 // synchronously, empty and off before it loads or when the load fails, flipped through
 // the generated method with the set and the digest refreshed after the write, and the
-// declared flags listed through the client's own handle on the flags resource.
+// declared flags listed through the client's own handle on the flags resource. An API
+// whose descriptor carries no features route serves no flags: nothing loads, every flag
+// is off, and a read or a flip is refused before any request.
 
 const descriptor: ApiDescriptor = {
   permissionDigestRoute: 'permission-digest',
@@ -296,5 +298,42 @@ describe('FeatureState.flags', () => {
     const api = createClient({ ...descriptor, resources: {} }, { baseUrl: '/api', transport });
     await expect(api.features.flags()).rejects.toThrow(/declares no FeatureFlags resource/);
     expect(transport.requests).toHaveLength(0);
+  });
+});
+
+describe('FeatureState on an API that serves no feature flags', () => {
+  /** A descriptor from a generator that predates feature flags: no features route, the rest current. */
+  const unserved: ApiDescriptor = { ...descriptor, features: undefined };
+
+  it('is empty, off, and unloaded, and a refresh resolves to nothing without a request', async () => {
+    const transport = serverWith(() => ['debriefs']);
+    const api = createClient(unserved, { baseUrl: '/api', transport });
+    expect(api.features.served).toBe(false);
+    expect(await api.features.refresh()).toEqual([]);
+    expect(api.features.loaded).toBe(false);
+    expect(api.features.enabled('debriefs')).toBe(false);
+    expect(api.features.names()).toEqual([]);
+    expect(await api.features.ensure('debriefs')).toBe(false);
+    expect(transport.requests).toHaveLength(0);
+  });
+
+  const refusals: { name: string; call: (api: ClientBase) => Promise<unknown> }[] = [
+    { name: 'flags', call: (api) => api.features.flags() },
+    { name: 'setFeature', call: (api) => api.features.setFeature('debriefs', true) },
+  ];
+
+  for (const tt of refusals) {
+    it(`${tt.name} refuses before any request, saying the API serves no feature flags`, async () => {
+      const transport = serverWith(() => ['debriefs']);
+      const api = createClient(unserved, { baseUrl: '/api', transport });
+      await expect(tt.call(api)).rejects.toThrow('this API serves no feature flags');
+      expect(transport.requests).toHaveLength(0);
+    });
+  }
+
+  it('a descriptor with the route serves them: the same client reads the set', async () => {
+    const api = createClient(descriptor, { baseUrl: '/api', transport: serverWith(() => ['debriefs']) });
+    expect(api.features.served).toBe(true);
+    expect(await api.features.refresh()).toEqual(['debriefs']);
   });
 });

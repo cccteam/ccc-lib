@@ -338,7 +338,7 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
   const live = new LiveSession({ ...options.live, request, baseUrl, routes: descriptor.live });
   const features = new FeatureState({
     request,
-    route: descriptor.features.route,
+    route: descriptor.features?.route,
     setFeature: descriptor.methods[setFeatureMethod],
     permissions,
     flags: () => listFlags(base),

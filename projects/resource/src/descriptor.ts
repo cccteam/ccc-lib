@@ -126,11 +126,14 @@ export interface ApiDescriptor {
   userDomainsRoute: string;
   /**
    * Where the enabled set of feature flags is read (`GET <prefix>/features`, answering
-   * `{ enabled: [...] }`): the generator writes the block on every descriptor, since
-   * every outlet serves the route to a signed-in caller. The client loads the set once
-   * at sign-in, beside the digest, and again after the person flips a flag.
+   * `{ enabled: [...] }`), when the API serves feature flags: the generator writes the
+   * block on every descriptor, since every outlet serves the route to a signed-in caller,
+   * and the client loads the set once at sign-in, beside the digest, and again after the
+   * person flips a flag. Absent, on a descriptor from a generator that predates feature
+   * flags, the API serves none: the set stays empty and unloaded, every flag answers off,
+   * nothing is requested, and the flags can be neither read nor flipped from the client.
    */
-  features: FeaturesRoute;
+  features?: FeaturesRoute;
   /**
    * The live routes this outlet serves, when it serves live subscriptions: the generator
    * writes the block on every browser descriptor, and its presence is what says live is

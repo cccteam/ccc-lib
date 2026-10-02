@@ -258,7 +258,11 @@ framework's `FeatureFlags` resource through the client's own handle, and `setFea
 enabled)` flips one through the generated `SetFeature` method, then reloads the set, the domains,
 and every cached digest; a refused flip rejects with the server's `ApiError` and refreshes
 nothing. `canSet()` is the digest's Execute entry for the method. `clear()` forgets the set at
-logout, and `subscribe` notifies a UI framework.
+logout, and `subscribe` notifies a UI framework. `descriptor.features` is optional: a descriptor
+from a generator that predates feature flags carries none, and the API then serves no flags.
+`served` is false, the set stays empty and unloaded, `refresh()` resolves to nothing without a
+request, every flag answers off, and `flags()` and `setFeature()` refuse before any request,
+saying the API serves no feature flags.
 
 ```ts
 await api.features.refresh(); // once the session is authenticated, beside the digest
