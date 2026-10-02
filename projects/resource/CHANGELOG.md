@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.0.3](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.2...resource/v0.0.3) (2026-10-02)
+
+
+### Features
+
+* live pages and a short browser cache: a list page or a record page that opts in with live stays current without polling and is served from the browser's own cache inside a five-minute window (the change feed contract and the live session in @cccteam/resource, the Firestore change feed as the new package @cccteam/resource-firestore over the Firebase SDK, and the live option, the CHANGE_FEED token and the auth service's feed lifecycle in @cccteam/resource-angular) ([f2bc6f3](https://github.com/cccteam/ccc-lib/commit/f2bc6f3cd468fd64290349b1181d243a04bdd1c2))
+
+
+### Bug Fixes
+
+* **resource:** a field the row did not carry and the form left empty is not a change: the server leaves a cell that is masked for the reader out of the row, with no marker, so the edit form held null for it and every save of that row sent that null as a clear ([3fbb765](https://github.com/cccteam/ccc-lib/commit/3fbb765147238d0237228458056a830994a183f0))
+
 ## [0.0.2](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.1...resource/v0.0.2) (2026-09-23)
 
 

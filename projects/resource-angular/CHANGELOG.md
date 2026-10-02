@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.0.3](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.2...resource-angular/v0.0.3) (2026-10-02)
+
+
+### Features
+
+* live pages and a short browser cache: a list page or a record page that opts in with live stays current without polling and is served from the browser's own cache inside a five-minute window (the change feed contract and the live session in @cccteam/resource, the Firestore change feed as the new package @cccteam/resource-firestore over the Firebase SDK, and the live option, the CHANGE_FEED token and the auth service's feed lifecycle in @cccteam/resource-angular) ([f2bc6f3](https://github.com/cccteam/ccc-lib/commit/f2bc6f3cd468fd64290349b1181d243a04bdd1c2))
+
+
+### Bug Fixes
+
+* **resource-angular:** the edit form checks the limits of the fields the person changed, and warns about the others: an untouched field whose value fails this build's rules (longer than the limit this build knows, or empty where the page config requires a value) no longer blocks the save, and the view says which field and which rule; a config validators function keeps the field's limit ([5ecae48](https://github.com/cccteam/ccc-lib/commit/5ecae48ced0e24f4e5cbe3edc49ea005b2c35df1))
+* **resource-angular:** the edit form's refusal message follows the refusal rule: it shows while a save was refused and a changed field still fails, and clears once the changed fields pass, whatever an untouched field holds ([5ecae48](https://github.com/cccteam/ccc-lib/commit/5ecae48ced0e24f4e5cbe3edc49ea005b2c35df1))
+* **resource:** a field the row did not carry and the form left empty is not a change: the server leaves a cell that is masked for the reader out of the row, with no marker, so the edit form held null for it and every save of that row sent that null as a clear ([3fbb765](https://github.com/cccteam/ccc-lib/commit/3fbb765147238d0237228458056a830994a183f0))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.2 to ^0.0.3
+
 ## [0.0.2](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.1...resource-angular/v0.0.2) (2026-09-23)
 
 
