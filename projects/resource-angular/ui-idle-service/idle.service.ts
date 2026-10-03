@@ -1,5 +1,4 @@
 import { computed, inject, Injectable, OnDestroy, signal, WritableSignal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { AuthService } from '@cccteam/resource-angular/auth-service';
 import {
@@ -56,21 +55,18 @@ export class IdleService implements OnDestroy {
 
   private alertId: number | undefined;
   private mainTickerSubscription: Subscription | undefined;
+  private keepAliveSubscription: Subscription | undefined;
 
   private readonly activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
-
-  constructor() {
-    interval(this.keepAliveDuration * 1000)
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => this.checkSession());
-  }
 
   ngOnDestroy(): void {
     this.stop();
   }
 
   /**
-   * Starts the idle monitoring service.
+   * Starts the idle monitoring service: the idle ticker, the activity listeners, and the
+   * keep-alive, which asks the server for the session every IDLE_KEEPALIVE_DURATION seconds
+   * while the session is authenticated. Nothing runs before this call.
    */
   start(): void {
     if (this.isActive()) {
@@ -80,14 +76,18 @@ export class IdleService implements OnDestroy {
     this.lastActivityTimestamp.set(Date.now());
     this.addActivityListeners();
     this.startMainTicker();
+    this.startKeepAlive();
   }
 
   /**
-   * Stops the idle monitoring service and cleans up timers and alerts.
+   * Stops the idle monitoring service and cleans up timers and alerts. The keep-alive ends
+   * with the ticker, so a logged-out application has no timer due and can settle.
    */
   stop(): void {
     this.isActive.set(false);
     this.mainTickerSubscription?.unsubscribe();
+    this.keepAliveSubscription?.unsubscribe();
+    this.keepAliveSubscription = undefined;
     this.removeActivityListeners();
     this.dismissWarningAlert();
   }
@@ -129,6 +129,10 @@ export class IdleService implements OnDestroy {
         this.dismissWarningAlert();
       }
     });
+  }
+
+  private startKeepAlive(): void {
+    this.keepAliveSubscription = interval(this.keepAliveDuration * 1000).subscribe(() => this.checkSession());
   }
 
   private checkSession(): void {

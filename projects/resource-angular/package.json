@@ -9,7 +9,13 @@
   "peerDependencies": {
     "@angular/common": "^21.0.0",
     "@angular/core": "^21.0.0",
+    "@angular/service-worker": "^21.0.0",
     "@cccteam/resource": "^0.0.4"
+  },
+  "peerDependenciesMeta": {
+    "@angular/service-worker": {
+      "optional": true
+    }
   },
   "dependencies": {
     "date-fns": "^4.1.0",

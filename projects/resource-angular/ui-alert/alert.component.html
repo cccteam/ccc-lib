@@ -6,6 +6,9 @@
     @if (error.link) {
     <span [routerLink]="error.link" class="link">View</span>
     }
+    @if (error.action) {
+    <button (click)="runAction()" mat-button type="button" class="action">{{ error.action.label }}</button>
+    }
     <button (click)="dismissAlert()" mat-icon-button aria-label="Close Alert">
       <mat-icon>close</mat-icon>
     </button>
