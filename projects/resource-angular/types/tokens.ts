@@ -1,5 +1,5 @@
 import { InjectionToken, Provider, signal, Signal, WritableSignal } from '@angular/core';
-import { ChangeFeed } from '@cccteam/resource';
+import { ApiVersionError, ChangeFeed } from '@cccteam/resource';
 import { Domain, Permission, Resource } from './permissions';
 import { MethodMeta, ResourceMeta } from './resource-meta';
 
@@ -26,6 +26,35 @@ export const SESSION_PATH = new InjectionToken<string>('SESSION_PATH', { factory
  * @defaultValue '/api'
  */
 export const API_URL = new InjectionToken<string>('API_URL', { factory: () => '/api' });
+
+/**
+ * The release this build of the application was made from (e.g., '1.5.0'), as the build
+ * stamps it. `provideResourceClient` hands it to the client as `ClientOptions.apiVersion`,
+ * and `apiVersionInterceptor` adds it to the application's own same-origin HttpClient
+ * requests, so every request carries it in the version header and the server can refuse a
+ * build older than the oldest release it answers. An empty value, or `dev`, the local
+ * build's name, sends nothing and is never refused.
+ * @defaultValue '' (no release: nothing is sent)
+ */
+export const API_VERSION = new InjectionToken<string>('API_VERSION', { factory: () => '' });
+
+/**
+ * What the client's error hook hands the server's refusal of this build's release to.
+ * `provideAppUpdate()` registers `AppUpdateService` as it, which picks up the server's
+ * build: by itself while the application is still starting, through a persistent notice
+ * with Reload once a page is on screen, and by unregistering the service worker first when
+ * the server runs an older release than this build.
+ */
+export interface VersionRefusalHandler {
+  versionRefused(refusal: ApiVersionError): void;
+}
+
+/**
+ * The handler of the server's refusal of this build's release; `provideAppUpdate()`
+ * provides it. A build that names a release (API_VERSION) must have one: `provideResourceClient`
+ * fails at startup otherwise, naming `provideAppUpdate()`.
+ */
+export const VERSION_REFUSAL_HANDLER = new InjectionToken<VersionRefusalHandler>('VERSION_REFUSAL_HANDLER');
 
 /**
  * The URL the browser returns to after the next login, and `AuthService.redirectUrl`.

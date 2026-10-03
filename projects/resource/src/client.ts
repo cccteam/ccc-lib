@@ -26,7 +26,8 @@ import { ClientResponse, PermissionStore, Requester, RequestOptions, ResponseReq
 import { dryRunHeader } from './transport';
 import { LinkHeader, ListQuery, ReadOptions, TotalCountHeader, listSearchParams, parseLinkHeader, readSearchParams } from './query';
 import { readMode, wholeListQuery } from './reading';
-import { ApiError, HttpMethod, Transport, fetchTransport } from './transport';
+import { ApiError, ApiVersionError, HttpMethod, Transport, TransportResponse, apiVersionHeader, fetchTransport } from './transport';
+import { compareReleases, releaseVersion } from './versions';
 import { Warn, warnOnce } from './warnings';
 
 export interface ClientOptions {
@@ -44,7 +45,24 @@ export interface ClientOptions {
   warn?: Warn;
   /** The live session's knobs (renewal interval, page events, the keepalive fetch); every one has a default. */
   live?: LiveOptions;
+  /**
+   * The release this build of the application was made from, sent as the version header
+   * (`X-Api-Version`) on every request so the server can refuse a build older than the
+   * oldest release it answers. Absent, empty, or `dev`, the local build's name, nothing is
+   * sent and the build is never refused.
+   */
+  apiVersion?: string;
+  /**
+   * The pauses, in milliseconds, before each retry of a request a server older than this
+   * build refused: traffic shifts instance by instance during a deploy, so the next try may
+   * land on the new one. When every retry is refused the error is thrown. Three retries
+   * over ten seconds by default (olderServerRetryDelays).
+   */
+  olderServerRetryDelays?: readonly number[];
 }
+
+/** The default pauses before each retry of a request a server older than this build refused: 1 s, 3 s, 6 s. */
+export const olderServerRetryDelays: readonly number[] = [1000, 3000, 6000];
 
 /** What every resource handle offers, whatever operations the resource supports. */
 export interface ResourceHandleBase<Row, Key extends unknown[]> {
@@ -335,7 +353,11 @@ export type Client<G, D> = ClientBase & G & { domain(domain: Domain | string): D
 export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOptions): Client<G, D> {
   const baseUrl = options.baseUrl.replace(/\/+$/, '');
   const transport = options.transport ?? fetchTransport();
-  const requestResponse = createRequester(baseUrl, transport, options.onError);
+  const requestResponse = createRequester(baseUrl, transport, {
+    onError: options.onError,
+    apiVersion: options.apiVersion,
+    olderServerRetryDelays: options.olderServerRetryDelays,
+  });
   const request: Requester = async <T>(method: HttpMethod, path: string, requestOptions?: RequestOptions): Promise<T> =>
     (await requestResponse<T>(method, path, requestOptions)).body;
   const permissions = new PermissionStore(request, {
@@ -460,22 +482,66 @@ function definedFields(permissions: PermissionStore, scope: PermissionScope): re
   return fields.length > 0 ? fields : undefined;
 }
 
-function createRequester(
-  baseUrl: string,
-  transport: Transport,
-  onError?: (error: ApiError) => void,
-): ResponseRequester {
+/** What createRequester takes beside the transport: the error hook and the release header's settings. */
+interface RequesterOptions {
+  onError?: (error: ApiError) => void;
+  apiVersion?: string;
+  olderServerRetryDelays?: readonly number[];
+}
+
+/**
+ * Issues every request of the client. A build that names a release sends it in the
+ * version header. A 412 that carries the server's release in that header is the server's
+ * refusal of this build and is judged before the caller's declared answers: when the
+ * server's release is older than this build's, the request is retried after each pause in
+ * `olderServerRetryDelays` (a deploy still shifting traffic answers the next try from the
+ * new instance); when the retries run out, or when this build is the older one, the
+ * refusal is thrown as ApiVersionError, observed by the hook first. Every other 4xx or 5xx
+ * the caller did not declare becomes ApiError.
+ */
+function createRequester(baseUrl: string, transport: Transport, requester: RequesterOptions): ResponseRequester {
+  const { onError } = requester;
+  const version = releaseVersion(requester.apiVersion);
+  const retryDelays = requester.olderServerRetryDelays ?? olderServerRetryDelays;
   return async <T>(method: HttpMethod, path: string, options?: RequestOptions): Promise<ClientResponse<T>> => {
     const query = options?.query?.toString();
     const url = options?.absolute ? resolveAbsolute(baseUrl, path) : `${baseUrl}/${path}${query ? `?${query}` : ''}`;
-    const response = await transport({ method, url, body: options?.body, headers: options?.headers });
-    if (response.status >= 400 && !options?.accept?.includes(response.status)) {
-      const error = new ApiError(method, url, response.status, response.body);
-      onError?.(error);
-      throw error;
+    const headers = version === undefined ? options?.headers : { ...options?.headers, [apiVersionHeader]: version };
+    let retries = 0;
+    for (;;) {
+      const response = await transport({ method, url, body: options?.body, headers });
+      const serverVersion = versionRefusal(response);
+      if (serverVersion !== undefined) {
+        const serverOlder = version !== undefined && compareReleases(serverVersion, version) < 0;
+        if (serverOlder && retries < retryDelays.length) {
+          await pause(retryDelays[retries++]);
+          continue;
+        }
+        const error = new ApiVersionError(method, url, response.body, serverVersion, version ?? '', serverOlder);
+        onError?.(error);
+        throw error;
+      }
+      if (response.status >= 400 && !options?.accept?.includes(response.status)) {
+        const error = new ApiError(method, url, response.status, response.body);
+        onError?.(error);
+        throw error;
+      }
+      return { status: response.status, body: response.body as T, headers: response.headers ?? {} };
     }
-    return { status: response.status, body: response.body as T, headers: response.headers ?? {} };
   };
+}
+
+/** The server's release when the response is its refusal of this build's release (a 412 carrying the version header), else undefined. */
+function versionRefusal(response: TransportResponse): string | undefined {
+  if (response.status !== 412 || !response.headers) {
+    return undefined;
+  }
+  const serverVersion = response.headers[apiVersionHeader.toLowerCase()];
+  return serverVersion === undefined || serverVersion === '' ? undefined : serverVersion;
+}
+
+function pause(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 /**

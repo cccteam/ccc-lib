@@ -6,6 +6,13 @@ import { RouterModule } from '@angular/router';
 import { NotificationMessage } from '@cccteam/resource-angular/types';
 import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
 
+/**
+ * One notice in the application's alert area. A notice is dismissed by its timer
+ * (`duration`, thirty seconds by default) unless it is persistent, in which case it stays
+ * until it is closed or its owner dismisses it by id. A notice with an `action` renders
+ * it as a button beside the close; the click runs the action and nothing else, so the
+ * action's owner decides whether the notice goes.
+ */
 @Component({
   selector: 'ccc-alert',
   templateUrl: './alert.component.html',
@@ -18,6 +25,9 @@ export class AlertComponent implements OnInit {
 
   errors = inject(NotificationService);
   ngOnInit(): void {
+    if (this.error.persistent) {
+      return;
+    }
     if (this.error.duration === undefined) {
       this.error.duration = 30000;
     }
@@ -31,5 +41,9 @@ export class AlertComponent implements OnInit {
     if (this.error.id !== undefined) {
       this.errors.dismissGlobalNotification(this.error);
     }
+  }
+
+  runAction(): void {
+    this.error.action?.run();
   }
 }

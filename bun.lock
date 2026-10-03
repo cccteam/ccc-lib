@@ -11,6 +11,7 @@
         "@angular/build": "^21.2.2",
         "@angular/cli": "^21.2.2",
         "@angular/compiler-cli": "^21.2.4",
+        "@angular/service-worker": "^21.2.4",
         "@types/node": "^24.10.1",
         "angular-eslint": "^21.3.0",
         "eslint": "^9.28.0",
@@ -58,14 +59,14 @@
     },
     "projects/resource": {
       "name": "@cccteam/resource",
-      "version": "0.0.2",
+      "version": "0.0.4",
       "dependencies": {
         "tslib": "^2.3.0",
       },
     },
     "projects/resource-angular": {
       "name": "@cccteam/resource-angular",
-      "version": "0.0.2",
+      "version": "0.0.4",
       "dependencies": {
         "date-fns": "^4.1.0",
         "date-fns-tz": "^3.2.0",
@@ -74,17 +75,21 @@
       "peerDependencies": {
         "@angular/common": "^21.0.0",
         "@angular/core": "^21.0.0",
-        "@cccteam/resource": "^0.0.2",
+        "@angular/service-worker": "^21.0.0",
+        "@cccteam/resource": "^0.0.4",
       },
+      "optionalPeers": [
+        "@angular/service-worker",
+      ],
     },
     "projects/resource-firestore": {
       "name": "@cccteam/resource-firestore",
-      "version": "0.0.0",
+      "version": "0.0.2",
       "dependencies": {
         "tslib": "^2.3.0",
       },
       "peerDependencies": {
-        "@cccteam/resource": "^0.0.2",
+        "@cccteam/resource": "^0.0.4",
         "firebase": "^12.19.0",
       },
     },
@@ -167,6 +172,8 @@
     "@angular/platform-browser-dynamic": ["@angular/platform-browser-dynamic@21.2.18", "", { "dependencies": { "tslib": "^2.3.0" }, "peerDependencies": { "@angular/common": "21.2.18", "@angular/compiler": "21.2.18", "@angular/core": "21.2.18", "@angular/platform-browser": "21.2.18" } }, "sha512-doTDss6GhDTGjVuuANlzFrdYKBqHQVlWgy2tiTjy9EbrmMTOOHg0D6yUQXh1ZqmUWKDZ3owkUjUNGiXt92rQ6w=="],
 
     "@angular/router": ["@angular/router@21.2.18", "", { "dependencies": { "tslib": "^2.3.0" }, "peerDependencies": { "@angular/common": "21.2.18", "@angular/core": "21.2.18", "@angular/platform-browser": "21.2.18", "rxjs": "^6.5.3 || ^7.4.0" } }, "sha512-Xix19uG1YthC8IslhWKSfPdhscVWREBGVJZW2OnRmLef8F7DvhF49S6vOywaBo+Uahe0egkmgWDNpEwxAzsgLw=="],
+
+    "@angular/service-worker": ["@angular/service-worker@21.2.18", "", { "dependencies": { "tslib": "^2.3.0" }, "peerDependencies": { "@angular/core": "21.2.18", "rxjs": "^6.5.3 || ^7.4.0" }, "bin": { "ngsw-config": "ngsw-config.js" } }, "sha512-ECnFFVoKxbX+0016tX+tPrThqIcBO3pIUIO7MIJ/kANOfsnoXi+p7u4mriWv5Hnj3UeuNiCMLTrBqI0AwfXi3Q=="],
 
     "@asamuzakjp/css-color": ["@asamuzakjp/css-color@4.1.2", "", { "dependencies": { "@csstools/css-calc": "^3.0.0", "@csstools/css-color-parser": "^4.0.1", "@csstools/css-parser-algorithms": "^4.0.0", "@csstools/css-tokenizer": "^4.0.0", "lru-cache": "^11.2.5" } }, "sha512-NfBUvBaYgKIuq6E/RBLY1m0IohzNHAYyaJGuTK79Z23uNwmz2jl1mPsC5ZxCCxylinKhT1Amn5oNTlx1wN8cQg=="],
 
