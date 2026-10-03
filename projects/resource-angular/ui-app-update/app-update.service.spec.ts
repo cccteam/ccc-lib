@@ -11,7 +11,6 @@ import {
   AppReloader,
   AppUpdateService,
   OUT_OF_DATE_MESSAGE,
-  provideAppUpdate,
   RELOAD_GUARD_KEY,
   RELOAD_LABEL,
   RELOAD_WAIT_LIMIT,
@@ -20,6 +19,7 @@ import {
   UPDATE_CHECK_INTERVAL,
   VERSION_READY_MESSAGE,
 } from './app-update.service';
+import { provideAppUpdate } from './provide-app-update';
 
 // The update service over a fake worker: a ready event raises one persistent notice with
 // Reload, Reload goes through the seam, an unrecoverable state raises its notice, an absent

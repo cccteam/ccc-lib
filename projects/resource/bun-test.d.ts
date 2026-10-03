@@ -13,6 +13,8 @@ declare module 'bun:test' {
     toBeUndefined(): void;
     toBeInstanceOf(expected: abstract new (...args: never[]) => unknown): void;
     toContain(expected: unknown): void;
+    toBeGreaterThanOrEqual(expected: number): void;
+    toBeLessThanOrEqual(expected: number): void;
     toHaveLength(expected: number): void;
     toStartWith(expected: string): void;
     toThrow(expected?: string | RegExp | Error | (abstract new (...args: never[]) => unknown)): void;

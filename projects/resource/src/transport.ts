@@ -23,6 +23,17 @@ export const dryRunHeader = 'X-Dry-Run';
  */
 export const apiVersionHeader = 'X-Api-Version';
 
+/**
+ * The marker every answer of a server down for maintenance carries, with
+ * `maintenanceHeaderValue`: `X-Maintenance: 1`. It tells a maintenance 503 from an
+ * ordinary 503 (an overloaded or failing server), which stays an ordinary ApiError.
+ */
+export const maintenanceHeader = 'X-Maintenance';
+export const maintenanceHeaderValue = '1';
+
+/** The header a maintenance answer names its check-back wait in: seconds, or an HTTP date. */
+export const retryAfterHeader = 'Retry-After';
+
 export interface TransportResponse {
   status: number;
   /** The decoded JSON body; undefined for an empty body. */
@@ -78,6 +89,45 @@ export class ApiVersionError extends ApiError {
     super(method, url, 412, body);
     this.name = 'ApiVersionError';
   }
+}
+
+/**
+ * The server's answer while it is down for maintenance: a 503 carrying the maintenance
+ * marker. It is recognized before a method's declared answers, so a method that declares
+ * 503 never takes it for its own. `retryAfter` is the server's Retry-After in seconds, or
+ * undefined when it sent none the client could read. The framework over the client
+ * decides what the application shows and how it checks back.
+ */
+export class MaintenanceError extends ApiError {
+  constructor(
+    method: HttpMethod,
+    url: string,
+    body: unknown,
+    /** The server's Retry-After, in seconds; undefined when it sent none the client could read. */
+    readonly retryAfter: number | undefined,
+  ) {
+    super(method, url, 503, body);
+    this.name = 'MaintenanceError';
+  }
+}
+
+/**
+ * The seconds a Retry-After header asks for: a whole number of seconds as given, an HTTP
+ * date as the seconds from now until it (never negative), and undefined for anything else.
+ */
+export function retryAfterSeconds(value: string | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  const text = value.trim();
+  if (/^\d+$/.test(text)) {
+    return Number(text);
+  }
+  const at = Date.parse(text);
+  if (Number.isNaN(at)) {
+    return undefined;
+  }
+  return Math.max(0, Math.ceil((at - Date.now()) / 1000));
 }
 
 function messageOf(body: unknown, status: number): string {

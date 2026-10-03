@@ -26,7 +26,20 @@ import { ClientResponse, PermissionStore, Requester, RequestOptions, ResponseReq
 import { dryRunHeader } from './transport';
 import { LinkHeader, ListQuery, ReadOptions, TotalCountHeader, listSearchParams, parseLinkHeader, readSearchParams } from './query';
 import { readMode, wholeListQuery } from './reading';
-import { ApiError, ApiVersionError, HttpMethod, Transport, TransportResponse, apiVersionHeader, fetchTransport } from './transport';
+import {
+  ApiError,
+  ApiVersionError,
+  HttpMethod,
+  MaintenanceError,
+  Transport,
+  TransportResponse,
+  apiVersionHeader,
+  fetchTransport,
+  maintenanceHeader,
+  maintenanceHeaderValue,
+  retryAfterHeader,
+  retryAfterSeconds,
+} from './transport';
 import { compareReleases, releaseVersion } from './versions';
 import { Warn, warnOnce } from './warnings';
 
@@ -496,8 +509,11 @@ interface RequesterOptions {
  * server's release is older than this build's, the request is retried after each pause in
  * `olderServerRetryDelays` (a deploy still shifting traffic answers the next try from the
  * new instance); when the retries run out, or when this build is the older one, the
- * refusal is thrown as ApiVersionError, observed by the hook first. Every other 4xx or 5xx
- * the caller did not declare becomes ApiError.
+ * refusal is thrown as ApiVersionError, observed by the hook first. A 503 that carries the
+ * maintenance marker is the server down for maintenance and is judged the same way, before
+ * the caller's declared answers, and thrown as MaintenanceError with the server's
+ * Retry-After; a 503 without the marker is an ordinary error. Every other 4xx or 5xx the
+ * caller did not declare becomes ApiError.
  */
 function createRequester(baseUrl: string, transport: Transport, requester: RequesterOptions): ResponseRequester {
   const { onError } = requester;
@@ -521,6 +537,12 @@ function createRequester(baseUrl: string, transport: Transport, requester: Reque
         onError?.(error);
         throw error;
       }
+      if (maintenanceAnswer(response)) {
+        const retryAfter = retryAfterSeconds(response.headers?.[retryAfterHeader.toLowerCase()]);
+        const error = new MaintenanceError(method, url, response.body, retryAfter);
+        onError?.(error);
+        throw error;
+      }
       if (response.status >= 400 && !options?.accept?.includes(response.status)) {
         const error = new ApiError(method, url, response.status, response.body);
         onError?.(error);
@@ -538,6 +560,11 @@ function versionRefusal(response: TransportResponse): string | undefined {
   }
   const serverVersion = response.headers[apiVersionHeader.toLowerCase()];
   return serverVersion === undefined || serverVersion === '' ? undefined : serverVersion;
+}
+
+/** Whether the response is the server's answer while down for maintenance: a 503 carrying the maintenance marker. */
+function maintenanceAnswer(response: TransportResponse): boolean {
+  return response.status === 503 && response.headers?.[maintenanceHeader.toLowerCase()] === maintenanceHeaderValue;
 }
 
 function pause(milliseconds: number): Promise<void> {
