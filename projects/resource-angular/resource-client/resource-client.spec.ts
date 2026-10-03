@@ -3,12 +3,25 @@ import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@a
 import { Component, ErrorHandler, Injectable, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { ApiDescriptor, ApiError, ApiVersionError, apiVersionHeader, ClientBase, createClient } from '@cccteam/resource';
+import {
+  ApiDescriptor,
+  ApiError,
+  ApiVersionError,
+  apiVersionHeader,
+  ClientBase,
+  createClient,
+  MaintenanceError,
+  maintenanceHeader,
+  maintenanceHeaderValue,
+  retryAfterHeader,
+} from '@cccteam/resource';
 import {
   AlertType,
   API_VERSION,
   BASE_URL,
   LOGIN_REDIRECT_URL,
+  MAINTENANCE_HANDLER,
+  MaintenanceHandler,
   VERSION_REFUSAL_HANDLER,
   VersionRefusalHandler,
 } from '@cccteam/resource-angular/types';
@@ -29,8 +42,10 @@ import {
 // login page with the attempted URL kept, an ApiError nobody caught raises one global
 // notice in the server's words, a declared answer and a handled refusal raise none, every
 // request moves the activity counter, the release the build names rides every request of
-// the client and of the application's own same-origin HttpClient calls, and the server's
-// refusal of that release goes to the update service and raises no notice of its own.
+// the client and of the application's own same-origin HttpClient calls, the server's
+// refusal of that release goes to the update service and raises no notice of its own, and
+// the server's maintenance answer goes to the maintenance service the same way while a 503
+// without the marker stays an ordinary error.
 
 @Component({ template: '' })
 class BlankComponent {}
@@ -342,6 +357,79 @@ describe('the release a build names', () => {
   });
 });
 
+class RecordingMaintenanceHandler implements MaintenanceHandler {
+  answers: MaintenanceError[] = [];
+
+  maintenanceAnswered(answer: MaintenanceError): void {
+    this.answers.push(answer);
+  }
+}
+
+describe('the maintenance answer', () => {
+  let http: HttpTestingController;
+  let handler: RecordingMaintenanceHandler;
+  let client: ClientBase;
+
+  function configure(withHandler = true): void {
+    handler = new RecordingMaintenanceHandler();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([{ path: 'login', component: BlankComponent }]),
+        ...(withHandler ? [{ provide: MAINTENANCE_HANDLER, useValue: handler }] : []),
+        provideResourceClient((options) => createClient(descriptor, { baseUrl: '/api', ...options })),
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+    client = TestBed.inject(RESOURCE_CLIENT);
+  }
+
+  /** The maintenance server's answer to anything but a navigation: 503, the marker, Retry-After, no body. */
+  const maintenance = {
+    status: 503,
+    statusText: 'Service Unavailable',
+    headers: { [maintenanceHeader]: maintenanceHeaderValue, [retryAfterHeader]: '30' },
+  };
+
+  it('a 503 carrying the marker goes to the handler with its Retry-After, moves nothing, and raises no notice', async () => {
+    configure();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const pending = client.request('GET', 'missions').catch((error: unknown) => error);
+    http.expectOne('/api/missions').flush(null, maintenance);
+    const error = (await pending) as MaintenanceError;
+    expect(error).toBeInstanceOf(MaintenanceError);
+    expect(error.status).toBe(503);
+    expect(error.retryAfter).toBe(30);
+    expect(handler.answers).toEqual([error]);
+    expect(navigate).not.toHaveBeenCalled();
+    TestBed.inject(ErrorHandler).handleError(error);
+    expect(messages()).toEqual([]);
+  });
+
+  it('a 503 without the marker is an ordinary error: the handler sees nothing and the notice is raised', async () => {
+    configure();
+    const pending = client.request('GET', 'missions').catch((error: unknown) => error);
+    http.expectOne('/api/missions').flush({ message: 'overloaded' }, { status: 503, statusText: 'Service Unavailable' });
+    const error = (await pending) as ApiError;
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).not.toBeInstanceOf(MaintenanceError);
+    expect(handler.answers).toEqual([]);
+    TestBed.inject(ErrorHandler).handleError(error);
+    expect(messages()).toEqual(['overloaded']);
+  });
+
+  it('without a handler the answer goes to nobody and still raises no notice', async () => {
+    configure(false);
+    const pending = client.request('GET', 'missions').catch((error: unknown) => error);
+    http.expectOne('/api/missions').flush(null, maintenance);
+    const error = (await pending) as MaintenanceError;
+    expect(error).toBeInstanceOf(MaintenanceError);
+    TestBed.inject(ErrorHandler).handleError(error);
+    expect(messages()).toEqual([]);
+  });
+});
+
 describe('ResourceErrorHandler', () => {
   const wrapped = (rejection: unknown): Error => Object.assign(new Error('Uncaught (in promise)'), { rejection });
 
@@ -386,6 +474,24 @@ describe('ResourceErrorHandler', () => {
       name: 'the wrapped refusal the same',
       error: wrapped(new ApiVersionError('GET', '/api/missions', undefined, '1.6.0', '1.5.0', false)),
       wantMessages: [],
+      wantConsole: false,
+    },
+    {
+      name: "the server's maintenance answer raises none: the hook has handed it to the maintenance service",
+      error: new MaintenanceError('GET', '/api/missions', undefined, 30),
+      wantMessages: [],
+      wantConsole: false,
+    },
+    {
+      name: 'the wrapped maintenance answer the same',
+      error: wrapped(new MaintenanceError('GET', '/api/missions', undefined, undefined)),
+      wantMessages: [],
+      wantConsole: false,
+    },
+    {
+      name: 'a 503 without the marker raises its notice as any other error does',
+      error: new ApiError('GET', '/api/missions', 503, undefined),
+      wantMessages: ['HTTP 503'],
       wantConsole: false,
     },
     {

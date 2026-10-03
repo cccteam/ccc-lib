@@ -23,6 +23,7 @@ import {
   changes,
   ClientBase,
   ClientOptions,
+  MaintenanceError,
   Operation,
   releaseVersion,
   ResourceHandleBase,
@@ -35,6 +36,7 @@ import {
   BASE_URL,
   FRONTEND_LOGIN_PATH,
   LOGIN_REDIRECT_URL,
+  MAINTENANCE_HANDLER,
   VERSION_REFUSAL_HANDLER,
 } from '@cccteam/resource-angular/types';
 import { UiCoreService } from '@cccteam/resource-angular/ui-core-service';
@@ -61,8 +63,9 @@ export const RESOURCE_CLIENT = new InjectionToken<ClientBase>('RESOURCE_CLIENT',
 /**
  * The client options the Angular adapter owns and hands the application's factory: the
  * transport over HttpClient, the error hook that returns the browser to the login page on
- * a 401 and hands the server's refusal of this build's release to the update service, and
- * the release the build names (API_VERSION), which the client sends in the version header.
+ * a 401 and hands the server's refusal of this build's release to the update service and
+ * its maintenance answer to the maintenance service, and the release the build names
+ * (API_VERSION), which the client sends in the version header.
  * The application spreads them into the generated createApi beside its own baseUrl.
  */
 export type ResourceClientOptions = Required<Pick<ClientOptions, 'transport' | 'onError'>> &
@@ -76,7 +79,8 @@ export type RequestActivity = Pick<UiCoreService, 'beginActivity' | 'endActivity
  * XSRF cookie echo on mutating requests; every response resolves, whatever its status,
  * with its headers by lower-cased name, and the client judges it (a 4xx or 5xx becomes
  * ApiError, a declared answer resolves, a 412 carrying the server's release is the
- * refusal of this build). A request that got no response at all (status 0: no server, no
+ * refusal of this build, a 503 carrying the maintenance marker is the server down for
+ * maintenance). A request that got no response at all (status 0: no server, no
  * network) rejects. Each request begins an activity when it is sent and ends it when it
  * settles, so UiCoreService.isLoading and the progress bar over it move while any request
  * is open.
@@ -148,8 +152,8 @@ function sameOrigin(url: string, document: Document): boolean {
 
 /**
  * Registers the app's client and the renderings of the client's judgment the application
- * needs: the login redirect, the error notice, and the pick-up of the server's build after
- * a version refusal. The factory receives the options the adapter owns (see
+ * needs: the login redirect, the error notice, the pick-up of the server's build after a
+ * version refusal, and the maintenance notice. The factory receives the options the adapter owns (see
  * ResourceClientOptions) and spreads them into the generated createApi:
  *
  *     provideResourceClient((options) => createApi({ baseUrl: environment.apiUrl, ...options }))
@@ -202,6 +206,9 @@ export function provideResourceClient(
 /**
  * The client's error hook. The server's refusal of this build's release (ApiVersionError)
  * goes to the update service (VERSION_REFUSAL_HANDLER), which picks up the server's build.
+ * The server's maintenance answer (MaintenanceError) goes to the maintenance service
+ * (MAINTENANCE_HANDLER), which raises the maintenance notice and checks back; both
+ * handlers come with provideAppUpdate(), and without one the answer goes to nobody.
  * A 401 means the session is gone: the attempted URL, BASE_URL plus the router's current
  * URL, is kept in LOGIN_REDIRECT_URL (AuthService.redirectUrl) for the login page to
  * return to, and the browser goes to FRONTEND_LOGIN_PATH; on the login page already,
@@ -214,6 +221,10 @@ function clientErrorHook(injector: Injector): (error: ApiError) => void {
   return (error: ApiError): void => {
     if (error instanceof ApiVersionError) {
       injector.get(VERSION_REFUSAL_HANDLER, null)?.versionRefused(error);
+      return;
+    }
+    if (error instanceof MaintenanceError) {
+      injector.get(MAINTENANCE_HANDLER, null)?.maintenanceAnswered(error);
       return;
     }
     if (error.status !== 401) {
@@ -243,9 +254,12 @@ export const NO_RESPONSE_MESSAGE = 'The server could not be reached.';
  * refusal signal, and a declared answer raise none, a 401 raises none since the client's
  * hook has already returned the browser to the login page, and the server's refusal of
  * this build's release (ApiVersionError) raises none since the hook has handed it to the
- * update service, which reloads or raises its own notice. zone.js hands an unhandled
- * promise rejection over wrapped, the cause under `rejection`, and the browser's
- * unhandledrejection event hands the cause itself, so the handler unwraps before it judges.
+ * update service, which reloads or raises its own notice, and the server's maintenance
+ * answer (MaintenanceError) raises none since the hook has handed it to the maintenance
+ * service, which raises the maintenance notice and takes it down when the server is back.
+ * zone.js hands an unhandled promise rejection over wrapped, the cause under `rejection`,
+ * and the browser's unhandledrejection event hands the cause itself, so the handler
+ * unwraps before it judges.
  */
 @Injectable()
 export class ResourceErrorHandler extends ErrorHandler {
@@ -254,7 +268,7 @@ export class ResourceErrorHandler extends ErrorHandler {
   override handleError(error: unknown): void {
     const cause = causeOf(error);
     if (cause instanceof ApiError) {
-      if (cause.status !== 401 && !(cause instanceof ApiVersionError)) {
+      if (!renderedByTheHook(cause)) {
         this.ui.publishError({ message: cause.message, type: AlertType.ERROR, link: '' });
       }
       return;
@@ -265,6 +279,11 @@ export class ResourceErrorHandler extends ErrorHandler {
     }
     super.handleError(error);
   }
+}
+
+/** Whether the client's error hook has already rendered the error: the 401's login redirect, the version refusal, the maintenance answer. */
+function renderedByTheHook(error: ApiError): boolean {
+  return error.status === 401 || error instanceof ApiVersionError || error instanceof MaintenanceError;
 }
 
 /** The error under zone.js's "Uncaught (in promise)" wrapper and Angular's own, else the error itself. */

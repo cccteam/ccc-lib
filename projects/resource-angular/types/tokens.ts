@@ -1,5 +1,5 @@
 import { InjectionToken, Provider, signal, Signal, WritableSignal } from '@angular/core';
-import { ApiVersionError, ChangeFeed } from '@cccteam/resource';
+import { ApiVersionError, ChangeFeed, MaintenanceError } from '@cccteam/resource';
 import { Domain, Permission, Resource } from './permissions';
 import { MethodMeta, ResourceMeta } from './resource-meta';
 
@@ -55,6 +55,23 @@ export interface VersionRefusalHandler {
  * fails at startup otherwise, naming `provideAppUpdate()`.
  */
 export const VERSION_REFUSAL_HANDLER = new InjectionToken<VersionRefusalHandler>('VERSION_REFUSAL_HANDLER');
+
+/**
+ * What the client's error hook hands the server's maintenance answer to: a 503 carrying
+ * the maintenance marker, `MaintenanceError`. `provideAppUpdate()` registers
+ * `MaintenanceService` as it, which raises the maintenance notice once per outage and
+ * checks back until the server answers again.
+ */
+export interface MaintenanceHandler {
+  maintenanceAnswered(answer: MaintenanceError): void;
+}
+
+/**
+ * The handler of the server's maintenance answer; `provideAppUpdate()` provides it. Without
+ * one the hook hands the answer to nobody, and `ResourceErrorHandler` raises no notice for
+ * it either, so an application that wants the notice adds `provideAppUpdate()`.
+ */
+export const MAINTENANCE_HANDLER = new InjectionToken<MaintenanceHandler>('MAINTENANCE_HANDLER');
 
 /**
  * The URL the browser returns to after the next login, and `AuthService.redirectUrl`.

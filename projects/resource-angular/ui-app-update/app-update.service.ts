@@ -1,19 +1,8 @@
-import {
-  DestroyRef,
-  DOCUMENT,
-  EnvironmentProviders,
-  inject,
-  Injectable,
-  makeEnvironmentProviders,
-  NgZone,
-  provideEnvironmentInitializer,
-  signal,
-  Signal,
-} from '@angular/core';
+import { DestroyRef, DOCUMENT, inject, Injectable, NgZone, signal, Signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { SwUpdate, VersionEvent } from '@angular/service-worker';
 import { ApiVersionError } from '@cccteam/resource';
-import { AlertType, VERSION_REFUSAL_HANDLER, VersionRefusalHandler } from '@cccteam/resource-angular/types';
+import { AlertType, VersionRefusalHandler } from '@cccteam/resource-angular/types';
 import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
 
 /** The notice raised when the service worker has a new version of the application ready. */
@@ -84,8 +73,8 @@ export class AppReloader {
  * again, none while it is hidden, with the timer outside Angular's zone so it never keeps
  * the application from settling; the worker itself checks after every page load.
  *
- * `provideAppUpdate()` starts it and registers it as the handler of the server's refusal
- * of this build's release (`versionRefused`), the one case in which the application
+ * `provideAppUpdate()` (provide-app-update.ts) starts it and registers it as the handler
+ * of the server's refusal of this build's release (`versionRefused`), the one case in which the application
  * reloads by itself: while it is still starting, before its first navigation has ended,
  * it reloads onto the new build through `reloadWhenReady()`, with a plain reload when
  * there is no worker or no new build within RELOAD_WAIT_LIMIT; once a page is on screen
@@ -93,7 +82,9 @@ export class AppReloader {
  * release than this build (a rollback), the worker would serve this build again, so the
  * workers are unregistered first and the document reloads onto the server's build. A tab
  * reloads by itself at most once per server release, the guard kept in sessionStorage
- * under RELOAD_GUARD_KEY; a refusal past the guard raises the notice instead.
+ * under RELOAD_GUARD_KEY; a refusal past the guard raises the notice instead. The server's
+ * maintenance answer is MaintenanceService's, beside it, which calls `checkNow()` here
+ * when the server is back.
  */
 @Injectable({ providedIn: 'root' })
 export class AppUpdateService implements VersionRefusalHandler {
@@ -310,17 +301,4 @@ export class AppUpdateService implements VersionRefusalHandler {
       this.timer = undefined;
     }
   }
-}
-
-/**
- * Starts AppUpdateService with the application and makes it the handler of the server's
- * refusal of this build's release: add it to the application's providers beside
- * provideServiceWorker. No component references the service; the notices it raises render
- * in the alert area every application already has.
- */
-export function provideAppUpdate(): EnvironmentProviders {
-  return makeEnvironmentProviders([
-    { provide: VERSION_REFUSAL_HANDLER, useExisting: AppUpdateService },
-    provideEnvironmentInitializer(() => inject(AppUpdateService).start()),
-  ]);
 }
