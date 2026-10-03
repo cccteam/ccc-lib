@@ -10,8 +10,10 @@ import {
   signal,
   Signal,
 } from '@angular/core';
+import { Router } from '@angular/router';
 import { SwUpdate, VersionEvent } from '@angular/service-worker';
-import { AlertType } from '@cccteam/resource-angular/types';
+import { ApiVersionError } from '@cccteam/resource';
+import { AlertType, VERSION_REFUSAL_HANDLER, VersionRefusalHandler } from '@cccteam/resource-angular/types';
 import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
 
 /** The notice raised when the service worker has a new version of the application ready. */
@@ -20,8 +22,20 @@ export const VERSION_READY_MESSAGE = 'A new version of this application is ready
 /** The notice raised when the service worker reports a state only a reload recovers from. */
 export const UNRECOVERABLE_MESSAGE = 'This application needs to be reloaded to keep working.';
 
+/** The notice raised when the server no longer answers this build's release and a page is already on screen. */
+export const OUT_OF_DATE_MESSAGE = 'A new version of this application is required. Reload to continue.';
+
+/** The notice raised when the server runs an older release than this build and the tab's one automatic reload for it is spent. */
+export const SERVER_OLDER_MESSAGE = 'The server runs an older version of this application. Reload to continue.';
+
 /** How often a visible tab asks the service worker to check for a new version: an hour. */
 export const UPDATE_CHECK_INTERVAL = 60 * 60 * 1000;
+
+/** How long a refused, still-starting application waits for the worker to have the new build before it reloads anyway: ten seconds. */
+export const RELOAD_WAIT_LIMIT = 10 * 1000;
+
+/** The sessionStorage key holding the server release this tab last reloaded for by itself: the loop guard. */
+export const RELOAD_GUARD_KEY = 'ccc.app-update.reloaded-for';
 
 /** The label of the action every update notice carries. */
 export const RELOAD_LABEL = 'Reload';
@@ -39,6 +53,24 @@ export class AppReloader {
   reload(): void {
     this.document.defaultView?.location.reload();
   }
+
+  /**
+   * Unregisters every service worker of this origin, so the next load fetches the
+   * server's build instead of the one the worker holds. Resolves once they are gone, or
+   * at once where there is no worker; a failure to unregister does not stop the reload.
+   */
+  async unregisterWorkers(): Promise<void> {
+    const container = this.document.defaultView?.navigator?.serviceWorker;
+    if (!container) {
+      return;
+    }
+    try {
+      const registrations = await container.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    } catch {
+      // The reload goes ahead; the worker, if it survives, serves what it has.
+    }
+  }
 }
 
 /**
@@ -52,16 +84,25 @@ export class AppReloader {
  * again, none while it is hidden, with the timer outside Angular's zone so it never keeps
  * the application from settling; the worker itself checks after every page load.
  *
- * `provideAppUpdate()` starts it. The seam the version refusal uses is `ready`,
- * `checkNow()`, `reload()`, and `reloadWhenReady()`.
+ * `provideAppUpdate()` starts it and registers it as the handler of the server's refusal
+ * of this build's release (`versionRefused`), the one case in which the application
+ * reloads by itself: while it is still starting, before its first navigation has ended,
+ * it reloads onto the new build through `reloadWhenReady()`, with a plain reload when
+ * there is no worker or no new build within RELOAD_WAIT_LIMIT; once a page is on screen
+ * it raises OUT_OF_DATE_MESSAGE with Reload instead. When the server runs an older
+ * release than this build (a rollback), the worker would serve this build again, so the
+ * workers are unregistered first and the document reloads onto the server's build. A tab
+ * reloads by itself at most once per server release, the guard kept in sessionStorage
+ * under RELOAD_GUARD_KEY; a refusal past the guard raises the notice instead.
  */
 @Injectable({ providedIn: 'root' })
-export class AppUpdateService {
+export class AppUpdateService implements VersionRefusalHandler {
   private readonly worker = inject(SwUpdate, { optional: true });
   private readonly notifications = inject(NotificationService);
   private readonly reloader = inject(AppReloader);
   private readonly zone = inject(NgZone);
   private readonly document = inject(DOCUMENT);
+  private readonly router = inject(Router, { optional: true });
 
   private readonly readySignal = signal(false);
   /** True once the worker has a new version of the application ready to serve on the next load. */
@@ -148,6 +189,75 @@ export class AppUpdateService {
     void this.checkNow();
   }
 
+  /**
+   * The server refused this build's release. See the class comment for what happens; a
+   * refusal that arrives while a reload is already under way changes nothing.
+   */
+  versionRefused(refusal: ApiVersionError): void {
+    if (this.reloading) {
+      return;
+    }
+    if (refusal.serverOlder) {
+      this.reloadOnce(refusal.serverVersion, SERVER_OLDER_MESSAGE, () => void this.reloadWithoutWorkers());
+      return;
+    }
+    if (this.onScreen) {
+      this.raiseReloadNotice(OUT_OF_DATE_MESSAGE);
+      return;
+    }
+    this.reloadOnce(refusal.serverVersion, OUT_OF_DATE_MESSAGE, () => this.reloadOntoNewBuild());
+  }
+
+  /** Whether the application's first page is on screen: its router has completed a navigation. Without a router, yes. */
+  private get onScreen(): boolean {
+    return this.router ? this.router.navigated : true;
+  }
+
+  /** Runs the automatic reload unless this tab already reloaded by itself for this server release; then the notice instead. */
+  private reloadOnce(serverVersion: string, message: string, run: () => void): void {
+    if (this.reloadedFor() === serverVersion) {
+      this.raiseReloadNotice(message, run);
+      return;
+    }
+    this.recordReloadFor(serverVersion);
+    run();
+  }
+
+  /** Reloads onto the new build the worker is fetching, or plainly when there is no worker or it takes too long. */
+  private reloadOntoNewBuild(): void {
+    if (!this.enabled) {
+      this.reload();
+      return;
+    }
+    setTimeout(() => {
+      if (!this.reloading) {
+        this.reload();
+      }
+    }, RELOAD_WAIT_LIMIT);
+    this.reloadWhenReady();
+  }
+
+  private async reloadWithoutWorkers(): Promise<void> {
+    await this.reloader.unregisterWorkers();
+    this.reload();
+  }
+
+  private reloadedFor(): string | undefined {
+    try {
+      return this.document.defaultView?.sessionStorage.getItem(RELOAD_GUARD_KEY) ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private recordReloadFor(serverVersion: string): void {
+    try {
+      this.document.defaultView?.sessionStorage.setItem(RELOAD_GUARD_KEY, serverVersion);
+    } catch {
+      // Without storage the guard cannot hold; the reload still happens once per refusal.
+    }
+  }
+
   private onVersionEvent(event: VersionEvent): void {
     if (event.type !== 'VERSION_READY') {
       return;
@@ -162,13 +272,13 @@ export class AppUpdateService {
     this.raiseReloadNotice(VERSION_READY_MESSAGE);
   }
 
-  private raiseReloadNotice(message: string): void {
+  private raiseReloadNotice(message: string, run: () => void = () => this.reload()): void {
     this.notifications.addGlobalNotification({
       message,
       type: AlertType.INFO,
       link: '',
       persistent: true,
-      action: { label: RELOAD_LABEL, run: () => this.reload() },
+      action: { label: RELOAD_LABEL, run },
     });
   }
 
@@ -203,10 +313,14 @@ export class AppUpdateService {
 }
 
 /**
- * Starts AppUpdateService with the application: add it to the application's providers
- * beside provideServiceWorker. No component references the service; the notices it raises
- * render in the alert area every application already has.
+ * Starts AppUpdateService with the application and makes it the handler of the server's
+ * refusal of this build's release: add it to the application's providers beside
+ * provideServiceWorker. No component references the service; the notices it raises render
+ * in the alert area every application already has.
  */
 export function provideAppUpdate(): EnvironmentProviders {
-  return makeEnvironmentProviders([provideEnvironmentInitializer(() => inject(AppUpdateService).start())]);
+  return makeEnvironmentProviders([
+    { provide: VERSION_REFUSAL_HANDLER, useExisting: AppUpdateService },
+    provideEnvironmentInitializer(() => inject(AppUpdateService).start()),
+  ]);
 }

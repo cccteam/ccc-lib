@@ -1,14 +1,22 @@
-import { HttpClient, HttpErrorResponse, provideHttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
 import { Component, ErrorHandler, Injectable, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { ApiDescriptor, ApiError, ClientBase, createClient } from '@cccteam/resource';
-import { AlertType, BASE_URL, LOGIN_REDIRECT_URL } from '@cccteam/resource-angular/types';
+import { ApiDescriptor, ApiError, ApiVersionError, apiVersionHeader, ClientBase, createClient } from '@cccteam/resource';
+import {
+  AlertType,
+  API_VERSION,
+  BASE_URL,
+  LOGIN_REDIRECT_URL,
+  VERSION_REFUSAL_HANDLER,
+  VersionRefusalHandler,
+} from '@cccteam/resource-angular/types';
 import { UiCoreService } from '@cccteam/resource-angular/ui-core-service';
 import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
 
 import {
+  apiVersionInterceptor,
   httpClientTransport,
   NO_RESPONSE_MESSAGE,
   provideResourceClient,
@@ -19,8 +27,10 @@ import {
 
 // The Angular adapter renders the client's judgment: a 401 returns the browser to the
 // login page with the attempted URL kept, an ApiError nobody caught raises one global
-// notice in the server's words, a declared answer and a handled refusal raise none, and
-// every request moves the activity counter.
+// notice in the server's words, a declared answer and a handled refusal raise none, every
+// request moves the activity counter, the release the build names rides every request of
+// the client and of the application's own same-origin HttpClient calls, and the server's
+// refusal of that release goes to the update service and raises no notice of its own.
 
 @Component({ template: '' })
 class BlankComponent {}
@@ -72,10 +82,19 @@ describe('provideResourceClient', () => {
     client = TestBed.inject(RESOURCE_CLIENT);
   });
 
-  it('hands the factory the transport and the error hook, and provides the error handler', () => {
+  it('hands the factory the transport, the error hook, and the release, and provides the error handler', () => {
     expect(typeof received?.transport).toBe('function');
     expect(typeof received?.onError).toBe('function');
+    expect(received?.apiVersion).toBe('');
     expect(TestBed.inject(ErrorHandler)).toBeInstanceOf(ResourceErrorHandler);
+  });
+
+  it('a request of the client carries no release header when the build names none', () => {
+    const pending = client.request('GET', 'missions');
+    const request = http.expectOne('/api/missions');
+    expect(request.request.headers.has(apiVersionHeader)).toBe(false);
+    request.flush([]);
+    return pending;
   });
 
   describe('the handler in effect', () => {
@@ -169,6 +188,160 @@ describe('provideResourceClient', () => {
   });
 });
 
+class RecordingHandler implements VersionRefusalHandler {
+  refusals: ApiVersionError[] = [];
+
+  versionRefused(refusal: ApiVersionError): void {
+    this.refusals.push(refusal);
+  }
+}
+
+/** Lets the client's retry pause and the next request be issued. */
+async function settle(): Promise<void> {
+  for (let i = 0; i < 3; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+describe('the release a build names', () => {
+  let http: HttpTestingController;
+  let handler: RecordingHandler;
+  let client: ClientBase;
+
+  function configure(apiVersion: string, withHandler = true): void {
+    handler = new RecordingHandler();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withInterceptors([apiVersionInterceptor])),
+        provideHttpClientTesting(),
+        provideRouter([{ path: 'login', component: BlankComponent }]),
+        { provide: API_VERSION, useValue: apiVersion },
+        ...(withHandler ? [{ provide: VERSION_REFUSAL_HANDLER, useValue: handler }] : []),
+        provideResourceClient((options) =>
+          createClient(descriptor, { baseUrl: '/api', ...options, olderServerRetryDelays: [0, 0, 0] }),
+        ),
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+  }
+
+  it('rides every request of the client in the version header', () => {
+    configure('1.5.0');
+    client = TestBed.inject(RESOURCE_CLIENT);
+    const pending = client.request('GET', 'missions');
+    const request = http.expectOne('/api/missions');
+    expect(request.request.headers.get(apiVersionHeader)).toBe('1.5.0');
+    request.flush([]);
+    return pending;
+  });
+
+  describe('the interceptor', () => {
+    const cases: { name: string; apiVersion: string; url: string; headers?: Record<string, string>; want: string | null }[] = [
+      { name: 'a same-origin path gets the header', apiVersion: '1.5.0', url: '/console/api/user/login', want: '1.5.0' },
+      { name: 'a relative path gets the header', apiVersion: '1.5.0', url: 'api/impersonate', want: '1.5.0' },
+      {
+        name: 'an absolute URL on the same origin gets the header',
+        apiVersion: '1.5.0',
+        url: `${document.location.origin}/console/api/impersonations`,
+        want: '1.5.0',
+      },
+      { name: 'another origin is left alone', apiVersion: '1.5.0', url: 'https://directory.example/token', want: null },
+      { name: 'the dev build adds nothing', apiVersion: 'dev', url: '/console/api/user/login', want: null },
+      { name: 'a build naming no release adds nothing', apiVersion: '', url: '/console/api/user/login', want: null },
+      {
+        name: 'a header already on the request is kept',
+        apiVersion: '1.5.0',
+        url: '/console/api/user/login',
+        headers: { [apiVersionHeader]: '1.4.9' },
+        want: '1.4.9',
+      },
+    ];
+
+    for (const tt of cases) {
+      it(tt.name, () => {
+        configure(tt.apiVersion);
+        const pending = TestBed.inject(HttpClient).post(tt.url, {}, { headers: tt.headers }).subscribe();
+        const request = http.expectOne(tt.url);
+        expect(request.request.headers.get(apiVersionHeader)).toBe(tt.want);
+        request.flush({});
+        pending.unsubscribe();
+      });
+    }
+  });
+
+  describe('the refusal', () => {
+    it('a 412 carrying the server\'s release goes to the handler, moves nothing, and raises no notice', async () => {
+      configure('1.5.0');
+      client = TestBed.inject(RESOURCE_CLIENT);
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      const pending = client.request('GET', 'missions').catch((error: unknown) => error);
+      http
+        .expectOne('/api/missions')
+        .flush({ message: 'refused' }, { status: 412, statusText: 'Precondition Failed', headers: { [apiVersionHeader]: '1.6.0' } });
+      const error = (await pending) as ApiVersionError;
+      expect(error).toBeInstanceOf(ApiVersionError);
+      expect(error.serverVersion).toBe('1.6.0');
+      expect(error.serverOlder).toBe(false);
+      expect(handler.refusals).toEqual([error]);
+      expect(navigate).not.toHaveBeenCalled();
+      TestBed.inject(ErrorHandler).handleError(error);
+      expect(messages()).toEqual([]);
+    });
+
+    it('a 412 without the server\'s release is an ordinary refusal', async () => {
+      configure('1.5.0');
+      client = TestBed.inject(RESOURCE_CLIENT);
+      const pending = client.request('GET', 'missions').catch((error: unknown) => error);
+      http.expectOne('/api/missions').flush({ message: 'stale' }, { status: 412, statusText: 'Precondition Failed' });
+      const error = await pending;
+      expect(error).toBeInstanceOf(ApiError);
+      expect(error).not.toBeInstanceOf(ApiVersionError);
+      expect(handler.refusals).toEqual([]);
+    });
+
+    it('a server older than the build is retried, then handed to the handler as the older side', async () => {
+      configure('1.5.0');
+      client = TestBed.inject(RESOURCE_CLIENT);
+      const pending = client.request('GET', 'missions').catch((error: unknown) => error);
+      for (let attempt = 0; attempt < 4; attempt++) {
+        await settle();
+        http
+          .expectOne('/api/missions')
+          .flush({ message: 'refused' }, { status: 412, statusText: 'Precondition Failed', headers: { [apiVersionHeader]: '1.4.0' } });
+      }
+      const error = (await pending) as ApiVersionError;
+      expect(error).toBeInstanceOf(ApiVersionError);
+      expect(error.serverOlder).toBe(true);
+      expect(handler.refusals).toEqual([error]);
+      http.verify();
+    });
+  });
+
+  describe('startup', () => {
+    const cases: { name: string; apiVersion: string; withHandler: boolean; wantError: RegExp | undefined }[] = [
+      { name: 'a release with no handler fails naming provideAppUpdate()', apiVersion: '1.5.0', withHandler: false, wantError: /provideAppUpdate\(\)/ },
+      { name: 'a release with the handler starts', apiVersion: '1.5.0', withHandler: true, wantError: undefined },
+      { name: 'no release needs no handler', apiVersion: '', withHandler: false, wantError: undefined },
+      { name: 'the dev build needs no handler', apiVersion: 'dev', withHandler: false, wantError: undefined },
+    ];
+
+    for (const tt of cases) {
+      it(tt.name, () => {
+        // The check runs with the environment's initializers, at the first injection.
+        const start = (): ClientBase => {
+          configure(tt.apiVersion, tt.withHandler);
+          return TestBed.inject(RESOURCE_CLIENT);
+        };
+        if (tt.wantError) {
+          expect(start).toThrowError(tt.wantError);
+        } else {
+          expect(start()).toBeDefined();
+        }
+      });
+    }
+  });
+});
+
 describe('ResourceErrorHandler', () => {
   const wrapped = (rejection: unknown): Error => Object.assign(new Error('Uncaught (in promise)'), { rejection });
 
@@ -200,6 +373,18 @@ describe('ResourceErrorHandler', () => {
     {
       name: 'a 401 raises none: the hook has already returned the browser to the login page',
       error: new ApiError('GET', '/api/missions', 401, { message: 'Unauthorized' }),
+      wantMessages: [],
+      wantConsole: false,
+    },
+    {
+      name: "the server's refusal of the build's release raises none: the hook has handed it to the update service",
+      error: new ApiVersionError('GET', '/api/missions', { message: 'refused' }, '1.6.0', '1.5.0', false),
+      wantMessages: [],
+      wantConsole: false,
+    },
+    {
+      name: 'the wrapped refusal the same',
+      error: wrapped(new ApiVersionError('GET', '/api/missions', undefined, '1.6.0', '1.5.0', false)),
       wantMessages: [],
       wantConsole: false,
     },
@@ -241,6 +426,24 @@ describe('ResourceErrorHandler', () => {
 });
 
 describe('httpClientTransport', () => {
+  it('keeps the response headers on a success and on an error status', async () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const transport = httpClientTransport(TestBed.inject(HttpClient));
+    const http = TestBed.inject(HttpTestingController);
+
+    const ok = transport({ method: 'GET', url: '/api/missions' });
+    http.expectOne('/api/missions').flush([], { headers: { 'Total-Count': '3', Link: '</api/missions?cursor=x>; rel="next"' } });
+    expect((await ok).headers).toEqual({ 'total-count': '3', link: '</api/missions?cursor=x>; rel="next"' });
+
+    const refused = transport({ method: 'GET', url: '/api/missions' });
+    http
+      .expectOne('/api/missions')
+      .flush({ message: 'refused' }, { status: 412, statusText: 'Precondition Failed', headers: { [apiVersionHeader]: '1.6.0' } });
+    const response = await refused;
+    expect(response.status).toBe(412);
+    expect(response.headers).toEqual({ [apiVersionHeader.toLowerCase()]: '1.6.0' });
+  });
+
   const cases: { name: string; respond: (request: TestRequest) => void; rejects: boolean }[] = [
     {
       name: 'a 200 ends the activity it began',

@@ -16,6 +16,13 @@ export interface TransportRequest {
 /** The header that asks a transaction-form RPC method to run and roll back instead of committing. */
 export const dryRunHeader = 'X-Dry-Run';
 
+/**
+ * The header that carries the release the application was built from on every request
+ * (`ClientOptions.apiVersion`), and, on the server's refusal of it, the release the server
+ * runs. A build that names no release, or names `dev`, sends nothing and is never refused.
+ */
+export const apiVersionHeader = 'X-Api-Version';
+
 export interface TransportResponse {
   status: number;
   /** The decoded JSON body; undefined for an empty body. */
@@ -45,6 +52,31 @@ export class ApiError extends Error {
   ) {
     super(messageOf(body, status));
     this.name = 'ApiError';
+  }
+}
+
+/**
+ * The server's refusal of this build's release: a 412 carrying the release the server runs
+ * in the version header. It is recognized before a method's declared answers, so a method
+ * that declares 412 never takes it for its own. `serverOlder` says which way the two
+ * releases differ: true when the server runs an older release than this build (a rollback,
+ * or a deploy still shifting traffic), false when this build is older than the server.
+ * The framework over the client decides what the application does about it.
+ */
+export class ApiVersionError extends ApiError {
+  constructor(
+    method: HttpMethod,
+    url: string,
+    body: unknown,
+    /** The release the server runs, from its refusal. */
+    readonly serverVersion: string,
+    /** The release this build sent. */
+    readonly appVersion: string,
+    /** True when the server's release is older than this build's. */
+    readonly serverOlder: boolean,
+  ) {
+    super(method, url, 412, body);
+    this.name = 'ApiVersionError';
   }
 }
 
