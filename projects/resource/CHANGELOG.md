@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.5](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.4...resource/v0.0.5) (2026-10-03)
+
+
+### Features
+
+* the maintenance notice: the browser app tells the person the server is down for maintenance and checks back until it answers again (@cccteam/resource, @cccteam/resource-angular) ([#132](https://github.com/cccteam/ccc-lib/issues/132)) ([2060c64](https://github.com/cccteam/ccc-lib/commit/2060c6407307833b7218ddc38a5f1e1c017740bf))
+* the update notice and the release header: the browser apps install as progressive web apps and carry their release on every request ([#130](https://github.com/cccteam/ccc-lib/issues/130)) ([51f24b7](https://github.com/cccteam/ccc-lib/commit/51f24b75927e01abf7482925065ce3d49e9d54be))
+
 ## [0.0.4](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.3...resource/v0.0.4) (2026-10-02)
 
 
