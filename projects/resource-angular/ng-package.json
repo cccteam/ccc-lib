@@ -5,5 +5,5 @@
     "entryFile": "index.ts"
   },
   "allowedNonPeerDependencies": ["date-fns", "date-fns-tz"],
-  "assets": ["styles/**/*.scss"]
+  "assets": ["styles/**/*.scss", "fonts/**/*"]
 }

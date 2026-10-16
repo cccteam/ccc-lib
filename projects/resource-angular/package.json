@@ -28,6 +28,11 @@
       "sass": "./styles/_index.scss",
       "style": "./styles/_index.scss",
       "default": "./styles/_index.scss"
+    },
+    "./styles/fonts": {
+      "sass": "./styles/_fonts.scss",
+      "style": "./styles/_fonts.scss",
+      "default": "./styles/_fonts.scss"
     }
   }
 }
