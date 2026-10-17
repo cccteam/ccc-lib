@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.6](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.5...resource-angular/v0.0.6) (2026-10-17)
+
+
+### Features
+
+* **resource-angular:** the library serves the fonts the components render in, with a typography fallback chain ([#134](https://github.com/cccteam/ccc-lib/issues/134)) ([777dad2](https://github.com/cccteam/ccc-lib/commit/777dad276c10ecb15074774afcd8abf5441444c6))
+
 ## [0.0.5](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.4...resource-angular/v0.0.5) (2026-10-03)
 
 
