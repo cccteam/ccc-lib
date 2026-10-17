@@ -26,6 +26,8 @@ Then import the library's stylesheet once, from the application's global styles 
 
 The form and list components request its classes by name — the twelve-column field grid, the read-only and edit-mode treatments, the sticky list header — and expose CSS variables (`--layout-label-background-color`, `--default-blue`, …) the application overrides to theme them. Without the import, fields lose their grid and section labels lose their styling.
 
+The stylesheet also brings the fonts the components render in, served by the application itself: Roboto in the three weights the Material typography uses (300, 400, 500; the latin and latin-ext subsets) and the filled Material Icons, as files of this package the application's build carries into its bundle as same-origin assets. The application's `index.html` carries no Google Fonts link and its content security policy no font host (`style-src` and `font-src` stay at `'self'`): a progressive web app's service worker fetches the page's requests under the policy delivered with its own script, whose `connect-src` names no font host, so a third-party font fails on every worker-controlled load, while a same-origin font is fetched under `connect-src 'self'` and cached by the worker's asset group, so the application renders offline and during an outage. The Material typography tokens, which the prebuilt themes set to `Roboto` alone, get a fallback chain (`Roboto, 'Helvetica Neue', Arial, sans-serif`), so a font that fails to load never leaves a component in the browser's serif default. An application that wants the fonts alone imports `@cccteam/resource-angular/styles/fonts`. The outlined icon set is not shipped; a component that needs it adds it here.
+
 ## Core Concepts
 
 The central concept of the library is the `resourceConfig`. This configuration object defines the structure and behavior of a page or a part of a page. It specifies which components to render, how they are connected, and how they interact with data.
@@ -89,10 +91,10 @@ A login page shows text it holds, never text from the URL. A refused OIDC login 
 
 ### Building the Library
 
-To build the library locally, use the Angular CLI:
+To build the library locally, copy the fonts it ships (from the two font packages the repository builds with, into `projects/resource-angular/fonts/`, a generated folder) and use the Angular CLI; the root build script does both:
 
 ```bash
-ng build resource-angular
+bun run fonts && ng build resource-angular
 ```
 
 ### Running Tests

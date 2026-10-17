@@ -12,6 +12,7 @@
         "@angular/cli": "^21.2.2",
         "@angular/compiler-cli": "^21.2.4",
         "@angular/service-worker": "^21.2.4",
+        "@fontsource/roboto": "5.3.0",
         "@types/node": "^24.10.1",
         "angular-eslint": "^21.3.0",
         "eslint": "^9.28.0",
@@ -21,6 +22,7 @@
         "firebase": "^12.19.0",
         "jsdom": "^27.1.0",
         "madge": "^8.0.0",
+        "material-icons": "1.13.14",
         "ng-packagr": "^21.0.0",
         "prettier": "3.4.2",
         "typescript": "~5.9.3",
@@ -59,14 +61,14 @@
     },
     "projects/resource": {
       "name": "@cccteam/resource",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "dependencies": {
         "tslib": "^2.3.0",
       },
     },
     "projects/resource-angular": {
       "name": "@cccteam/resource-angular",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "dependencies": {
         "date-fns": "^4.1.0",
         "date-fns-tz": "^3.2.0",
@@ -84,7 +86,7 @@
     },
     "projects/resource-firestore": {
       "name": "@cccteam/resource-firestore",
-      "version": "0.0.2",
+      "version": "0.0.3",
       "dependencies": {
         "tslib": "^2.3.0",
       },
@@ -410,6 +412,8 @@
     "@firebase/util": ["@firebase/util@1.15.3", "", { "dependencies": { "tslib": "^2.1.0" } }, "sha512-c/z/gaIlaaLZEuGbE6sLUuJ61tskg1JghvhcNQzW948ASBinbVBBRnZTC4b4yt4LaEtJQkYlyzqLHcutFwEIvA=="],
 
     "@firebase/webchannel-wrapper": ["@firebase/webchannel-wrapper@1.0.7", "", {}, "sha512-phBFwieDLvkZGYN9CE9ZFNEIoBVksprzsnCzQejCmCHtgwCXReeuRpoEGN9C4EbhONztv8NRV1tau6Rb9pONwQ=="],
+
+    "@fontsource/roboto": ["@fontsource/roboto@5.3.0", "", {}, "sha512-BapRJOWYP+LZ21zp+wBQjfpPYKRoxc4LspJ/RLuI+HSMBD5u/X4O+ESDrSvEqDSy0rAl7GwBJ+09mdc16cVQ1Q=="],
 
     "@gar/promise-retry": ["@gar/promise-retry@1.0.3", "", {}, "sha512-GmzA9ckNokPypTg10pgpeHNQe7ph+iIKKmhKu3Ob9ANkswreCx7R3cKmY781K8QK3AqVL3xVh9A42JvIAbkkSA=="],
 
@@ -1378,6 +1382,8 @@
     "make-dir": ["make-dir@5.1.0", "", {}, "sha512-IfpFq6UM39dUNiphpA6uDezNx/AvWyhwfICWPR3t1VspkgkMZrL+Rk1RbN1bx+aeNYwOrqGJgEgV3yotk+ZUVw=="],
 
     "make-fetch-happen": ["make-fetch-happen@15.0.6", "", { "dependencies": { "@gar/promise-retry": "^1.0.0", "@npmcli/agent": "^4.0.0", "@npmcli/redact": "^4.0.0", "cacache": "^20.0.1", "http-cache-semantics": "^4.1.1", "minipass": "^7.0.2", "minipass-fetch": "^5.0.0", "minipass-flush": "^1.0.5", "minipass-pipeline": "^1.2.4", "negotiator": "^1.0.0", "proc-log": "^6.0.0", "ssri": "^13.0.0" } }, "sha512-Je0fLJ0F5atA7F+eIlLzk+Wkcl57JDf4kf+EW8xiP5E31xOQxkIxTbgf1Oi1Lw9tRI9UEMRdI5Vz2xTzoNU1Jw=="],
+
+    "material-icons": ["material-icons@1.13.14", "", {}, "sha512-kZOfc7xCC0rAT8Q3DQixYAeT+tBqZnxkseQtp2bxBxz7q5pMAC+wmit7vJn1g/l7wRU+HEPq23gER4iPjGs5Cg=="],
 
     "math-intrinsics": ["math-intrinsics@1.1.0", "", {}, "sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g=="],
 

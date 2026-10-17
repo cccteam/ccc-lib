@@ -7,6 +7,9 @@
 // `cols` maps to, the read-only and edit-mode form treatments, the sticky list header,
 // and the CSS variables an application overrides to theme them. Rules that style a
 // component's own elements live in that component; only cross-cutting ones are here.
+// The fonts the components render in come with it (_fonts.scss): Roboto and the
+// Material Icons as files of this package, and the Material typography's fallback chain.
+@use 'fonts';
 
 :root {
   --default-blue: rgb(8, 84, 111);
