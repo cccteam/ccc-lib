@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.6](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.5...resource/v0.0.6) (2026-10-18)
+
+
+### Features
+
+* **resource,resource-angular:** the sign-in client and the login methods component, rendered from the server's list ([#136](https://github.com/cccteam/ccc-lib/issues/136)) ([9d3f16f](https://github.com/cccteam/ccc-lib/commit/9d3f16f9aa8f0e78090e6e0a931878ac439b95fe))
+
 ## [0.0.5](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.4...resource/v0.0.5) (2026-10-03)
 
 
