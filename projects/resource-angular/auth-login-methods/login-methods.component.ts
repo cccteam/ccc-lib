@@ -99,6 +99,14 @@ export class LoginMethodsComponent implements OnInit {
     void this.tracked(() => this.arrive());
   }
 
+  /** The sentence over the confirmation form: the account that matched, named by the identity's email when it asserted one. */
+  confirmationNote(waiting: PendingSignIn): string {
+    const matched = waiting.email
+      ? `An account with a password matches this sign-in, ${waiting.email}.`
+      : 'An account with a password matches this sign-in.';
+    return `${matched} Enter that account's password to link the two.`;
+  }
+
   /** The words for a method: the application's override by name, else the server's label. */
   labelOf(method: LoginMethod): string {
     return this.labels()[method.name] ?? method.label;

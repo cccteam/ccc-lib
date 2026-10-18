@@ -1,13 +1,7 @@
 @if (pending(); as waiting) {
   <div class="ccc-login-pending">
     @if (waiting.reason === 'confirmation') {
-      <p class="ccc-login-pending-note">
-        An account with a password matches this sign-in
-        @if (waiting.email) {
-          , {{ waiting.email }}
-        }
-        . Enter that account's password to link the two.
-      </p>
+      <p class="ccc-login-pending-note">{{ confirmationNote(waiting) }}</p>
       <form class="ccc-login-form" (ngSubmit)="confirm()">
         <mat-form-field appearance="outline" class="ccc-login-field">
           <mat-label>Password</mat-label>
