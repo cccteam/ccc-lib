@@ -207,6 +207,16 @@ export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
   email_not_verified: 'The email address of this account is not verified.',
   no_roles: 'This account has no role in this application. Please contact your administrator.',
   no_email_claim: 'The identity provider did not say which account signed in.',
+  unlisted_tenant: 'This account belongs to an organization that cannot sign in here.',
+  personal_account: 'Personal Microsoft accounts cannot sign in here. Use your work or school account.',
+  organization_mismatch: 'This account belongs to a different organization than the one you signed in through.',
+  identity_rejected: 'This account could not be matched to a user of this application.',
+  not_invited: 'This account has not been invited to this application.',
+  guest_account: 'Guest accounts cannot sign in here. Use an account that is a member of the organization.',
+  policy_denied: 'Signing in this way is not allowed for this account.',
+  user_disabled: 'This account has been disabled. Please contact your administrator.',
+  pending_expired: 'The sign-in took too long to complete. Please start again.',
+  no_email: 'The identity provider did not provide an email address for this account.',
 };
 
 /**

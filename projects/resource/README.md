@@ -293,6 +293,66 @@ const flags = await api.features.flags(); // every declared flag: name, descript
 await api.features.setFeature('debriefs', true); // the set and the digest are current when this resolves
 ```
 
+## Sign-in
+
+A login page renders from what the server offers, naming no path, no label and no method of
+its own, so the browser bundle is the same in every environment and a method that is not
+registered has no button. `api.auth` is the sign-in client: the one place that knows the wire
+shape of the session library's login routes.
+
+`methods()` reads the methods list the generated router serves at `GET <prefix>/user/methods`
+(public, before any session, no XSRF token): the methods in the server's order, each with the
+`name` it was registered under, the library `method` behind it (`password`, `google`, `azure`,
+`workos`), its `kind` (`password`, a form the page posts; `redirect`, a navigation that sends
+the browser to the identity provider), its `label` and its `path`; and `pending`, the pending
+sign-in's status, confirmation and cancel paths. The answer is kept in `api.auth.snapshot`, a
+`Store` a framework mirrors into its own reactivity, so a page re-renders whenever the list is
+read again. A listed method of a kind the client does not drive is left out and announced once
+through the warn hook.
+
+```ts
+const list = await api.auth.methods();
+const password = list.methods.find((method) => method.kind === 'password');
+const redirects = list.methods.filter((method) => method.kind === 'redirect');
+
+// The password form posts through the client; the result is the session, a pending step, or
+// the server's refusal, resolved rather than thrown so the page renders it in place.
+const result = await api.auth.signInWithPassword(password, { username, password: secret });
+switch (result.outcome) {
+  case 'session':  // the session is established; check it and move on
+  case 'pending':  // a step waits: read api.auth.pending(), or go to result.redirectUrl when the server named one
+  case 'refused':  // result.code (user_disabled, pending_expired, the application's own) and result.message
+}
+
+// A redirect method is a navigation, with the page to return to.
+location.assign(api.auth.signInUrl(google, '/console/missions'));
+```
+
+Every step that posts reads the list again first. The list's answer refreshes the XSRF cookie
+the server's guard checks on a POST, so a login page left open past the cookie's life signs in
+on the first click rather than being refused for a stale token and succeeding on the second;
+the re-read also re-syncs the list, and a method the server no longer offers is not posted to
+(the call throws, and the kept list is the one to render again). The methods request is a
+page's first request for the same reason: it primes the cookie.
+
+A sign-in waits as a pending step when the identity matches a user that has a password, which
+must be entered before the two are linked (`confirmation`), or when the sign-in policy
+requires the application's MFA step (`mfa`). A redirect sign-in that waits comes back to the
+login page with `?pending=<reason>`; a password sign-in answers `pending`. `pending()` reads
+the status (`waiting` with the reason, the email the identity asserted, when it expires and
+the page it returns to; `none`; or `refused` with `pending_expired` when the sign-in expired
+or was already used), `confirmPending(password)` posts the confirmation (the session, a further
+step, or a refusal: a wrong password answers 401 in the server's words and leaves the step in
+place), and `cancelPending()` discards it. A server whose list names no pending routes never
+holds a sign-in, and these three throw saying so.
+
+A refusal the server answers on a step (401 or 403, and 404 or 409 on a confirmation) resolves
+as `refused` with the server's code and words and never reaches the client's error hook, so
+nothing sends the browser to the login page it is on and nothing raises a notice. Every other
+failure, a malformed request, a server fault, no response, throws as the client's requests do.
+The Angular binding's `<ccc-login-methods>` renders all of this; a page over another framework
+does the same over these calls.
+
 ## Transports
 
 `fetchTransport()` is the default. A framework routes requests through its own HTTP

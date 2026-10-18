@@ -9,6 +9,7 @@ import {
   Resource,
   UpdatePermission,
 } from './brands';
+import { AuthClient, loginMethodsRoute } from './auth';
 import { ApiDescriptor, MethodDescriptor, ResourceDescriptor, ResourceOperation } from './descriptor';
 import { Capability, PermissionDigestState, WithCapabilities, rowCapabilities } from './digest';
 import { FeatureFlag, FeatureState, featureFlagsResource, setFeatureMethod } from './features';
@@ -327,6 +328,12 @@ export interface ClientBase {
    * (`setFeature`). See FeatureState.
    */
   readonly features: FeatureState;
+  /**
+   * The sign-in client: the methods the server offers its login page, the password form's
+   * post, the redirect method's URL, and the pending sign-in's status, confirmation and
+   * cancel. See AuthClient.
+   */
+  readonly auth: AuthClient;
   /** Issues a request under baseUrl; the escape hatch for routes the generator did not describe. */
   readonly request: Requester;
   /** Issues a request and resolves with the headers too. */
@@ -388,12 +395,15 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
     warn,
   });
 
+  const auth = new AuthClient({ request: requestResponse, route: loginMethodsRoute, warn });
+
   const base: ClientBase = {
     descriptor,
     baseUrl,
     permissions,
     live,
     features,
+    auth,
     request,
     requestResponse,
     batch: (operations) => batch(request, descriptor, operations),

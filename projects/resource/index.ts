@@ -1,3 +1,4 @@
+export * from './src/auth';
 export * from './src/brands';
 export * from './src/client';
 export * from './src/descriptor';
