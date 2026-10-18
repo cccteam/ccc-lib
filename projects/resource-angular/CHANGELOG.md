@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.7](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.6...resource-angular/v0.0.7) (2026-10-18)
+
+
+### Features
+
+* **resource,resource-angular:** the sign-in client and the login methods component, rendered from the server's list ([#136](https://github.com/cccteam/ccc-lib/issues/136)) ([9d3f16f](https://github.com/cccteam/ccc-lib/commit/9d3f16f9aa8f0e78090e6e0a931878ac439b95fe))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.5 to ^0.0.6
+
 ## [0.0.6](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.5...resource-angular/v0.0.6) (2026-10-17)
 
 
