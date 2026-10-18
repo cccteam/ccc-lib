@@ -80,10 +80,72 @@ Every application provides its generated client: `provideResourceClient((options
 
 A login page shows text it holds, never text from the URL. A refused OIDC login returns the browser to the login page as `<login page>?code=<code>`, and the code is all the session module sends; its "Login refusal codes" table is the finite list. `LOGIN_MESSAGES` holds one sentence for each of those codes (`DEFAULT_LOGIN_MESSAGES`), `UiCoreService.loginMessage(code)` answers the sentence or an empty string for a code the application does not know, and `publishLoginError(code)` raises it as a global error notification and says whether the code was known. The page reads the `code` query parameter and renders the lookup, so a crafted URL renders nothing. An application whose session data resolver refuses with a code of its own, or that wants a default reworded, adds `provideLoginMessages({ not_provisioned: 'Your account has not been set up yet.' })` to its providers: the library's sentences come first and the application's after.
 
+## The login page
+
+`<ccc-login-methods>` (`@cccteam/resource-angular/auth-login-methods`) renders the sign-in methods
+the server offers and owns the journey from the list to the session. On arrival it reads the
+methods list through the application's client (`api.auth`, see the sign-in section of
+@cccteam/resource) and renders it: the password form when the list has a password method, and one
+button per redirect method, in the server's order. Nothing it shows is named in the application,
+so the bundle is the same in every environment and a method that is not registered has no button.
+The server's label is the default for each method; `labels` overrides it by registration name, and
+nothing else about a method is the page's to change. Everything around the methods, the branding, a
+manifest, a forgotten-password link, is the page's, composed around the component:
+
+```html
+<mat-card>
+  <mat-card-header><mat-card-title>Lodestar</mat-card-title></mat-card-header>
+  <mat-card-content>
+    <ccc-login-methods home="/dashboard" [labels]="{ google: 'the fleet directory' }" (signedIn)="go($event)" />
+    <p class="hint">Ask the flight desk for an account.</p>
+  </mat-card-content>
+</mat-card>
+```
+
+```ts
+export class LoginComponent {
+  private auth = inject(AuthService);
+  private idle = inject(IdleService);
+  private router = inject(Router);
+
+  constructor() {
+    // The page ends whatever session the browser arrived with; the component's first request, the
+    // methods list, then primes the XSRF cookie the sign-in's POST needs.
+    this.auth.logout().subscribe();
+    this.idle.stop();
+  }
+
+  go(page: string): void {
+    this.idle.start();
+    void this.router.navigateByUrl(page);
+  }
+}
+```
+
+A password sign-in posts through the client, which reads the list again first so the POST carries a
+live XSRF token even on a page left open past the cookie's life; the session established, the
+component checks it through `AuthService` (loading the digest, the domains and the feature flags)
+and emits `signedIn` with the router URL of the page to go to: the page the login guard turned away
+from (`AuthService.redirectUrl`, read once), else `home`. The page navigates there and starts what
+it starts on a sign-in. A redirect method sends the browser to the method's path, naming the same
+page as the one to return to, resolved against the document's base; the server's callback brings
+the browser back there signed in, or back to the login page with `?code=` for a refusal or
+`?pending=` for a step that waits.
+
+A refusal arriving in the URL renders the sentence the application holds for the code
+(`LOGIN_MESSAGES`, the library's sentences plus `provideLoginMessages`) and nothing for a code it
+does not know; one the server answers on a step renders that sentence when it carries a code, and
+the server's words otherwise (a wrong password). A pending step, entered with `?pending=` or answered
+to a password sign-in, is read from the pending status route and takes the list's place: for a
+confirmation, the password form of the user the sign-in matched, posting to the confirmation route,
+with a cancel that returns to the list and emits `cancelled`; a step the server names a page for
+(a pending hook's `redirectUrl`) sends the browser there. A step that has expired returns to the
+list with the sentence for `pending_expired`.
+
 ## Modules Overview
 
 - **`ccc-resource`**: The core module of the library. It contains the components and services related to dynamic page generation and data management.
-- **`auth`**: This module provides authentication and authorization, including login forms, route guards, and permission directives.
+- **`auth`**: This module provides authentication and authorization, including the login methods component, route guards, and permission directives.
 - **`ui`**: This module contains UI components and services, such as alerts, notifications, and sidenav components.
 - **`utils`**: A collection of utility pipes and functions for various purposes.
 

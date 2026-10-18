@@ -40,6 +40,16 @@ describe('UiCoreService login messages', () => {
       'email_not_verified',
       'no_roles',
       'no_email_claim',
+      'unlisted_tenant',
+      'personal_account',
+      'organization_mismatch',
+      'identity_rejected',
+      'not_invited',
+      'guest_account',
+      'policy_denied',
+      'user_disabled',
+      'pending_expired',
+      'no_email',
     ];
     TestBed.configureTestingModule({});
     const ui = TestBed.inject(UiCoreService);

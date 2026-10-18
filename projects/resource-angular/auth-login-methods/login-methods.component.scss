@@ -1,0 +1,32 @@
+:host {
+  display: block;
+}
+
+.ccc-login-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.ccc-login-field,
+.ccc-login-submit,
+.ccc-login-redirect,
+.ccc-login-cancel {
+  width: 100%;
+}
+
+.ccc-login-redirect {
+  margin-top: 12px;
+}
+
+.ccc-login-pending-note {
+  margin: 0 0 12px;
+}
+
+.ccc-login-cancel {
+  margin-top: 8px;
+}
+
+.ccc-login-message {
+  margin: 12px 0 0;
+  color: var(--mat-sys-error, #b3261e);
+}
