@@ -20,7 +20,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterModule } from '@angular/router';
 import { CamelCaseToTitlePipe } from '@cccteam/resource-angular/ccc-camel-case-to-title';
-import { ColumnConfig, RecordData } from '@cccteam/resource-angular/types';
+import { ColumnConfig, iconCellKey, RecordData } from '@cccteam/resource-angular/types';
 import { filterControlFor, indexedFilterActive, isComplete, operatorOption } from './grid-filter.util';
 import {
   ColumnFilter,
@@ -434,6 +434,11 @@ export class AppGridComponent {
     const next = { ...this.drafts() };
     delete next[col.id];
     this.drafts.set(next);
+  }
+
+  /** The display-row key the list wrote an icon column's icon under; the column's own key holds the words. */
+  iconKeyOf(col: ColumnConfig): string {
+    return iconCellKey(col.id);
   }
 
   widthFor(col: ColumnConfig): number | null {

@@ -5,7 +5,15 @@ import { ApiDescriptor, ClientBase, createClient, Domain, FieldMeta, PermissionD
 import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 import { provideResourceTesting } from '@cccteam/resource-angular/testing';
-import { FieldName, listViewConfig, ListViewConfigOptions, RESOURCE_DOMAIN, RESOURCE_META, rootConfig } from '@cccteam/resource-angular/types';
+import {
+  FieldName,
+  iconCellKey,
+  listViewConfig,
+  ListViewConfigOptions,
+  RESOURCE_DOMAIN,
+  RESOURCE_META,
+  rootConfig,
+} from '@cccteam/resource-angular/types';
 
 import { CompoundResourceComponent } from '../compound-resource/compound-resource.component';
 import { ResourceListComponent } from './resource-list.component';
@@ -42,6 +50,9 @@ const metas: Record<string, ResourceMeta> = {
       field('cargoBays', { displayType: 'number[]' }),
       field('digest', { displayType: 'bytes' }),
       field('lastRefitAt', { displayType: 'date' }),
+      field('limitStatus'),
+      field('activeLearners', { displayType: 'number' }),
+      field('partnerLimit', { displayType: 'number' }),
     ],
   } as ResourceMeta,
   [calls]: {
@@ -176,6 +187,56 @@ describe('ResourceListComponent', () => {
       );
       expect(cells).toEqual(['Kestrel', '60, 60, 30', '32 B', '9/21/2026']);
       expect((fixture.nativeElement as HTMLElement).textContent).not.toContain(digest32);
+    });
+  });
+
+  describe('renders an icon column from the declared map', () => {
+    it('requests the fields its sentences name, resolves the icon and the words with the display row, and draws the icon as an image', async () => {
+      const rows = [
+        { id: 's-1', name: 'Kestrel', limitStatus: 'grandfathered', activeLearners: 4, partnerLimit: 2 },
+        { id: 's-2', name: 'Vega', limitStatus: 'ok', activeLearners: 1, partnerLimit: 2 },
+        { id: 's-3', name: 'Dishner', limitStatus: null, activeLearners: 0, partnerLimit: 2 },
+      ];
+      await create(
+        {
+          primaryResource: ships,
+          listColumns: [
+            { id: 'name' as FieldName },
+            {
+              id: 'limitStatus' as FieldName,
+              header: 'Limit',
+              iconConfig: {
+                icons: { grandfathered: 'warning' },
+                tooltips: { grandfathered: 'Grandfathered: {name} has {activeLearners} active learners. The partner limit is {partnerLimit}.' },
+                empty: { icon: 'help_outline', tooltip: 'No limit recorded for {name}' },
+              },
+            },
+          ],
+        },
+        rows,
+      );
+      fixture.detectChanges();
+      await settle();
+      const url = new URL(transport.requests[0].url, 'http://ships.test');
+      expect(url.searchParams.get('columns')?.split(',').sort()).toEqual(['activeLearners', 'id', 'limitStatus', 'name', 'partnerLimit']);
+      const processed = fixture.componentInstance.processedRowData();
+      expect(processed.map((row) => [row['limitStatus'], row[iconCellKey('limitStatus')]])).toEqual([
+        ['Grandfathered: Kestrel has 4 active learners. The partner limit is 2.', 'warning'],
+        ['ok', null],
+        ['No limit recorded for Dishner', 'help_outline'],
+      ]);
+      const element = fixture.nativeElement as HTMLElement;
+      const cells = Array.from(element.querySelectorAll<HTMLElement>('tr.ccc-row td.icon-col'));
+      expect(cells.map((cell) => cell.querySelector('mat-icon')?.textContent?.trim() ?? cell.textContent?.trim())).toEqual([
+        'warning',
+        'ok',
+        'help_outline',
+      ]);
+      expect(cells[0].querySelector('mat-icon')?.getAttribute('aria-label')).toBe(
+        'Grandfathered: Kestrel has 4 active learners. The partner limit is 2.',
+      );
+      // the sentences' fields ride the request and the row, not the table
+      expect(Array.from(element.querySelectorAll('th .col-header')).map((h) => h.textContent?.trim())).toEqual(['Name', 'Limit']);
     });
   });
 

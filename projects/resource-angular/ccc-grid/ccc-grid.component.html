@@ -154,6 +154,23 @@
                     </ccc-table-button>
                   }
                 </td>
+              } @else if (col.iconConfig) {
+                <td class="data-col icon-col" [style.width.px]="widthFor(col)">
+                  @if (row[iconKeyOf(col)]; as icon) {
+                    <mat-icon
+                      class="cell-icon"
+                      role="img"
+                      aria-hidden="false"
+                      tabindex="0"
+                      [attr.aria-label]="row[col.id] || icon"
+                      [matTooltip]="row[col.id] || ''"
+                      [matTooltipPosition]="col.tooltipPosition || 'above'"
+                      >{{ icon }}</mat-icon
+                    >
+                  } @else {
+                    {{ row[col.id] }}
+                  }
+                </td>
               } @else {
                 <td class="data-col" [style.width.px]="widthFor(col)">{{ row[col.id] }}</td>
               }
