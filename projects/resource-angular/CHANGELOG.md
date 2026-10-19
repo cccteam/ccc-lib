@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.0.8](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.7...resource-angular/v0.0.8) (2026-10-19)
+
+
+### Features
+
+* **resource-angular:** an icon column on the config-driven list renders a field's value as an icon with a tooltip from a declared map ([#141](https://github.com/cccteam/ccc-lib/issues/141)) ([d09f6e1](https://github.com/cccteam/ccc-lib/commit/d09f6e161ec1dadf161e75f2856f5829cd33e51c))
+* **resource,resource-angular:** the user-management page configures itself from the descriptor's surfaces, and the login component serves the forced password change ([#138](https://github.com/cccteam/ccc-lib/issues/138)) ([d3c468e](https://github.com/cccteam/ccc-lib/commit/d3c468e2c248da37d9cbfa34adf90eb962769045))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.6 to ^0.0.7
+
 ## [0.0.7](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.6...resource-angular/v0.0.7) (2026-10-18)
 
 

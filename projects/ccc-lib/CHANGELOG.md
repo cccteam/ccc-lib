@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.46](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.45...ccc-lib/v0.0.46) (2026-10-19)
+
+
+### Features
+
+* adding icon with tooltips ([#139](https://github.com/cccteam/ccc-lib/issues/139)) ([8d5d2ed](https://github.com/cccteam/ccc-lib/commit/8d5d2ed8005759af8f7044d81bd5f18edf91cb0e))
+
 ## [0.0.45](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.44...ccc-lib/v0.0.45) (2026-09-24)
 
 
