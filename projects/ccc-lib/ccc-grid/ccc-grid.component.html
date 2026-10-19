@@ -22,7 +22,7 @@
           @for (col of columnDefs(); track col.id + col.header) {
             <th class="data-col" [style.width.px]="widthFor(col)">
               <div class="header-cell">
-                @if (!col.buttonConfig) {
+                @if (!col.buttonConfig && !col.iconConfig) {
                   <button
                     type="button"
                     class="header-label"
