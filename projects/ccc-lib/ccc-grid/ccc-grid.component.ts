@@ -370,7 +370,7 @@ export class AppGridComponent {
   }
 
   widthFor(col: ColumnConfig): number | null {
-    const defaultWidth = col.buttonConfig ? ACTION_COLUMN_WIDTH : null;
+    const defaultWidth = col.buttonConfig || col.iconConfig ? ACTION_COLUMN_WIDTH : null;
     return this.columnWidths()[col.id] ?? col.width ?? defaultWidth;
   }
 

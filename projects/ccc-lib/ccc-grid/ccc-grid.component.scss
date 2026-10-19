@@ -50,6 +50,17 @@
     padding: 4px 8px;
     overflow: visible;
   }
+
+  .icon-col {
+    padding: 4px 12px;
+    vertical-align: middle;
+  }
+}
+
+.icon-col .cell-icon {
+  color: var(--ccc-grid-cell-icon-color, inherit);
+  vertical-align: middle;
+  cursor: default;
 }
 
 .expand-col .mat-mdc-icon-button.mat-mdc-button-base,

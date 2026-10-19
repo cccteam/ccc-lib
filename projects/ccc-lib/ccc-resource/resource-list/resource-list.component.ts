@@ -44,6 +44,7 @@ import {
 } from '../concat-fns';
 import { applyFormatting, formatDateString } from '../format-fns';
 import { ResourceStore } from '../resource-store.service';
+import { evaluateOnSourceRecord, toDisplayRow } from './source-record';
 
 @Component({
   standalone: true,
@@ -228,6 +229,8 @@ export class ResourceListComponent implements OnInit {
           header: col.header,
           width: col.width,
           resizable: col.resizable,
+          iconConfig: evaluateOnSourceRecord(col.iconConfig),
+          tooltipPosition: col.tooltipPosition,
           valueGetter: (data) => {
             const concatArray: string[] = [];
 
@@ -280,6 +283,8 @@ export class ResourceListComponent implements OnInit {
           header: col.header,
           width: col.width,
           resizable: col.resizable,
+          iconConfig: evaluateOnSourceRecord(col.iconConfig),
+          tooltipPosition: col.tooltipPosition,
           valueFormatter: (params) => {
             if (col.formatType) {
               const retValue = applyFormatting(col.formatType, params);
@@ -337,7 +342,7 @@ export class ResourceListComponent implements OnInit {
     const columns = this.columns();
 
     return data.map((row) => {
-      const updatedRow = { ...row };
+      const updatedRow = toDisplayRow(row);
       for (const col of columns) {
         if (col.valueGetter) {
           updatedRow[col.id] = col.valueGetter(row);

@@ -79,6 +79,11 @@ export const actionButtonConfigDefaults = {
   disabledLabel: '',
 } satisfies ActionButtonConfig;
 
+export interface ColumnIconConfig {
+  icon: (row: RecordData) => string | null | undefined;
+  tooltip?: (row: RecordData) => string;
+}
+
 export interface SingleColumnConfig {
   id: FieldName;
   header?: string;
@@ -90,6 +95,7 @@ export interface SingleColumnConfig {
   tooltipPosition?: TooltipPosition;
   viewRoute?: Resource;
   buttonConfig?: ActionButtonConfig;
+  iconConfig?: ColumnIconConfig;
   actionType?: ActionType;
   formatType?: FormatType | string;
   hidden?: boolean;
@@ -108,6 +114,7 @@ export interface SingleColumnConfigOptions {
   tooltipPosition?: TooltipPosition;
   viewRoute?: Resource;
   buttonConfig?: ActionButtonConfig;
+  iconConfig?: ColumnIconConfig;
   actionType?: ActionType;
   formatType?: FormatType | string;
   hidden?: boolean;
