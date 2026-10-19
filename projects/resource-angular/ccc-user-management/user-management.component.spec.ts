@@ -174,7 +174,11 @@ const rows = (): ManagedUser[] => [
   user({ id: 'u-pip', username: 'pip', lastSignInAt: null, disabled: true }),
 ];
 
-const roleRows = (): RoleRow[] => [{ name: 'Harbormaster' }, { name: 'Headquarters' }, { name: 'SectorCrew' }];
+const roleRows = (): RoleRow[] => [
+  { name: 'Harbormaster', kind: 'domain' },
+  { name: 'Headquarters', kind: 'global' },
+  { name: 'SectorCrew', kind: 'domain' },
+];
 
 interface Server {
   rows: ManagedUser[];
@@ -573,6 +577,22 @@ describe('UserManagementComponent acts on a row', () => {
     const urls = page.transport.requests.filter((r) => r.method !== 'GET').map((r) => `${r.method} ${r.url}`);
     expect(urls).toEqual(['PATCH /api/sectors/sector-7/crew-sector-seats', 'POST /api/sectors/sector-7/set-crew-sector-user-password']);
     expect(page.transport.requests[0].body).toEqual([{ op: 'add', path: '/u-pip/SectorCrew', value: {} }]);
+  });
+
+  it('the picker labels a domain-kind role as an every-tenant seat in the global partition, and plainly in the tenant one', async () => {
+    const page = await pageOver(server());
+    const pip = page.component.rows()[2];
+    expect(page.component.seatable(pip).map((role) => page.component.roleLabel(role))).toEqual([
+      'Harbormaster (every tenant)',
+      'Headquarters',
+      'SectorCrew (every tenant)',
+    ]);
+    TestBed.resetTestingModule();
+    const tenant = await pageOver(server({ roles: [{ name: 'Harbormaster' }, { name: 'SectorCrew' }] }), { domain: 'sector-7' });
+    expect(tenant.component.seatable(tenant.component.rows()[2]).map((role) => tenant.component.roleLabel(role))).toEqual([
+      'Harbormaster',
+      'SectorCrew',
+    ]);
   });
 
   it('a row with nothing to do for the caller has no manage button', async () => {

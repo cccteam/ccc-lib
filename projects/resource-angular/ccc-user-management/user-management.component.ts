@@ -168,6 +168,15 @@ export class UserManagementComponent {
     return this.roles().filter((role) => !row.roles.includes(role.name));
   }
 
+  /**
+   * The words for a role in the picker. The global partition's roles list carries each
+   * role's kind, and seating a domain-kind role there seats the user in every tenant,
+   * which the label says; the tenant partition's list carries domain roles alone.
+   */
+  roleLabel(role: RoleRow): string {
+    return role.kind === 'domain' && this.partition()?.scope === 'global' ? `${role.name} (every tenant)` : role.name;
+  }
+
   canCreate(): boolean {
     return this.users()?.canCreateUsers() ?? false;
   }

@@ -179,7 +179,9 @@ set-password action; the person changes a password an operator set at their next
 the login component's change form. An external registration gives the rows their linked identities
 and an unlink action; the server keeps the last way in. The tenant partition's create asks for the
 role that seats the new user in the tenant, and every request goes under the domain segment. A row
-whose seats a directory writes (`rolesSynced`) shows them read-only.
+whose seats a directory writes (`rolesSynced`) shows them read-only. The global partition's role
+picker labels a domain-kind role "(every tenant)", since seating it there seats the user in every
+tenant; the tenant partition's picker lists the tenant roles alone.
 
 Every control follows a capability. The digest decides whether users are created and seats written;
 the row's capability envelope, asked for on every read, decides the rename, the disable, the delete

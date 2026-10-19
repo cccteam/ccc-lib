@@ -125,7 +125,7 @@
                         <mat-label>Add a role</mat-label>
                         <mat-select name="seatRole" [(ngModel)]="seatRole" required>
                           @for (role of seatable(row); track role.name) {
-                            <mat-option [value]="role.name">{{ role.name }}</mat-option>
+                            <mat-option [value]="role.name">{{ roleLabel(role) }}</mat-option>
                           }
                         </mat-select>
                       </mat-form-field>
