@@ -152,10 +152,17 @@ describe('provideResourceClient', () => {
   });
 
   describe('the hook on a refused request', () => {
-    const cases: { name: string; status: number; wantRedirect: string; wantNavigations: string[][] }[] = [
+    const cases: { name: string; status: number; body?: unknown; wantRedirect: string; wantNavigations: string[][] }[] = [
       {
         name: 'a 401 keeps the attempted URL under BASE_URL and moves to the login route',
         status: 401,
+        wantRedirect: 'https://console.example/deck',
+        wantNavigations: [['/login']],
+      },
+      {
+        name: 'a 403 carrying password_change_required does the same: the login page serves the change form',
+        status: 403,
+        body: { message: 'Password change required', code: 'password_change_required' },
         wantRedirect: 'https://console.example/deck',
         wantNavigations: [['/login']],
       },
@@ -167,7 +174,9 @@ describe('provideResourceClient', () => {
       it(tt.name, async () => {
         const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
         const pending = client.request('GET', 'missions');
-        http.expectOne('/api/missions').flush({ message: 'refused' }, { status: tt.status, statusText: 'refused' });
+        http
+          .expectOne('/api/missions')
+          .flush(tt.body ?? { message: 'refused' }, { status: tt.status, statusText: 'refused' });
         await expect(pending).rejects.toThrow(ApiError);
         expect(TestBed.inject(LOGIN_REDIRECT_URL)()).toBe(tt.wantRedirect);
         expect(navigate.mock.calls.map((args) => args[0])).toEqual(tt.wantNavigations);
@@ -461,6 +470,12 @@ describe('ResourceErrorHandler', () => {
     {
       name: 'a 401 raises none: the hook has already returned the browser to the login page',
       error: new ApiError('GET', '/api/missions', 401, { message: 'Unauthorized' }),
+      wantMessages: [],
+      wantConsole: false,
+    },
+    {
+      name: 'a 403 carrying password_change_required raises none, for the same reason',
+      error: new ApiError('GET', '/api/missions', 403, { message: 'Password change required', code: 'password_change_required' }),
       wantMessages: [],
       wantConsole: false,
     },

@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute } from '@angular/router';
-import { LoginMethod, PendingSignIn, SignInRefusal, SignInResult } from '@cccteam/resource';
+import { LoginMethod, passwordChangeRequiredCode, PendingSignIn, SignInRefusal, SignInResult } from '@cccteam/resource';
 import { AuthService } from '@cccteam/resource-angular/auth-service';
 import { RESOURCE_CLIENT, storeSignal } from '@cccteam/resource-angular/resource-client';
 import { FRONTEND_LOGIN_PATH } from '@cccteam/resource-angular/types';
@@ -40,9 +40,18 @@ import { map } from 'rxjs/operators';
  * answered to a password sign-in, is read from the pending status route and takes the
  * list's place: for a confirmation, the password form of the user the sign-in matched,
  * posting to the confirmation route, with a cancel that returns to the list; for a step
- * the server names a page for, the browser goes there. Everything around the methods, the
- * branding, a manifest, a forgotten-password link, is the page's, composed around the
- * component.
+ * the server names a page for, the browser goes there.
+ *
+ * A session the sign-in establishes may carry `passwordChangeRequired`: an operator set
+ * the password, and the server serves nothing but the password change until the person
+ * sets one of their own. The component then renders the change form in the list's place,
+ * with the sentence the application holds for `password_change_required` over it, posts
+ * the old and the new password through the client to the change path the methods list
+ * names, checks the session again and emits `signedIn` with the page recorded at the
+ * sign-in; a refusal (the old password did not match, the new one fails the server's
+ * rule) is rendered in place. Cancelling the change ends the session and shows the list
+ * again. Everything around the methods, the branding, a manifest, a forgotten-password
+ * link, is the page's, composed around the component.
  */
 @Component({
   selector: 'ccc-login-methods',
@@ -66,12 +75,15 @@ export class LoginMethodsComponent implements OnInit {
   home = input('/');
   /** The sign-in is complete and the session checked: the router URL of the page to go to. */
   signedIn = output<string>();
-  /** The person cancelled the pending step; the list is shown again. */
+  /** The person cancelled the pending step or the password change; the list is shown again. */
   cancelled = output<void>();
 
   username = '';
   password = '';
   confirmation = '';
+  oldPassword = '';
+  newPassword = '';
+  newPasswordAgain = '';
   /** A request of the component is in flight; its controls are disabled meanwhile. */
   busy = signal(false);
 
@@ -85,6 +97,12 @@ export class LoginMethodsComponent implements OnInit {
   redirectMethods = computed(() => this.methods().filter((method) => method.kind === 'redirect'));
   /** The step the sign-in waits on, taking the list's place; undefined while the list is shown. */
   pending = signal<PendingSignIn | undefined>(undefined);
+  /** The session carries `passwordChangeRequired`: the change form takes the list's place until the person sets a password of their own. */
+  changing = signal(false);
+  /** The sentence over the change form: the one the application holds for the server's code. */
+  changeNote = computed(() => this.ui.loginMessage(passwordChangeRequiredCode));
+  /** The router URL the sign-in recorded, emitted once the password is changed. */
+  private afterChange = '/';
 
   /** The refusal code the URL carries, or empty: the only thing the URL says. */
   private code = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('code') ?? '')), {
@@ -160,6 +178,48 @@ export class LoginMethodsComponent implements OnInit {
     });
   }
 
+  /**
+   * Posts the change form: the old password and the new one, typed twice. Two new
+   * passwords that differ are refused here, with no request; the server's refusal is
+   * rendered in place; a change the server accepts checks the session again and emits
+   * the page the sign-in recorded.
+   */
+  changePassword(): Promise<void> {
+    if (this.busy() || !this.changing()) {
+      return Promise.resolve();
+    }
+    if (this.newPassword !== this.newPasswordAgain) {
+      this.refusal.set(PASSWORDS_DIFFER);
+      return Promise.resolve();
+    }
+    return this.step(async () => {
+      const result = await this.client.auth.changePassword(this.oldPassword, this.newPassword);
+      if (result.outcome === 'refused') {
+        this.refusal.set(this.sentenceOf(result));
+        return;
+      }
+      this.oldPassword = '';
+      this.newPassword = '';
+      this.newPasswordAgain = '';
+      await this.complete(this.afterChange);
+    });
+  }
+
+  /** Leaves the password as the operator set it: ends the session and shows the list again. */
+  cancelChange(): Promise<void> {
+    if (this.busy() || !this.changing()) {
+      return Promise.resolve();
+    }
+    return this.step(async () => {
+      await firstValueFrom(this.auth.logout());
+      this.changing.set(false);
+      this.oldPassword = '';
+      this.newPassword = '';
+      this.newPasswordAgain = '';
+      this.cancelled.emit();
+    });
+  }
+
   /** Reads the list, the page's first request, and the pending step when the URL says one waits. */
   private async arrive(): Promise<void> {
     try {
@@ -226,7 +286,11 @@ export class LoginMethodsComponent implements OnInit {
     }
   }
 
-  /** Checks the session the step established and hands the page on; a check that finds none renders the library's sentence. */
+  /**
+   * Checks the session the step established and hands the page on; a check that finds
+   * none renders the library's sentence. A session that must change its password renders
+   * the change form instead, keeping the page for after the change.
+   */
   private async complete(page: string): Promise<void> {
     const session = await firstValueFrom(this.auth.checkUserSession());
     if (!session?.authenticated) {
@@ -237,6 +301,12 @@ export class LoginMethodsComponent implements OnInit {
     this.confirmation = '';
     this.pending.set(undefined);
     this.refusal.set(undefined);
+    if (session.passwordChangeRequired) {
+      this.afterChange = page;
+      this.changing.set(true);
+      return;
+    }
+    this.changing.set(false);
     this.signedIn.emit(page);
   }
 
@@ -298,6 +368,9 @@ export class LoginMethodsComponent implements OnInit {
     this.document.location.assign(url);
   }
 }
+
+/** The sentence for a new password typed differently the second time; nothing is posted. */
+export const PASSWORDS_DIFFER = 'The new passwords do not match. Type the same password twice.';
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);

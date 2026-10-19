@@ -142,9 +142,59 @@ with a cancel that returns to the list and emits `cancelled`; a step the server 
 (a pending hook's `redirectUrl`) sends the browser there. A step that has expired returns to the
 list with the sentence for `pending_expired`.
 
+A session the sign-in establishes may carry `passwordChangeRequired`: an operator set the password
+(the seed's first administrator, a user created or reset through the user-management surface), and
+the server serves nothing but the password change, the session read and the logout until the person
+sets a password of their own, refusing everything else with a 403 and the code
+`password_change_required`. The component renders the change form in the list's place, with the
+sentence the application holds for that code over it, posts the old and the new password through the
+client (`api.auth.changePassword`) to the change path the methods list names, checks the session
+again and only then emits `signedIn` with the page recorded at the sign-in; a refusal is rendered in
+place, and a cancel ends the session and shows the list again. `AuthService.checkUserSession` loads
+no digest, domains or flags while the mark is set, `LoginAuthenticationGuard` returns such a session
+to the login page as it returns an unauthenticated one, and the client's error hook treats the 403
+as it treats a 401, so a marked session that reaches a page is back on the login page before the
+page renders.
+
+## User management
+
+`<ccc-user-management>` (`@cccteam/resource-angular/ccc-user-management`) is the page that
+administers the users of one Auth, written once for every application. It configures itself from
+the `userSurfaces` block of the generated descriptor (see the user-management section of
+@cccteam/resource): `auth` names the surface, the descriptor's first when omitted, and `domain`
+binds the tenant partition, the global partition when omitted. An application with route-parameter
+tenancy passes the route's tenant; one bound through `RESOURCE_DOMAIN` passes that signal's value.
+Nothing about the application is named in the page, so a console that manages its staff and, by the
+generator program's declaration, its members composes the component twice:
+
+```html
+<ccc-user-management />
+<ccc-user-management auth="Members" />
+<ccc-user-management [domain]="tenant()" />
+```
+
+What the page offers follows from the surface's shape and the caller's grants, and from nothing
+else. A password method gives the create form a temporary-password field and every row a
+set-password action; the person changes a password an operator set at their next sign-in, through
+the login component's change form. An external registration gives the rows their linked identities
+and an unlink action; the server keeps the last way in. The tenant partition's create asks for the
+role that seats the new user in the tenant, and every request goes under the domain segment. A row
+whose seats a directory writes (`rolesSynced`) shows them read-only.
+
+Every control follows a capability. The digest decides whether users are created and seats written;
+the row's capability envelope, asked for on every read, decides the rename, the disable, the delete
+and the methods per row, so one's own row loses its disable and its delete, and a user seated
+outside the tenant loses the account-level actions, without the page knowing why. A row with
+nothing to do for the caller has no manage button. A role file scopes all of it with the same
+conditions as the application's own resources: a role granted `Create` on the seats resource under
+`new.role != 'Administrator'` seats people into every other role, and the refusal of the one it may
+not is shown in place in the server's words. The page is read again after every write, so the rows
+say what the server says; a list that pages offers the turns the server names.
+
 ## Modules Overview
 
 - **`ccc-resource`**: The core module of the library. It contains the components and services related to dynamic page generation and data management.
+- **`ccc-user-management`**: The user-management page over an Auth's surface, configured from the generated descriptor.
 - **`auth`**: This module provides authentication and authorization, including the login methods component, route guards, and permission directives.
 - **`ui`**: This module contains UI components and services, such as alerts, notifications, and sidenav components.
 - **`utils`**: A collection of utility pipes and functions for various purposes.

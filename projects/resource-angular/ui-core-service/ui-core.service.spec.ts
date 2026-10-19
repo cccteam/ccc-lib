@@ -39,6 +39,7 @@ describe('UiCoreService login messages', () => {
       'not_workspace_member',
       'email_not_verified',
       'no_roles',
+      'password_change_required',
       'no_email_claim',
       'unlisted_tenant',
       'personal_account',

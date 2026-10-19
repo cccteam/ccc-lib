@@ -149,6 +149,65 @@ export interface ApiDescriptor {
    * change feed can be started for the client.
    */
   live?: LiveRoutes;
+  /**
+   * The user-management surfaces this outlet serves, one per Auth whose users it manages
+   * (its own, and every Auth the generator program declared it manages): the users, seats
+   * and roles resources of each partition and the methods beside them, all of them
+   * ordinary entries of `resources` and `methods`, so the handles, the digest and the
+   * capability envelope work for them as for everything else. The block says which
+   * entries make up a surface and what the Auth's sign-in methods give it. Absent, on a
+   * descriptor from a generator that predates the surfaces, the outlet serves none.
+   */
+  userSurfaces?: readonly UserSurfaceDescriptor[];
+}
+
+/**
+ * One Auth's user-management surface as the generator derived it from the Auth's sign-in
+ * methods: `auth` is the Auth's name (`Crew`, the auth package's name in PascalCase),
+ * `label` the words a page shows for it, `password` whether a password method is
+ * registered (then a user is created with an optional password, a password is set for
+ * one, and a password an operator sets is changed before anything else is served), and
+ * `registrations` the external methods. The partitions come global first; the tenant
+ * partition is present when the application has a tenant record.
+ */
+export interface UserSurfaceDescriptor {
+  readonly auth: string;
+  readonly label: string;
+  readonly password: boolean;
+  readonly registrations: readonly UserRegistrationDescriptor[];
+  readonly partitions: readonly UserPartitionDescriptor[];
+}
+
+/**
+ * One external sign-in registration of the Auth: `invited`, the directory admits only
+ * people the application created first (so the surface creates users without a
+ * password); `syncsRoles`, the directory writes the roles of the people who sign in
+ * through it at every sign-in (so the surface leaves their seats to the directory and
+ * says so on the row, `rolesSynced`).
+ */
+export interface UserRegistrationDescriptor {
+  readonly name: string;
+  readonly kind: string;
+  readonly label: string;
+  readonly invited: boolean;
+  readonly syncsRoles: boolean;
+}
+
+/**
+ * One partition of a surface: the global one (every user of the Auth, with the seats
+ * held globally and in every domain) or the tenant one (the users seated in the route's
+ * tenant or everywhere, with their seats there). `users`, `seats` and `roles` name the
+ * partition's resources in `resources`; `setPassword` and `unlinkIdentity` the methods
+ * in `methods`, absent where the Auth's methods give none (no password method; no
+ * external registration).
+ */
+export interface UserPartitionDescriptor {
+  readonly scope: ScopeKind;
+  readonly users: string;
+  readonly seats: string;
+  readonly roles: string;
+  readonly setPassword?: string;
+  readonly unlinkIdentity?: string;
 }
 
 /** The route the enabled set of feature flags is read from, under the API prefix like every other route. */

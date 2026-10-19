@@ -56,6 +56,8 @@ class FakeFeed implements ChangeFeed {
 
 /** The flags the features route says are on; a spec changes it between checks. */
 let enabledFeatures: string[] = ['debriefs'];
+/** The session's operator-set password must change; a spec sets it before a check and clears it after the change. */
+let passwordChangeRequired = false;
 
 /** The session, digest, domains, features, and live routes, each answering; `authenticated` is what the session says. */
 function serverWith(authenticated: boolean): ScriptedTransport {
@@ -64,7 +66,7 @@ function serverWith(authenticated: boolean): ScriptedTransport {
       case '/api/user/session':
         return {
           status: request.method === 'DELETE' ? 204 : 200,
-          body: request.method === 'DELETE' ? undefined : { authenticated },
+          body: request.method === 'DELETE' ? undefined : { authenticated, passwordChangeRequired },
         };
       case '/api/permission-digest':
         return { status: 200, body: {} };
@@ -235,6 +237,34 @@ describe('AuthService live session', () => {
     expect(TestBed.inject(RESOURCE_CLIENT).live.active).toBe(false);
     expect(consoleError).toHaveBeenCalledTimes(1);
     consoleError.mockRestore();
+  });
+});
+
+describe('AuthService under a forced password change', () => {
+  afterEach(() => {
+    passwordChangeRequired = false;
+  });
+
+  it('an authenticated answer carrying the mark loads nothing, and the first check after the change loads the digest, the domains and the set', async () => {
+    passwordChangeRequired = true;
+    const transport = serverWith(true);
+    const auth = authOver(transport);
+    const marked = await firstValueFrom(auth.checkUserSession());
+    expect(marked.passwordChangeRequired).toBe(true);
+    expect(auth.authenticated()).toBe(true);
+    expect(auth.sessionInfo().passwordChangeRequired).toBe(true);
+    expect(transport.requests.map((r) => r.url)).toEqual(['/api/user/session']);
+
+    passwordChangeRequired = false;
+    const changed = await firstValueFrom(auth.checkUserSession());
+    expect(changed.passwordChangeRequired).toBe(false);
+    expect(transport.requests.map((r) => r.url).slice(1)).toEqual([
+      '/api/user/session',
+      '/api/permission-digest',
+      '/api/user-domains',
+      '/api/features',
+    ]);
+    expect(auth.featureEnabled('debriefs')).toBe(true);
   });
 });
 
