@@ -316,3 +316,13 @@ a[mat-icon-button] {
   position: relative;
   z-index: 3;
 }
+
+.icon-col {
+  vertical-align: middle;
+}
+
+.icon-col .cell-icon {
+  color: var(--ccc-grid-cell-icon-color, inherit);
+  vertical-align: middle;
+  cursor: default;
+}

@@ -58,6 +58,17 @@ export type RPCPlacement = 'inline' | 'end';
 
 export type ColumnConfig = SingleColumnConfig | MultiColumnConfig;
 
+/**
+ * The display-row key an icon column's resolved icon rides under, beside the column's
+ * own key, which holds the words. The list writes both while it builds the display row
+ * and the grid reads both; a generated field name never carries a colon, so the key
+ * collides with none. (The server's capability envelope rides a row the same way, under
+ * its reserved property.)
+ */
+export function iconCellKey(id: string): string {
+  return `${id}:icon`;
+}
+
 export interface ActionButtonConfig {
   label: string;
   icon: string;
@@ -95,7 +106,28 @@ export const actionButtonConfigDefaults = {
   disabledLabel: '',
 } satisfies ActionButtonConfig;
 
-export interface SingleColumnConfig {
+/**
+ * Renders the column's field as a Material icon chosen by the field's value, with the
+ * words for the value as the tooltip and the accessible name. The author declares the
+ * map; the list resolves it while it builds the display row, as it applies every other
+ * column's formatter, and the grid renders the result. No callback runs at render time,
+ * and the column stays a field column: its header, sort and filter work on the field.
+ */
+export interface ColumnIconConfig {
+  /**
+   * The icon per value, keyed by the value's text: `true` and `false` for a boolean, the
+   * key for an enumerated field, the number's text for a number. A value not listed shows
+   * the cell's text instead of an icon.
+   */
+  icons: Record<string, string>;
+  /** The words per value, the tooltip and the accessible name; a value not listed uses the cell's formatted text. */
+  tooltips?: Record<string, string>;
+  /** The icon, and its words, for a null or absent value; a null shows the column's empty text by default. */
+  empty?: { icon: string; tooltip?: string };
+}
+
+/** What every column shares, whatever it renders. */
+interface ColumnConfigBase {
   id: FieldName;
   header?: string;
   width?: number;
@@ -105,7 +137,6 @@ export interface SingleColumnConfig {
   valueFormatter?: (data: any) => string;
   tooltipPosition?: TooltipPosition;
   viewRoute?: Resource;
-  buttonConfig?: ActionButtonConfig;
   actionType?: ActionType;
   formatType?: FormatType | string;
   hidden?: boolean;
@@ -118,25 +149,31 @@ export interface SingleColumnConfig {
   filterable?: boolean;
   hideHeader?: boolean;
 }
-export interface SingleColumnConfigOptions {
-  id: FieldName;
-  header?: string;
-  width?: number;
-  resizable?: boolean;
-  /* eslint-disable  @typescript-eslint/no-explicit-any */
-  valueGetter?: (data: any) => string;
-  valueFormatter?: (data: any) => string;
-  tooltipPosition?: TooltipPosition;
-  viewRoute?: Resource;
-  buttonConfig?: ActionButtonConfig;
-  actionType?: ActionType;
-  formatType?: FormatType | string;
-  hidden?: boolean;
-  emptyDataValue?: DataType;
-  /** Opt the column out of its filter control; see SingleColumnConfig.filterable. */
-  filterable?: boolean;
-  hideHeader?: boolean;
+
+/** A column rendering its field's value as text. */
+export interface FieldColumnConfig extends ColumnConfigBase {
+  buttonConfig?: undefined;
+  iconConfig?: undefined;
 }
+
+/** A column rendering an action button per row. */
+export interface ButtonColumnConfig extends ColumnConfigBase {
+  buttonConfig: ActionButtonConfig;
+  iconConfig?: undefined;
+}
+
+/** A column rendering its field's value as an icon, by the declared map. */
+export interface IconColumnConfig extends ColumnConfigBase {
+  iconConfig: ColumnIconConfig;
+  buttonConfig?: undefined;
+}
+
+/**
+ * One column of a list: a field column, a button column or an icon column. The three are
+ * exclusive by type, so a config naming both a button and an icon does not compile.
+ */
+export type SingleColumnConfig = FieldColumnConfig | ButtonColumnConfig | IconColumnConfig;
+export type SingleColumnConfigOptions = SingleColumnConfig;
 
 export function singleColumnConfig(config: SingleColumnConfigOptions): SingleColumnConfig {
   return {
@@ -155,15 +192,13 @@ export const singleColumnConfigDefaults = {
   hideHeader: false,
 } satisfies SingleColumnConfig;
 
-export interface MultiColumnConfig extends SingleColumnConfig {
+/** A column concatenating its field with fields of related resources: a field column with the related ids. */
+export type MultiColumnConfig = FieldColumnConfig & {
   // todo: additionalIds name is not clear. the id provided is fetched from a different resource, such as a typeId
   additionalIds: AdditionalResourceConfig[];
   concatFn: ListConcatFn;
-}
-export interface MultiColumnConfigOptions extends SingleColumnConfigOptions {
-  additionalIds: AdditionalResourceConfig[];
-  concatFn: ListConcatFn;
-}
+};
+export type MultiColumnConfigOptions = MultiColumnConfig;
 
 export function multiColumnConfig(config: MultiColumnConfigOptions): MultiColumnConfig {
   return {

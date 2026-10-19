@@ -34,9 +34,11 @@ import { resourcePageRoute } from '@cccteam/resource-angular/resource-nav';
 import {
   ChildResourceConfig,
   ColumnConfig,
+  DataType,
   DeletePermission,
   FieldName,
   FieldSort,
+  iconCellKey,
   keyFields,
   ListPermission,
   ListViewConfig,
@@ -60,6 +62,7 @@ import {
   spaceHyphenConcatWithoutResource,
 } from '../concat-fns';
 import { applyFormatting, formatByDisplayType, formatDateString } from '../format-fns';
+import { iconTemplateFields, resolveIconCell } from './icon-cell';
 import { DeleteResourceConfirmationModalComponent } from '../delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
 import { ResourceStore } from '../resource-store.service';
 import { filterEligibility, listEmptyMessage, refuseKeylessConfig, refuseWriteOnlyColumns } from './list-request';
@@ -276,18 +279,38 @@ export class ResourceListComponent implements OnInit {
   );
 
   /**
-   * The columns the page configures, plus the rowRoute field hidden when the page does
-   * not show it: a row carries the key its route lifts. It passes the digest like any
-   * column, so a rowRoute the caller may not list draws no View column.
+   * The columns the page configures, plus the fields the rows must carry that the page
+   * does not show, each as a hidden column: the rowRoute field (a row carries the key its
+   * route lifts) and the fields an icon column's sentences name in braces. A hidden column
+   * passes the digest like any other, so a rowRoute the caller may not list draws no View
+   * column, and a sentence's field the caller may not list fills as nothing.
    */
   configuredColumns = computed<ColumnConfig[]>(() => {
     const configured = [...(this.config().listColumns || [])];
+    const carried = new Set<string>(configured.map((col) => col.id));
+    const carry = (field: string): void => {
+      if (!carried.has(field)) {
+        carried.add(field);
+        configured.push({ id: field as FieldName, hidden: true });
+      }
+    };
     const rowRoute = this.config().rowRoute;
-    if (rowRoute && !configured.some((col) => col.id === rowRoute)) {
-      configured.push({ id: rowRoute, hidden: true });
+    if (rowRoute) {
+      carry(rowRoute);
+    }
+    for (const col of this.config().listColumns || []) {
+      if (col.iconConfig) {
+        iconTemplateFields(col.iconConfig).forEach(carry);
+      }
     }
     return configured;
   });
+
+  /** One of the row's fields as a sentence writes it: by the field's display type, a null as nothing. */
+  private fieldText = (field: string, value: DataType | null): string => {
+    const displayType = this.meta()?.fields?.find((f) => f.fieldName === field)?.displayType;
+    return formatByDisplayType(displayType, value);
+  };
 
   /** Whether the rows carry the field their route lifts: no rowRoute, or one the list requests. */
   rowRouteRequested = computed(() => {
@@ -448,19 +471,19 @@ export class ResourceListComponent implements OnInit {
         // size for bytes, the elements for an array, one-line JSON for an object, a
         // calendar date for a date, the value's text for the rest.
         const displayType = this.meta()?.fields?.find((field) => field.fieldName === col.id)?.displayType;
-        columns.push({
-          id: indexId,
-          header: col.header,
-          width: col.width,
-          resizable: col.resizable,
-          valueFormatter: (params) => {
-            if (col.formatType) {
-              const retValue = applyFormatting(col.formatType, params);
-              return retValue || (col.emptyDataValue as string);
-            }
-            return formatByDisplayType(displayType, params) || (col.emptyDataValue as string);
-          },
-        });
+        const valueFormatter = (params: DataType | null): string => {
+          if (col.formatType) {
+            const retValue = applyFormatting(col.formatType, params as string);
+            return retValue || (col.emptyDataValue as string);
+          }
+          return formatByDisplayType(displayType, params) || (col.emptyDataValue as string);
+        };
+        const shared = { id: indexId, header: col.header, width: col.width, resizable: col.resizable, valueFormatter };
+        // An icon column keeps its map and tooltip position for the grid; the cell itself is
+        // resolved with the display row (processedRowData), never at render time.
+        columns.push(
+          col.iconConfig ? { ...shared, iconConfig: col.iconConfig, tooltipPosition: col.tooltipPosition } : shared,
+        );
       }
     }
 
@@ -545,6 +568,14 @@ export class ResourceListComponent implements OnInit {
 
         if (typeof col.valueFormatter === 'function') {
           updatedRow[col.id] = col.valueFormatter(updatedRow[col.id]);
+        }
+
+        // An icon column's cell: the words under the column's key, the icon under its
+        // sibling key, both resolved here from the raw row and the formatted text.
+        if (col.iconConfig) {
+          const cell = resolveIconCell(col.iconConfig, row, col.id, String(updatedRow[col.id] ?? ''), this.fieldText);
+          updatedRow[col.id] = cell.words;
+          updatedRow[iconCellKey(col.id)] = cell.icon;
         }
       }
       return updatedRow;

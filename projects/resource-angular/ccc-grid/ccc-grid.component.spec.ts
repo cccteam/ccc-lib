@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideResourceTesting } from '@cccteam/resource-angular/testing';
-import { RecordData } from '@cccteam/resource-angular/types';
+import { iconCellKey, RecordData } from '@cccteam/resource-angular/types';
 
 import { AppGridComponent } from './ccc-grid.component';
 import { RowKey } from './grid-types';
@@ -115,6 +115,32 @@ describe('AppGridComponent', () => {
 
   // jsdom, where an application's specs run, has no ResizeObserver: the grid keeps the
   // one measurement of its container and draws the page instead of failing in its render hook.
+  it('draws an icon column from the display row: the icon as an image named by the words, the words alone where the row has no icon', async () => {
+    const rows: RecordData[] = [
+      { id: 'p-1', limitStatus: 'Grandfathered: Jane Doe has 4 active learners. The partner limit is 2.', [iconCellKey('limitStatus')]: 'warning' },
+      { id: 'p-2', limitStatus: 'ok', [iconCellKey('limitStatus')]: null },
+    ];
+    await TestBed.configureTestingModule({ imports: [AppGridComponent], providers: [provideResourceTesting()] }).compileComponents();
+    fixture = TestBed.createComponent(AppGridComponent);
+    fixture.componentRef.setInput('rowData', rows);
+    fixture.componentRef.setInput('columnDefs', [
+      { id: 'id' },
+      { id: 'limitStatus', header: 'Limit', iconConfig: { icons: { grandfathered: 'warning' } }, tooltipPosition: 'right' },
+    ]);
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const cells = Array.from(element.querySelectorAll<HTMLElement>('td.icon-col'));
+    expect(cells).toHaveLength(2);
+    const icon = cells[0].querySelector('mat-icon');
+    expect(icon?.textContent?.trim()).toBe('warning');
+    expect(icon?.getAttribute('aria-label')).toBe('Grandfathered: Jane Doe has 4 active learners. The partner limit is 2.');
+    expect(icon?.getAttribute('role')).toBe('img');
+    expect(icon?.getAttribute('tabindex')).toBe('0');
+    expect(cells[1].querySelector('mat-icon')).toBeNull();
+    expect(cells[1].textContent?.trim()).toBe('ok');
+    expect(Array.from(element.querySelectorAll('th .col-header')).map((h) => h.textContent?.trim())).toEqual(['Id', 'Limit']);
+  });
+
   it('draws the page under virtual scroll where the environment has no ResizeObserver', async () => {
     expect(typeof ResizeObserver).toBe('undefined');
     await create([{ section: 'General' }, { section: 'Flight' }], undefined);
