@@ -52,7 +52,10 @@ export const OIDCAuthenticationGuard = (
  *
  * If the user is not authenticated, they are redirected to the application's
  * internal FRONTEND_LOGIN_PATH route. The attempted URL is stored in the AuthService so the
- * user can be redirected back after successful login.
+ * user can be redirected back after successful login. A session whose operator-set
+ * password must change (`passwordChangeRequired`) is sent there the same way: the server
+ * serves the page nothing until the person sets a password of their own, and the login
+ * page serves the change form.
  *
  */
 export const LoginAuthenticationGuard: CanActivateFn = (
@@ -62,13 +65,13 @@ export const LoginAuthenticationGuard: CanActivateFn = (
   const router = inject(Router);
   const authService = inject(AuthService);
 
-  if (authService.authenticated()) {
+  if (authService.authenticated() && !authService.sessionInfo().passwordChangeRequired) {
     return of(true);
   }
 
   return authService.checkUserSession().pipe(
     switchMap((sessionInfo) => {
-      if (sessionInfo?.authenticated) {
+      if (sessionInfo?.authenticated && !sessionInfo.passwordChangeRequired) {
         return of(true);
       }
 

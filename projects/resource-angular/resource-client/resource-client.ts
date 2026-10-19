@@ -25,6 +25,7 @@ import {
   ClientOptions,
   MaintenanceError,
   Operation,
+  refusedForPasswordChange,
   releaseVersion,
   ResourceHandleBase,
   Store,
@@ -212,7 +213,9 @@ export function provideResourceClient(
  * A 401 means the session is gone: the attempted URL, BASE_URL plus the router's current
  * URL, is kept in LOGIN_REDIRECT_URL (AuthService.redirectUrl) for the login page to
  * return to, and the browser goes to FRONTEND_LOGIN_PATH; on the login page already,
- * nothing moves. Every other status is left to whoever awaited the request, and to the
+ * nothing moves. A 403 carrying `password_change_required` (the session's operator-set
+ * password must change before anything else is served) is treated the same: the login
+ * page serves the change form. Every other status is left to whoever awaited the request, and to the
  * ErrorHandler when nobody did. The router and the tokens are resolved when the event
  * comes, not when the client is built: AuthService injects the client, so nothing the
  * client needs may inject AuthService.
@@ -227,7 +230,7 @@ function clientErrorHook(injector: Injector): (error: ApiError) => void {
       injector.get(MAINTENANCE_HANDLER, null)?.maintenanceAnswered(error);
       return;
     }
-    if (error.status !== 401) {
+    if (!sessionRefused(error)) {
       return;
     }
     const router = injector.get(Router);
@@ -281,9 +284,14 @@ export class ResourceErrorHandler extends ErrorHandler {
   }
 }
 
-/** Whether the client's error hook has already rendered the error: the 401's login redirect, the version refusal, the maintenance answer. */
+/** Whether the client's error hook has already rendered the error: the session refusal's login redirect, the version refusal, the maintenance answer. */
 function renderedByTheHook(error: ApiError): boolean {
-  return error.status === 401 || error instanceof ApiVersionError || error instanceof MaintenanceError;
+  return sessionRefused(error) || error instanceof ApiVersionError || error instanceof MaintenanceError;
+}
+
+/** Whether the refusal is the session's: a 401 (the session is gone) or the 403 of a session whose password must change. */
+function sessionRefused(error: ApiError): boolean {
+  return error.status === 401 || refusedForPasswordChange(error);
 }
 
 /** The error under zone.js's "Uncaught (in promise)" wrapper and Angular's own, else the error itself. */

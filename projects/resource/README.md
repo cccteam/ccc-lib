@@ -353,6 +353,66 @@ failure, a malformed request, a server fault, no response, throws as the client'
 The Angular binding's `<ccc-login-methods>` renders all of this; a page over another framework
 does the same over these calls.
 
+A password an operator set (a first password, a reset) is temporary: the server refuses every
+request of the signed-in person with 403 and the code `password_change_required` until they
+change it, answering only the session read (which carries `passwordChangeRequired: true`), the
+logout and the change. The methods list names the change path as `changePassword` when the
+server offers a password method, and `changePassword(oldPassword, newPassword)` posts there,
+reading the list again first like every step: `changed`, after which the page checks the
+session again (the server regenerated it), or `refused` with the server's words (the old
+password did not match, the new one is the old one). A login page that finds the mark on the
+session read renders the change form before it opens the application.
+
+## User management
+
+Every Auth the server's generated router binds has a user-management surface: its users, their
+seats (a user holding a role) and the roles a seat may take, served as resources beside the
+application's own, in a global partition and, where the application has a tenant record, a
+tenant partition under the domain pair, with a set-password method and an unlink-identity
+method beside them. They are ordinary entries of the descriptor's `resources` and `methods`, so
+the generated handles (`api.crewUsers`, `api.domain(sector).crewSectorSeats`), the digest, the
+capability envelope and the operations body work for them as for everything else. The
+descriptor's `userSurfaces` block says which entries make up each surface and what the Auth's
+sign-in methods give it, so a component is written once and configures itself to the
+application: `auth` and `label`, `password` (a password method is registered: users are created
+with an optional password, a password is set for one), the external `registrations` (each with
+`invited`, the directory admits only people created first, and `syncsRoles`, the directory
+writes their seats at every sign-in), and the `partitions`, global first, each naming its
+`users`, `seats` and `roles` resources and its `setPassword` and `unlinkIdentity` methods where
+the Auth has them. `userSurfaces(descriptor)` lists them; a descriptor from a generator that
+predates the surfaces carries none.
+
+The rows have the same shape on every application (`UserRow`, `SeatRow`, `RoleRow`,
+`UserIdentity`): a user carries `id`, `username`, `disabled`, `hasPassword`,
+`passwordChangeRequired`, `createdAt`, `lastSignInAt`, `organization`, its `identities`, the
+`roles` held in the partition's scope, the `everywhereRoles` held in every domain, and
+`rolesSynced` when its seats are a directory's. `userPartition(api, surface, partition,
+domain?)` binds one partition: the three handles typed over those rows (`users.create` takes
+`username`, an optional `password` and `disabled`, and the tenant partition's `role`;
+`users.patch` takes `username` and `disabled`; `seats.create` takes `user` and `role`, the
+seat's key), `setPassword(user, password)` and `unlinkIdentity(user, identity)` posting to the
+methods' routes, and `canCreateUsers()`, `canSeat()`, `canUnseat()`, `canSetPassword()` and
+`canUnlinkIdentity()`, the digest's answer folded with what the Auth's methods give the
+partition: no create on an Auth with no way for the new user to sign in, no set-password
+without a password method, no unlink without a registration. The tenant partition needs its
+domain; the global one takes none.
+
+```ts
+const [crew] = userSurfaces(api.descriptor);
+const sector = userPartition(api, crew, crew.partitions[1], 'anvil');
+const users = await sector.users.list({ capabilities: ['Update', 'Delete', 'Execute'] });
+if (sector.canSeat() && !users[0].rolesSynced) {
+  await sector.seats.create({ user: users[0].id, role: 'Harbormaster' });
+}
+```
+
+The server keeps the rules no role file should have to state, and answers them as refusals the
+client's error hook renders: nobody disables, deletes or unseats themselves (403); a user whose
+seats a directory writes is not seated or unseated by hand (409); an account-level action from
+the tenant partition on a user also seated outside the tenant (409); the last way in is never
+unlinked (409); a tenant seat needs the user already in the tenant (400). The Angular binding's
+`<ccc-user-management>` renders a partition over these calls.
+
 ## Transports
 
 `fetchTransport()` is the default. A framework routes requests through its own HTTP

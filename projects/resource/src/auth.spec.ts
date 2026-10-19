@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'bun:test';
-import { AuthClient, LoginMethod, LoginMethods, loginMethodsRoute, unknownKindWarning } from './auth';
+import {
+  AuthClient,
+  LoginMethod,
+  LoginMethods,
+  loginMethodsRoute,
+  passwordChangeRequiredCode,
+  refusedForPasswordChange,
+  unknownKindWarning,
+} from './auth';
 import { createClient } from './client';
 import { ApiDescriptor } from './descriptor';
 import { ApiError, TransportRequest, TransportResponse } from './transport';
@@ -41,7 +49,8 @@ const pendingRoutes = {
   confirm: '/console/api/user/pending/confirm',
   cancel: '/console/api/user/pending/cancel',
 };
-const consoleList: LoginMethods = { methods: [password, google], pending: pendingRoutes };
+const changePath = '/console/api/user/password/change';
+const consoleList: LoginMethods = { methods: [password, google], pending: pendingRoutes, changePassword: changePath };
 
 /** What the server answers each route with; a spec changes an entry to script a step's answer. */
 interface Server {
@@ -50,6 +59,7 @@ interface Server {
   status: TransportResponse;
   confirm: TransportResponse;
   cancel: TransportResponse;
+  change: TransportResponse;
 }
 
 function server(overrides: Partial<Server> = {}): Server {
@@ -59,6 +69,7 @@ function server(overrides: Partial<Server> = {}): Server {
     status: { status: 404, body: { message: 'no pending sign-in' } },
     confirm: { status: 200, body: { mfaIsRequired: false } },
     cancel: { status: 200, body: undefined },
+    change: { status: 200, body: undefined },
     ...overrides,
   };
 }
@@ -78,6 +89,8 @@ function transportOf(state: Server): ScriptedTransport {
         return state.confirm;
       case 'POST /console/api/user/pending/cancel':
         return state.cancel;
+      case 'POST /console/api/user/password/change':
+        return state.change;
       default:
         return { status: 404, body: { message: `unscripted ${request.method} ${request.url}` } };
     }
@@ -362,4 +375,46 @@ describe('the pending sign-in', () => {
     await auth.cancelPending();
     expect(sent(transport)).toEqual(['GET /console/api/user/methods', 'POST /console/api/user/pending/cancel']);
   });
+});
+
+describe('the password change', () => {
+  it('reads the list again, then posts the old and the new password to the change path it names', async () => {
+    const { auth, transport } = authOver(server());
+    const result = await auth.changePassword('old-secret', 'new-secret');
+    expect(result).toEqual({ outcome: 'changed' });
+    expect(sent(transport)).toEqual([`GET /console/api/${loginMethodsRoute}`, `POST ${changePath}`]);
+    expect(transport.requests[1].body).toEqual({ oldPassword: 'old-secret', newPassword: 'new-secret' });
+  });
+
+  it('resolves the refusal of a wrong or an unchanged password with the server\'s words, through no error hook', async () => {
+    const { auth, errors } = authOver(server({ change: { status: 400, body: { message: 'the new password is the old one' } } }));
+    const result = await auth.changePassword('secret', 'secret');
+    expect(result).toEqual({ outcome: 'refused', status: 400, message: 'the new password is the old one' });
+    expect(errors).toEqual([]);
+  });
+
+  it('throws on a server whose list names no change path', async () => {
+    const { auth } = authOver(server({ methods: { methods: [google], pending: pendingRoutes } }));
+    await expect(auth.changePassword('old', 'new')).rejects.toThrow(/names no password change path/);
+  });
+
+  it('keeps the change path off a list that does not name one', async () => {
+    const { auth } = authOver(server({ methods: { methods: [google] } }));
+    expect(await auth.methods()).toEqual({ methods: [google] });
+  });
+});
+
+describe('refusedForPasswordChange', () => {
+  const cases: { name: string; status: number; body: unknown; want: boolean }[] = [
+    { name: 'a 403 carrying the code is the forced change', status: 403, body: { message: 'Password change required', code: passwordChangeRequiredCode }, want: true },
+    { name: 'a 403 with another code is an ordinary refusal', status: 403, body: { message: 'Not your mission', code: 'forbidden' }, want: false },
+    { name: 'a 403 with no body is an ordinary refusal', status: 403, body: undefined, want: false },
+    { name: 'a 403 whose body is a string is an ordinary refusal', status: 403, body: 'forbidden', want: false },
+    { name: 'the code on another status is not the forced change', status: 401, body: { code: passwordChangeRequiredCode }, want: false },
+  ];
+  for (const tt of cases) {
+    it(tt.name, () => {
+      expect(refusedForPasswordChange({ status: tt.status, body: tt.body })).toBe(tt.want);
+    });
+  }
 });

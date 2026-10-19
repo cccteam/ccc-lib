@@ -54,7 +54,21 @@ export interface LoginMethods {
   readonly methods: readonly LoginMethod[];
   /** The pending sign-in's routes; absent on a server that wired none, where no sign-in ever waits. */
   readonly pending?: PendingRoutes;
+  /**
+   * The path of the password method's change: where a signed-in person posts
+   * `{ oldPassword, newPassword }`, including one whose operator-set password must change
+   * before anything else is served. Absent on a server with no password method.
+   */
+  readonly changePassword?: string;
 }
+
+/**
+ * What a password change answers: `changed`, the password is the new one and the session
+ * continues (regenerated, so the page checks it again); or the server's refusal, resolved
+ * rather than thrown, with its words: the old password did not match, the new one is the
+ * old one or fails the server's rule, or the session is an impersonation.
+ */
+export type PasswordChangeResult = { readonly outcome: 'changed' } | SignInRefusal;
 
 /** What the password method's form posts. */
 export interface PasswordCredentials {
@@ -135,11 +149,29 @@ export interface AuthClientOptions {
 const signInRefusals: readonly number[] = [401, 403];
 const confirmRefusals: readonly number[] = [401, 403, 404, 409];
 const statusRefusals: readonly number[] = [401, 403];
+const changeRefusals: readonly number[] = [400, 401, 403, 409];
+
+/**
+ * The refusal code the server answers, with a 403, on every request of a session whose
+ * operator-set password must change: everything but the password change, the session
+ * read and the logout. A framework over the client treats such a refusal as it treats a
+ * 401, returning the browser to the login page, where the change form is served.
+ */
+export const passwordChangeRequiredCode = 'password_change_required';
+
+/** Whether a refusal is the server's answer to a session whose password must change: a 403 carrying the code. */
+export function refusedForPasswordChange(refusal: { status: number; body: unknown }): boolean {
+  if (refusal.status !== 403 || !refusal.body || typeof refusal.body !== 'object') {
+    return false;
+  }
+  return (refusal.body as RefusalAnswer).code === passwordChangeRequiredCode;
+}
 
 /** The shape the methods route answers, before it is checked. */
 interface MethodsAnswer {
   methods?: Partial<LoginMethod>[] | null;
   pending?: Partial<PendingRoutes> | null;
+  changePassword?: string | null;
 }
 
 /** The shape a sign-in step answers on 200. */
@@ -298,6 +330,31 @@ export class AuthClient {
     await this.options.request('POST', routes.cancel, { absolute: true });
   }
 
+  /**
+   * Changes the signed-in person's password: reads the methods list again, then posts the
+   * old and the new password to the change path the refreshed list names. The route is
+   * the one a person whose operator-set password must change reaches before anything else
+   * is served, so a login page that finds `passwordChangeRequired` on the session read
+   * posts here, then checks the session again. The result is `changed`, or the server's
+   * refusal with its words (the old password did not match, the new one is the old one).
+   * A server whose list names no change path offers no password method, and the call
+   * throws saying so.
+   */
+  async changePassword(oldPassword: string, newPassword: string): Promise<PasswordChangeResult> {
+    const list = await this.methods();
+    if (!list.changePassword) {
+      throw new Error(
+        'this server names no password change path in its methods list: it offers no password method to change',
+      );
+    }
+    const response = await this.options.request<RefusalAnswer | null>('POST', list.changePassword, {
+      body: { oldPassword, newPassword },
+      absolute: true,
+      accept: changeRefusals,
+    });
+    return response.status >= 400 ? refusalOf(response) : { outcome: 'changed' };
+  }
+
   /** The pending routes of the kept list, read again when asked or when none is kept. */
   private async pendingRoutes(refresh: boolean): Promise<PendingRoutes> {
     const kept = this.snapshot.get();
@@ -328,9 +385,12 @@ export class AuthClient {
       });
     }
     const pending = answer?.pending;
-    return pending?.status && pending.confirm && pending.cancel
-      ? { methods, pending: { status: pending.status, confirm: pending.confirm, cancel: pending.cancel } }
-      : { methods };
+    const list: LoginMethods =
+      pending?.status && pending.confirm && pending.cancel
+        ? { methods, pending: { status: pending.status, confirm: pending.confirm, cancel: pending.cancel } }
+        : { methods };
+    const changePassword = answer?.changePassword;
+    return typeof changePassword === 'string' && changePassword !== '' ? { ...list, changePassword } : list;
   }
 }
 

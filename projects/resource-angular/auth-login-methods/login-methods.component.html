@@ -1,4 +1,44 @@
-@if (pending(); as waiting) {
+@if (changing()) {
+  <div class="ccc-login-change">
+    <p class="ccc-login-change-note">{{ changeNote() }}</p>
+    <form class="ccc-login-form" (ngSubmit)="changePassword()">
+      <mat-form-field appearance="outline" class="ccc-login-field">
+        <mat-label>Current password</mat-label>
+        <input
+          matInput
+          name="oldPassword"
+          type="password"
+          [(ngModel)]="oldPassword"
+          autocomplete="current-password"
+          required />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="ccc-login-field">
+        <mat-label>New password</mat-label>
+        <input
+          matInput
+          name="newPassword"
+          type="password"
+          [(ngModel)]="newPassword"
+          autocomplete="new-password"
+          required />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="ccc-login-field">
+        <mat-label>New password again</mat-label>
+        <input
+          matInput
+          name="newPasswordAgain"
+          type="password"
+          [(ngModel)]="newPasswordAgain"
+          autocomplete="new-password"
+          required />
+      </mat-form-field>
+      <button mat-flat-button type="submit" class="ccc-login-submit" [disabled]="busy()">Change password</button>
+    </form>
+    <button mat-button type="button" class="ccc-login-cancel" [disabled]="busy()" (click)="cancelChange()">
+      Cancel
+    </button>
+  </div>
+} @else if (pending(); as waiting) {
   <div class="ccc-login-pending">
     @if (waiting.reason === 'confirmation') {
       <p class="ccc-login-pending-note">{{ confirmationNote(waiting) }}</p>

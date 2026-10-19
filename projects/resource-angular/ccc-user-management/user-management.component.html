@@ -1,0 +1,219 @@
+@if (unserved(); as sentence) {
+  <p class="ccc-users-unserved">{{ sentence }}</p>
+} @else {
+  <div class="ccc-users-header">
+    <h2 class="ccc-users-heading">{{ heading() }}</h2>
+    @if (canCreate()) {
+      <button mat-flat-button type="button" class="ccc-users-new" [disabled]="busy()" (click)="toggleCreate()">
+        {{ creating() ? 'Close' : 'New user' }}
+      </button>
+    }
+  </div>
+  @if (creating()) {
+    <form class="ccc-users-create" (ngSubmit)="create()">
+      <mat-form-field appearance="outline" class="ccc-users-field">
+        <mat-label>Username</mat-label>
+        <input matInput name="username" [(ngModel)]="newUser.username" autocomplete="off" required />
+      </mat-form-field>
+      @if (asksPassword()) {
+        <mat-form-field appearance="outline" class="ccc-users-field">
+          <mat-label>Temporary password</mat-label>
+          <input matInput name="password" type="password" [(ngModel)]="newUser.password" autocomplete="new-password" />
+          <mat-hint>The person changes it at their first sign-in.</mat-hint>
+        </mat-form-field>
+      }
+      @if (asksRole()) {
+        <mat-form-field appearance="outline" class="ccc-users-field">
+          <mat-label>Role</mat-label>
+          <mat-select name="role" [(ngModel)]="newUser.role" required>
+            @for (role of roles(); track role.name) {
+              <mat-option [value]="role.name">{{ role.name }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      }
+      <mat-checkbox name="disabled" class="ccc-users-field" [(ngModel)]="newUser.disabled">Start disabled</mat-checkbox>
+      <button mat-flat-button type="submit" class="ccc-users-submit" [disabled]="busy()">Create</button>
+    </form>
+  }
+  @if (notice(); as sentence) {
+    <p class="ccc-users-notice" role="alert">{{ sentence }}</p>
+  }
+  @if (error(); as sentence) {
+    <p class="ccc-users-error" role="alert">{{ sentence }}</p>
+  } @else if (loading()) {
+    <p class="ccc-users-note">Loading the users…</p>
+  } @else if (rows().length === 0) {
+    <p class="ccc-users-note">No users yet.</p>
+  } @else {
+    <table class="ccc-users">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Status</th>
+          <th>Signs in with</th>
+          <th>Roles</th>
+          <th>Last sign-in</th>
+          <th><span class="ccc-users-visually-hidden">Manage</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+          <tr class="ccc-user" [class.ccc-user-open]="open() === row.id">
+            <td class="ccc-user-username">{{ row.username }}</td>
+            <td class="ccc-user-status">
+              {{ row.disabled ? 'Disabled' : 'Active' }}
+              @if (row.passwordChangeRequired) {
+                <span class="ccc-user-mark">· password change pending</span>
+              }
+            </td>
+            <td class="ccc-user-means">{{ signsInWith(row) }}</td>
+            <td class="ccc-user-roles">
+              {{ row.roles.join(', ') }}
+              @if (row.everywhereRoles.length > 0 && partition()?.scope === 'domain') {
+                <span class="ccc-user-everywhere">(everywhere: {{ row.everywhereRoles.join(', ') }})</span>
+              }
+              @if (row.rolesSynced) {
+                <span class="ccc-user-synced">· from the directory</span>
+              }
+            </td>
+            <td class="ccc-user-last">{{ row.lastSignInAt ? (row.lastSignInAt | date: 'medium') : 'Never' }}</td>
+            <td class="ccc-user-manage">
+              @if (manageable(row)) {
+                <button mat-button type="button" class="ccc-user-toggle" [disabled]="busy()" (click)="toggle(row)">
+                  {{ open() === row.id ? 'Done' : 'Manage' }}
+                </button>
+              }
+            </td>
+          </tr>
+          @if (open() === row.id) {
+            <tr class="ccc-user-details">
+              <td colspan="6">
+                @if (canRename(row)) {
+                  <form class="ccc-user-action" (ngSubmit)="saveRename(row)">
+                    <mat-form-field appearance="outline" class="ccc-users-field">
+                      <mat-label>Username</mat-label>
+                      <input matInput name="rename" [(ngModel)]="rename" autocomplete="off" required />
+                    </mat-form-field>
+                    <button mat-stroked-button type="submit" class="ccc-user-rename" [disabled]="busy()">Rename</button>
+                  </form>
+                }
+                <div class="ccc-user-action ccc-user-seats">
+                  <span class="ccc-user-action-label">Roles</span>
+                  @if (row.roles.length === 0) {
+                    <span class="ccc-users-note">None here</span>
+                  }
+                  @for (role of row.roles; track role) {
+                    <span class="ccc-user-seat">
+                      {{ role }}
+                      @if (canUnseat(row)) {
+                        <button
+                          mat-button
+                          type="button"
+                          class="ccc-user-unseat"
+                          [disabled]="busy()"
+                          [attr.aria-label]="'Unseat ' + row.username + ' from ' + role"
+                          (click)="unseat(row, role)">
+                          Unseat
+                        </button>
+                      }
+                    </span>
+                  }
+                  @if (canSeat(row)) {
+                    <form class="ccc-user-seat-form" (ngSubmit)="seat(row)">
+                      <mat-form-field appearance="outline" class="ccc-users-field">
+                        <mat-label>Add a role</mat-label>
+                        <mat-select name="seatRole" [(ngModel)]="seatRole" required>
+                          @for (role of seatable(row); track role.name) {
+                            <mat-option [value]="role.name">{{ roleLabel(role) }}</mat-option>
+                          }
+                        </mat-select>
+                      </mat-form-field>
+                      <button mat-stroked-button type="submit" class="ccc-user-seat-add" [disabled]="busy()">Seat</button>
+                    </form>
+                  }
+                </div>
+                @if (row.identities.length > 0) {
+                  <div class="ccc-user-action ccc-user-identities">
+                    <span class="ccc-user-action-label">Linked identities</span>
+                    @for (identity of row.identities; track identity.id) {
+                      <span class="ccc-user-identity">
+                        {{ registrationLabel(identity) }}{{ identity.email ? ' · ' + identity.email : '' }}
+                        @if (canUnlink(row)) {
+                          <button
+                            mat-button
+                            type="button"
+                            class="ccc-user-unlink"
+                            [disabled]="busy()"
+                            [attr.aria-label]="'Unlink ' + registrationLabel(identity) + ' from ' + row.username"
+                            (click)="unlink(row, identity)">
+                            Unlink
+                          </button>
+                        }
+                      </span>
+                    }
+                  </div>
+                }
+                @if (canSetPassword(row)) {
+                  <form class="ccc-user-action" (ngSubmit)="setPassword(row)">
+                    <mat-form-field appearance="outline" class="ccc-users-field">
+                      <mat-label>Temporary password</mat-label>
+                      <input
+                        matInput
+                        name="temporaryPassword"
+                        type="password"
+                        [(ngModel)]="temporaryPassword"
+                        autocomplete="new-password"
+                        required />
+                      <mat-hint>The person changes it at their next sign-in.</mat-hint>
+                    </mat-form-field>
+                    <button mat-stroked-button type="submit" class="ccc-user-set-password" [disabled]="busy()">
+                      Set password
+                    </button>
+                  </form>
+                }
+                <div class="ccc-user-action ccc-user-account">
+                  @if (canDisable(row)) {
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      class="ccc-user-disable"
+                      [disabled]="busy()"
+                      (click)="setDisabled(row, !row.disabled)">
+                      {{ row.disabled ? 'Enable' : 'Disable' }}
+                    </button>
+                  }
+                  @if (canDelete(row)) {
+                    @if (confirmingDelete() === row.id) {
+                      <span class="ccc-user-confirm">Delete {{ row.username }}?</span>
+                      <button mat-flat-button type="button" class="ccc-user-delete-confirm" [disabled]="busy()" (click)="remove(row)">
+                        Delete
+                      </button>
+                      <button mat-button type="button" class="ccc-user-delete-cancel" [disabled]="busy()" (click)="cancelDelete()">
+                        Keep
+                      </button>
+                    } @else {
+                      <button mat-stroked-button type="button" class="ccc-user-delete" [disabled]="busy()" (click)="remove(row)">
+                        Delete
+                      </button>
+                    }
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        }
+      </tbody>
+    </table>
+    @if (page()?.prev || page()?.next) {
+      <div class="ccc-users-paging">
+        <button mat-button type="button" class="ccc-users-prev" [disabled]="busy() || !page()?.prev" (click)="previous()">
+          Previous
+        </button>
+        <button mat-button type="button" class="ccc-users-next" [disabled]="busy() || !page()?.next" (click)="next()">
+          Next
+        </button>
+      </div>
+    }
+  }
+}

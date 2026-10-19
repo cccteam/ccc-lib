@@ -247,7 +247,10 @@ export class AuthService {
    * session also loads the global permission digest, the user's domains, and the enabled
    * set of feature flags when the API serves them, and starts the live session when a
    * change feed is provided; later checks (keepalives) leave the cached permissions, the
-   * set, and the feed alone. An unauthenticated answer ends them all.
+   * set, and the feed alone. An unauthenticated answer ends them all. An authenticated
+   * answer carrying `passwordChangeRequired` loads nothing: the server refuses every
+   * request but the password change until the person sets a password of their own, and
+   * the first check after the change loads them.
    *
    * @returns Observable with the user session info
    */
@@ -262,7 +265,7 @@ export class AuthService {
           this.clearPermissions();
           return from(this.stopLive()).pipe(map(() => sessionInfo));
         }
-        if (this.permissionsLoaded) return of(sessionInfo);
+        if (sessionInfo.passwordChangeRequired || this.permissionsLoaded) return of(sessionInfo);
 
         this.permissionsLoaded = true;
         return from(

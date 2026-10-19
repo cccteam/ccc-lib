@@ -15,14 +15,16 @@ import { provideResourceTesting } from '@cccteam/resource-angular/testing';
 import { DEFAULT_LOGIN_MESSAGES } from '@cccteam/resource-angular/types';
 import { of } from 'rxjs';
 
-import { LoginMethodsComponent } from './login-methods.component';
+import { LoginMethodsComponent, PASSWORDS_DIFFER } from './login-methods.component';
 
 // The component renders the login page's methods from the server's list, in every shape
 // the list takes, drives the password form and the redirect buttons from it, renders a
 // refusal from the URL's code or a step's answer, and renders the pending step entered with
 // ?pending= or answered to a password sign-in: the confirmation form posting to the route
-// the list names, with a cancel back to the list. Every POST is preceded by a read of the
-// list, so it carries a live XSRF token.
+// the list names, with a cancel back to the list. A session that must change its password
+// gets the change form in the list's place, posting to the change path the list names, and
+// the page recorded at the sign-in is emitted once the change is accepted. Every POST is
+// preceded by a read of the list, so it carries a live XSRF token.
 
 const descriptor: ApiDescriptor = {
   resources: {},
@@ -58,7 +60,8 @@ const pendingRoutes = {
   confirm: '/console/api/user/pending/confirm',
   cancel: '/console/api/user/pending/cancel',
 };
-const consoleList: LoginMethods = { methods: [password, google], pending: pendingRoutes };
+const changePath = '/console/api/user/password/change';
+const consoleList: LoginMethods = { methods: [password, google], pending: pendingRoutes, changePassword: changePath };
 const waiting = {
   reason: 'confirmation',
   email: 'nova@fleet.example',
@@ -72,7 +75,11 @@ interface Server {
   login: TransportResponse;
   status: TransportResponse;
   confirm: TransportResponse;
+  /** What the change route answers; a server that accepts the change also clears the mark. */
+  change: TransportResponse;
   authenticated: boolean;
+  /** The session's operator-set password must change before anything else is served. */
+  passwordChangeRequired: boolean;
 }
 
 function server(overrides: Partial<Server> = {}): Server {
@@ -81,7 +88,9 @@ function server(overrides: Partial<Server> = {}): Server {
     login: { status: 200, body: { mfaIsRequired: false } },
     status: { status: 404, body: { message: 'no pending sign-in' } },
     confirm: { status: 200, body: { mfaIsRequired: false } },
+    change: { status: 200, body: undefined },
     authenticated: true,
+    passwordChangeRequired: false,
     ...overrides,
   };
 }
@@ -100,8 +109,23 @@ function transportOf(state: Server): ScriptedTransport {
         return state.confirm;
       case 'POST /console/api/user/pending/cancel':
         return { status: 200, body: undefined };
+      case `POST ${changePath}`:
+        if (state.change.status < 400) {
+          state.passwordChangeRequired = false;
+        }
+        return state.change;
       case 'GET /console/api/user/session':
-        return { status: 200, body: { authenticated: state.authenticated, username: 'overseer' } };
+        return {
+          status: 200,
+          body: {
+            authenticated: state.authenticated,
+            username: 'overseer',
+            passwordChangeRequired: state.passwordChangeRequired,
+          },
+        };
+      case 'DELETE /console/api/user/session':
+        state.authenticated = false;
+        return { status: 204, body: undefined };
       case 'GET /console/api/permission-digest':
         return { status: 200, body: {} };
       case 'GET /console/api/user-domains':
@@ -585,5 +609,105 @@ describe('LoginMethodsComponent renders the pending step', () => {
     expect(page.component.pending()).toBeUndefined();
     expect(page.cancelled).toBe(1);
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+  });
+});
+
+describe('LoginMethodsComponent changes a password the operator set', () => {
+  async function signIn(page: Page): Promise<void> {
+    page.component.username = 'overseer';
+    page.component.password = 'lodestar';
+    await page.component.login();
+    await page.settle();
+  }
+
+  async function change(page: Page, oldPassword: string, newPassword: string, again = newPassword): Promise<void> {
+    page.component.oldPassword = oldPassword;
+    page.component.newPassword = newPassword;
+    page.component.newPasswordAgain = again;
+    await page.component.changePassword();
+    await page.settle();
+  }
+
+  const fieldsOf = (page: Page): string[] =>
+    Array.from(page.element.querySelectorAll<HTMLInputElement>('input')).map((input) => input.name);
+
+  it('a sign-in whose session must change its password renders the change form in the list\'s place, loads nothing and emits nothing', async () => {
+    const page = await pageOver(server({ passwordChangeRequired: true }));
+    TestBed.inject(AuthService).redirectUrl.set('/missions/m-7');
+    await signIn(page);
+    expect(page.signedIn).toEqual([]);
+    expect(page.component.changing()).toBe(true);
+    expect(fieldsOf(page)).toEqual(['oldPassword', 'newPassword', 'newPasswordAgain']);
+    expect(buttonsOf(page)).toEqual([]);
+    expect(page.element.querySelector('.ccc-login-change-note')?.textContent?.trim()).toBe(
+      DEFAULT_LOGIN_MESSAGES['password_change_required'],
+    );
+    expect(sent(page.transport)).not.toContain('GET /console/api/permission-digest');
+    expect(TestBed.inject(AuthService).authenticated()).toBe(true);
+    expect(page.component.password).toBe('');
+  });
+
+  it('two new passwords that differ are refused on the page, with no request', async () => {
+    const page = await pageOver(server({ passwordChangeRequired: true }));
+    await signIn(page);
+    const before = sent(page.transport).length;
+    await change(page, 'lodestar', 'anvil-run-9', 'anvil-run-8');
+    expect(sent(page.transport)).toHaveLength(before);
+    expect(messageOf(page)).toBe(PASSWORDS_DIFFER);
+    expect(page.component.changing()).toBe(true);
+  });
+
+  it('a change the server accepts reads the list again, posts to the change path, checks the session and emits the page recorded at the sign-in', async () => {
+    const page = await pageOver(server({ passwordChangeRequired: true }));
+    TestBed.inject(AuthService).redirectUrl.set('/missions/m-7');
+    await signIn(page);
+    const before = sent(page.transport).length;
+    await change(page, 'lodestar', 'anvil-run-9');
+    const requests = sent(page.transport).slice(before);
+    expect(requests.slice(0, 2)).toEqual(['GET /console/api/user/methods', `POST ${changePath}`]);
+    expect(page.transport.requests[before + 1].body).toEqual({ oldPassword: 'lodestar', newPassword: 'anvil-run-9' });
+    expect(requests.slice(2)).toContain('GET /console/api/user/session');
+    expect(requests.slice(2)).toContain('GET /console/api/permission-digest');
+    expect(page.signedIn).toEqual(['/missions/m-7']);
+    expect(page.component.changing()).toBe(false);
+    expect(page.component.oldPassword).toBe('');
+    expect(page.component.newPassword).toBe('');
+    expect(messageOf(page)).toBeNull();
+  });
+
+  const refusals: { name: string; answer: TransportResponse; want: string }[] = [
+    {
+      name: "a refusal without a code shows the server's words",
+      answer: { status: 400, body: { message: 'The new password must differ from the current one' } },
+      want: 'The new password must differ from the current one',
+    },
+    {
+      name: 'a refusal with a code the application holds a sentence for shows that sentence',
+      answer: { status: 401, body: { message: 'User disabled', code: 'user_disabled' } },
+      want: DEFAULT_LOGIN_MESSAGES['user_disabled'],
+    },
+  ];
+  for (const tt of refusals) {
+    it(tt.name, async () => {
+      const page = await pageOver(server({ passwordChangeRequired: true, change: tt.answer }));
+      await signIn(page);
+      await change(page, 'wrong', 'anvil-run-9');
+      expect(messageOf(page)).toBe(tt.want);
+      expect(page.component.changing()).toBe(true);
+      expect(page.signedIn).toEqual([]);
+    });
+  }
+
+  it('cancelling the change ends the session, shows the list again and emits cancelled', async () => {
+    const page = await pageOver(server({ passwordChangeRequired: true }));
+    await signIn(page);
+    await page.component.cancelChange();
+    await page.settle();
+    expect(sent(page.transport)).toContain('DELETE /console/api/user/session');
+    expect(page.component.changing()).toBe(false);
+    expect(fieldsOf(page)).toEqual(['username', 'password']);
+    expect(buttonsOf(page)).toEqual(['Sign in with Google']);
+    expect(page.cancelled).toBe(1);
+    expect(TestBed.inject(AuthService).authenticated()).toBe(false);
   });
 });

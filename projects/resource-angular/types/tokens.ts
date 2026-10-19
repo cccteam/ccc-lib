@@ -206,6 +206,7 @@ export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
   not_workspace_member: 'This account is not a member of the required organization.',
   email_not_verified: 'The email address of this account is not verified.',
   no_roles: 'This account has no role in this application. Please contact your administrator.',
+  password_change_required: 'Your password was set by an administrator. Choose a new password to continue.',
   no_email_claim: 'The identity provider did not say which account signed in.',
   unlisted_tenant: 'This account belongs to an organization that cannot sign in here.',
   personal_account: 'Personal Microsoft accounts cannot sign in here. Use your work or school account.',
