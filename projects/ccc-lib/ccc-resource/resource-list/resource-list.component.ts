@@ -228,6 +228,8 @@ export class ResourceListComponent implements OnInit {
           header: col.header,
           width: col.width,
           resizable: col.resizable,
+          iconConfig: col.iconConfig,
+          tooltipPosition: col.tooltipPosition,
           valueGetter: (data) => {
             const concatArray: string[] = [];
 
@@ -280,6 +282,8 @@ export class ResourceListComponent implements OnInit {
           header: col.header,
           width: col.width,
           resizable: col.resizable,
+          iconConfig: col.iconConfig,
+          tooltipPosition: col.tooltipPosition,
           valueFormatter: (params) => {
             if (col.formatType) {
               const retValue = applyFormatting(col.formatType, params);

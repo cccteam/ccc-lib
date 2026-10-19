@@ -139,6 +139,21 @@
                     </ccc-table-button>
                   }
                 </td>
+              } @else if (col.iconConfig) {
+                <td class="data-col icon-col" [style.width.px]="widthFor(col)">
+                  @if (col.iconConfig.icon(row); as icon) {
+                    <mat-icon
+                      class="cell-icon"
+                      role="img"
+                      aria-hidden="false"
+                      tabindex="0"
+                      [attr.aria-label]="col.iconConfig.tooltip ? col.iconConfig.tooltip(row) : icon"
+                      [matTooltip]="col.iconConfig.tooltip ? col.iconConfig.tooltip(row) : ''"
+                      [matTooltipPosition]="col.tooltipPosition || 'above'"
+                      >{{ icon }}</mat-icon
+                    >
+                  }
+                </td>
               } @else {
                 <td class="data-col" [style.width.px]="widthFor(col)">{{ row[col.id] }}</td>
               }

@@ -79,6 +79,12 @@ export const actionButtonConfigDefaults = {
   disabledLabel: '',
 } satisfies ActionButtonConfig;
 
+/** Renders an icon in each cell of a column. A row whose `icon` returns no value shows an empty cell. */
+export interface ColumnIconConfig {
+  icon: (row: RecordData) => string | null | undefined;
+  tooltip?: (row: RecordData) => string;
+}
+
 export interface SingleColumnConfig {
   id: FieldName;
   header?: string;
@@ -90,6 +96,7 @@ export interface SingleColumnConfig {
   tooltipPosition?: TooltipPosition;
   viewRoute?: Resource;
   buttonConfig?: ActionButtonConfig;
+  iconConfig?: ColumnIconConfig;
   actionType?: ActionType;
   formatType?: FormatType | string;
   hidden?: boolean;
@@ -108,6 +115,7 @@ export interface SingleColumnConfigOptions {
   tooltipPosition?: TooltipPosition;
   viewRoute?: Resource;
   buttonConfig?: ActionButtonConfig;
+  iconConfig?: ColumnIconConfig;
   actionType?: ActionType;
   formatType?: FormatType | string;
   hidden?: boolean;
