@@ -28,9 +28,13 @@ import {
  * table when the list is a view declaring one (the metadata's `rowsOf`), since a view
  * lists and never reads. A config may set `nav.navItem.permission` to gate on something
  * else. A domain-scoped resource's metadata route carries the tenant parameter in
- * braces, so such a page sets `routeData.route` to the path it should live at. The page
- * is registered as where the resource's rows open (resourcePageRoute), for the listed
- * resource and for its table, so another list's row route lands here. A listed resource
+ * braces, so such a page sets `routeData.route` to the path it should live at, which may
+ * carry the tenant parameter as the router names it (`sectors/:sectorID/missions`) when
+ * the page lives under the tenant segment. The page is registered as where the
+ * resource's rows open (resourcePageRoute), for the listed resource and for its table,
+ * so another list's row route lands here; the route is recorded as written, and every
+ * link built from it (the list's View column, the after-create navigation) puts the
+ * page's tenant in the parameter's place (pageRouteResolver). A listed resource
  * with no key field (a `@computed` or `@virtual` struct with no `@primarykey`) is served
  * whole and has no row: its page gets no row route and is registered as nowhere a row
  * opens, as `hasViewRoute: false` says for a keyed one. A resource behind a feature flag

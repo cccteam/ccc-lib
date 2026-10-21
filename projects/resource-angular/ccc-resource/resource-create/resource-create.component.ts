@@ -31,10 +31,12 @@ import {
   RecordData,
   Resource,
   RESOURCE_META,
+  ResourceMeta,
   RootConfig,
   ViewConfig,
   writeResource,
 } from '@cccteam/resource-angular/types';
+import { pageRouteResolver } from '@cccteam/resource-angular/resource-nav';
 import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
 import { tap } from 'rxjs';
 import { camelCase } from '../concat-fns';
@@ -85,6 +87,16 @@ export class ResourceCreateComponent implements OnInit {
   rootConfig = computed(() => {
     return this.activatedRoute.snapshot.data['config'] as RootConfig;
   });
+
+  /** Puts the page's tenant into the route the new row is opened on, where the route names the tenant parameter. */
+  private readonly resolvePageRoute = pageRouteResolver();
+
+  /**
+   * Whether the form creates under a parent row (a child list's or an array view's
+   * create inside a row page): the parent row is on hand. A page's own create carries
+   * an empty object, never a row.
+   */
+  private readonly underParentRow = computed(() => Object.keys(this.parentData()).length > 0);
 
   config = computed(() => {
     const inputConfig = this.resourceConfig() as ViewConfig;
@@ -244,6 +256,9 @@ export class ResourceCreateComponent implements OnInit {
       return;
     }
     const coercedCleanedData = metadataTypeCoercion(cleanedForm, this.store.resourceMeta());
+    // Where the new row opens, settled before the create is sent: a route naming the
+    // tenant parameter with no tenant known is refused here, and nothing is created.
+    const createdRoute = this.loadCreatedResource() ? this.createdRowRoute(resourceMeta) : '';
 
     // ops.add lifts key fields out of the value into the operation path (all key
     // fields or none), so client-assigned keys travel as path segments and a
@@ -264,14 +279,9 @@ export class ResourceCreateComponent implements OnInit {
 
       {
         if (this.loadCreatedResource() && createIds.length === 1) {
-          let route = this.rootConfig().routeData.route;
-          if (this.parentData() || !route) {
-            route = resourceMeta.route;
-          }
-
           const navigationRoutes = this.config().createNavigation;
           if (navigationRoutes.length === 0) {
-            this.router.navigate([route, createIds[0]]);
+            this.router.navigate([createdRoute, createIds[0]]);
           } else {
             if (createIds[0]) {
               navigationRoutes.push(createIds[0]);
@@ -283,6 +293,17 @@ export class ResourceCreateComponent implements OnInit {
         }
       }
     });
+  }
+
+  /**
+   * The route the new row opens on. The page's own create opens it on the page's route
+   * as the config wrote it, the tenant put in where the route names the parameter; a
+   * create under a parent row, or on a page naming no route, opens it on the resource's
+   * metadata route.
+   */
+  private createdRowRoute(resourceMeta: ResourceMeta): string {
+    const page = this.underParentRow() ? undefined : this.rootConfig().routeData.route;
+    return this.resolvePageRoute(page || resourceMeta.route);
   }
 
   cancelForm(): void {

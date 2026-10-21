@@ -30,7 +30,7 @@ import {
   SortRule,
   withoutOrphanedCompanions,
 } from '@cccteam/resource-angular/ccc-grid';
-import { resourcePageRoute } from '@cccteam/resource-angular/resource-nav';
+import { pageRouteResolver, resourcePageRoute } from '@cccteam/resource-angular/resource-nav';
 import {
   ChildResourceConfig,
   ColumnConfig,
@@ -203,6 +203,8 @@ export class ResourceListComponent implements OnInit {
    * field with no target in the metadata throws here, naming the field.
    */
   rowTarget = computed(() => rowRouteTarget(this.config().primaryResource, this.config().rowRoute, this.resourceMeta, resourcePageRoute));
+  /** Puts the page's tenant into a registered route a row link is built from, where the route names the tenant parameter. */
+  private readonly resolvePageRoute = pageRouteResolver();
   /**
    * Whether rows are deleted from the list: the write resource's key is compound, so a
    * row has no page of its own to delete from, and the digest grants Delete on it. A
@@ -490,7 +492,8 @@ export class ResourceListComponent implements OnInit {
     const target = this.rowTarget();
     if (this.config().showViewButton && target && this.rowRouteRequested() && this.canView()) {
       // The root list's rows open on the page's own row route; any other list's, and a
-      // rowRoute's, on the target's page.
+      // rowRoute's, on the target's page. Either route is the page's as its config wrote
+      // it, so the tenant goes in where the route names the parameter.
       const ownPage = this.viewRouteFallback() && this.isRootList() === undefined && !this.config().rowRoute;
       columns.push({
         id: 'view' as FieldName,
@@ -499,7 +502,7 @@ export class ResourceListComponent implements OnInit {
         buttonConfig: {
           label: 'View',
           icon: 'arrow_forward',
-          viewRoute: ownPage ? this.viewRouteFallback() || '' : target.route,
+          viewRoute: this.resolvePageRoute(ownPage ? this.viewRouteFallback() || '' : target.route),
           keyField: target.keyField,
           actionType: 'link',
         },
