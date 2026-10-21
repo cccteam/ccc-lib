@@ -190,7 +190,10 @@ export const IDLE_TIMEOUT_REQUIRE_CONFIRMATION = new InjectionToken<boolean>('ID
  * A refused login redirects to the login page with `?code=<code>` and nothing else; the
  * page renders the sentence it holds for the code and nothing for a code it does not
  * know, so no text that arrives in the URL is ever displayed. One entry per code in the
- * session module's "Login refusal codes" table.
+ * session module's "Login refusal codes" table. A refusal the server answers on a step
+ * carries its code in the body, whatever its status: the attempt limiter's
+ * `too_many_attempts` arrives with 429 and the wait in seconds (`retryAfter`), which
+ * `UiCoreService.loginMessage(code, retryAfter)` renders after the sentence.
  */
 export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
   internal_error: 'Sign-in failed because of a problem on our side. Please try again.',
@@ -218,6 +221,7 @@ export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
   user_disabled: 'This account has been disabled. Please contact your administrator.',
   pending_expired: 'The sign-in took too long to complete. Please start again.',
   no_email: 'The identity provider did not provide an email address for this account.',
+  too_many_attempts: 'Too many attempts.',
 };
 
 /**
