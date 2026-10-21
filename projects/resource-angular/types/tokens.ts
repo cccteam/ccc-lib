@@ -222,6 +222,11 @@ export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
   pending_expired: 'The sign-in took too long to complete. Please start again.',
   no_email: 'The identity provider did not provide an email address for this account.',
   too_many_attempts: 'Too many attempts.',
+  no_tenant: 'This account is not a member of any organization in this application. Please contact your administrator.',
+  connection_not_in_tenant:
+    'Your organization does not sign in through the directory you used. Please sign in the way your organization has set up.',
+  directory_only:
+    "Your organization signs in through its directory only. Please sign in through your organization's directory.",
 };
 
 /**

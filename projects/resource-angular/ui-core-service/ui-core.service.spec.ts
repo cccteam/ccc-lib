@@ -11,6 +11,21 @@ describe('UiCoreService login messages', () => {
   const cases: { name: string; code: string; want: string }[] = [
     { name: 'a session code answers its default sentence', code: 'no_roles', want: DEFAULT_LOGIN_MESSAGES['no_roles'] },
     { name: 'the internal error code answers its default sentence', code: 'internal_error', want: DEFAULT_LOGIN_MESSAGES['internal_error'] },
+    {
+      name: 'a member of no organization answers its default sentence',
+      code: 'no_tenant',
+      want: DEFAULT_LOGIN_MESSAGES['no_tenant'],
+    },
+    {
+      name: 'a directory no organization of the person declares answers its default sentence',
+      code: 'connection_not_in_tenant',
+      want: DEFAULT_LOGIN_MESSAGES['connection_not_in_tenant'],
+    },
+    {
+      name: 'a password where every organization is directory only answers its default sentence',
+      code: 'directory_only',
+      want: DEFAULT_LOGIN_MESSAGES['directory_only'],
+    },
     { name: 'an unknown code answers nothing', code: 'call 555-0100 for a password reset', want: '' },
     { name: 'an empty code answers nothing', code: '', want: '' },
     { name: 'a key inherited from Object is not a code', code: 'constructor', want: '' },
@@ -52,6 +67,9 @@ describe('UiCoreService login messages', () => {
       'pending_expired',
       'no_email',
       'too_many_attempts',
+      'no_tenant',
+      'connection_not_in_tenant',
+      'directory_only',
     ];
     TestBed.configureTestingModule({});
     const ui = TestBed.inject(UiCoreService);

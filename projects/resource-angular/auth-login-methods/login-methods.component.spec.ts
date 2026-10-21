@@ -275,6 +275,9 @@ describe('LoginMethodsComponent renders the list', () => {
     const refused = await pageOver(server(), { code: 'no_roles' });
     expect(messageOf(refused)).toBe(DEFAULT_LOGIN_MESSAGES['no_roles']);
     TestBed.resetTestingModule();
+    const directory = await pageOver(server(), { code: 'connection_not_in_tenant' });
+    expect(messageOf(directory)).toBe(DEFAULT_LOGIN_MESSAGES['connection_not_in_tenant']);
+    TestBed.resetTestingModule();
     const unknown = await pageOver(server(), { code: 'call 555-0100 for a password reset' });
     expect(messageOf(unknown)).toBeNull();
   });
@@ -330,6 +333,11 @@ describe('LoginMethodsComponent signs in with the password', () => {
       name: "a refusal with a code the application holds no sentence for shows the server's words",
       answer: { status: 403, body: { message: 'Ask the flight desk', code: 'not_provisioned' } },
       want: 'Ask the flight desk',
+    },
+    {
+      name: 'a password refused because every organization of the person is directory only shows the sentence for directory_only',
+      answer: { status: 403, body: { message: 'Sign-in denied', code: 'directory_only' } },
+      want: DEFAULT_LOGIN_MESSAGES['directory_only'],
     },
     {
       name: 'a locked name shows the sentence held for the code the 429 body carries, with the wait in minutes',
