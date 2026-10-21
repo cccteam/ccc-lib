@@ -35,8 +35,11 @@ import { map } from 'rxjs/operators';
  *
  * A refusal arriving in the URL renders the sentence the application holds for the code
  * (`LOGIN_MESSAGES`, through UiCoreService) and nothing for a code it does not know; one
- * the server answers on a step renders that sentence when it carries a code, and the
- * server's words otherwise (a wrong password). A pending step, entered with `?pending=` or
+ * the server answers on a step renders that sentence when its body carries a code, whatever
+ * the status, and the server's words otherwise (a wrong password). A name whose failed
+ * attempts reached the server's limit is refused with 429, `too_many_attempts` and the wait,
+ * rendered after the sentence: "Too many attempts. Try again in 14 minutes."; the step it
+ * was refused on stays where it is. A pending step, entered with `?pending=` or
  * answered to a password sign-in, is read from the pending status route and takes the
  * list's place: for a confirmation, the password form of the user the sign-in matched,
  * posting to the confirmation route, with a cancel that returns to the list; for a step
@@ -310,9 +313,13 @@ export class LoginMethodsComponent implements OnInit {
     this.signedIn.emit(page);
   }
 
-  /** The sentence for a refusal: the one the application holds for its code, else the server's words. */
+  /**
+   * The sentence for a refusal: the one the application holds for its code, followed by the
+   * wait the server named (`too_many_attempts` arrives with 429 and `retryAfter`), else the
+   * server's words. The code is read from the refusal's body whatever its status.
+   */
   private sentenceOf(refusal: SignInRefusal): string {
-    const held = refusal.code === undefined ? '' : this.ui.loginMessage(refusal.code);
+    const held = refusal.code === undefined ? '' : this.ui.loginMessage(refusal.code, refusal.retryAfter);
     return held || refusal.message;
   }
 

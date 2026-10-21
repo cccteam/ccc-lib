@@ -233,11 +233,51 @@ describe('a password sign-in', () => {
       answer: { status: 401, body: undefined },
       want: { outcome: 'refused', status: 401, message: 'HTTP 401' },
     },
+    {
+      name: 'a locked name resolves as refused with the code and the wait the 429 body carries',
+      answer: {
+        status: 429,
+        body: { message: 'Too many sign-in attempts', code: 'too_many_attempts', retryAfter: 840 },
+        headers: { 'retry-after': '840' },
+      },
+      want: {
+        outcome: 'refused',
+        status: 429,
+        code: 'too_many_attempts',
+        message: 'Too many sign-in attempts',
+        retryAfter: 840,
+      },
+    },
+    {
+      name: 'a wait the body does not carry is read from the Retry-After header',
+      answer: {
+        status: 429,
+        body: { message: 'Too many sign-in attempts', code: 'too_many_attempts' },
+        headers: { 'retry-after': '45' },
+      },
+      want: {
+        outcome: 'refused',
+        status: 429,
+        code: 'too_many_attempts',
+        message: 'Too many sign-in attempts',
+        retryAfter: 45,
+      },
+    },
+    {
+      name: 'a wait that is not a number of seconds in the body nor a header the client reads is none',
+      answer: {
+        status: 429,
+        body: { message: 'Too many sign-in attempts', code: 'too_many_attempts', retryAfter: '840' },
+      },
+      want: { outcome: 'refused', status: 429, code: 'too_many_attempts', message: 'Too many sign-in attempts' },
+    },
   ];
   for (const tt of refusals) {
     it(tt.name, async () => {
       const { auth, errors } = authOver(server({ login: tt.answer }));
-      expect(await auth.signInWithPassword(password, { username: 'overseer', password: 'wrong' })).toEqual(tt.want);
+      const result = await auth.signInWithPassword(password, { username: 'overseer', password: 'wrong' });
+      expect(result).toEqual(tt.want);
+      expect(Object.keys(result).sort()).toEqual(Object.keys(tt.want as object).sort());
       expect(errors).toEqual([]);
     });
   }
@@ -355,6 +395,21 @@ describe('the pending sign-in', () => {
       name: 'no pending sign-in resolves as refused',
       answer: { status: 404, body: { message: 'no pending sign-in' } },
       want: { outcome: 'refused', status: 404, message: 'no pending sign-in' },
+    },
+    {
+      name: 'a locked name resolves as refused with the code and the wait the 429 body carries',
+      answer: {
+        status: 429,
+        body: { message: 'Too many sign-in attempts', code: 'too_many_attempts', retryAfter: 840 },
+        headers: { 'retry-after': '840' },
+      },
+      want: {
+        outcome: 'refused',
+        status: 429,
+        code: 'too_many_attempts',
+        message: 'Too many sign-in attempts',
+        retryAfter: 840,
+      },
     },
     {
       name: 'the policy asking for MFA after the link resolves a pending step',

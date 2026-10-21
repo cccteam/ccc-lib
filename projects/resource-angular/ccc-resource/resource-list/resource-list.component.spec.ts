@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { ApiDescriptor, ClientBase, createClient, Domain, FieldMeta, PermissionDigest, Resource, ResourceMeta, TransportRequest, TransportResponse } from '@cccteam/resource';
 import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
+import { registerResourcePage } from '@cccteam/resource-angular/resource-nav';
 import { provideResourceTesting } from '@cccteam/resource-angular/testing';
 import {
   FieldName,
@@ -344,6 +345,90 @@ describe('ResourceListComponent', () => {
       await rounds();
       expect(shipsRequests()).toEqual([shipsUrl, narrowedUrl]);
       expect(fixture.componentInstance.columns().map((col) => col.id)).toEqual(['name']);
+    });
+  });
+
+  describe("draws the View column under the page's tenant", () => {
+    // The page lives under the tenant segment, so resourceRoutes registered its route as
+    // the config wrote it, parameter and all. The View column's link puts the page's
+    // tenant in the parameter's place: the route's own when the page is under it, else
+    // the selected tenant; with neither known the column is refused, naming the route.
+    const missions = 'Missions' as Resource;
+    const pageRoute = 'sectors/:sectorID/missions';
+    const tenantMetas: Record<string, ResourceMeta> = {
+      ...metas,
+      [missions]: { route: 'missions', fields: [field('id', { primaryKey: { ordinalPosition: 0 } }), field('name')] } as ResourceMeta,
+    };
+    const tenantDescriptor: ApiDescriptor = {
+      ...descriptor,
+      domainRoute: { segment: 'sectors', param: 'sectorID' },
+      resources: {
+        ...descriptor.resources,
+        [missions]: { resource: missions, property: 'missions', route: 'missions', scope: 'global', consolidated: false, keys: ['id'], operations: ['list', 'read'], page: { default: 25, max: 200 } },
+      },
+    };
+    /** The digest granting List and Read on the missions, so the page draws its rows and their View column. */
+    const digest: PermissionDigest = { [missions]: { List: 'granted', Read: 'granted' }, [`${missions}.name`]: { List: 'granted' } };
+
+    const server = (request: TransportRequest): TransportResponse => {
+      const url = new URL(request.url, 'http://missions.test');
+      if (url.pathname === '/api/permission-digest') {
+        return { status: 200, body: digest };
+      }
+      if (url.pathname === '/api/missions') {
+        return { status: 200, body: [{ id: 'm-1', name: 'Anvil run' }], headers: { 'total-count': '1' } };
+      }
+      return { status: 404, body: { message: `unscripted ${request.url}` } };
+    };
+
+    /** The missions page as mounted with the given route parameters, under the selected tenant. */
+    const page = async (params: Record<string, string>, domain: Domain | undefined): Promise<void> => {
+      registerResourcePage(missions, pageRoute);
+      const config = listViewConfig({ elements: [], primaryResource: missions, listColumns: [{ id: 'name' as FieldName }] });
+      transport = scriptedTransport(server);
+      await TestBed.configureTestingModule({
+        imports: [ResourceListComponent],
+        providers: [
+          provideResourceTesting({ transport, client: (t) => createClient(tenantDescriptor, { baseUrl: '/api', transport: t }) }),
+          { provide: RESOURCE_META, useValue: (resource: Resource): ResourceMeta => tenantMetas[resource] },
+          { provide: RESOURCE_DOMAIN, useValue: signal<Domain | undefined>(domain) },
+          {
+            provide: ActivatedRoute,
+            useValue: {
+              snapshot: { data: { config: rootConfig({ parentConfig: config, routeData: { route: pageRoute } }) }, params, queryParams: {} },
+            },
+          },
+        ],
+      }).compileComponents();
+      await TestBed.inject<ClientBase>(RESOURCE_CLIENT).permissions.loadDigest();
+      fixture = TestBed.createComponent(ResourceListComponent);
+      fixture.componentRef.setInput('compoundResourceComponent', CompoundResourceComponent);
+      fixture.componentRef.setInput('resourceConfig', config);
+      fixture.componentRef.setInput('viewRoute', pageRoute);
+    };
+
+    const cases: { name: string; params: Record<string, string>; domain: Domain | undefined; want: string }[] = [
+      { name: "the route's tenant, when the page is under the parameter", params: { sectorID: 'anvil' }, domain: 'forge' as Domain, want: 'sectors/anvil/missions' },
+      { name: 'the selected tenant, when it is not', params: {}, domain: 'forge' as Domain, want: 'sectors/forge/missions' },
+    ];
+
+    for (const tt of cases) {
+      it(`links each row under ${tt.name}`, async () => {
+        await page(tt.params, tt.domain);
+        fixture.detectChanges();
+        await settle();
+        const view = fixture.componentInstance.columns().find((col) => col.id === 'view');
+        expect(view?.buttonConfig?.viewRoute).toBe(tt.want);
+        const link = (fixture.nativeElement as HTMLElement).querySelector('td.action-col a');
+        expect(link?.getAttribute('href')).toBe(`/${tt.want}/m-1`);
+      });
+    }
+
+    it('refuses the column when no tenant is known, naming the route and the parameter', async () => {
+      await page({}, undefined);
+      expect(() => fixture.detectChanges()).toThrow(
+        /^sectors\/:sectorID\/missions: the route names the tenant parameter :sectorID, and no tenant is known/,
+      );
     });
   });
 });

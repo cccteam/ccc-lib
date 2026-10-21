@@ -13,6 +13,7 @@ import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing'
 import { AuthService } from '@cccteam/resource-angular/auth-service';
 import { provideResourceTesting } from '@cccteam/resource-angular/testing';
 import { DEFAULT_LOGIN_MESSAGES } from '@cccteam/resource-angular/types';
+import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
 import { of } from 'rxjs';
 
 import { LoginMethodsComponent, PASSWORDS_DIFFER } from './login-methods.component';
@@ -274,6 +275,9 @@ describe('LoginMethodsComponent renders the list', () => {
     const refused = await pageOver(server(), { code: 'no_roles' });
     expect(messageOf(refused)).toBe(DEFAULT_LOGIN_MESSAGES['no_roles']);
     TestBed.resetTestingModule();
+    const directory = await pageOver(server(), { code: 'connection_not_in_tenant' });
+    expect(messageOf(directory)).toBe(DEFAULT_LOGIN_MESSAGES['connection_not_in_tenant']);
+    TestBed.resetTestingModule();
     const unknown = await pageOver(server(), { code: 'call 555-0100 for a password reset' });
     expect(messageOf(unknown)).toBeNull();
   });
@@ -330,6 +334,34 @@ describe('LoginMethodsComponent signs in with the password', () => {
       answer: { status: 403, body: { message: 'Ask the flight desk', code: 'not_provisioned' } },
       want: 'Ask the flight desk',
     },
+    {
+      name: 'a password refused because every organization of the person is directory only shows the sentence for directory_only',
+      answer: { status: 403, body: { message: 'Sign-in denied', code: 'directory_only' } },
+      want: DEFAULT_LOGIN_MESSAGES['directory_only'],
+    },
+    {
+      name: 'a locked name shows the sentence held for the code the 429 body carries, with the wait in minutes',
+      answer: {
+        status: 429,
+        body: { message: 'Too many sign-in attempts', code: 'too_many_attempts', retryAfter: 840 },
+        headers: { 'retry-after': '840' },
+      },
+      want: `${DEFAULT_LOGIN_MESSAGES['too_many_attempts']} Try again in 14 minutes.`,
+    },
+    {
+      name: 'a locked name with under a minute to wait shows the wait in seconds',
+      answer: {
+        status: 429,
+        body: { message: 'Too many sign-in attempts', code: 'too_many_attempts', retryAfter: 45 },
+        headers: { 'retry-after': '45' },
+      },
+      want: `${DEFAULT_LOGIN_MESSAGES['too_many_attempts']} Try again in 45 seconds.`,
+    },
+    {
+      name: 'a locked name whose answer names no wait shows the sentence alone',
+      answer: { status: 429, body: { message: 'Too many sign-in attempts', code: 'too_many_attempts' } },
+      want: DEFAULT_LOGIN_MESSAGES['too_many_attempts'],
+    },
   ];
   for (const tt of refusals) {
     it(tt.name, async () => {
@@ -340,6 +372,8 @@ describe('LoginMethodsComponent signs in with the password', () => {
       expect(sent(page.transport)).not.toContain('GET /console/api/user/session');
       expect(page.element.querySelector('input[name="password"]')).not.toBeNull();
       expect(page.component.busy()).toBe(false);
+      // The refusal is rendered in place and raises no notice.
+      expect(TestBed.inject(NotificationService).notifications()).toEqual([]);
     });
   }
 
@@ -555,6 +589,25 @@ describe('LoginMethodsComponent renders the pending step', () => {
     expect(messageOf(page)).toBe('Invalid Credentials');
     expect(page.component.pending()).toEqual(waiting);
     expect(page.element.querySelector('input[name="confirmation"]')).not.toBeNull();
+  });
+
+  it('a locked name shows the sentence for the code the 429 body carries, with the wait, and keeps the step', async () => {
+    const page = await pageOver(
+      server({
+        status: { status: 200, body: waiting },
+        confirm: {
+          status: 429,
+          body: { message: 'Too many sign-in attempts', code: 'too_many_attempts', retryAfter: 840 },
+          headers: { 'retry-after': '840' },
+        },
+      }),
+      { pending: 'confirmation' },
+    );
+    await confirmWith(page, 'wrong');
+    expect(messageOf(page)).toBe(`${DEFAULT_LOGIN_MESSAGES['too_many_attempts']} Try again in 14 minutes.`);
+    expect(page.component.pending()).toEqual(waiting);
+    expect(page.element.querySelector('input[name="confirmation"]')).not.toBeNull();
+    expect(TestBed.inject(NotificationService).notifications()).toEqual([]);
   });
 
   const endings: { name: string; answer: TransportResponse; want: string }[] = [
