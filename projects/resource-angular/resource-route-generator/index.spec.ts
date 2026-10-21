@@ -113,6 +113,25 @@ describe('resourceRoutes', () => {
     });
   });
 
+  // A page under the tenant segment names the tenant parameter in its route; the route
+  // is mounted and registered as written, and resolved into the tenant where a link is built.
+  describe('under the tenant segment', () => {
+    it('mounts and registers the page as the config wrote it, parameter and all', () => {
+      const missions = 'Missions' as Resource;
+      const route = resourceRoutes(
+        rootConfig({
+          routeData: { route: 'sectors/:sectorID/missions' },
+          nav: { navItem: { label: 'Missions' } },
+          parentConfig: listViewConfig({ primaryResource: missions, listColumns: [], elements: [] }),
+        }),
+        () => keyed('sectors/{sectorID}/missions'),
+      );
+      expect(route.path).toBe('sectors/:sectorID/missions');
+      expect(rowRoute(route)).toBeDefined();
+      expect(resourcePageRoute(missions)).toBe('sectors/:sectorID/missions');
+    });
+  });
+
   // A listed resource with no key field is served whole and has no row: no row route
   // under either form of the page route, and no page registered as where a row opens.
   describe('over a key-less resource', () => {
