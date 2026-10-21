@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.0.9](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.8...resource-angular/v0.0.9) (2026-10-21)
+
+
+### Features
+
+* the login page shows a sentence for no_tenant, connection_not_in_tenant and directory_only ([#145](https://github.com/cccteam/ccc-lib/issues/145)) ([b001c05](https://github.com/cccteam/ccc-lib/commit/b001c050843a2701841565743c743b5436bfa1f6))
+* the login page shows a sentence for too_many_attempts with the wait, reading the code from a 429 refusal ([#145](https://github.com/cccteam/ccc-lib/issues/145)) ([b001c05](https://github.com/cccteam/ccc-lib/commit/b001c050843a2701841565743c743b5436bfa1f6))
+
+
+### Bug Fixes
+
+* config-driven pages build their row links and after-create navigation under the page's tenant ([#145](https://github.com/cccteam/ccc-lib/issues/145)) ([b001c05](https://github.com/cccteam/ccc-lib/commit/b001c050843a2701841565743c743b5436bfa1f6))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.7 to ^0.0.8
+
 ## [0.0.8](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.7...resource-angular/v0.0.8) (2026-10-19)
 
 
