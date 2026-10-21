@@ -321,7 +321,7 @@ const result = await api.auth.signInWithPassword(password, { username, password:
 switch (result.outcome) {
   case 'session':  // the session is established; check it and move on
   case 'pending':  // a step waits: read api.auth.pending(), or go to result.redirectUrl when the server named one
-  case 'refused':  // result.code (user_disabled, pending_expired, the application's own) and result.message
+  case 'refused':  // result.code (user_disabled, pending_expired, too_many_attempts, the application's own), result.message, and result.retryAfter when the server named a wait
 }
 
 // A redirect method is a navigation, with the page to return to.
@@ -346,10 +346,14 @@ step, or a refusal: a wrong password answers 401 in the server's words and leave
 place), and `cancelPending()` discards it. A server whose list names no pending routes never
 holds a sign-in, and these three throw saying so.
 
-A refusal the server answers on a step (401 or 403, and 404 or 409 on a confirmation) resolves
-as `refused` with the server's code and words and never reaches the client's error hook, so
-nothing sends the browser to the login page it is on and nothing raises a notice. Every other
-failure, a malformed request, a server fault, no response, throws as the client's requests do.
+A refusal the server answers on a step (401, 403 or 429, and 404 or 409 on a confirmation)
+resolves as `refused` with the server's code and words and never reaches the client's error
+hook, so nothing sends the browser to the login page it is on and nothing raises a notice. The
+429 is the session library's attempt limiter: a name whose failed password attempts reached the
+limit is refused with the code `too_many_attempts` and the wait before the next attempt, which
+the refusal carries as `retryAfter`, in seconds, read from the body's `retryAfter`, else from
+the `Retry-After` header; a refusal that names no wait has none. Every other failure, a
+malformed request, a server fault, no response, throws as the client's requests do.
 The Angular binding's `<ccc-login-methods>` renders all of this; a page over another framework
 does the same over these calls.
 

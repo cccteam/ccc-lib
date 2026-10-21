@@ -1,5 +1,6 @@
 import { ClientResponse, ResponseRequester } from './permissions';
 import { Store } from './store';
+import { retryAfterHeader, retryAfterSeconds } from './transport';
 import { Warn, warnOnce } from './warnings';
 
 /**
@@ -79,15 +80,20 @@ export interface PasswordCredentials {
 /**
  * The server's refusal of a sign-in step, resolved rather than thrown so a page renders it
  * where it belongs. `code` is the server's login refusal code, for the sentence the page
- * holds for it (`user_disabled`, `pending_expired`, an application's own); it is undefined
- * when the answer carried none, such as a wrong password or a step the pending sign-in
- * does not wait for, and `message` is then the server's words.
+ * holds for it (`user_disabled`, `pending_expired`, `too_many_attempts`, an application's
+ * own); it is undefined when the answer carried none, such as a wrong password or a step
+ * the pending sign-in does not wait for, and `message` is then the server's words.
+ * `retryAfter` is the wait the server asks for before the next attempt, in seconds: the
+ * attempt limiter answers a locked name with 429, `too_many_attempts`, `retryAfter` in the
+ * body and the `Retry-After` header, and the client reads the body's, else the header's.
+ * It is undefined when the answer named no wait.
  */
 export interface SignInRefusal {
   readonly outcome: 'refused';
   readonly status: number;
   readonly code?: string;
   readonly message: string;
+  readonly retryAfter?: number;
 }
 
 /**
@@ -145,9 +151,9 @@ export interface AuthClientOptions {
   warn?: Warn;
 }
 
-/** The statuses a sign-in step resolves as a refusal rather than throws. */
-const signInRefusals: readonly number[] = [401, 403];
-const confirmRefusals: readonly number[] = [401, 403, 404, 409];
+/** The statuses a sign-in step resolves as a refusal rather than throws; 429 is the attempt limiter's. */
+const signInRefusals: readonly number[] = [401, 403, 429];
+const confirmRefusals: readonly number[] = [401, 403, 404, 409, 429];
 const statusRefusals: readonly number[] = [401, 403];
 const changeRefusals: readonly number[] = [400, 401, 403, 409];
 
@@ -180,10 +186,11 @@ interface SignInAnswer {
   redirectUrl?: string;
 }
 
-/** The shape a refusal answers: the server's words, and its code when it has one. */
+/** The shape a refusal answers: the server's words, its code when it has one, and the wait in seconds when it names one. */
 interface RefusalAnswer {
   message?: unknown;
   code?: unknown;
+  retryAfter?: unknown;
 }
 
 /**
@@ -255,9 +262,12 @@ export class AuthClient {
   /**
    * Signs in through a password method: reads the methods list again, then posts the
    * credentials to the path the refreshed list names for the method. The result is the
-   * session, a pending step, or the server's refusal. A method that is not a password
-   * method is refused before any request, and one the refreshed list no longer offers
-   * throws, the list in `snapshot` being the one to render again.
+   * session, a pending step, or the server's refusal: a wrong password answers 401 with
+   * the server's words, a cause the policy forbids 403 with its code, and a name whose
+   * failed attempts reached the server's limit 429 with `too_many_attempts` and the wait
+   * (`retryAfter`). A method that is not a password method is refused before any request,
+   * and one the refreshed list no longer offers throws, the list in `snapshot` being the
+   * one to render again.
    */
   async signInWithPassword(method: LoginMethod, credentials: PasswordCredentials): Promise<SignInResult> {
     if (method.kind !== 'password') {
@@ -312,7 +322,9 @@ export class AuthClient {
    * methods list again, then posts the password to the confirmation route. The result is
    * the session, a further pending step (the policy's MFA after the link), or the
    * server's refusal: a wrong password answers 401 with the server's words and leaves the
-   * pending sign-in in place, and an expired one answers `pending_expired`.
+   * pending sign-in in place, an expired one answers `pending_expired`, and a name whose
+   * failed attempts reached the server's limit answers 429 with `too_many_attempts` and
+   * the wait (`retryAfter`), the pending sign-in still in place.
    */
   async confirmPending(password: string): Promise<SignInResult> {
     const routes = await this.pendingRoutes(true);
@@ -417,15 +429,27 @@ function signInResultOf(response: ClientResponse<SignInAnswer | RefusalAnswer | 
   return { outcome: 'session' };
 }
 
-/** The server's refusal as the page renders it: its code when the answer carries one, and its words. */
+/**
+ * The server's refusal as the page renders it: its code when the answer carries one, its
+ * words, and the wait it names, from the body's `retryAfter` when that is a number of
+ * seconds, else from the `Retry-After` header.
+ */
 function refusalOf(response: ClientResponse<unknown>): SignInRefusal {
   const body: RefusalAnswer =
     response.body && typeof response.body === 'object' ? (response.body as RefusalAnswer) : {};
   const code = typeof body.code === 'string' && body.code !== '' ? body.code : undefined;
   const message = typeof body.message === 'string' && body.message !== '' ? body.message : `HTTP ${response.status}`;
-  return code === undefined
-    ? { outcome: 'refused', status: response.status, message }
-    : { outcome: 'refused', status: response.status, code, message };
+  const retryAfter =
+    typeof body.retryAfter === 'number' && Number.isFinite(body.retryAfter) && body.retryAfter >= 0
+      ? body.retryAfter
+      : retryAfterSeconds(response.headers[retryAfterHeader.toLowerCase()]);
+  return {
+    outcome: 'refused',
+    status: response.status,
+    ...(code === undefined ? {} : { code }),
+    message,
+    ...(retryAfter === undefined ? {} : { retryAfter }),
+  };
 }
 
 function stringOf(value: unknown): string {
