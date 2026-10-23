@@ -1,6 +1,6 @@
 {
   "name": "@cccteam/resource-firestore",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "The Firestore change feed for live pages over @cccteam/resource",
   "repository": {
     "type": "git",
@@ -8,7 +8,7 @@
     "directory": "projects/resource-firestore"
   },
   "peerDependencies": {
-    "@cccteam/resource": "^0.0.9",
+    "@cccteam/resource": "^0.0.10",
     "firebase": "^12.19.0"
   },
   "dependencies": {

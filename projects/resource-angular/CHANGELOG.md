@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.11](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.10...resource-angular/v0.0.11) (2026-10-23)
+
+
+### Features
+
+* **resource,resource-angular:** the client keeps the release the server names, and ccc-release shows it ([#149](https://github.com/cccteam/ccc-lib/issues/149)) ([703bcd6](https://github.com/cccteam/ccc-lib/commit/703bcd69f713ad41a9a429e37edeac7ebe738ca6))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.9 to ^0.0.10
+
 ## [0.0.10](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.9...resource-angular/v0.0.10) (2026-10-23)
 
 
