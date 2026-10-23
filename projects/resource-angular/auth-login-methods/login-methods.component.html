@@ -38,6 +38,13 @@
       Cancel
     </button>
   </div>
+} @else if (landed()) {
+  <div class="ccc-login-landed">
+    @if (verified(); as address) {
+      <p class="ccc-login-landed-note">{{ address }} is confirmed as your email address.</p>
+    }
+    <button mat-flat-button type="button" class="ccc-login-continue" (click)="proceed()">Continue</button>
+  </div>
 } @else if (pending(); as waiting) {
   <div class="ccc-login-pending">
     @if (waiting.reason === 'confirmation') {
@@ -60,12 +67,96 @@
     }
     <button mat-button type="button" class="ccc-login-cancel" [disabled]="busy()" (click)="cancel()">Cancel</button>
   </div>
+} @else if (account(); as form) {
+  <div class="ccc-login-account">
+    <p class="ccc-login-account-note">{{ accountNote(form) }}</p>
+    <form class="ccc-login-form" (ngSubmit)="createAccount()">
+      @if (!form.usernameIsEmail) {
+        <mat-form-field appearance="outline" class="ccc-login-field">
+          <mat-label>Username</mat-label>
+          <input matInput name="accountUsername" [(ngModel)]="accountUsername" autocomplete="username" required />
+        </mat-form-field>
+      }
+      <mat-form-field appearance="outline" class="ccc-login-field">
+        <mat-label>Password</mat-label>
+        <input
+          matInput
+          name="accountPassword"
+          type="password"
+          [(ngModel)]="accountPassword"
+          autocomplete="new-password"
+          required />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="ccc-login-field">
+        <mat-label>Password again</mat-label>
+        <input
+          matInput
+          name="accountPasswordAgain"
+          type="password"
+          [(ngModel)]="accountPasswordAgain"
+          autocomplete="new-password"
+          required />
+      </mat-form-field>
+      <button mat-flat-button type="submit" class="ccc-login-submit" [disabled]="busy()">Create account</button>
+    </form>
+    <button mat-button type="button" class="ccc-login-cancel" [disabled]="busy()" (click)="cancelAccount()">
+      Cancel
+    </button>
+  </div>
+} @else if (started(); as address) {
+  <div class="ccc-login-started">
+    <p class="ccc-login-started-note">
+      If {{ address }} is new here, a link to finish creating your account is on its way to it. Follow the link to
+      continue.
+    </p>
+    <button mat-button type="button" class="ccc-login-cancel" (click)="backToSignIn()">Back to sign in</button>
+  </div>
+} @else if (starting()) {
+  <div class="ccc-login-starting">
+    <p class="ccc-login-starting-note">Enter your email address. A link to finish creating your account is mailed to it.</p>
+    <form class="ccc-login-form" (ngSubmit)="sendSignUpLink()">
+      <mat-form-field appearance="outline" class="ccc-login-field">
+        <mat-label>Email address</mat-label>
+        <input matInput name="signUpEmail" type="email" [(ngModel)]="signUpEmail" autocomplete="email" required />
+      </mat-form-field>
+      <button mat-flat-button type="submit" class="ccc-login-submit" [disabled]="busy()">Send me a link</button>
+    </form>
+    <button mat-button type="button" class="ccc-login-cancel" [disabled]="busy()" (click)="backToSignIn()">
+      Cancel
+    </button>
+  </div>
 } @else {
+  @if (invitation(); as invited) {
+    <div class="ccc-login-invitation">
+      <p class="ccc-login-invitation-note">{{ invitationNote(invited) }}</p>
+      @if (signedInAs(); as name) {
+        <button mat-flat-button type="button" class="ccc-login-accept" [disabled]="busy()" (click)="accept()">
+          Accept as {{ name }}
+        </button>
+      }
+      @if (invited.signUp) {
+        <button
+          mat-stroked-button
+          type="button"
+          class="ccc-login-create-account"
+          [disabled]="busy()"
+          (click)="openAccountForm()">
+          Create an account with a password
+        </button>
+      }
+    </div>
+  }
   @if (passwordMethod(); as method) {
     <form class="ccc-login-form" (ngSubmit)="login()">
       <mat-form-field appearance="outline" class="ccc-login-field">
-        <mat-label>Username</mat-label>
-        <input matInput name="username" [(ngModel)]="username" autocomplete="username" required />
+        <mat-label>{{ usernameLabel() }}</mat-label>
+        <input
+          matInput
+          name="username"
+          [type]="usernameIsEmail() ? 'email' : 'text'"
+          [(ngModel)]="username"
+          autocomplete="username"
+          required />
       </mat-form-field>
       <mat-form-field appearance="outline" class="ccc-login-field">
         <mat-label>{{ labelOf(method) }}</mat-label>
@@ -88,6 +179,11 @@
       [disabled]="busy()"
       (click)="signInThrough(method)">
       Sign in with {{ labelOf(method) }}
+    </button>
+  }
+  @if (signUpOffered() && !invitation()) {
+    <button mat-button type="button" class="ccc-login-sign-up" [disabled]="busy()" (click)="beginSignUp()">
+      Create an account
     </button>
   }
 }

@@ -50,7 +50,35 @@ export interface PendingRoutes {
   readonly cancel: string;
 }
 
-/** What the methods route answers: the methods in the order the server lists them, and the pending sign-in's routes. */
+/**
+ * The paths of the invitation handlers: `open`, where the page posts the token a mailed
+ * invitation carried; `accept`, where a signed-in person accepts the invitation the browser
+ * carries; and `signUp`, where the invited person creates an account with a password,
+ * present when the server offers a password method.
+ */
+export interface InvitationRoutes {
+  readonly open: string;
+  readonly accept: string;
+  readonly signUp?: string;
+}
+
+/** The paths of the email address handlers: `add`, where a signed-in person asks for a confirmation link, and `verify`, where the page posts the token it carried. */
+export interface EmailRoutes {
+  readonly add: string;
+  readonly verify: string;
+}
+
+/** The paths of the sign-up handlers: `start`, where an address asks for its link; `open`, where the page posts the token; `complete`, where the account is created. */
+export interface SignUpRoutes {
+  readonly start: string;
+  readonly open: string;
+  readonly complete: string;
+}
+
+/**
+ * What the methods route answers: the methods in the order the server lists them, the
+ * pending sign-in's routes, and the routes of the mailed links the server serves.
+ */
 export interface LoginMethods {
   readonly methods: readonly LoginMethod[];
   /** The pending sign-in's routes; absent on a server that wired none, where no sign-in ever waits. */
@@ -61,6 +89,76 @@ export interface LoginMethods {
    * before anything else is served. Absent on a server with no password method.
    */
   readonly changePassword?: string;
+  /**
+   * The password method's username is the person's email address: the form asks for the
+   * address, and an account created from a mailed link takes no username of its own.
+   * Absent, or false, where the username is a name of the person's choosing.
+   */
+  readonly usernameIsEmail?: boolean;
+  /** The invitation routes; absent on a server that serves no invitations. */
+  readonly invitation?: InvitationRoutes;
+  /** The email address routes; absent on a server that sends no mail. */
+  readonly email?: EmailRoutes;
+  /** The sign-up routes; absent on a server whose password method does not offer sign-up, or that has none. */
+  readonly signUp?: SignUpRoutes;
+}
+
+/** An invitation as opening it describes it to the page. */
+export interface OpenedInvitation {
+  /** The address the invitation was mailed to; the account that accepts it holds it, verified, unless it already holds a verified one. */
+  readonly email: string;
+  /** The tenant the invitation seats the person in; empty for the application's global surface. */
+  readonly tenant: string;
+  /** When the invitation stops being accepted, as the server wrote it. */
+  readonly expiresAt: string;
+  /** The person may create an account with a password here (`signUpFromInvitation`); the server offers a password method. */
+  readonly signUp: boolean;
+  /** That account's username is the address; the person chooses one otherwise. */
+  readonly usernameIsEmail: boolean;
+}
+
+/**
+ * What opening an invitation answers: `opened` with the invitation, the browser now
+ * carrying it so the sign-in that follows accepts it; or the server's refusal, a 404 in
+ * the server's words for a link that has expired or was already used.
+ */
+export type InvitationOpenResult = ({ readonly outcome: 'opened' } & OpenedInvitation) | SignInRefusal;
+
+/** What accepting an invitation answers: `accepted`, the roles it carried granted; or the refusal, a 404 when the browser carries no live invitation. */
+export type InvitationAcceptResult = { readonly outcome: 'accepted' } | SignInRefusal;
+
+/**
+ * What asking for a mailed link answers: `sent`, whatever the address's state, so the
+ * screen reveals nothing about it (an address an account already holds is told so by
+ * mail); or the refusal: not an address (400), too many links to one mailbox (429 with
+ * `too_many_attempts` and the wait), or the server does not offer the step (404).
+ */
+export type MailLinkResult = { readonly outcome: 'sent' } | SignInRefusal;
+
+/**
+ * What verifying an address answers: `verified` with the address now on the signed-in
+ * user; or the refusal: a link that has expired, was already used or is not this
+ * account's own (404), or an address another account has taken meanwhile (409).
+ */
+export type EmailVerifyResult = { readonly outcome: 'verified'; readonly email: string } | SignInRefusal;
+
+/** A sign-up as opening its link describes it: the address, and whether the account's username is the address or the person chooses one. */
+export interface OpenedSignUp {
+  readonly email: string;
+  readonly usernameIsEmail: boolean;
+}
+
+/** What opening a sign-up link answers: `opened` with the sign-up, or the refusal, a 404 for a link that has expired or was already used. */
+export type SignUpOpenResult = ({ readonly outcome: 'opened' } & OpenedSignUp) | SignInRefusal;
+
+/**
+ * What an account created from a mailed link takes: the password the person chose, and
+ * the username where the password method does not declare the username as the address
+ * (`usernameIsEmail`); the server ignores one where it does.
+ */
+export interface NewAccount {
+  readonly password: string;
+  readonly username?: string;
 }
 
 /**
@@ -156,6 +254,15 @@ const signInRefusals: readonly number[] = [401, 403, 429];
 const confirmRefusals: readonly number[] = [401, 403, 404, 409, 429];
 const statusRefusals: readonly number[] = [401, 403];
 const changeRefusals: readonly number[] = [400, 401, 403, 409];
+/** A mailed link's token posted back: 404 for a link that is dead, 400 for a body that carries none. */
+const linkRefusals: readonly number[] = [400, 404];
+/** An acceptance by a signed-in person: 404 when the browser carries no live invitation. */
+const acceptRefusals: readonly number[] = [401, 403, 404, 409];
+/** An account created from a link: the sign-in's refusals, 400 for a short password or no username, 404 for a dead link, 409 for a taken name or address. */
+const accountRefusals: readonly number[] = [400, 401, 403, 404, 409, 429];
+/** A request for a mailed link: 400 for what is not an address, 404 where the step is not offered, 429 for a mailbox sent too many. */
+const mailRefusals: readonly number[] = [400, 404, 429];
+const verifyRefusals: readonly number[] = [400, 404, 409];
 
 /**
  * The refusal code the server answers, with a 403, on every request of a session whose
@@ -178,7 +285,14 @@ interface MethodsAnswer {
   methods?: Partial<LoginMethod>[] | null;
   pending?: Partial<PendingRoutes> | null;
   changePassword?: string | null;
+  usernameIsEmail?: boolean | null;
+  invitation?: Partial<InvitationRoutes> | null;
+  email?: Partial<EmailRoutes> | null;
+  signUp?: Partial<SignUpRoutes> | null;
 }
+
+/** The list as it is assembled from the answer, before it is handed out read-only. */
+type ListDraft = { -readonly [K in keyof LoginMethods]: LoginMethods[K] };
 
 /** The shape a sign-in step answers on 200. */
 interface SignInAnswer {
@@ -197,8 +311,9 @@ interface RefusalAnswer {
  * AuthClient drives a sign-in from the browser against what the server offers. It is the
  * one place that knows the wire shape: the methods list and its route, the password
  * method's form, the redirect method's return parameter, the pending sign-in's status,
- * confirmation and cancel, and the answers of each. A page over it renders the list,
- * posts the form, performs the redirect, and renders the pending step, naming no path of
+ * confirmation and cancel, the mailed links (an invitation, an address to confirm, a
+ * sign-up) and the answers of each. A page over it renders the list, posts the form,
+ * performs the redirect, renders the pending step and the opened link, naming no path of
  * its own.
  *
  * Every step that posts reads the methods list again first. The list's answer refreshes
@@ -367,6 +482,201 @@ export class AuthClient {
     return response.status >= 400 ? refusalOf(response) : { outcome: 'changed' };
   }
 
+  /**
+   * Opens the invitation a mailed link carried: reads the methods list again, then posts
+   * the token to the invitation's open route. The answer describes the invitation (the
+   * address, the tenant, when it expires, whether an account with a password may be
+   * created here and whether its username is the address), and the browser now carries
+   * the invitation, so the sign-in that follows, by any method, or the sign-up, accepts
+   * it. A link that has expired or was already used resolves `refused` with 404 and the
+   * server's words. A server whose list names no invitation routes serves none, and the
+   * call throws saying so.
+   */
+  async openInvitation(token: string): Promise<InvitationOpenResult> {
+    const routes = await this.invitationRoutes();
+    const response = await this.options.request<(Partial<OpenedInvitation> & RefusalAnswer) | null>('POST', routes.open, {
+      body: { token },
+      absolute: true,
+      accept: linkRefusals,
+    });
+    if (response.status >= 400) {
+      return refusalOf(response);
+    }
+    const body = response.body ?? {};
+    return {
+      outcome: 'opened',
+      email: stringOf(body.email),
+      tenant: stringOf(body.tenant),
+      expiresAt: stringOf(body.expiresAt),
+      signUp: body.signUp === true,
+      usernameIsEmail: body.usernameIsEmail === true,
+    };
+  }
+
+  /**
+   * Accepts the invitation the browser carries for the signed-in person: reads the methods
+   * list again, then posts to the accept route. The roles the invitation carried are
+   * granted, and the address it was sent to is the person's when they hold no verified one.
+   * A browser that carries no live invitation resolves `refused` with 404.
+   */
+  async acceptInvitation(): Promise<InvitationAcceptResult> {
+    const routes = await this.invitationRoutes();
+    const response = await this.options.request<RefusalAnswer | null>('POST', routes.accept, {
+      absolute: true,
+      accept: acceptRefusals,
+    });
+    return response.status >= 400 ? refusalOf(response) : { outcome: 'accepted' };
+  }
+
+  /**
+   * Creates the invited person's account with a password and signs them in, accepting the
+   * invitation the browser carries: reads the methods list again, then posts the account to
+   * the invitation's sign-up route. The account's address is the one the invitation was
+   * sent to, verified; its username is that address when the list says `usernameIsEmail`
+   * (none is posted), and the one given otherwise. The result is the sign-in's: the session, a pending step,
+   * or the refusal: a taken username or address (409), a password under eight characters
+   * or no username (400), no live invitation (404). A server whose list names no sign-up
+   * route for invitations offers no password method, and the call throws saying so.
+   */
+  async signUpFromInvitation(account: NewAccount): Promise<SignInResult> {
+    const routes = await this.invitationRoutes();
+    if (!routes.signUp) {
+      throw new Error(
+        'this server names no sign-up route for invitations in its methods list: it offers no password method to create an account with',
+      );
+    }
+    return this.createAccount(routes.signUp, accountBody(account));
+  }
+
+  /**
+   * Asks for a confirmation link to be mailed to an address the signed-in person wants on
+   * their account: reads the methods list again, then posts the address to the email add
+   * route. Nothing is written until the link is followed (`verifyEmail`), and the answer is
+   * `sent` whatever the address's state, so the screen reveals nothing about it: an address
+   * another account holds is told so by mail, and one the person already holds verified gets
+   * none. The refusal is not an address (400) or too many links to one mailbox (429 with
+   * `too_many_attempts` and the wait). A server whose list names no email routes sends no
+   * mail, and the call throws saying so.
+   */
+  async addEmail(email: string): Promise<MailLinkResult> {
+    const routes = await this.emailRoutes();
+    return this.requestLink(routes.add, { email });
+  }
+
+  /**
+   * Verifies the address a mailed link confirms, for the signed-in person who asked for it:
+   * reads the methods list again, then posts the token to the verify route. The address is
+   * written on the user as verified, replacing whatever they held; where the username is the
+   * address, the user is renamed to it. The result is `verified` with the address, or the
+   * refusal: a link that has expired, was already used or is another account's (404), or an
+   * address another account took meanwhile (409).
+   */
+  async verifyEmail(token: string): Promise<EmailVerifyResult> {
+    const routes = await this.emailRoutes();
+    const response = await this.options.request<(Partial<{ email: string }> & RefusalAnswer) | null>('POST', routes.verify, {
+      body: { token },
+      absolute: true,
+      accept: verifyRefusals,
+    });
+    if (response.status >= 400) {
+      return refusalOf(response);
+    }
+    return { outcome: 'verified', email: stringOf(response.body?.email) };
+  }
+
+  /**
+   * Starts a sign-up: reads the methods list again, then posts the address to the sign-up
+   * start route, which mails it a link to finish. The answer is `sent` whatever the
+   * address's state, so the screen reveals nothing: an address an account already holds is
+   * pointed at that account by mail. The refusal is not an address (400), too many links to
+   * one mailbox (429 with `too_many_attempts` and the wait), or sign-up not offered (404). A
+   * server whose list names no sign-up routes offers none, and the call throws saying so.
+   */
+  async startSignUp(email: string): Promise<MailLinkResult> {
+    const routes = await this.signUpRoutes();
+    return this.requestLink(routes.start, { email });
+  }
+
+  /**
+   * Opens the sign-up a mailed link carried: reads the methods list again, then posts the
+   * token to the sign-up open route. The answer is the address and whether the account's
+   * username is the address, for the page to render the form; a link that has expired or was
+   * already used resolves `refused` with 404.
+   */
+  async openSignUp(token: string): Promise<SignUpOpenResult> {
+    const routes = await this.signUpRoutes();
+    const response = await this.options.request<(Partial<OpenedSignUp> & RefusalAnswer) | null>('POST', routes.open, {
+      body: { token },
+      absolute: true,
+      accept: linkRefusals,
+    });
+    if (response.status >= 400) {
+      return refusalOf(response);
+    }
+    const body = response.body ?? {};
+    return { outcome: 'opened', email: stringOf(body.email), usernameIsEmail: body.usernameIsEmail === true };
+  }
+
+  /**
+   * Completes a sign-up: reads the methods list again, then posts the token and the account
+   * to the sign-up complete route, which creates the account with the address verified and
+   * signs the person in. The username is the address when the list says `usernameIsEmail`,
+   * and the one given otherwise. The result is the sign-in's: the session, a pending step,
+   * or the refusal: a taken username or address (409), a password under eight characters or
+   * no username (400), a dead link (404).
+   */
+  async completeSignUp(token: string, account: NewAccount): Promise<SignInResult> {
+    const routes = await this.signUpRoutes();
+    return this.createAccount(routes.complete, { token, ...accountBody(account) });
+  }
+
+  /** Posts an account to the route that creates it and signs it in, resolving as a sign-in step does. */
+  private async createAccount(route: string, body: object): Promise<SignInResult> {
+    const response = await this.options.request<SignInAnswer | RefusalAnswer | null>('POST', route, {
+      body,
+      absolute: true,
+      accept: accountRefusals,
+    });
+    return signInResultOf(response);
+  }
+
+  /** Posts a request for a mailed link, resolving `sent` or the refusal. */
+  private async requestLink(route: string, body: object): Promise<MailLinkResult> {
+    const response = await this.options.request<RefusalAnswer | null>('POST', route, {
+      body,
+      absolute: true,
+      accept: mailRefusals,
+    });
+    return response.status >= 400 ? refusalOf(response) : { outcome: 'sent' };
+  }
+
+  /** The invitation routes of the list, read again; a list naming none throws. */
+  private async invitationRoutes(): Promise<InvitationRoutes> {
+    const list = await this.methods();
+    if (!list.invitation) {
+      throw new Error('this server names no invitation routes in its methods list: it serves no invitations');
+    }
+    return list.invitation;
+  }
+
+  /** The email routes of the list, read again; a list naming none throws. */
+  private async emailRoutes(): Promise<EmailRoutes> {
+    const list = await this.methods();
+    if (!list.email) {
+      throw new Error('this server names no email address routes in its methods list: it sends no mail');
+    }
+    return list.email;
+  }
+
+  /** The sign-up routes of the list, read again; a list naming none throws. */
+  private async signUpRoutes(): Promise<SignUpRoutes> {
+    const list = await this.methods();
+    if (!list.signUp) {
+      throw new Error('this server names no sign-up routes in its methods list: its password method does not offer sign-up');
+    }
+    return list.signUp;
+  }
+
   /** The pending routes of the kept list, read again when asked or when none is kept. */
   private async pendingRoutes(refresh: boolean): Promise<PendingRoutes> {
     const kept = this.snapshot.get();
@@ -396,13 +706,35 @@ export class AuthClient {
         path: stringOf(entry.path),
       });
     }
+    const list: ListDraft = { methods };
     const pending = answer?.pending;
-    const list: LoginMethods =
-      pending?.status && pending.confirm && pending.cancel
-        ? { methods, pending: { status: pending.status, confirm: pending.confirm, cancel: pending.cancel } }
-        : { methods };
+    if (pending?.status && pending.confirm && pending.cancel) {
+      list.pending = { status: pending.status, confirm: pending.confirm, cancel: pending.cancel };
+    }
     const changePassword = answer?.changePassword;
-    return typeof changePassword === 'string' && changePassword !== '' ? { ...list, changePassword } : list;
+    if (typeof changePassword === 'string' && changePassword !== '') {
+      list.changePassword = changePassword;
+    }
+    if (answer?.usernameIsEmail === true) {
+      list.usernameIsEmail = true;
+    }
+    const invitation = answer?.invitation;
+    if (invitation?.open && invitation.accept) {
+      list.invitation = {
+        open: invitation.open,
+        accept: invitation.accept,
+        ...(invitation.signUp ? { signUp: invitation.signUp } : {}),
+      };
+    }
+    const email = answer?.email;
+    if (email?.add && email.verify) {
+      list.email = { add: email.add, verify: email.verify };
+    }
+    const signUp = answer?.signUp;
+    if (signUp?.start && signUp.open && signUp.complete) {
+      list.signUp = { start: signUp.start, open: signUp.open, complete: signUp.complete };
+    }
+    return list;
   }
 }
 
@@ -415,6 +747,11 @@ export function unknownKindWarning(name: string, kind: string): string {
     `the server lists the sign-in method ${name} as a ${kind} method, a kind this client does not drive: ` +
     'it is left out of the list; update @cccteam/resource to a release that drives it'
   );
+}
+
+/** The body an account is posted as: the password, and the username only where one was given. */
+function accountBody(account: NewAccount): { password: string; username?: string } {
+  return account.username === undefined ? { password: account.password } : { password: account.password, username: account.username };
 }
 
 /** The result of a sign-in step's answer: a refusal for a status the step accepts, else the session or a pending step. */

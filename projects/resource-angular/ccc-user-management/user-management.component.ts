@@ -9,6 +9,7 @@ import { MatSelectModule } from '@angular/material/select';
 import {
   Capability,
   Domain,
+  InvitationRow,
   Method,
   Page,
   RoleRow,
@@ -25,18 +26,33 @@ import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 /** A user row as the component reads it: with the capability envelope the list asked for. */
 export type ManagedUser = WithCapabilities<UserRow>;
 
+/** A standing invitation as the component reads it: with the envelope that says whether the caller may revoke it. */
+export type ManagedInvitation = WithCapabilities<InvitationRow>;
+
 /** The capabilities the list asks the server to evaluate per row: what each row's controls follow. */
 const askedCapabilities: Capability[] = ['Update', 'Delete', 'Execute'];
+
+/** The capability the invitations list asks for per row: the revoke. */
+const askedInvitationCapabilities: Capability[] = ['Delete'];
 
 /** The form a new user is entered on. */
 interface NewUser {
   username: string;
   password: string;
   disabled: boolean;
+  email: string;
   role: string;
 }
 
-const emptyNewUser = (): NewUser => ({ username: '', password: '', disabled: false, role: '' });
+const emptyNewUser = (): NewUser => ({ username: '', password: '', disabled: false, email: '', role: '' });
+
+/** The form an invitation is entered on: the address, and the roles its acceptance grants. */
+interface NewInvitation {
+  email: string;
+  roles: string[];
+}
+
+const emptyNewInvitation = (): NewInvitation => ({ email: '', roles: [] });
 
 /**
  * The user-management page over one partition of an Auth's surface. The component
@@ -46,16 +62,26 @@ const emptyNewUser = (): NewUser => ({ username: '', password: '', disabled: fal
  * follows from the surface's shape and the caller's grants. A password method gives the
  * create form a password field and every row a set-password action; an external
  * registration gives the rows their identity links and an unlink action; the tenant
- * partition's create asks for the role that seats the new user in the tenant.
+ * partition's create asks for the role that seats the new user in the tenant. Each row
+ * shows the person's email address and whether they have confirmed it; an operator's
+ * entry of an address is unverified and reserves it. Where the password method declares
+ * the username as the address, the username column is the address and neither is edited
+ * by hand: a verified new address renames the person.
  *
- * Every control follows a capability: the digest decides whether users are created and
- * seats written, and the row's capability envelope, asked for on every read, decides the
- * rename, the disable, the delete and the methods per row, so one's own row loses its
- * disable and delete and a user seated outside the tenant loses the account-level
- * actions without the page knowing why. A row whose seats a directory writes
- * (`rolesSynced`) shows them read-only. A refusal, by the server or by the network, is
- * shown in place in the server's words, and the list is read again after every write so
- * the rows say what the server says.
+ * Below the users stand the partition's invitations, where the descriptor names the
+ * resource: an address invited to hold roles, until whoever follows the mailed link signs
+ * in (by any method, or by creating an account with a password) and is seated with them,
+ * or the invitation is revoked or expires. An invitation is the same request whether an
+ * account holds the address or not, and the page does not learn which.
+ *
+ * Every control follows a capability: the digest decides whether users are created, seats
+ * written and invitations sent, and the row's capability envelope, asked for on every
+ * read, decides the rename, the disable, the delete, the methods and the revoke per row,
+ * so one's own row loses its disable and delete and a user seated outside the tenant
+ * loses the account-level actions without the page knowing why. A row whose seats a
+ * directory writes (`rolesSynced`) shows them read-only. A refusal, by the server or by
+ * the network, is shown in place in the server's words, and the lists are read again
+ * after every write so the rows say what the server says.
  *
  *     <ccc-user-management />
  *     <ccc-user-management auth="Members" />
@@ -114,6 +140,8 @@ export class UserManagementComponent {
   rows = computed<readonly ManagedUser[]>(() => this.page()?.rows ?? []);
   /** The roles a seat may take in the partition; empty when the caller may not list them. */
   roles = signal<readonly RoleRow[]>([]);
+  /** The invitations standing into the partition, with each one's envelope; empty when the caller may not list them. */
+  invitations = signal<readonly ManagedInvitation[]>([]);
   /** True until the first read of a partition answers. */
   loading = signal(true);
   /** The refusal of the list itself, in the server's words. */
@@ -126,12 +154,16 @@ export class UserManagementComponent {
   open = signal<string | undefined>(undefined);
   /** The create form is shown. */
   creating = signal(false);
+  /** The invitation form is shown. */
+  inviting = signal(false);
   /** The id of the row whose delete awaits confirmation. */
   confirmingDelete = signal<string | undefined>(undefined);
 
   newUser: NewUser = emptyNewUser();
-  /** The open row's rename, temporary password and seat-to-add fields. */
+  newInvitation: NewInvitation = emptyNewInvitation();
+  /** The open row's rename, address, temporary password and seat-to-add fields. */
   rename = '';
+  address = '';
   temporaryPassword = '';
   seatRole = '';
 
@@ -147,6 +179,29 @@ export class UserManagementComponent {
     const label = this.surface()?.label ?? '';
     const domain = this.domain();
     return domain === undefined ? `${label} users` : `${label} users of ${domain}`;
+  }
+
+  /** The password method declares the username as the person's email address: the username column is the address. */
+  usernameIsEmail(): boolean {
+    return this.surface()?.usernameIsEmail ?? false;
+  }
+
+  /** The words over the username fields: the address where the username is one. */
+  usernameLabel(): string {
+    return this.usernameIsEmail() ? 'Email address' : 'Username';
+  }
+
+  /** The words for a row's address: the address with its state, or none. */
+  emailOf(row: UserRow): string {
+    if (row.email === null) {
+      return 'None';
+    }
+    return row.emailVerifiedAt === null ? `${row.email} · unconfirmed` : row.email;
+  }
+
+  /** The words for the inviter: the username of the user who sent it when this page lists them, else nothing. */
+  invitedBy(invitation: InvitationRow): string {
+    return this.rows().find((row) => row.id === invitation.invitedBy)?.username ?? '';
   }
 
   /** The words for how a user signs in: the password and each linked identity's registration. */
@@ -195,6 +250,11 @@ export class UserManagementComponent {
     return this.users()?.users.fieldEditable(row, 'username') ?? false;
   }
 
+  /** Whether the caller may enter the row's address by hand: never where the username is the address. */
+  canSetEmail(row: ManagedUser): boolean {
+    return !this.usernameIsEmail() && (this.users()?.users.fieldEditable(row, 'email') ?? false);
+  }
+
   canDisable(row: ManagedUser): boolean {
     return this.users()?.users.fieldEditable(row, 'disabled') ?? false;
   }
@@ -225,10 +285,25 @@ export class UserManagementComponent {
     return !row.rolesSynced && (this.users()?.canUnseat() ?? false);
   }
 
+  /** Whether the partition has invitations the caller may list or send: the invitations block is shown. */
+  invitable(): boolean {
+    const partition = this.users();
+    return partition !== undefined && (partition.canListInvitations() || partition.canInvite());
+  }
+
+  canInvite(): boolean {
+    return this.users()?.canInvite() ?? false;
+  }
+
+  canRevoke(invitation: ManagedInvitation): boolean {
+    return this.users()?.invitations?.rowCan(invitation, 'Delete') ?? false;
+  }
+
   /** Whether the row has any action for the caller, so a details button is worth showing. */
   manageable(row: ManagedUser): boolean {
     return (
       this.canRename(row) ||
+      this.canSetEmail(row) ||
       this.canDisable(row) ||
       this.canDelete(row) ||
       this.canSetPassword(row) ||
@@ -246,6 +321,7 @@ export class UserManagementComponent {
     }
     this.open.set(row.id);
     this.rename = row.username;
+    this.address = row.email ?? '';
     this.temporaryPassword = '';
     this.seatRole = '';
     this.confirmingDelete.set(undefined);
@@ -259,7 +335,14 @@ export class UserManagementComponent {
     this.notice.set(undefined);
   }
 
-  /** Creates the user the form describes: a password where one was typed, the role in the tenant partition. */
+  /** Shows the invitation form, or hides it. */
+  toggleInvite(): void {
+    this.inviting.update((shown) => !shown);
+    this.newInvitation = emptyNewInvitation();
+    this.notice.set(undefined);
+  }
+
+  /** Creates the user the form describes: a password where one was typed, the address where one was, the role in the tenant partition. */
   create(): Promise<void> {
     const partition = this.users();
     if (!partition || !this.creating()) {
@@ -271,11 +354,45 @@ export class UserManagementComponent {
         username: form.username,
         ...(this.asksPassword() && form.password !== '' ? { password: form.password } : {}),
         ...(form.disabled ? { disabled: true } : {}),
+        ...(!this.usernameIsEmail() && form.email !== '' ? { email: form.email } : {}),
         ...(this.asksRole() ? { role: form.role } : {}),
       });
       this.newUser = emptyNewUser();
       this.creating.set(false);
     });
+  }
+
+  /** Sends the invitation the form describes: the address is mailed a link carrying the roles. */
+  invite(): Promise<void> {
+    const invitations = this.users()?.invitations;
+    if (!invitations || !this.inviting()) {
+      return Promise.resolve();
+    }
+    const form = this.newInvitation;
+    return this.act(async () => {
+      await invitations.create({ email: form.email, roles: form.roles });
+      this.newInvitation = emptyNewInvitation();
+      this.inviting.set(false);
+    });
+  }
+
+  /** Revokes a standing invitation: the mailed link no longer opens. */
+  revoke(invitation: InvitationRow): Promise<void> {
+    const invitations = this.users()?.invitations;
+    if (!invitations) {
+      return Promise.resolve();
+    }
+    return this.act(() => invitations.remove([invitation.id]));
+  }
+
+  /** Enters the open row's address by hand, unverified: it reserves the address until the person confirms it. */
+  saveEmail(row: UserRow): Promise<void> {
+    const partition = this.users();
+    if (!partition || this.address === '' || this.address === row.email) {
+      return Promise.resolve();
+    }
+    const email = this.address;
+    return this.act(() => partition.users.patch([row.id], { email }));
   }
 
   /** Renames the open row to what the rename field says. */
@@ -410,11 +527,13 @@ export class UserManagementComponent {
     });
   }
 
-  /** The first read of a partition: its page of users and the roles a seat may take. */
+  /** The first read of a partition: its page of users, the roles a seat may take, and the invitations standing into it. */
   private async load(partition: UserPartitionClient | undefined): Promise<void> {
     this.page.set(undefined);
     this.roles.set([]);
+    this.invitations.set([]);
     this.open.set(undefined);
+    this.inviting.set(false);
     this.error.set(undefined);
     this.notice.set(undefined);
     if (!partition) {
@@ -435,9 +554,24 @@ export class UserManagementComponent {
       // A caller who may not list the roles seats nobody; the picker stays empty.
       this.roles.set([]);
     }
+    await this.loadInvitations(partition);
   }
 
-  /** The same page again, keeping its position; a failed refresh is a notice, not a blank page. */
+  /** The invitations standing into the partition, when it has them and the caller may list them; none otherwise. */
+  private async loadInvitations(partition: UserPartitionClient): Promise<void> {
+    if (!partition.invitations || !partition.canListInvitations()) {
+      this.invitations.set([]);
+      return;
+    }
+    try {
+      this.invitations.set(await partition.invitations.list({ limit: 'all', capabilities: askedInvitationCapabilities }));
+    } catch (error) {
+      this.notice.set(this.notice() ?? messageOf(error));
+      this.invitations.set([]);
+    }
+  }
+
+  /** The same page again, keeping its position, and the invitations; a failed refresh is a notice, not a blank page. */
   private async refresh(): Promise<void> {
     const current = this.page();
     const partition = this.users();
@@ -449,6 +583,7 @@ export class UserManagementComponent {
     } catch (error) {
       this.notice.set(this.notice() ?? messageOf(error));
     }
+    await this.loadInvitations(partition);
   }
 
   /** Runs one piece of work as a pending task of the application, released when it settles. */

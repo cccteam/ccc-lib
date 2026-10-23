@@ -166,14 +166,21 @@ export interface ApiDescriptor {
  * methods: `auth` is the Auth's name (`Crew`, the auth package's name in PascalCase),
  * `label` the words a page shows for it, `password` whether a password method is
  * registered (then a user is created with an optional password, a password is set for
- * one, and a password an operator sets is changed before anything else is served), and
- * `registrations` the external methods. The partitions come global first; the tenant
- * partition is present when the application has a tenant record.
+ * one, and a password an operator sets is changed before anything else is served),
+ * `usernameIsEmail` whether that method declares the username as the person's email
+ * address (then the username and the address are not edited by hand: a verified new
+ * address renames the user), `openSignUp` whether it lets a stranger create an account
+ * from a mailed link, and `registrations` the external methods. The partitions come
+ * global first; the tenant partition is present when the application has a tenant
+ * record. A descriptor from a generator that predates the mailed links carries neither
+ * flag.
  */
 export interface UserSurfaceDescriptor {
   readonly auth: string;
   readonly label: string;
   readonly password: boolean;
+  readonly usernameIsEmail?: boolean;
+  readonly openSignUp?: boolean;
   readonly registrations: readonly UserRegistrationDescriptor[];
   readonly partitions: readonly UserPartitionDescriptor[];
 }
@@ -196,16 +203,19 @@ export interface UserRegistrationDescriptor {
 /**
  * One partition of a surface: the global one (every user of the Auth, with the seats
  * held globally and in every domain) or the tenant one (the users seated in the route's
- * tenant or everywhere, with their seats there). `users`, `seats` and `roles` name the
- * partition's resources in `resources`; `setPassword` and `unlinkIdentity` the methods
- * in `methods`, absent where the Auth's methods give none (no password method; no
- * external registration).
+ * tenant or everywhere, with their seats there). `users`, `seats`, `roles` and
+ * `invitations` name the partition's resources in `resources` (`invitations`, the
+ * standing invitations into the partition, is absent on a descriptor from a generator
+ * that predates them); `setPassword` and `unlinkIdentity` the methods in `methods`,
+ * absent where the Auth's methods give none (no password method; no external
+ * registration).
  */
 export interface UserPartitionDescriptor {
   readonly scope: ScopeKind;
   readonly users: string;
   readonly seats: string;
   readonly roles: string;
+  readonly invitations?: string;
   readonly setPassword?: string;
   readonly unlinkIdentity?: string;
 }

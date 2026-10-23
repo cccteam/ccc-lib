@@ -10,16 +10,35 @@
 .ccc-login-field,
 .ccc-login-submit,
 .ccc-login-redirect,
-.ccc-login-cancel {
+.ccc-login-cancel,
+.ccc-login-sign-up,
+.ccc-login-accept,
+.ccc-login-create-account,
+.ccc-login-continue {
   width: 100%;
 }
 
-.ccc-login-redirect {
+.ccc-login-redirect,
+.ccc-login-sign-up {
   margin-top: 12px;
 }
 
+.ccc-login-invitation {
+  margin-bottom: 16px;
+}
+
+.ccc-login-accept,
+.ccc-login-create-account {
+  margin-top: 8px;
+}
+
 .ccc-login-pending-note,
-.ccc-login-change-note {
+.ccc-login-change-note,
+.ccc-login-account-note,
+.ccc-login-started-note,
+.ccc-login-starting-note,
+.ccc-login-landed-note,
+.ccc-login-invitation-note {
   margin: 0 0 12px;
 }
 

@@ -12,9 +12,22 @@
   @if (creating()) {
     <form class="ccc-users-create" (ngSubmit)="create()">
       <mat-form-field appearance="outline" class="ccc-users-field">
-        <mat-label>Username</mat-label>
-        <input matInput name="username" [(ngModel)]="newUser.username" autocomplete="off" required />
+        <mat-label>{{ usernameLabel() }}</mat-label>
+        <input
+          matInput
+          name="username"
+          [type]="usernameIsEmail() ? 'email' : 'text'"
+          [(ngModel)]="newUser.username"
+          autocomplete="off"
+          required />
       </mat-form-field>
+      @if (!usernameIsEmail()) {
+        <mat-form-field appearance="outline" class="ccc-users-field">
+          <mat-label>Email address</mat-label>
+          <input matInput name="email" type="email" [(ngModel)]="newUser.email" autocomplete="off" />
+          <mat-hint>Unconfirmed until the person confirms it themselves.</mat-hint>
+        </mat-form-field>
+      }
       @if (asksPassword()) {
         <mat-form-field appearance="outline" class="ccc-users-field">
           <mat-label>Temporary password</mat-label>
@@ -49,7 +62,10 @@
     <table class="ccc-users">
       <thead>
         <tr>
-          <th>Username</th>
+          <th>{{ usernameLabel() }}</th>
+          @if (!usernameIsEmail()) {
+            <th>Email</th>
+          }
           <th>Status</th>
           <th>Signs in with</th>
           <th>Roles</th>
@@ -60,7 +76,15 @@
       <tbody>
         @for (row of rows(); track row.id) {
           <tr class="ccc-user" [class.ccc-user-open]="open() === row.id">
-            <td class="ccc-user-username">{{ row.username }}</td>
+            <td class="ccc-user-username">
+              {{ row.username }}
+              @if (usernameIsEmail() && row.emailVerifiedAt === null) {
+                <span class="ccc-user-mark">· unconfirmed</span>
+              }
+            </td>
+            @if (!usernameIsEmail()) {
+              <td class="ccc-user-email">{{ emailOf(row) }}</td>
+            }
             <td class="ccc-user-status">
               {{ row.disabled ? 'Disabled' : 'Active' }}
               @if (row.passwordChangeRequired) {
@@ -88,7 +112,7 @@
           </tr>
           @if (open() === row.id) {
             <tr class="ccc-user-details">
-              <td colspan="6">
+              <td [attr.colspan]="usernameIsEmail() ? 6 : 7">
                 @if (canRename(row)) {
                   <form class="ccc-user-action" (ngSubmit)="saveRename(row)">
                     <mat-form-field appearance="outline" class="ccc-users-field">
@@ -96,6 +120,18 @@
                       <input matInput name="rename" [(ngModel)]="rename" autocomplete="off" required />
                     </mat-form-field>
                     <button mat-stroked-button type="submit" class="ccc-user-rename" [disabled]="busy()">Rename</button>
+                  </form>
+                }
+                @if (canSetEmail(row)) {
+                  <form class="ccc-user-action" (ngSubmit)="saveEmail(row)">
+                    <mat-form-field appearance="outline" class="ccc-users-field">
+                      <mat-label>Email address</mat-label>
+                      <input matInput name="address" type="email" [(ngModel)]="address" autocomplete="off" required />
+                      <mat-hint>Unconfirmed until the person confirms it themselves.</mat-hint>
+                    </mat-form-field>
+                    <button mat-stroked-button type="submit" class="ccc-user-set-email" [disabled]="busy()">
+                      Set address
+                    </button>
                   </form>
                 }
                 <div class="ccc-user-action ccc-user-seats">
@@ -215,5 +251,75 @@
         </button>
       </div>
     }
+  }
+  @if (invitable()) {
+    <div class="ccc-invitations">
+      <div class="ccc-users-header">
+        <h3 class="ccc-invitations-heading">Invitations</h3>
+        @if (canInvite()) {
+          <button mat-flat-button type="button" class="ccc-invitations-new" [disabled]="busy()" (click)="toggleInvite()">
+            {{ inviting() ? 'Close' : 'Invite' }}
+          </button>
+        }
+      </div>
+      @if (inviting()) {
+        <form class="ccc-invitations-create" (ngSubmit)="invite()">
+          <mat-form-field appearance="outline" class="ccc-users-field">
+            <mat-label>Email address</mat-label>
+            <input matInput name="inviteEmail" type="email" [(ngModel)]="newInvitation.email" autocomplete="off" required />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="ccc-users-field">
+            <mat-label>Roles</mat-label>
+            <mat-select name="inviteRoles" [(ngModel)]="newInvitation.roles" multiple required>
+              @for (role of roles(); track role.name) {
+                <mat-option [value]="role.name">{{ roleLabel(role) }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>Granted when the invited person signs in.</mat-hint>
+          </mat-form-field>
+          <button mat-flat-button type="submit" class="ccc-invitations-submit" [disabled]="busy()">Send invitation</button>
+        </form>
+      }
+      @if (invitations().length === 0) {
+        <p class="ccc-users-note">No standing invitations.</p>
+      } @else {
+        <table class="ccc-users ccc-invitations-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Roles</th>
+              <th>Invited by</th>
+              <th>Sent</th>
+              <th>Expires</th>
+              <th><span class="ccc-users-visually-hidden">Revoke</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (invitation of invitations(); track invitation.id) {
+              <tr class="ccc-invitation">
+                <td class="ccc-invitation-email">{{ invitation.email }}</td>
+                <td class="ccc-invitation-roles">{{ invitation.roles.join(', ') }}</td>
+                <td class="ccc-invitation-by">{{ invitedBy(invitation) }}</td>
+                <td class="ccc-invitation-sent">{{ invitation.createdAt | date: 'medium' }}</td>
+                <td class="ccc-invitation-expires">{{ invitation.expiresAt | date: 'medium' }}</td>
+                <td class="ccc-invitation-manage">
+                  @if (canRevoke(invitation)) {
+                    <button
+                      mat-button
+                      type="button"
+                      class="ccc-invitation-revoke"
+                      [disabled]="busy()"
+                      [attr.aria-label]="'Revoke the invitation to ' + invitation.email"
+                      (click)="revoke(invitation)">
+                      Revoke
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
   }
 }

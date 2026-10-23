@@ -15,6 +15,7 @@
 }
 
 .ccc-users-create,
+.ccc-invitations-create,
 .ccc-user-action,
 .ccc-user-seat-form {
   display: flex;
@@ -23,8 +24,17 @@
   gap: 0.75rem;
 }
 
-.ccc-users-create {
+.ccc-users-create,
+.ccc-invitations-create {
   margin-bottom: 1rem;
+}
+
+.ccc-invitations {
+  margin-top: 1.5rem;
+}
+
+.ccc-invitations-heading {
+  margin: 0;
 }
 
 .ccc-users-field {

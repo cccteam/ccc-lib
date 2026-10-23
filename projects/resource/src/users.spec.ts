@@ -34,10 +34,12 @@ const crew: UserSurfaceDescriptor = {
   auth: 'Crew',
   label: 'Crew',
   password: true,
+  usernameIsEmail: false,
+  openSignUp: false,
   registrations: [{ name: 'google', kind: 'google', label: 'Google', invited: false, syncsRoles: true }],
   partitions: [
-    { scope: 'global', users: 'CrewUsers', seats: 'CrewSeats', roles: 'CrewRoles', setPassword: 'SetCrewUserPassword', unlinkIdentity: 'UnlinkCrewUserIdentity' },
-    { scope: 'domain', users: 'CrewSectorUsers', seats: 'CrewSectorSeats', roles: 'CrewSectorRoles', setPassword: 'SetCrewSectorUserPassword', unlinkIdentity: 'UnlinkCrewSectorUserIdentity' },
+    { scope: 'global', users: 'CrewUsers', seats: 'CrewSeats', roles: 'CrewRoles', invitations: 'CrewInvitations', setPassword: 'SetCrewUserPassword', unlinkIdentity: 'UnlinkCrewUserIdentity' },
+    { scope: 'domain', users: 'CrewSectorUsers', seats: 'CrewSectorSeats', roles: 'CrewSectorRoles', invitations: 'CrewSectorInvitations', setPassword: 'SetCrewSectorUserPassword', unlinkIdentity: 'UnlinkCrewSectorUserIdentity' },
   ],
 };
 
@@ -71,6 +73,8 @@ const descriptor: ApiDescriptor = {
     CrewSectorUsers: resource('CrewSectorUsers', 'crew-sector-users', 'domain', ['id'], ['list', 'read', 'create', 'patch', 'remove']),
     CrewSectorSeats: resource('CrewSectorSeats', 'crew-sector-seats', 'domain', ['user', 'role'], ['list', 'read', 'create', 'remove']),
     CrewSectorRoles: resource('CrewSectorRoles', 'crew-sector-roles', 'domain', ['name'], ['list', 'read']),
+    CrewInvitations: resource('CrewInvitations', 'crew-invitations', 'global', ['id'], ['list', 'read', 'create', 'remove']),
+    CrewSectorInvitations: resource('CrewSectorInvitations', 'crew-sector-invitations', 'domain', ['id'], ['list', 'read', 'create', 'remove']),
     KioskUsers: resource('KioskUsers', 'kiosk-users', 'global', ['id'], ['list', 'read', 'create', 'patch', 'remove']),
     KioskSeats: resource('KioskSeats', 'kiosk-seats', 'global', ['user', 'role'], ['list', 'read', 'create', 'remove']),
     KioskRoles: resource('KioskRoles', 'kiosk-roles', 'global', ['name'], ['list', 'read']),
@@ -96,6 +100,8 @@ const digest = {
   SetCrewUserPassword: { Execute: 'granted' },
   UnlinkCrewUserIdentity: { Execute: 'conditional' },
   CrewSectorSeats: { List: 'granted', Create: 'conditional' },
+  CrewInvitations: { List: 'granted', Create: 'conditional' },
+  CrewSectorInvitations: { List: 'granted', Create: 'granted', Delete: 'granted' },
   KioskUsers: { Create: 'granted' },
   MembersUsers: { List: 'granted' },
   MembersSeats: { Create: 'granted' },
@@ -127,8 +133,18 @@ describe('the surfaces block', () => {
     expect(userSurfaces(older)).toEqual([]);
   });
 
-  it('names the resources of a surface, both partitions', () => {
-    expect(surfaceResources(crew)).toEqual(['CrewUsers', 'CrewSeats', 'CrewRoles', 'CrewSectorUsers', 'CrewSectorSeats', 'CrewSectorRoles']);
+  it('names the resources of a surface, both partitions, the invitations where the partition has them', () => {
+    expect(surfaceResources(crew)).toEqual([
+      'CrewUsers',
+      'CrewSeats',
+      'CrewRoles',
+      'CrewInvitations',
+      'CrewSectorUsers',
+      'CrewSectorSeats',
+      'CrewSectorRoles',
+      'CrewSectorInvitations',
+    ]);
+    expect(surfaceResources(kiosk)).toEqual(['KioskUsers', 'KioskSeats', 'KioskRoles']);
   });
 });
 
@@ -140,7 +156,27 @@ describe('a partition bound on the client', () => {
     expect(partition.users.url(['u1'])).toBe('/api/crew-users/u1');
     expect(partition.seats.url(['u1', 'Pilot'])).toBe('/api/crew-seats/u1/Pilot');
     expect(partition.roles.url()).toBe('/api/crew-roles');
+    expect(partition.invitations?.url(['inv-1'])).toBe('/api/crew-invitations/inv-1');
     expect(partition.domain).toBeUndefined();
+  });
+
+  it('hands out no invitations handle for a partition whose descriptor names none, and answers false for all of it', () => {
+    const { client } = clientOver();
+    const partition = userPartition(client, kiosk, kiosk.partitions[0]);
+    expect(partition.invitations).toBeUndefined();
+    expect(partition.canListInvitations()).toBe(false);
+    expect(partition.canInvite()).toBe(false);
+    expect(partition.canRevokeInvitations()).toBe(false);
+  });
+
+  it('invites through the invitations resource, the address and the roles in the operation, and revokes by id', async () => {
+    const { client, transport } = clientOver();
+    const partition = userPartition(client, crew, crew.partitions[1], 'anvil' as Domain);
+    await partition.invitations?.create({ email: 'cass@fleet.example', roles: ['Harbormaster'] });
+    await partition.invitations?.remove(['inv-1']);
+    expect(sent(transport)).toEqual(['PATCH /api/sectors/anvil/crew-sector-invitations', 'PATCH /api/sectors/anvil/crew-sector-invitations']);
+    expect(transport.requests[0].body).toEqual([{ op: 'add', path: '/', value: { email: 'cass@fleet.example', roles: ['Harbormaster'] } }]);
+    expect(transport.requests[1].body).toEqual([{ op: 'remove', path: '/inv-1' }]);
   });
 
   it('hands out the handles of the tenant partition under the domain pair', () => {
@@ -204,6 +240,9 @@ describe('a partition bound on the client', () => {
     expect(crewGlobal.canUnseat()).toBe(true);
     expect(crewGlobal.canSetPassword()).toBe(true);
     expect(crewGlobal.canUnlinkIdentity()).toBe(true);
+    expect(crewGlobal.canListInvitations()).toBe(true);
+    expect(crewGlobal.canInvite()).toBe(true);
+    expect(crewGlobal.canRevokeInvitations()).toBe(false);
 
     const kioskGlobal = userPartition(client, kiosk, kiosk.partitions[0]);
     expect(kioskGlobal.canCreateUsers()).toBe(true);
@@ -221,5 +260,7 @@ describe('a partition bound on the client', () => {
     expect(crewSector.canCreateUsers()).toBe(false);
     expect(crewSector.canSeat()).toBe(true);
     expect(crewSector.canSetPassword()).toBe(false);
+    expect(crewSector.canInvite()).toBe(true);
+    expect(crewSector.canRevokeInvitations()).toBe(true);
   });
 });
