@@ -367,39 +367,85 @@ session again (the server regenerated it), or `refused` with the server's words 
 password did not match, the new one is the old one). A login page that finds the mark on the
 session read renders the change form before it opens the application.
 
+The server's mailed links all lead to the login page, each with its token in the URL, and the
+list names the routes they post to: `invitation` (`open`, `accept`, and `signUp` when the
+server offers a password method), `email` (`add`, `verify`) and `signUp` (`start`, `open`,
+`complete`), each block present only where the server serves it; and `usernameIsEmail` when
+the password method declares the username as the person's email address, so the form asks for
+the address and an account created from a link takes no username of its own. Each step below
+reads the list again first, like every step that posts, and throws when the list names no
+routes for it.
+
+An invitation (`?invitation=<token>`) brings a person into the application, or into one of its
+tenants, with the roles it carries. `openInvitation(token)` posts the token: the answer
+describes the invitation (`email`; `tenant`, empty for the global surface; `expiresAt`;
+`signUp`, whether an account with a password may be created here; `usernameIsEmail`), and the
+browser now carries it, so the sign-in that follows, by any method, accepts it and the
+server's hook seats the person. `acceptInvitation()` accepts it for a person already signed
+in. `signUpFromInvitation({ password, username? })` creates the invited person's account with
+a password, the address verified, and signs them in, answering as a sign-in step does. A link
+that has expired or was already used resolves `refused` with 404 and the server's words; a
+taken username or address 409.
+
+A sign-up (`?signUp=<token>`), where the password method offers it: `startSignUp(email)` asks
+for the link, answering `sent` whatever the address's state (an address an account already
+holds is pointed at the account by mail, and the screen reveals nothing), or the refusal: not
+an address (400), a mailbox sent three links within fifteen minutes (429 with
+`too_many_attempts` and the wait), sign-up not offered (404). `openSignUp(token)` answers the
+address and `usernameIsEmail` for the form; `completeSignUp(token, { password, username? })`
+creates the account with the address verified and signs the person in.
+
+An address (`?verify=<token>`): `addEmail(email)` asks, for the signed-in person, for a
+confirmation link, answering `sent` the same way, and nothing is written until
+`verifyEmail(token)` posts the token back, which counts for the account that asked and no
+other: the address lands on the user verified (`verified` with the address), replacing what
+they held, and where the username is the address the user is renamed to it. The session read
+carries `email`, `emailVerified` and, while the person holds no address, `emailHint`, the
+address a directory asserted at a sign-in, offered as a prefill and trusted for nothing.
+
 ## User management
 
 Every Auth the server's generated router binds has a user-management surface: its users, their
-seats (a user holding a role) and the roles a seat may take, served as resources beside the
-application's own, in a global partition and, where the application has a tenant record, a
-tenant partition under the domain pair, with a set-password method and an unlink-identity
-method beside them. They are ordinary entries of the descriptor's `resources` and `methods`, so
-the generated handles (`api.crewUsers`, `api.domain(sector).crewSectorSeats`), the digest, the
-capability envelope and the operations body work for them as for everything else. The
-descriptor's `userSurfaces` block says which entries make up each surface and what the Auth's
-sign-in methods give it, so a component is written once and configures itself to the
-application: `auth` and `label`, `password` (a password method is registered: users are created
-with an optional password, a password is set for one), the external `registrations` (each with
+seats (a user holding a role), the roles a seat may take and the invitations standing into it,
+served as resources beside the application's own, in a global partition and, where the
+application has a tenant record, a tenant partition under the domain pair, with a set-password
+method and an unlink-identity method beside them. They are ordinary entries of the descriptor's
+`resources` and `methods`, so the generated handles (`api.crewUsers`,
+`api.domain(sector).crewSectorSeats`), the digest, the capability envelope and the operations
+body work for them as for everything else. The descriptor's `userSurfaces` block says which
+entries make up each surface and what the Auth's sign-in methods give it, so a component is
+written once and configures itself to the application: `auth` and `label`, `password` (a
+password method is registered: users are created with an optional password, a password is set
+for one), `usernameIsEmail` (that method declares the username as the person's email address,
+so neither is edited by hand: a verified new address renames the person) and `openSignUp` (it
+lets a stranger create an account from a mailed link), the external `registrations` (each with
 `invited`, the directory admits only people created first, and `syncsRoles`, the directory
 writes their seats at every sign-in), and the `partitions`, global first, each naming its
-`users`, `seats` and `roles` resources and its `setPassword` and `unlinkIdentity` methods where
-the Auth has them. `userSurfaces(descriptor)` lists them; a descriptor from a generator that
-predates the surfaces carries none.
+`users`, `seats`, `roles` and `invitations` resources and its `setPassword` and
+`unlinkIdentity` methods where the Auth has them. `userSurfaces(descriptor)` lists them; a
+descriptor from a generator that predates the surfaces carries none, and one that predates the
+mailed links carries no `invitations` and neither flag.
 
 The rows have the same shape on every application (`UserRow`, `SeatRow`, `RoleRow`,
-`UserIdentity`): a user carries `id`, `username`, `disabled`, `hasPassword`,
-`passwordChangeRequired`, `createdAt`, `lastSignInAt`, `organization`, its `identities`, the
-`roles` held in the partition's scope, the `everywhereRoles` held in every domain, and
-`rolesSynced` when its seats are a directory's. `userPartition(api, surface, partition,
-domain?)` binds one partition: the three handles typed over those rows (`users.create` takes
-`username`, an optional `password` and `disabled`, and the tenant partition's `role`;
-`users.patch` takes `username` and `disabled`; `seats.create` takes `user` and `role`, the
-seat's key), `setPassword(user, password)` and `unlinkIdentity(user, identity)` posting to the
-methods' routes, and `canCreateUsers()`, `canSeat()`, `canUnseat()`, `canSetPassword()` and
-`canUnlinkIdentity()`, the digest's answer folded with what the Auth's methods give the
+`UserIdentity`, `InvitationRow`): a user carries `id`, `username`, `disabled`, `hasPassword`,
+`passwordChangeRequired`, `createdAt`, `lastSignInAt`, `organization`, `email` and
+`emailVerifiedAt` (the person's address and when they proved they read it; null while an
+operator's entry stands unverified, which reserves the address and is trusted for nothing),
+its `identities`, the `roles` held in the partition's scope, the `everywhereRoles` held in
+every domain, and `rolesSynced` when its seats are a directory's; an invitation carries `id`,
+`email`, the `roles` its acceptance grants, `invitedBy`, `createdAt` and `expiresAt`.
+`userPartition(api, surface, partition, domain?)` binds one partition: the handles typed over
+those rows (`users.create` takes `username`, an optional `password`, `disabled` and `email`,
+and the tenant partition's `role`; `users.patch` takes `username`, `disabled` and `email`;
+`seats.create` takes `user` and `role`, the seat's key; `invitations.create` takes `email` and
+`roles`, and `invitations.remove` revokes by id; the `invitations` handle is absent where the
+descriptor names none), `setPassword(user, password)` and `unlinkIdentity(user, identity)`
+posting to the methods' routes, and `canCreateUsers()`, `canSeat()`, `canUnseat()`,
+`canSetPassword()`, `canUnlinkIdentity()`, `canListInvitations()`, `canInvite()` and
+`canRevokeInvitations()`, the digest's answer folded with what the Auth's methods give the
 partition: no create on an Auth with no way for the new user to sign in, no set-password
-without a password method, no unlink without a registration. The tenant partition needs its
-domain; the global one takes none.
+without a password method, no unlink without a registration, nothing about invitations where
+the partition has none. The tenant partition needs its domain; the global one takes none.
 
 ```ts
 const [crew] = userSurfaces(api.descriptor);
@@ -408,14 +454,29 @@ const users = await sector.users.list({ capabilities: ['Update', 'Delete', 'Exec
 if (sector.canSeat() && !users[0].rolesSynced) {
   await sector.seats.create({ user: users[0].id, role: 'Harbormaster' });
 }
+if (sector.canInvite()) {
+  // The same request whether an account holds the address or not; the page does not learn which.
+  await sector.invitations?.create({ email: 'cass@fleet.example', roles: ['Harbormaster'] });
+}
 ```
+
+An invitation is a mailed link into the partition carrying the roles its acceptance grants:
+whoever follows it and signs in, by any method, or creates an account with a password, accepts
+it and is seated with them (see the sign-in section for the login page's side), and the
+standing invitation is gone from the list; one nobody followed is revoked, or expires. The
+roles are judged by the role file's grant grammar role by role, so a role granted `Create` on
+the invitations resource under a condition on the roles invites into every role but the ones
+it may not, and the refusal of the one it may not is the server's.
 
 The server keeps the rules no role file should have to state, and answers them as refusals the
 client's error hook renders: nobody disables, deletes or unseats themselves (403); a user whose
 seats a directory writes is not seated or unseated by hand (409); an account-level action from
 the tenant partition on a user also seated outside the tenant (409); the last way in is never
-unlinked (409); a tenant seat needs the user already in the tenant (400). The Angular binding's
-`<ccc-user-management>` renders a partition over these calls.
+unlinked (409); a tenant seat needs the user already in the tenant, or a person the tenant's
+own directory vouched for (400); where the username is the address, the row's envelope
+withholds the username and the address from the write. Removing a person's last seat anywhere
+deletes the account with its identity links, unless a global role keeps it. The Angular
+binding's `<ccc-user-management>` renders a partition over these calls.
 
 ## Transports
 

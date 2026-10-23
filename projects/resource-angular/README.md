@@ -87,12 +87,13 @@ A login page shows text it holds, never text from the URL. A refused OIDC login 
 `<ccc-login-methods>` (`@cccteam/resource-angular/auth-login-methods`) renders the sign-in methods
 the server offers and owns the journey from the list to the session. On arrival it reads the
 methods list through the application's client (`api.auth`, see the sign-in section of
-@cccteam/resource) and renders it: the password form when the list has a password method, and one
-button per redirect method, in the server's order. Nothing it shows is named in the application,
-so the bundle is the same in every environment and a method that is not registered has no button.
-The server's label is the default for each method; `labels` overrides it by registration name, and
-nothing else about a method is the page's to change. Everything around the methods, the branding, a
-manifest, a forgotten-password link, is the page's, composed around the component:
+@cccteam/resource) and renders it: the password form when the list has a password method, asking
+for the email address where the list says the username is one, and one button per redirect
+method, in the server's order. Nothing it shows is named in the application, so the bundle is the
+same in every environment and a method that is not registered has no button. The server's label is
+the default for each method; `labels` overrides it by registration name, and nothing else about a
+method is the page's to change. Everything around the methods, the branding, a manifest, a
+forgotten-password link, is the page's, composed around the component:
 
 ```html
 <mat-card>
@@ -162,6 +163,40 @@ to the login page as it returns an unauthenticated one, and the client's error h
 as it treats a 401, so a marked session that reaches a page is back on the login page before the
 page renders.
 
+The server's mailed links all lead to the login page, each with its token in the URL, and the
+component follows them from the routes the methods list names, so a server that sends no mail shows
+none of this. An invitation (`?invitation=<token>`) is opened on arrival and stands over the list:
+the note names the address and the tenant, and the browser now carries the invitation, so the
+sign-in that follows, by any method, accepts it and the person is seated with the roles it carried;
+a person the page finds already signed in may accept it as they are with one click, and where the
+server offers a password method the invited person may instead create an account with a password,
+on a form that asks for a username (unless the username is the address) and the password twice,
+which signs them in and accepts the invitation. A sign-up link (`?signUp=<token>`) opens the same
+account form in the list's place, and the list of a server whose password method offers sign-up
+carries a "Create an account" step, which asks for an address and tells the person the link is on
+its way, whatever the address's state. A confirmation link (`?verify=<token>`) is posted once a
+session stands: on arrival when the page finds one, else after the sign-in it waits for (a redirect
+method returns to this page with the token, since the round trip reloads the application); the
+component then says the address is confirmed, or renders the server's refusal, and emits `signedIn`
+on Continue. A link that has expired or was already used renders the server's words and the list.
+Cancelling the account form or the sign-up shows the list again and emits `cancelled`.
+
+## The email address
+
+`<ccc-email-address>` (`@cccteam/resource-angular/auth-email-address`) is the signed-in person's
+email address for an account page. It reads the address from the session the `AuthService` last
+checked (the address, whether the person confirmed it, and the address a directory asserted at a
+sign-in, offered as a prefill while they hold none) and, where the methods list names the email
+routes, offers to add, change or confirm it: the person types an address and the server mails it a
+confirmation link; nothing is written until the link is followed on the login page, so an address
+never attaches to an account its follower does not control, and the component says the link is on
+its way whatever the address's state. A refusal (not an address; a mailbox sent too many links,
+with the wait) is rendered in place.
+
+```html
+<ccc-email-address />
+```
+
 ## User management
 
 `<ccc-user-management>` (`@cccteam/resource-angular/ccc-user-management`) is the page that
@@ -189,21 +224,37 @@ whose seats a directory writes (`rolesSynced`) shows them read-only. The global 
 picker labels a domain-kind role "(every tenant)", since seating it there seats the user in every
 tenant; the tenant partition's picker lists the tenant roles alone.
 
-Every control follows a capability. The digest decides whether users are created and seats written;
-the row's capability envelope, asked for on every read, decides the rename, the disable, the delete
-and the methods per row, so one's own row loses its disable and its delete, and a user seated
-outside the tenant loses the account-level actions, without the page knowing why. A row with
-nothing to do for the caller has no manage button. A role file scopes all of it with the same
-conditions as the application's own resources: a role granted `Create` on the seats resource under
-`new.role != 'Administrator'` seats people into every other role, and the refusal of the one it may
-not is shown in place in the server's words. The page is read again after every write, so the rows
-say what the server says; a list that pages offers the turns the server names.
+Each row shows the person's email address and whether they confirmed it: an operator enters one on
+the create form or on the row, unconfirmed, which reserves the address until the person confirms it
+themselves (through `<ccc-email-address>` and the login page's confirmation link). Where the
+password method declares the username as the address (`usernameIsEmail`), the username column is
+the address, the create form asks for it as the username, and neither is edited by hand: a verified
+new address renames the person.
+
+Below the users stand the partition's invitations, where the descriptor names the resource: an
+address invited to hold roles, listed with the roles, the inviter when the page lists them, when it
+was sent and when it expires, until whoever follows the mailed link signs in (by any method, or by
+creating an account with a password) and is seated with the roles, or the invitation is revoked or
+expires. The invite form takes the address and the roles; an invitation is the same request whether
+an account holds the address or not, and the page does not learn which. The block is shown when the
+caller may list or send invitations, and a partition whose descriptor names none has no block.
+
+Every control follows a capability. The digest decides whether users are created, seats written and
+invitations sent; the row's capability envelope, asked for on every read, decides the rename, the
+address, the disable, the delete, the methods and the revoke per row, so one's own row loses its
+disable and its delete, and a user seated outside the tenant loses the account-level actions,
+without the page knowing why. A row with nothing to do for the caller has no manage button. A role
+file scopes all of it with the same conditions as the application's own resources: a role granted
+`Create` on the seats resource under `new.role != 'Administrator'` seats people into every other
+role, and the refusal of the one it may not is shown in place in the server's words. The lists are
+read again after every write, so the rows say what the server says; a list that pages offers the
+turns the server names.
 
 ## Modules Overview
 
 - **`ccc-resource`**: The core module of the library. It contains the components and services related to dynamic page generation and data management.
 - **`ccc-user-management`**: The user-management page over an Auth's surface, configured from the generated descriptor.
-- **`auth`**: This module provides authentication and authorization, including the login methods component, route guards, and permission directives.
+- **`auth`**: This module provides authentication and authorization, including the login methods component, the email address component, route guards, and permission directives.
 - **`ui`**: This module contains UI components and services, such as alerts, notifications, and sidenav components.
 - **`utils`**: A collection of utility pipes and functions for various purposes.
 

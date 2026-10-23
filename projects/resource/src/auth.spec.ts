@@ -51,6 +51,27 @@ const pendingRoutes = {
 };
 const changePath = '/console/api/user/password/change';
 const consoleList: LoginMethods = { methods: [password, google], pending: pendingRoutes, changePassword: changePath };
+const invitationRoutes = {
+  open: '/console/api/user/invitation',
+  accept: '/console/api/user/invitation/accept',
+  signUp: '/console/api/user/invitation/sign-up',
+};
+const emailRoutes = { add: '/console/api/user/email', verify: '/console/api/user/email/verify' };
+const signUpRoutes = {
+  start: '/console/api/user/sign-up',
+  open: '/console/api/user/sign-up/open',
+  complete: '/console/api/user/sign-up/complete',
+};
+/** The list of a server that sends mail: invitations, the address step and an open sign-up, the username being the address. */
+const mailingList: LoginMethods = {
+  ...consoleList,
+  usernameIsEmail: true,
+  invitation: invitationRoutes,
+  email: emailRoutes,
+  signUp: signUpRoutes,
+};
+const opened = { email: 'ensign@fleet.example', tenant: 'anvil', expiresAt: '2026-10-30T12:00:00Z', signUp: true, usernameIsEmail: true };
+const dead = { status: 404, body: { message: 'the link has expired or was already used' } };
 
 /** What the server answers each route with; a spec changes an entry to script a step's answer. */
 interface Server {
@@ -60,6 +81,14 @@ interface Server {
   confirm: TransportResponse;
   cancel: TransportResponse;
   change: TransportResponse;
+  invitationOpen: TransportResponse;
+  invitationAccept: TransportResponse;
+  invitationSignUp: TransportResponse;
+  emailAdd: TransportResponse;
+  emailVerify: TransportResponse;
+  signUpStart: TransportResponse;
+  signUpOpen: TransportResponse;
+  signUpComplete: TransportResponse;
 }
 
 function server(overrides: Partial<Server> = {}): Server {
@@ -70,6 +99,14 @@ function server(overrides: Partial<Server> = {}): Server {
     confirm: { status: 200, body: { mfaIsRequired: false } },
     cancel: { status: 200, body: undefined },
     change: { status: 200, body: undefined },
+    invitationOpen: { status: 200, body: opened },
+    invitationAccept: { status: 200, body: { accepted: true } },
+    invitationSignUp: { status: 200, body: { mfaIsRequired: false } },
+    emailAdd: { status: 200, body: {} },
+    emailVerify: { status: 200, body: { email: 'pax@fleet.example' } },
+    signUpStart: { status: 200, body: {} },
+    signUpOpen: { status: 200, body: { email: 'rookie@fleet.example', usernameIsEmail: true } },
+    signUpComplete: { status: 200, body: { mfaIsRequired: false } },
     ...overrides,
   };
 }
@@ -91,6 +128,22 @@ function transportOf(state: Server): ScriptedTransport {
         return state.cancel;
       case 'POST /console/api/user/password/change':
         return state.change;
+      case 'POST /console/api/user/invitation':
+        return state.invitationOpen;
+      case 'POST /console/api/user/invitation/accept':
+        return state.invitationAccept;
+      case 'POST /console/api/user/invitation/sign-up':
+        return state.invitationSignUp;
+      case 'POST /console/api/user/email':
+        return state.emailAdd;
+      case 'POST /console/api/user/email/verify':
+        return state.emailVerify;
+      case 'POST /console/api/user/sign-up':
+        return state.signUpStart;
+      case 'POST /console/api/user/sign-up/open':
+        return state.signUpOpen;
+      case 'POST /console/api/user/sign-up/complete':
+        return state.signUpComplete;
       default:
         return { status: 404, body: { message: `unscripted ${request.method} ${request.url}` } };
     }
@@ -456,6 +509,224 @@ describe('the password change', () => {
   it('keeps the change path off a list that does not name one', async () => {
     const { auth } = authOver(server({ methods: { methods: [google] } }));
     expect(await auth.methods()).toEqual({ methods: [google] });
+  });
+});
+
+describe('the mailed links in the list', () => {
+  it('are kept as the server names them: the username flag, the invitation, email and sign-up routes', async () => {
+    const { auth } = authOver(server({ methods: mailingList }));
+    expect(await auth.methods()).toEqual(mailingList);
+  });
+
+  it('are left off a list that names none, or names a block in part', async () => {
+    const { auth } = authOver(
+      server({
+        methods: {
+          methods: [password],
+          changePassword: changePath,
+          usernameIsEmail: false,
+          invitation: { open: invitationRoutes.open },
+          email: { add: emailRoutes.add },
+          signUp: { start: signUpRoutes.start, open: signUpRoutes.open },
+        },
+      }),
+    );
+    expect(await auth.methods()).toEqual({ methods: [password], changePassword: changePath });
+  });
+
+  it("keeps an invitation block without its sign-up route, a server without a password method's", async () => {
+    const { auth } = authOver(
+      server({ methods: { methods: [google], invitation: { open: invitationRoutes.open, accept: invitationRoutes.accept } } }),
+    );
+    expect(await auth.methods()).toEqual({
+      methods: [google],
+      invitation: { open: invitationRoutes.open, accept: invitationRoutes.accept },
+    });
+  });
+});
+
+describe('an invitation', () => {
+  it('is opened after the list is read again, posting the token, and described as the server answers', async () => {
+    const { auth, transport } = authOver(server({ methods: mailingList }));
+    const result = await auth.openInvitation('tok-1');
+    expect(result).toEqual({ outcome: 'opened', ...opened });
+    expect(sent(transport)).toEqual([`GET /console/api/${loginMethodsRoute}`, `POST ${invitationRoutes.open}`]);
+    expect(transport.requests[1].body).toEqual({ token: 'tok-1' });
+  });
+
+  it('reads an answer without a tenant as the global surface, and without the flags as neither', async () => {
+    const { auth } = authOver(
+      server({ methods: mailingList, invitationOpen: { status: 200, body: { email: 'x@fleet.example', expiresAt: 'soon' } } }),
+    );
+    expect(await auth.openInvitation('tok-1')).toEqual({
+      outcome: 'opened',
+      email: 'x@fleet.example',
+      tenant: '',
+      expiresAt: 'soon',
+      signUp: false,
+      usernameIsEmail: false,
+    });
+  });
+
+  it("resolves a dead link as the server's 404 refusal, through no error hook", async () => {
+    const { auth, errors } = authOver(server({ methods: mailingList, invitationOpen: dead }));
+    expect(await auth.openInvitation('tok-dead')).toEqual({ outcome: 'refused', status: 404, message: dead.body.message });
+    expect(errors).toEqual([]);
+  });
+
+  it('is accepted by the signed-in person after the list is read again', async () => {
+    const { auth, transport } = authOver(server({ methods: mailingList }));
+    expect(await auth.acceptInvitation()).toEqual({ outcome: 'accepted' });
+    expect(sent(transport)).toEqual([`GET /console/api/${loginMethodsRoute}`, `POST ${invitationRoutes.accept}`]);
+  });
+
+  it('resolves the refusal of an acceptance with nothing to accept', async () => {
+    const { auth } = authOver(
+      server({ methods: mailingList, invitationAccept: { status: 404, body: { message: 'the browser carries no live invitation' } } }),
+    );
+    expect(await auth.acceptInvitation()).toEqual({ outcome: 'refused', status: 404, message: 'the browser carries no live invitation' });
+  });
+
+  it('creates an account with a password after the list is read again, the username sent only where given, and resolves the sign-in', async () => {
+    const { auth, transport } = authOver(server({ methods: mailingList }));
+    expect(await auth.signUpFromInvitation({ password: 'orbit-and-anchor' })).toEqual({ outcome: 'session' });
+    expect(await auth.signUpFromInvitation({ password: 'orbit-and-anchor', username: 'ensign' })).toEqual({ outcome: 'session' });
+    expect(sent(transport)).toEqual([
+      `GET /console/api/${loginMethodsRoute}`,
+      `POST ${invitationRoutes.signUp}`,
+      `GET /console/api/${loginMethodsRoute}`,
+      `POST ${invitationRoutes.signUp}`,
+    ]);
+    expect(transport.requests[1].body).toEqual({ password: 'orbit-and-anchor' });
+    expect(transport.requests[3].body).toEqual({ password: 'orbit-and-anchor', username: 'ensign' });
+  });
+
+  const accountRefusals: { name: string; answer: TransportResponse }[] = [
+    { name: 'a taken username or address (409)', answer: { status: 409, body: { message: 'the username is taken' } } },
+    { name: 'a short password (400)', answer: { status: 400, body: { message: 'a password is at least eight characters' } } },
+    { name: 'no live invitation (404)', answer: { status: 404, body: { message: 'the browser carries no live invitation' } } },
+    {
+      name: "the sign-in policy's refusal (403 with its code)",
+      answer: { status: 403, body: { message: 'Sign-in denied', code: 'no_roles' } },
+    },
+  ];
+  for (const tt of accountRefusals) {
+    it(`resolves ${tt.name} as the refusal, through no error hook`, async () => {
+      const { auth, errors } = authOver(server({ methods: mailingList, invitationSignUp: tt.answer }));
+      const body = tt.answer.body as { message: string; code?: string };
+      expect(await auth.signUpFromInvitation({ password: 'x' })).toEqual({
+        outcome: 'refused',
+        status: tt.answer.status,
+        ...(body.code ? { code: body.code } : {}),
+        message: body.message,
+      });
+      expect(errors).toEqual([]);
+    });
+  }
+
+  it('throws on a server whose list names no invitation routes, or no sign-up route for them', async () => {
+    const { auth } = authOver(server());
+    await expect(auth.openInvitation('tok-1')).rejects.toThrow(/names no invitation routes/);
+    await expect(auth.acceptInvitation()).rejects.toThrow(/names no invitation routes/);
+    const directory = authOver(
+      server({ methods: { methods: [google], invitation: { open: invitationRoutes.open, accept: invitationRoutes.accept } } }),
+    );
+    await expect(directory.auth.signUpFromInvitation({ password: 'x' })).rejects.toThrow(/no sign-up route for invitations/);
+  });
+});
+
+describe('the email address', () => {
+  it('is added after the list is read again, posting the address, and answers sent whatever its state', async () => {
+    const { auth, transport } = authOver(server({ methods: mailingList }));
+    expect(await auth.addEmail('pax@fleet.example')).toEqual({ outcome: 'sent' });
+    expect(sent(transport)).toEqual([`GET /console/api/${loginMethodsRoute}`, `POST ${emailRoutes.add}`]);
+    expect(transport.requests[1].body).toEqual({ email: 'pax@fleet.example' });
+  });
+
+  it('resolves the refusals of an add: not an address, and a mailbox sent too many links, with the wait', async () => {
+    const notOne = authOver(server({ methods: mailingList, emailAdd: { status: 400, body: { message: 'not an email address' } } }));
+    expect(await notOne.auth.addEmail('pax')).toEqual({ outcome: 'refused', status: 400, message: 'not an email address' });
+    const tooMany = authOver(
+      server({
+        methods: mailingList,
+        emailAdd: { status: 429, body: { message: 'Too many links', code: 'too_many_attempts', retryAfter: 600 } },
+      }),
+    );
+    expect(await tooMany.auth.addEmail('pax@fleet.example')).toEqual({
+      outcome: 'refused',
+      status: 429,
+      code: 'too_many_attempts',
+      message: 'Too many links',
+      retryAfter: 600,
+    });
+    expect(tooMany.errors).toEqual([]);
+  });
+
+  it('is verified after the list is read again, posting the token, and answers the address', async () => {
+    const { auth, transport } = authOver(server({ methods: mailingList }));
+    expect(await auth.verifyEmail('tok-v')).toEqual({ outcome: 'verified', email: 'pax@fleet.example' });
+    expect(sent(transport)).toEqual([`GET /console/api/${loginMethodsRoute}`, `POST ${emailRoutes.verify}`]);
+    expect(transport.requests[1].body).toEqual({ token: 'tok-v' });
+  });
+
+  it('resolves a dead link and a taken address as refusals', async () => {
+    const gone = authOver(server({ methods: mailingList, emailVerify: dead }));
+    expect(await gone.auth.verifyEmail('tok-v')).toEqual({ outcome: 'refused', status: 404, message: dead.body.message });
+    const taken = authOver(server({ methods: mailingList, emailVerify: { status: 409, body: { message: 'the address is taken' } } }));
+    expect(await taken.auth.verifyEmail('tok-v')).toEqual({ outcome: 'refused', status: 409, message: 'the address is taken' });
+  });
+
+  it('throws on a server whose list names no email routes', async () => {
+    const { auth } = authOver(server());
+    await expect(auth.addEmail('pax@fleet.example')).rejects.toThrow(/names no email address routes/);
+    await expect(auth.verifyEmail('tok-v')).rejects.toThrow(/names no email address routes/);
+  });
+});
+
+describe('a sign-up', () => {
+  it('is started after the list is read again, posting the address, and answers sent whatever its state', async () => {
+    const { auth, transport } = authOver(server({ methods: mailingList }));
+    expect(await auth.startSignUp('rookie@fleet.example')).toEqual({ outcome: 'sent' });
+    expect(sent(transport)).toEqual([`GET /console/api/${loginMethodsRoute}`, `POST ${signUpRoutes.start}`]);
+    expect(transport.requests[1].body).toEqual({ email: 'rookie@fleet.example' });
+  });
+
+  it('is opened after the list is read again, posting the token, and described as the server answers', async () => {
+    const { auth, transport } = authOver(server({ methods: mailingList }));
+    expect(await auth.openSignUp('tok-s')).toEqual({ outcome: 'opened', email: 'rookie@fleet.example', usernameIsEmail: true });
+    expect(sent(transport)).toEqual([`GET /console/api/${loginMethodsRoute}`, `POST ${signUpRoutes.open}`]);
+    expect(transport.requests[1].body).toEqual({ token: 'tok-s' });
+    const gone = authOver(server({ methods: mailingList, signUpOpen: dead }));
+    expect(await gone.auth.openSignUp('tok-s')).toEqual({ outcome: 'refused', status: 404, message: dead.body.message });
+  });
+
+  it('is completed after the list is read again, posting the token and the account, and resolves the sign-in', async () => {
+    const { auth, transport } = authOver(server({ methods: mailingList }));
+    expect(await auth.completeSignUp('tok-s', { password: 'orbit-and-anchor', username: 'rookie' })).toEqual({ outcome: 'session' });
+    expect(sent(transport)).toEqual([`GET /console/api/${loginMethodsRoute}`, `POST ${signUpRoutes.complete}`]);
+    expect(transport.requests[1].body).toEqual({ token: 'tok-s', password: 'orbit-and-anchor', username: 'rookie' });
+  });
+
+  it('resolves a pending step the completion answers, and a taken address as the refusal', async () => {
+    const pending = authOver(
+      server({ methods: mailingList, signUpComplete: { status: 200, body: { mfaIsRequired: true, redirectUrl: '/console/mfa' } } }),
+    );
+    expect(await pending.auth.completeSignUp('tok-s', { password: 'x' })).toEqual({ outcome: 'pending', redirectUrl: '/console/mfa' });
+    const taken = authOver(
+      server({ methods: mailingList, signUpComplete: { status: 409, body: { message: 'an account holds the address' } } }),
+    );
+    expect(await taken.auth.completeSignUp('tok-s', { password: 'x' })).toEqual({
+      outcome: 'refused',
+      status: 409,
+      message: 'an account holds the address',
+    });
+  });
+
+  it('throws on a server whose list names no sign-up routes', async () => {
+    const { auth } = authOver(server());
+    await expect(auth.startSignUp('rookie@fleet.example')).rejects.toThrow(/names no sign-up routes/);
+    await expect(auth.openSignUp('tok-s')).rejects.toThrow(/names no sign-up routes/);
+    await expect(auth.completeSignUp('tok-s', { password: 'x' })).rejects.toThrow(/names no sign-up routes/);
   });
 });
 

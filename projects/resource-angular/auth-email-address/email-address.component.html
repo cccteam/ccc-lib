@@ -1,0 +1,28 @@
+<div class="ccc-email">
+  @if (sent(); as address) {
+    <p class="ccc-email-note">
+      A link to confirm {{ address }} is on its way to it. Follow the link, signed in, to finish; nothing changes
+      until then.
+    </p>
+    <button mat-button type="button" class="ccc-email-done" (click)="done()">OK</button>
+  } @else if (editing()) {
+    <form class="ccc-email-form" (ngSubmit)="send()">
+      <mat-form-field appearance="outline" class="ccc-email-field">
+        <mat-label>Email address</mat-label>
+        <input matInput name="email" type="email" [(ngModel)]="email" autocomplete="email" required />
+      </mat-form-field>
+      <button mat-flat-button type="submit" class="ccc-email-send" [disabled]="busy()">Send a confirmation link</button>
+      <button mat-button type="button" class="ccc-email-cancel" [disabled]="busy()" (click)="done()">Cancel</button>
+    </form>
+  } @else {
+    <p class="ccc-email-current">{{ current() }}</p>
+    @if (offered()) {
+      <button mat-stroked-button type="button" class="ccc-email-edit" [disabled]="busy()" (click)="edit()">
+        {{ action() }}
+      </button>
+    }
+  }
+  @if (message(); as sentence) {
+    <p class="ccc-email-message" role="alert">{{ sentence }}</p>
+  }
+</div>

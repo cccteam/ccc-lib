@@ -24,8 +24,11 @@ import { LoginMethodsComponent, PASSWORDS_DIFFER } from './login-methods.compone
 // ?pending= or answered to a password sign-in: the confirmation form posting to the route
 // the list names, with a cancel back to the list. A session that must change its password
 // gets the change form in the list's place, posting to the change path the list names, and
-// the page recorded at the sign-in is emitted once the change is accepted. Every POST is
-// preceded by a read of the list, so it carries a live XSRF token.
+// the page recorded at the sign-in is emitted once the change is accepted. The mailed links
+// arrive here with their token: an invitation is opened and stands over the list until a
+// sign-in, an acceptance or an account with a password accepts it; a sign-up link opens the
+// account form; a confirmation link is posted once a session stands. Every POST is preceded
+// by a read of the list, so it carries a live XSRF token.
 
 const descriptor: ApiDescriptor = {
   resources: {},
@@ -63,6 +66,21 @@ const pendingRoutes = {
 };
 const changePath = '/console/api/user/password/change';
 const consoleList: LoginMethods = { methods: [password, google], pending: pendingRoutes, changePassword: changePath };
+const invitationRoutes = {
+  open: '/console/api/user/invitation',
+  accept: '/console/api/user/invitation/accept',
+  signUp: '/console/api/user/invitation/sign-up',
+};
+const emailRoutes = { add: '/console/api/user/email', verify: '/console/api/user/email/verify' };
+const signUpRoutes = {
+  start: '/console/api/user/sign-up',
+  open: '/console/api/user/sign-up/open',
+  complete: '/console/api/user/sign-up/complete',
+};
+/** The list of a server that sends mail: invitations, the address step and an open sign-up. */
+const mailingList: LoginMethods = { ...consoleList, invitation: invitationRoutes, email: emailRoutes, signUp: signUpRoutes };
+const invited = { email: 'ensign@fleet.example', tenant: 'anvil', expiresAt: '2026-10-30T12:00:00Z', signUp: true, usernameIsEmail: false };
+const dead = { status: 404, body: { message: 'the link has expired or was already used' } };
 const waiting = {
   reason: 'confirmation',
   email: 'nova@fleet.example',
@@ -78,9 +96,18 @@ interface Server {
   confirm: TransportResponse;
   /** What the change route answers; a server that accepts the change also clears the mark. */
   change: TransportResponse;
+  invitationOpen: TransportResponse;
+  invitationAccept: TransportResponse;
+  invitationSignUp: TransportResponse;
+  emailVerify: TransportResponse;
+  signUpStart: TransportResponse;
+  signUpOpen: TransportResponse;
+  signUpComplete: TransportResponse;
   authenticated: boolean;
   /** The session's operator-set password must change before anything else is served. */
   passwordChangeRequired: boolean;
+  /** The browser arrives signed in: the session read answers authenticated before any sign-in. */
+  arrivesSignedIn: boolean;
 }
 
 function server(overrides: Partial<Server> = {}): Server {
@@ -90,24 +117,54 @@ function server(overrides: Partial<Server> = {}): Server {
     status: { status: 404, body: { message: 'no pending sign-in' } },
     confirm: { status: 200, body: { mfaIsRequired: false } },
     change: { status: 200, body: undefined },
+    invitationOpen: { status: 200, body: invited },
+    invitationAccept: { status: 200, body: { accepted: true } },
+    invitationSignUp: { status: 200, body: { mfaIsRequired: false } },
+    emailVerify: { status: 200, body: { email: 'pax@fleet.example' } },
+    signUpStart: { status: 200, body: {} },
+    signUpOpen: { status: 200, body: { email: 'rookie@fleet.example', usernameIsEmail: false } },
+    signUpComplete: { status: 200, body: { mfaIsRequired: false } },
     authenticated: true,
     passwordChangeRequired: false,
+    arrivesSignedIn: false,
     ...overrides,
   };
 }
 
 function transportOf(state: Server): ScriptedTransport {
+  // The session stands once a sign-in step was answered, or from the start when the browser arrives signed in.
+  let signedIn = state.arrivesSignedIn;
+  const signsIn = (answer: TransportResponse): TransportResponse => {
+    if (answer.status < 400) {
+      signedIn = true;
+    }
+    return answer;
+  };
   return scriptedTransport((request: TransportRequest) => {
     const path = request.url.replace(/\?.*$/, '');
     switch (`${request.method} ${path}`) {
       case 'GET /console/api/user/methods':
         return { status: 200, body: state.methods };
       case 'POST /console/api/user/password/login':
-        return state.login;
+        return signsIn(state.login);
+      case `POST ${invitationRoutes.open}`:
+        return state.invitationOpen;
+      case `POST ${invitationRoutes.accept}`:
+        return state.invitationAccept;
+      case `POST ${invitationRoutes.signUp}`:
+        return signsIn(state.invitationSignUp);
+      case `POST ${emailRoutes.verify}`:
+        return state.emailVerify;
+      case `POST ${signUpRoutes.start}`:
+        return state.signUpStart;
+      case `POST ${signUpRoutes.open}`:
+        return state.signUpOpen;
+      case `POST ${signUpRoutes.complete}`:
+        return signsIn(state.signUpComplete);
       case 'GET /console/api/user/pending':
         return state.status;
       case 'POST /console/api/user/pending/confirm':
-        return state.confirm;
+        return signsIn(state.confirm);
       case 'POST /console/api/user/pending/cancel':
         return { status: 200, body: undefined };
       case `POST ${changePath}`:
@@ -119,13 +176,14 @@ function transportOf(state: Server): ScriptedTransport {
         return {
           status: 200,
           body: {
-            authenticated: state.authenticated,
+            authenticated: state.authenticated && signedIn,
             username: 'overseer',
             passwordChangeRequired: state.passwordChangeRequired,
           },
         };
       case 'DELETE /console/api/user/session':
         state.authenticated = false;
+        signedIn = false;
         return { status: 204, body: undefined };
       case 'GET /console/api/permission-digest':
         return { status: 200, body: {} };
@@ -762,5 +820,338 @@ describe('LoginMethodsComponent changes a password the operator set', () => {
     expect(buttonsOf(page)).toEqual(['Sign in with Google']);
     expect(page.cancelled).toBe(1);
     expect(TestBed.inject(AuthService).authenticated()).toBe(false);
+  });
+});
+
+describe('LoginMethodsComponent renders the password form for a username that is the address', () => {
+  it('asks for the email address, as an email field, and otherwise for a username', async () => {
+    const page = await pageOver(server({ methods: { ...consoleList, usernameIsEmail: true } }));
+    const field = page.element.querySelector<HTMLInputElement>('input[name="username"]');
+    expect(field?.type).toBe('email');
+    expect(Array.from(page.element.querySelectorAll('mat-label')).map((label) => label.textContent?.trim())).toEqual([
+      'Email address',
+      'Password',
+    ]);
+    TestBed.resetTestingModule();
+    const plain = await pageOver(server());
+    expect(plain.element.querySelector<HTMLInputElement>('input[name="username"]')?.type).toBe('text');
+  });
+});
+
+describe('LoginMethodsComponent opens an invitation', () => {
+  const noteOf = (page: Page): string | null => page.element.querySelector('.ccc-login-invitation-note')?.textContent?.trim() ?? null;
+
+  it('entered with ?invitation=, posts the token after the list and keeps the invitation over the list, checking for a session', async () => {
+    const page = await pageOver(server({ methods: mailingList }), { invitation: 'tok-1' });
+    expect(sent(page.transport)).toEqual([
+      'GET /console/api/user/methods',
+      'GET /console/api/user/methods',
+      `POST ${invitationRoutes.open}`,
+      'GET /console/api/user/session',
+    ]);
+    expect(page.transport.requests[2].body).toEqual({ token: 'tok-1' });
+    expect(page.component.invitation()).toEqual(invited);
+    expect(noteOf(page)).toBe('ensign@fleet.example is invited to anvil. Sign in to accept it, or create an account with a password.');
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+    expect(buttonsOf(page)).toEqual(['Sign in with Google']);
+    expect(page.element.querySelector('.ccc-login-create-account')).not.toBeNull();
+    expect(page.element.querySelector('.ccc-login-accept')).toBeNull();
+    // The open sign-up's own step steps aside while an invitation stands.
+    expect(page.element.querySelector('.ccc-login-sign-up')).toBeNull();
+  });
+
+  it('words a global invitation without a tenant, and one without a password method without the account', async () => {
+    const page = await pageOver(
+      server({
+        methods: { ...mailingList, invitation: { open: invitationRoutes.open, accept: invitationRoutes.accept } },
+        invitationOpen: { status: 200, body: { ...invited, tenant: '', signUp: false } },
+      }),
+      { invitation: 'tok-1' },
+    );
+    expect(noteOf(page)).toBe('ensign@fleet.example is invited. Sign in to accept it.');
+    expect(page.element.querySelector('.ccc-login-create-account')).toBeNull();
+  });
+
+  it("a dead link shows the server's words and the list alone", async () => {
+    const page = await pageOver(server({ methods: mailingList, invitationOpen: dead }), { invitation: 'tok-dead' });
+    expect(page.component.invitation()).toBeUndefined();
+    expect(messageOf(page)).toBe(dead.body.message);
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+    expect(sent(page.transport)).not.toContain('GET /console/api/user/session');
+  });
+
+  it('a password sign-in accepts it: the session is checked, the page emitted, and the note gone', async () => {
+    const page = await pageOver(server({ methods: mailingList }), { invitation: 'tok-1' }, { home: '/dashboard' });
+    page.component.username = 'ensign';
+    page.component.password = 'orbit-and-anchor';
+    await page.component.login();
+    await page.settle();
+    expect(page.signedIn).toEqual(['/dashboard']);
+    expect(page.component.invitation()).toBeUndefined();
+  });
+
+  it('a person found signed in is offered to accept it as they are; the acceptance posts, checks the session and emits the page', async () => {
+    const page = await pageOver(server({ methods: mailingList, arrivesSignedIn: true }), { invitation: 'tok-1' }, { home: '/dashboard' });
+    expect(page.component.signedInAs()).toBe('overseer');
+    const accept = page.element.querySelector<HTMLButtonElement>('.ccc-login-accept');
+    expect(accept?.textContent?.trim()).toBe('Accept as overseer');
+    page.transport.requests.length = 0;
+    await page.component.accept();
+    await page.settle();
+    expect(sent(page.transport).slice(0, 3)).toEqual([
+      'GET /console/api/user/methods',
+      `POST ${invitationRoutes.accept}`,
+      'GET /console/api/user/session',
+    ]);
+    expect(page.signedIn).toEqual(['/dashboard']);
+    expect(page.component.invitation()).toBeUndefined();
+  });
+
+  it('an acceptance the server refuses, the invitation gone, shows its words and drops the note', async () => {
+    const page = await pageOver(
+      server({
+        methods: mailingList,
+        arrivesSignedIn: true,
+        invitationAccept: { status: 404, body: { message: 'the browser carries no live invitation' } },
+      }),
+      { invitation: 'tok-1' },
+    );
+    await page.component.accept();
+    await page.settle();
+    expect(messageOf(page)).toBe('the browser carries no live invitation');
+    expect(page.component.invitation()).toBeUndefined();
+    expect(page.signedIn).toEqual([]);
+  });
+
+  it('the account form takes a username and the password twice, posts them to the sign-up route and follows the sign-in', async () => {
+    const page = await pageOver(server({ methods: mailingList }), { invitation: 'tok-1' }, { home: '/dashboard' });
+    page.component.openAccountForm();
+    await page.settle();
+    expect(page.component.account()).toEqual({ source: 'invitation', email: 'ensign@fleet.example', usernameIsEmail: false });
+    expect(page.element.querySelector('input[name="accountUsername"]')).not.toBeNull();
+    expect(page.element.querySelector('input[name="username"]')).toBeNull();
+    expect(page.element.querySelector('.ccc-login-account-note')?.textContent?.trim()).toBe(
+      'Choose a username and a password for your account. ensign@fleet.example is its email address.',
+    );
+    page.transport.requests.length = 0;
+    page.component.accountUsername = 'ensign';
+    page.component.accountPassword = 'orbit-and-anchor';
+    page.component.accountPasswordAgain = 'orbit-and-anchor';
+    await page.component.createAccount();
+    await page.settle();
+    expect(sent(page.transport).slice(0, 3)).toEqual([
+      'GET /console/api/user/methods',
+      `POST ${invitationRoutes.signUp}`,
+      'GET /console/api/user/session',
+    ]);
+    expect(page.transport.requests[1].body).toEqual({ password: 'orbit-and-anchor', username: 'ensign' });
+    expect(page.signedIn).toEqual(['/dashboard']);
+    expect(page.component.account()).toBeUndefined();
+    expect(page.component.accountPassword).toBe('');
+  });
+
+  it('the account form asks for no username where the username is the address, and posts none', async () => {
+    const page = await pageOver(
+      server({ methods: mailingList, invitationOpen: { status: 200, body: { ...invited, usernameIsEmail: true } } }),
+      { invitation: 'tok-1' },
+    );
+    page.component.openAccountForm();
+    await page.settle();
+    expect(page.element.querySelector('input[name="accountUsername"]')).toBeNull();
+    expect(page.element.querySelector('.ccc-login-account-note')?.textContent?.trim()).toBe(
+      'Choose a password for your account. You will sign in as ensign@fleet.example.',
+    );
+    page.transport.requests.length = 0;
+    page.component.accountPassword = 'orbit-and-anchor';
+    page.component.accountPasswordAgain = 'orbit-and-anchor';
+    await page.component.createAccount();
+    expect(page.transport.requests[1].body).toEqual({ password: 'orbit-and-anchor' });
+  });
+
+  it('two passwords that differ are refused without a request; a taken name is shown on the form; a gone invitation returns to the list', async () => {
+    const state = server({ methods: mailingList });
+    const page = await pageOver(state, { invitation: 'tok-1' });
+    page.component.openAccountForm();
+    page.transport.requests.length = 0;
+    page.component.accountPassword = 'one';
+    page.component.accountPasswordAgain = 'two';
+    await page.component.createAccount();
+    await page.settle();
+    expect(messageOf(page)).toBe(PASSWORDS_DIFFER);
+    expect(page.transport.requests).toEqual([]);
+
+    state.invitationSignUp = { status: 409, body: { message: 'the username is taken' } };
+    page.component.accountPasswordAgain = 'one';
+    await page.component.createAccount();
+    await page.settle();
+    expect(messageOf(page)).toBe('the username is taken');
+    expect(page.component.account()).not.toBeUndefined();
+
+    state.invitationSignUp = { status: 404, body: { message: 'the browser carries no live invitation' } };
+    await page.component.createAccount();
+    await page.settle();
+    expect(messageOf(page)).toBe('the browser carries no live invitation');
+    expect(page.component.account()).toBeUndefined();
+    expect(page.component.invitation()).toBeUndefined();
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+  });
+
+  it('cancelling the account form shows the list with the invitation still standing, and emits cancelled', async () => {
+    const page = await pageOver(server({ methods: mailingList }), { invitation: 'tok-1' });
+    page.component.openAccountForm();
+    page.component.cancelAccount();
+    await page.settle();
+    expect(page.component.account()).toBeUndefined();
+    expect(page.component.invitation()).toEqual(invited);
+    expect(page.cancelled).toBe(1);
+  });
+});
+
+describe('LoginMethodsComponent signs a person up', () => {
+  it('offers the step when the list names sign-up routes, asks for the address, posts it and says the link is on its way', async () => {
+    const page = await pageOver(server({ methods: mailingList }));
+    expect(page.element.querySelector('.ccc-login-sign-up')).not.toBeNull();
+    page.component.beginSignUp();
+    await page.settle();
+    expect(page.element.querySelector('input[name="signUpEmail"]')).not.toBeNull();
+    expect(page.element.querySelector('input[name="username"]')).toBeNull();
+    page.transport.requests.length = 0;
+    page.component.signUpEmail = 'rookie@fleet.example';
+    await page.component.sendSignUpLink();
+    await page.settle();
+    expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', `POST ${signUpRoutes.start}`]);
+    expect(page.transport.requests[1].body).toEqual({ email: 'rookie@fleet.example' });
+    expect(page.component.started()).toBe('rookie@fleet.example');
+    expect(page.element.querySelector('.ccc-login-started-note')?.textContent).toContain('rookie@fleet.example');
+    page.component.backToSignIn();
+    await page.settle();
+    expect(page.component.started()).toBeUndefined();
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+    expect(page.cancelled).toBe(1);
+  });
+
+  it('is not offered when the list names no sign-up routes', async () => {
+    const page = await pageOver(server());
+    expect(page.element.querySelector('.ccc-login-sign-up')).toBeNull();
+    page.component.beginSignUp();
+    await page.settle();
+    expect(page.component.starting()).toBe(false);
+  });
+
+  it('a mailbox sent too many links is refused with the sentence and the wait, the address field staying', async () => {
+    const page = await pageOver(
+      server({
+        methods: mailingList,
+        signUpStart: { status: 429, body: { message: 'Too many links', code: 'too_many_attempts', retryAfter: 600 } },
+      }),
+    );
+    page.component.beginSignUp();
+    page.component.signUpEmail = 'rookie@fleet.example';
+    await page.component.sendSignUpLink();
+    await page.settle();
+    expect(messageOf(page)).toBe(`${DEFAULT_LOGIN_MESSAGES['too_many_attempts']} Try again in 10 minutes.`);
+    expect(page.component.starting()).toBe(true);
+  });
+
+  it('entered with ?signUp=, opens the link after the list and renders the account form, which completes the sign-up with the token', async () => {
+    const page = await pageOver(server({ methods: mailingList }), { signUp: 'tok-s' }, { home: '/dashboard' });
+    expect(sent(page.transport)).toEqual([
+      'GET /console/api/user/methods',
+      'GET /console/api/user/methods',
+      `POST ${signUpRoutes.open}`,
+    ]);
+    expect(page.component.account()).toEqual({
+      source: 'signUp',
+      token: 'tok-s',
+      email: 'rookie@fleet.example',
+      usernameIsEmail: false,
+    });
+    expect(page.element.querySelector('input[name="accountUsername"]')).not.toBeNull();
+    page.transport.requests.length = 0;
+    page.component.accountUsername = 'rookie';
+    page.component.accountPassword = 'orbit-and-anchor';
+    page.component.accountPasswordAgain = 'orbit-and-anchor';
+    await page.component.createAccount();
+    await page.settle();
+    expect(sent(page.transport).slice(0, 3)).toEqual([
+      'GET /console/api/user/methods',
+      `POST ${signUpRoutes.complete}`,
+      'GET /console/api/user/session',
+    ]);
+    expect(page.transport.requests[1].body).toEqual({ token: 'tok-s', password: 'orbit-and-anchor', username: 'rookie' });
+    expect(page.signedIn).toEqual(['/dashboard']);
+  });
+
+  it("a dead sign-up link shows the server's words and the list", async () => {
+    const page = await pageOver(server({ methods: mailingList, signUpOpen: dead }), { signUp: 'tok-dead' });
+    expect(page.component.account()).toBeUndefined();
+    expect(messageOf(page)).toBe(dead.body.message);
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+  });
+});
+
+describe('LoginMethodsComponent confirms an email address', () => {
+  /** The requests of the journey itself, without the digest, domains and flags the first authenticated session read loads. */
+  const stepsOf = (page: Page): string[] =>
+    sent(page.transport).filter((request) => !/permission-digest|user-domains|features/.test(request));
+
+  it('entered with ?verify= signed out, waits for the sign-in, then posts the token, shows the address and emits the page on Continue', async () => {
+    const page = await pageOver(server({ methods: mailingList }), { verify: 'tok-v' }, { home: '/dashboard' });
+    expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/session']);
+    expect(page.component.landed()).toBeUndefined();
+    page.transport.requests.length = 0;
+    page.component.username = 'pax';
+    page.component.password = 'lodestar';
+    await page.component.login();
+    await page.settle();
+    // The first authenticated session read also loads the digest, the domains and the flags.
+    expect(stepsOf(page)).toEqual([
+      'GET /console/api/user/methods',
+      'POST /console/api/user/password/login',
+      'GET /console/api/user/session',
+      'GET /console/api/user/methods',
+      `POST ${emailRoutes.verify}`,
+      'GET /console/api/user/session',
+    ]);
+    expect(page.transport.requests.find((r) => r.url === emailRoutes.verify)?.body).toEqual({ token: 'tok-v' });
+    expect(page.signedIn).toEqual([]);
+    expect(page.component.verified()).toBe('pax@fleet.example');
+    expect(page.element.querySelector('.ccc-login-landed-note')?.textContent?.trim()).toBe(
+      'pax@fleet.example is confirmed as your email address.',
+    );
+    expect(page.element.querySelector('input[name="username"]')).toBeNull();
+    page.component.proceed();
+    await page.settle();
+    expect(page.signedIn).toEqual(['/dashboard']);
+    expect(page.component.landed()).toBeUndefined();
+  });
+
+  it('entered with ?verify= signed in, posts the token at once', async () => {
+    const page = await pageOver(server({ methods: mailingList, arrivesSignedIn: true }), { verify: 'tok-v' });
+    expect(stepsOf(page)).toEqual([
+      'GET /console/api/user/methods',
+      'GET /console/api/user/session',
+      'GET /console/api/user/session',
+      'GET /console/api/user/methods',
+      `POST ${emailRoutes.verify}`,
+      'GET /console/api/user/session',
+    ]);
+    expect(page.component.verified()).toBe('pax@fleet.example');
+    expect(page.component.landed()).toBe('/');
+  });
+
+  it("a dead or another account's link shows the server's words with Continue, the session standing", async () => {
+    const page = await pageOver(server({ methods: mailingList, arrivesSignedIn: true, emailVerify: dead }), { verify: 'tok-v' });
+    expect(page.component.verified()).toBeUndefined();
+    expect(messageOf(page)).toBe(dead.body.message);
+    expect(page.element.querySelector('.ccc-login-continue')).not.toBeNull();
+    page.component.proceed();
+    expect(page.signedIn).toEqual(['/']);
+  });
+
+  it('a redirect method returns to this page with the token, so the confirmation follows the round trip', async () => {
+    const page = await pageOver(server({ methods: mailingList }), { verify: 'tok-v' });
+    page.component.signInThrough(google);
+    expect(page.left).toEqual([`/console/api/user/google/login?returnUrl=${encodeURIComponent('/login?verify=tok-v')}`]);
   });
 });

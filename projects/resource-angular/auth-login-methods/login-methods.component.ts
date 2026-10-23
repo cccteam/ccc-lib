@@ -6,13 +6,34 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute } from '@angular/router';
-import { LoginMethod, passwordChangeRequiredCode, PendingSignIn, SignInRefusal, SignInResult } from '@cccteam/resource';
+import {
+  LoginMethod,
+  OpenedInvitation,
+  passwordChangeRequiredCode,
+  PendingSignIn,
+  SignInRefusal,
+  SignInResult,
+} from '@cccteam/resource';
 import { AuthService } from '@cccteam/resource-angular/auth-service';
 import { RESOURCE_CLIENT, storeSignal } from '@cccteam/resource-angular/resource-client';
-import { FRONTEND_LOGIN_PATH } from '@cccteam/resource-angular/types';
+import { FRONTEND_LOGIN_PATH, SessionInfo } from '@cccteam/resource-angular/types';
 import { UiCoreService } from '@cccteam/resource-angular/ui-core-service';
 import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
+
+/**
+ * The form an account with a password is created on: from an opened invitation, which the
+ * browser carries, or from a sign-up link, whose token the form posts back. The address is
+ * the one the link was mailed to; the username is that address where the password method
+ * declares them one, and the person's to choose otherwise.
+ */
+export interface AccountForm {
+  readonly source: 'invitation' | 'signUp';
+  readonly email: string;
+  readonly usernameIsEmail: boolean;
+  /** The sign-up link's token; absent for an invitation, which the browser carries. */
+  readonly token?: string;
+}
 
 /**
  * The login page's sign-in methods, rendered from what the server offers. On arrival the
@@ -21,7 +42,8 @@ import { map } from 'rxjs/operators';
  * in the server's order; nothing it shows is named here, so the bundle is the same in
  * every environment and a method that is not registered has no button. The server's label
  * is the default for each method and `labels` overrides it by registration name; nothing
- * else about a method is the page's to change.
+ * else about a method is the page's to change. Where the list says the password method's
+ * username is the person's email address, the form asks for the address.
  *
  * It owns the journey from the list to the session. A password sign-in posts through the
  * client, which reads the list again first so the POST carries a live XSRF token; the
@@ -44,6 +66,20 @@ import { map } from 'rxjs/operators';
  * list's place: for a confirmation, the password form of the user the sign-in matched,
  * posting to the confirmation route, with a cancel that returns to the list; for a step
  * the server names a page for, the browser goes there.
+ *
+ * The mailed links the server sends all lead here, each with its token in the URL. An
+ * invitation (`?invitation=`) is opened through the client on arrival: its note stands over
+ * the list, naming the address and the tenant, and the browser now carries it, so the
+ * sign-in that follows, by any method, accepts it and seats the person with the roles it
+ * carried; a person the page finds already signed in accepts it with one click, and where
+ * the server offers a password method the invited person may instead create an account
+ * with a password, which signs them in and accepts it. A sign-up link (`?signUp=`) is
+ * opened the same way and renders the account form in the list's place; the list of a
+ * server whose password method offers sign-up also carries a "Create an account" step,
+ * which asks for an address and mails it the link. A confirmation link (`?verify=`) is
+ * posted once a session stands, on arrival when the page finds one, else after the
+ * sign-in it waits for (a redirect method returns to this page with the token); the
+ * component then shows what happened and emits `signedIn` on Continue.
  *
  * A session the sign-in establishes may carry `passwordChangeRequired`: an operator set
  * the password, and the server serves nothing but the password change until the person
@@ -78,7 +114,7 @@ export class LoginMethodsComponent implements OnInit {
   home = input('/');
   /** The sign-in is complete and the session checked: the router URL of the page to go to. */
   signedIn = output<string>();
-  /** The person cancelled the pending step or the password change; the list is shown again. */
+  /** The person cancelled the pending step, the password change, the account form or the sign-up; the list is shown again. */
   cancelled = output<void>();
 
   username = '';
@@ -87,6 +123,12 @@ export class LoginMethodsComponent implements OnInit {
   oldPassword = '';
   newPassword = '';
   newPasswordAgain = '';
+  /** The account form's fields: the username where the person chooses one, and the password, typed twice. */
+  accountUsername = '';
+  accountPassword = '';
+  accountPasswordAgain = '';
+  /** The address a sign-up asks its link for. */
+  signUpEmail = '';
   /** A request of the component is in flight; its controls are disabled meanwhile. */
   busy = signal(false);
 
@@ -98,6 +140,12 @@ export class LoginMethodsComponent implements OnInit {
   passwordMethod = computed(() => this.methods().find((method) => method.kind === 'password'));
   /** The redirect methods, one button each, in the server's order. */
   redirectMethods = computed(() => this.methods().filter((method) => method.kind === 'redirect'));
+  /** The password method's username is the person's email address: the form asks for the address. */
+  usernameIsEmail = computed(() => this.list()?.usernameIsEmail ?? false);
+  /** The words over the password form's first field. */
+  usernameLabel = computed(() => (this.usernameIsEmail() ? 'Email address' : 'Username'));
+  /** The server's password method lets a stranger create an account from a mailed link. */
+  signUpOffered = computed(() => this.list()?.signUp !== undefined);
   /** The step the sign-in waits on, taking the list's place; undefined while the list is shown. */
   pending = signal<PendingSignIn | undefined>(undefined);
   /** The session carries `passwordChangeRequired`: the change form takes the list's place until the person sets a password of their own. */
@@ -106,6 +154,22 @@ export class LoginMethodsComponent implements OnInit {
   changeNote = computed(() => this.ui.loginMessage(passwordChangeRequiredCode));
   /** The router URL the sign-in recorded, emitted once the password is changed. */
   private afterChange = '/';
+  /** The invitation the URL's token opened; its note stands over the list until the sign-in that accepts it. */
+  invitation = signal<OpenedInvitation | undefined>(undefined);
+  /** The username of the session the page found on arrival with an invitation, who may accept it as they are. */
+  signedInAs = signal<string | undefined>(undefined);
+  /** The account form, taking the list's place: an account with a password, from the invitation or a sign-up link. */
+  account = signal<AccountForm | undefined>(undefined);
+  /** The sign-up's first step is shown: the address field. */
+  starting = signal(false);
+  /** The address a sign-up link was sent to; the note takes the list's place. */
+  started = signal<string | undefined>(undefined);
+  /** A session stands and a note about the followed link shows; the router URL waits on Continue. */
+  landed = signal<string | undefined>(undefined);
+  /** The address the followed link confirmed, shown while `landed`. */
+  verified = signal<string | undefined>(undefined);
+  /** The confirmation link's token, posted once a session stands. */
+  private verifyToken = '';
 
   /** The refusal code the URL carries, or empty: the only thing the URL says. */
   private code = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('code') ?? '')), {
@@ -128,6 +192,22 @@ export class LoginMethodsComponent implements OnInit {
     return `${matched} Enter that account's password to link the two.`;
   }
 
+  /** The sentence over the list for an opened invitation: who is invited where, and what accepts it. */
+  invitationNote(invitation: OpenedInvitation): string {
+    const where = invitation.tenant === '' ? '' : ` to ${invitation.tenant}`;
+    const accepts = invitation.signUp
+      ? 'Sign in to accept it, or create an account with a password.'
+      : 'Sign in to accept it.';
+    return `${invitation.email} is invited${where}. ${accepts}`;
+  }
+
+  /** The sentence over the account form: what the person chooses, and the address the account holds. */
+  accountNote(form: AccountForm): string {
+    return form.usernameIsEmail
+      ? `Choose a password for your account. You will sign in as ${form.email}.`
+      : `Choose a username and a password for your account. ${form.email} is its email address.`;
+  }
+
   /** The words for a method: the application's override by name, else the server's label. */
   labelOf(method: LoginMethod): string {
     return this.labels()[method.name] ?? method.label;
@@ -148,12 +228,19 @@ export class LoginMethodsComponent implements OnInit {
     });
   }
 
-  /** Sends the browser to a redirect method's path, naming the page the sign-in returns to. */
+  /**
+   * Sends the browser to a redirect method's path, naming the page the sign-in returns to:
+   * the page the guard recorded, or this page with the confirmation link's token when one
+   * waits to be posted, since the round trip through the identity provider reloads the
+   * application.
+   */
   signInThrough(method: LoginMethod): void {
     if (this.busy()) {
       return;
     }
-    this.leaveFor(this.client.auth.signInUrl(method, this.browserPath(this.landing())));
+    const page =
+      this.verifyToken === '' ? this.landing() : `${this.loginPath}?verify=${encodeURIComponent(this.verifyToken)}`;
+    this.leaveFor(this.client.auth.signInUrl(method, this.browserPath(page)));
   }
 
   /** Confirms the pending sign-in with the password of the user it matched. */
@@ -179,6 +266,118 @@ export class LoginMethodsComponent implements OnInit {
       this.confirmation = '';
       this.cancelled.emit();
     });
+  }
+
+  /** Accepts the opened invitation as the person the page found signed in, then checks the session and hands the page on. */
+  accept(): Promise<void> {
+    if (this.busy() || !this.invitation() || !this.signedInAs()) {
+      return Promise.resolve();
+    }
+    return this.step(async () => {
+      const result = await this.client.auth.acceptInvitation();
+      if (result.outcome === 'refused') {
+        this.leaveInvitation(result);
+        return;
+      }
+      await this.complete(this.landing());
+    });
+  }
+
+  /** Shows the account form for the opened invitation: an account with a password, which accepts it. */
+  openAccountForm(): void {
+    const invitation = this.invitation();
+    if (this.busy() || !invitation?.signUp) {
+      return;
+    }
+    this.refusal.set(undefined);
+    this.account.set({ source: 'invitation', email: invitation.email, usernameIsEmail: invitation.usernameIsEmail });
+  }
+
+  /**
+   * Posts the account form: the password, typed twice, and the username where the person
+   * chooses one. Two passwords that differ are refused here, with no request; the server's
+   * refusal is rendered in place, and one that says the link is gone returns to the list.
+   * An account the server creates is signed in, and the sign-in is followed as any other.
+   */
+  createAccount(): Promise<void> {
+    const form = this.account();
+    if (this.busy() || !form) {
+      return Promise.resolve();
+    }
+    if (this.accountPassword !== this.accountPasswordAgain) {
+      this.refusal.set(PASSWORDS_DIFFER);
+      return Promise.resolve();
+    }
+    return this.step(async () => {
+      const account = {
+        password: this.accountPassword,
+        ...(form.usernameIsEmail ? {} : { username: this.accountUsername }),
+      };
+      const result =
+        form.source === 'invitation'
+          ? await this.client.auth.signUpFromInvitation(account)
+          : await this.client.auth.completeSignUp(form.token ?? '', account);
+      await this.follow(result, () => this.landing());
+    });
+  }
+
+  /** Leaves the account form and shows the list again; nothing is posted. */
+  cancelAccount(): void {
+    if (this.busy() || !this.account()) {
+      return;
+    }
+    this.clearAccountForm();
+    this.refusal.set(undefined);
+    this.cancelled.emit();
+  }
+
+  /** Shows the sign-up's first step: the address its link is mailed to. */
+  beginSignUp(): void {
+    if (this.busy() || !this.signUpOffered()) {
+      return;
+    }
+    this.refusal.set(undefined);
+    this.starting.set(true);
+  }
+
+  /** Posts the address: a link to finish the sign-up is mailed to it, and the note says so whatever the address's state. */
+  sendSignUpLink(): Promise<void> {
+    if (this.busy() || !this.starting()) {
+      return Promise.resolve();
+    }
+    return this.step(async () => {
+      const result = await this.client.auth.startSignUp(this.signUpEmail);
+      if (result.outcome === 'refused') {
+        this.refusal.set(this.sentenceOf(result));
+        return;
+      }
+      this.started.set(this.signUpEmail);
+      this.starting.set(false);
+      this.signUpEmail = '';
+    });
+  }
+
+  /** Leaves the sign-up, before or after its link was sent, and shows the list again. */
+  backToSignIn(): void {
+    if (this.busy() || (!this.starting() && !this.started())) {
+      return;
+    }
+    this.starting.set(false);
+    this.started.set(undefined);
+    this.signUpEmail = '';
+    this.refusal.set(undefined);
+    this.cancelled.emit();
+  }
+
+  /** Hands on the page a session that followed a link waits with. */
+  proceed(): void {
+    const page = this.landed();
+    if (!page) {
+      return;
+    }
+    this.landed.set(undefined);
+    this.verified.set(undefined);
+    this.signedIn.emit(page);
   }
 
   /**
@@ -223,16 +422,74 @@ export class LoginMethodsComponent implements OnInit {
     });
   }
 
-  /** Reads the list, the page's first request, and the pending step when the URL says one waits. */
+  /**
+   * Reads the list, the page's first request, then what the URL asks for: the pending
+   * step when one waits, the invitation or the sign-up a token names, and the
+   * confirmation link's token, posted at once when the page finds a session standing.
+   */
   private async arrive(): Promise<void> {
     try {
       await this.client.auth.methods();
-      if (this.route.snapshot.queryParamMap.has('pending')) {
+      const params = this.route.snapshot.queryParamMap;
+      if (params.has('pending')) {
         await this.readPending();
+      }
+      const invitation = params.get('invitation');
+      if (invitation) {
+        await this.openInvitation(invitation);
+      }
+      const signUp = params.get('signUp');
+      if (signUp) {
+        await this.openSignUp(signUp);
+      }
+      this.verifyToken = params.get('verify') ?? '';
+      if (this.verifyToken !== '') {
+        const session = await this.sessionStanding();
+        if (session) {
+          await this.complete(this.landing());
+        }
       }
     } catch (error) {
       this.refusal.set(messageOf(error));
     }
+  }
+
+  /**
+   * Opens the invitation the URL's token names and keeps it over the list; a person found
+   * signed in is offered to accept it as they are. A link the server refuses renders its
+   * words, and the list alone.
+   */
+  private async openInvitation(token: string): Promise<void> {
+    const result = await this.client.auth.openInvitation(token);
+    if (result.outcome === 'refused') {
+      this.refusal.set(this.sentenceOf(result));
+      return;
+    }
+    this.invitation.set({
+      email: result.email,
+      tenant: result.tenant,
+      expiresAt: result.expiresAt,
+      signUp: result.signUp,
+      usernameIsEmail: result.usernameIsEmail,
+    });
+    const session = await this.sessionStanding();
+    this.signedInAs.set(session?.username);
+  }
+
+  /** Opens the sign-up the URL's token names and renders its account form; a link the server refuses renders its words. */
+  private async openSignUp(token: string): Promise<void> {
+    const result = await this.client.auth.openSignUp(token);
+    if (result.outcome === 'refused') {
+      this.refusal.set(this.sentenceOf(result));
+      return;
+    }
+    this.account.set({ source: 'signUp', token, email: result.email, usernameIsEmail: result.usernameIsEmail });
+  }
+
+  /** The session the browser arrived with, when one stands and may act; undefined otherwise. */
+  private async sessionStanding(): Promise<SessionInfo | undefined> {
+    const session = await firstValueFrom(this.auth.checkUserSession());
+    return session?.authenticated && !session.passwordChangeRequired ? session : undefined;
   }
 
   /**
@@ -265,7 +522,8 @@ export class LoginMethodsComponent implements OnInit {
   /**
    * Acts on a step's result: the session is checked and `signedIn` emitted with the page
    * `page` names; a pending step is read, or the browser sent where the server chose; a
-   * refusal is rendered, and one that ends the pending sign-in returns to the list.
+   * refusal is rendered, and one that ends the pending sign-in, or says the link an
+   * account form came from is gone, returns to the list.
    */
   private async follow(result: SignInResult, page: () => string): Promise<void> {
     switch (result.outcome) {
@@ -284,15 +542,35 @@ export class LoginMethodsComponent implements OnInit {
         if (result.code === 'pending_expired' || result.status === 404 || result.status === 409) {
           this.pending.set(undefined);
         }
+        if (result.status === 404 && this.account()) {
+          this.leaveInvitation(result);
+          this.clearAccountForm();
+          return;
+        }
         this.refusal.set(this.sentenceOf(result));
         return;
     }
   }
 
+  /** Renders the refusal of an invitation that is gone and drops its note: the list stands alone. */
+  private leaveInvitation(refusal: SignInRefusal): void {
+    this.invitation.set(undefined);
+    this.signedInAs.set(undefined);
+    this.refusal.set(this.sentenceOf(refusal));
+  }
+
+  private clearAccountForm(): void {
+    this.account.set(undefined);
+    this.accountUsername = '';
+    this.accountPassword = '';
+    this.accountPasswordAgain = '';
+  }
+
   /**
    * Checks the session the step established and hands the page on; a check that finds
    * none renders the library's sentence. A session that must change its password renders
-   * the change form instead, keeping the page for after the change.
+   * the change form instead, keeping the page for after the change. A confirmation link's
+   * token waiting to be posted is posted now, and what happened shows until Continue.
    */
   private async complete(page: string): Promise<void> {
     const session = await firstValueFrom(this.auth.checkUserSession());
@@ -303,6 +581,9 @@ export class LoginMethodsComponent implements OnInit {
     this.password = '';
     this.confirmation = '';
     this.pending.set(undefined);
+    this.invitation.set(undefined);
+    this.signedInAs.set(undefined);
+    this.clearAccountForm();
     this.refusal.set(undefined);
     if (session.passwordChangeRequired) {
       this.afterChange = page;
@@ -310,7 +591,26 @@ export class LoginMethodsComponent implements OnInit {
       return;
     }
     this.changing.set(false);
+    if (this.verifyToken !== '') {
+      await this.verify(page);
+      return;
+    }
     this.signedIn.emit(page);
+  }
+
+  /** Posts the confirmation link's token for the session that stands, and keeps the page for Continue. */
+  private async verify(page: string): Promise<void> {
+    const token = this.verifyToken;
+    this.verifyToken = '';
+    const result = await this.client.auth.verifyEmail(token);
+    if (result.outcome === 'refused') {
+      this.refusal.set(this.sentenceOf(result));
+    } else {
+      this.verified.set(result.email);
+      // The session read carries the address now; the application's view of it follows.
+      await firstValueFrom(this.auth.checkUserSession());
+    }
+    this.landed.set(page);
   }
 
   /**

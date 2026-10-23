@@ -1,14 +1,15 @@
-import { CreatePermission, DeletePermission, Domain, ExecutePermission, Method, Resource } from './brands';
+import { CreatePermission, DeletePermission, Domain, ExecutePermission, ListPermission, Method, Resource } from './brands';
 import { ClientBase, ResourceHandle } from './client';
 import { ApiDescriptor, UserPartitionDescriptor, UserSurfaceDescriptor } from './descriptor';
 
 /**
  * The user-management surfaces: every Auth the server's router binds has its users, their
- * seats and the roles a seat may take served as resources, in a global partition and,
- * where the application has a tenant record, a tenant partition, with the set-password
- * and unlink-identity methods beside them. The descriptor's `userSurfaces` block says
- * which resources and methods make up each surface; the rows have the shapes below on
- * every application, so a component over the surface is written once.
+ * seats, the roles a seat may take and the invitations standing into it served as
+ * resources, in a global partition and, where the application has a tenant record, a
+ * tenant partition, with the set-password and unlink-identity methods beside them. The
+ * descriptor's `userSurfaces` block says which resources and methods make up each
+ * surface; the rows have the shapes below on every application, so a component over the
+ * surface is written once.
  */
 
 /** One external identity linked to a user: how they sign in through a registration. */
@@ -37,6 +38,14 @@ export interface UserRow {
   lastSignInAt: string | null;
   /** The tenant key the user's identity links agree on; null where they carry none or disagree. */
   organization: string | null;
+  /**
+   * The person's email address, null for none, and when they proved they read it by
+   * following a link sent to it (null while unverified: an operator's entry, which
+   * reserves the address and is trusted for nothing). The address is the person's own to
+   * add and confirm; a verified new one replaces what they held.
+   */
+  email: string | null;
+  emailVerifiedAt: string | null;
   identities: UserIdentity[];
   /** The seats held in the partition's scope: the global and every-domain seats in the global partition, the tenant's in the tenant one. */
   roles: string[];
@@ -49,20 +58,53 @@ export interface UserRow {
 /**
  * What a create takes: the username, a password where the Auth has a password method
  * (required when it is the only way in, optional beside an invited-users registration),
- * whether the account starts disabled, and, in the tenant partition, the role of the seat
- * that makes the person the tenant's user.
+ * whether the account starts disabled, the person's email address as the operator knows
+ * it (unverified, reserving it; refused where the username is the address), and, in the
+ * tenant partition, the role of the seat that makes the person the tenant's user.
  */
 export interface UserCreate {
   username: string;
   password?: string;
   disabled?: boolean;
+  email?: string;
   role?: string;
 }
 
-/** What an update may change: the username and the disabled flag; a password is set through the method. */
+/**
+ * What an update may change: the username, the disabled flag and the operator's entry of
+ * the email address (unverified; refused where the username is the address, which only a
+ * verified new address renames); a password is set through the method.
+ */
 export interface UserPatch {
   username?: string;
   disabled?: boolean;
+  email?: string;
+}
+
+/**
+ * One standing invitation into the partition: an address invited to hold roles, until it
+ * is accepted, revoked or expires. Whoever follows the mailed link and signs in, by any
+ * method, or creates an account with a password, accepts it and is seated with the roles.
+ */
+export interface InvitationRow {
+  id: string;
+  email: string;
+  roles: string[];
+  /** The id of the user who sent it; null when unknown. */
+  invitedBy: string | null;
+  createdAt: string;
+  expiresAt: string;
+}
+
+/**
+ * What an invitation takes: the address, and the roles its acceptance grants in the
+ * partition (the tenant's roles in the tenant partition, the global ones in the global
+ * partition). The request is the same whether an account holds the address or not, and
+ * the caller does not learn which.
+ */
+export interface InvitationCreate {
+  email: string;
+  roles: string[];
 }
 
 /** One seat: a user holding a role in the partition's scope, with the flag that says the seat is held in every domain. */
@@ -102,6 +144,7 @@ export interface UnlinkUserIdentityRequest {
 export type UsersHandle = ResourceHandle<UserRow, [string], 'list' | 'read' | 'create' | 'patch' | 'remove', UserCreate, UserPatch>;
 export type SeatsHandle = ResourceHandle<SeatRow, [string, string], 'list' | 'read' | 'create' | 'remove', SeatCreate>;
 export type RolesHandle = ResourceHandle<RoleRow, [string], 'list' | 'read'>;
+export type InvitationsHandle = ResourceHandle<InvitationRow, [string], 'list' | 'read' | 'create' | 'remove', InvitationCreate>;
 
 /** The surfaces the descriptor carries; none on a descriptor from a generator that predates them. */
 export function userSurfaces(descriptor: ApiDescriptor): readonly UserSurfaceDescriptor[] {
@@ -123,11 +166,17 @@ export interface UserPartitionClient {
   readonly users: UsersHandle;
   readonly seats: SeatsHandle;
   readonly roles: RolesHandle;
+  /** The standing invitations into the partition; undefined on a descriptor that names no invitations resource. */
+  readonly invitations?: InvitationsHandle;
   /** Whether the partition takes a create (the Auth has a way for the new user to sign in) and the digest grants it. */
   canCreateUsers(): boolean;
   /** Whether the digest grants seating, and unseating, in the partition. */
   canSeat(): boolean;
   canUnseat(): boolean;
+  /** Whether the partition has invitations and the digest grants listing them, sending one, and revoking one. */
+  canListInvitations(): boolean;
+  canInvite(): boolean;
+  canRevokeInvitations(): boolean;
   /** Whether the partition has the set-password method and the digest grants its Execute. */
   canSetPassword(): boolean;
   /** Whether the partition has the unlink method and the digest grants its Execute. */
@@ -172,6 +221,12 @@ export function userPartition(
     domain,
   );
   const roles = client.define<RoleRow, [string], 'list' | 'read'>(entry(partition.roles), domain);
+  const invitations = partition.invitations
+    ? client.define<InvitationRow, [string], 'list' | 'read' | 'create' | 'remove', InvitationCreate>(
+        entry(partition.invitations),
+        domain,
+      )
+    : undefined;
   const methodPath = (name: string): string => {
     const descriptor = methods[name];
     if (!descriptor) {
@@ -192,9 +247,13 @@ export function userPartition(
     users,
     seats,
     roles,
+    ...(invitations ? { invitations } : {}),
     canCreateUsers: () => entry(partition.users).operations.includes('create') && users.can(CreatePermission),
     canSeat: () => seats.can(CreatePermission),
     canUnseat: () => seats.can(DeletePermission),
+    canListInvitations: () => invitations?.can(ListPermission) ?? false,
+    canInvite: () => invitations?.can(CreatePermission) ?? false,
+    canRevokeInvitations: () => invitations?.can(DeletePermission) ?? false,
     canSetPassword: () => canExecute(partition.setPassword),
     canUnlinkIdentity: () => canExecute(partition.unlinkIdentity),
     setPassword: async (user, password) => {
@@ -216,5 +275,7 @@ export function userPartition(
 
 /** The resource names of a surface, for a page that asks the digest about them. */
 export function surfaceResources(surface: UserSurfaceDescriptor): Resource[] {
-  return surface.partitions.flatMap((p) => [p.users, p.seats, p.roles] as Resource[]);
+  return surface.partitions.flatMap(
+    (p) => [p.users, p.seats, p.roles, ...(p.invitations ? [p.invitations] : [])] as Resource[],
+  );
 }
