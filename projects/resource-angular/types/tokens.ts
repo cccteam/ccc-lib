@@ -16,6 +16,17 @@ export const BASE_URL = new InjectionToken<string>('BASE_URL', { factory: () => 
 export const FRONTEND_LOGIN_PATH = new InjectionToken<string>('FRONTEND_LOGIN_PATH', { factory: () => '/login' });
 
 /**
+ * The path of the application's sign-out route (e.g., '/logout'): the page that ends the
+ * session and forwards the browser to FRONTEND_LOGIN_PATH, composed from `<ccc-sign-out>`.
+ * A sign-out control is a link to it, and the idle watch sends the browser there when the
+ * session times out; the login page itself ends nothing on arrival.
+ * @defaultValue '/logout'
+ */
+export const FRONTEND_SIGN_OUT_PATH = new InjectionToken<string>('FRONTEND_SIGN_OUT_PATH', {
+  factory: () => '/logout',
+});
+
+/**
  * The path to the session endpoint (e.g., 'user/session').
  * @defaultValue 'user/session'
  */

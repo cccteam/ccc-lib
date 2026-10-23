@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import { ApiDescriptor, createClient } from '@cccteam/resource';
 import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing';
 import { AuthService } from '@cccteam/resource-angular/auth-service';
@@ -9,7 +10,8 @@ import { IdleService } from './idle.service';
 
 // The keep-alive belongs to the started service: no session check runs before start(),
 // one runs every IDLE_KEEPALIVE_DURATION seconds while it runs, and none after stop(),
-// so a logged-out application has no timer due and can settle.
+// so a logged-out application has no timer due and can settle. A session timed out is ended
+// by the sign-out route: the service sends the browser there and ends nothing itself.
 
 const descriptor: ApiDescriptor = {
   resources: {},
@@ -50,7 +52,10 @@ describe('IdleService keep-alive', () => {
     const transport = authenticatedServer();
     TestBed.configureTestingModule({
       providers: [
-        provideResourceTesting({ transport, client: (t) => createClient(descriptor, { baseUrl: '/api', transport: t }) }),
+        provideResourceTesting({
+          transport,
+          client: (t) => createClient(descriptor, { baseUrl: '/api', transport: t }),
+        }),
       ],
     });
     await firstValueFrom(TestBed.inject(AuthService).checkUserSession());
@@ -76,7 +81,10 @@ describe('IdleService keep-alive', () => {
     const transport = authenticatedServer();
     TestBed.configureTestingModule({
       providers: [
-        provideResourceTesting({ transport, client: (t) => createClient(descriptor, { baseUrl: '/api', transport: t }) }),
+        provideResourceTesting({
+          transport,
+          client: (t) => createClient(descriptor, { baseUrl: '/api', transport: t }),
+        }),
       ],
     });
     await firstValueFrom(TestBed.inject(AuthService).checkUserSession());
@@ -88,5 +96,24 @@ describe('IdleService keep-alive', () => {
     await vi.advanceTimersByTimeAsync(30_000);
     expect(transport.requests.filter((r) => r.url === '/api/user/session').length).toBe(before + 1);
     idle.stop();
+  });
+});
+
+describe('IdleService timing out', () => {
+  it('sends the browser to the sign-out route, whose page ends the session, and stops', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideResourceTesting({
+          transport: authenticatedServer(),
+          client: (t) => createClient(descriptor, { baseUrl: '/api', transport: t }),
+        }),
+      ],
+    });
+    const navigated = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const idle = TestBed.inject(IdleService);
+    idle.start();
+    idle.logoutAndStop();
+    expect(navigated).toHaveBeenCalledWith(['/logout']);
+    expect(idle.isActive()).toBe(false);
   });
 });

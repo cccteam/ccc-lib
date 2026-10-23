@@ -36,6 +36,7 @@ import {
   API_VERSION,
   BASE_URL,
   FRONTEND_LOGIN_PATH,
+  FRONTEND_SIGN_OUT_PATH,
   LOGIN_REDIRECT_URL,
   MAINTENANCE_HANDLER,
   VERSION_REFUSAL_HANDLER,
@@ -212,11 +213,12 @@ export function provideResourceClient(
  * handlers come with provideAppUpdate(), and without one the answer goes to nobody.
  * A 401 means the session is gone: the attempted URL, BASE_URL plus the router's current
  * URL, is kept in LOGIN_REDIRECT_URL (AuthService.redirectUrl) for the login page to
- * return to, and the browser goes to FRONTEND_LOGIN_PATH; on the login page already,
- * nothing moves. A 403 carrying `password_change_required` (the session's operator-set
- * password must change before anything else is served) is treated the same: the login
- * page serves the change form. Every other status is left to whoever awaited the request, and to the
- * ErrorHandler when nobody did. The router and the tokens are resolved when the event
+ * return to, and the browser goes to FRONTEND_LOGIN_PATH; on the login page or the sign-out
+ * page (FRONTEND_SIGN_OUT_PATH) already, nothing moves and nothing is kept. A 403 carrying
+ * `password_change_required` (the session's operator-set password must change before
+ * anything else is served) is treated the same: the login page serves the change form.
+ * Every other status is left to whoever awaited the request, and to the ErrorHandler when
+ * nobody did. The router and the tokens are resolved when the event
  * comes, not when the client is built: AuthService injects the client, so nothing the
  * client needs may inject AuthService.
  */
@@ -235,7 +237,7 @@ function clientErrorHook(injector: Injector): (error: ApiError) => void {
     }
     const router = injector.get(Router);
     const loginPath = injector.get(FRONTEND_LOGIN_PATH);
-    if (router.url.startsWith(loginPath)) {
+    if (router.url.startsWith(loginPath) || router.url.startsWith(injector.get(FRONTEND_SIGN_OUT_PATH))) {
       return;
     }
     injector.get(LOGIN_REDIRECT_URL).set(injector.get(BASE_URL) + router.url);

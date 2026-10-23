@@ -27,8 +27,10 @@ import { LoginMethodsComponent, PASSWORDS_DIFFER } from './login-methods.compone
 // the page recorded at the sign-in is emitted once the change is accepted. The mailed links
 // arrive here with their token: an invitation is opened and stands over the list until a
 // sign-in, an acceptance or an account with a password accepts it; a sign-up link opens the
-// account form; a confirmation link is posted once a session stands. Every POST is preceded
-// by a read of the list, so it carries a live XSRF token.
+// account form; a confirmation link is posted once a session stands. The component ends no
+// session on arrival: with nothing in the URL it asks for the session, and one standing is
+// offered Continue or Sign out in the list's place. Every POST is preceded by a read of the
+// list, so it carries a live XSRF token.
 
 const descriptor: ApiDescriptor = {
   resources: {},
@@ -78,8 +80,19 @@ const signUpRoutes = {
   complete: '/console/api/user/sign-up/complete',
 };
 /** The list of a server that sends mail: invitations, the address step and an open sign-up. */
-const mailingList: LoginMethods = { ...consoleList, invitation: invitationRoutes, email: emailRoutes, signUp: signUpRoutes };
-const invited = { email: 'ensign@fleet.example', tenant: 'anvil', expiresAt: '2026-10-30T12:00:00Z', signUp: true, usernameIsEmail: false };
+const mailingList: LoginMethods = {
+  ...consoleList,
+  invitation: invitationRoutes,
+  email: emailRoutes,
+  signUp: signUpRoutes,
+};
+const invited = {
+  email: 'ensign@fleet.example',
+  tenant: 'anvil',
+  expiresAt: '2026-10-30T12:00:00Z',
+  signUp: true,
+  usernameIsEmail: false,
+};
 const dead = { status: 404, body: { message: 'the link has expired or was already used' } };
 const waiting = {
   reason: 'confirmation',
@@ -294,7 +307,7 @@ describe('LoginMethodsComponent renders the list', () => {
   for (const tt of shapes) {
     it(tt.name, async () => {
       const page = await pageOver(server({ methods: { methods: tt.methods, pending: pendingRoutes } }));
-      expect(sent(page.transport)).toEqual(['GET /console/api/user/methods']);
+      expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/session']);
       expect(page.element.querySelector('input[name="username"]') !== null).toBe(tt.wantForm);
       expect(page.element.querySelector('input[name="password"]') !== null).toBe(tt.wantForm);
       expect(buttonsOf(page)).toEqual(tt.wantButtons);
@@ -354,13 +367,15 @@ describe('LoginMethodsComponent signs in with the password', () => {
     TestBed.inject(AuthService).redirectUrl.set('/missions/m-7');
     await signIn(page);
     const requests = sent(page.transport);
-    expect(requests.slice(0, 3)).toEqual([
+    // The arrival reads the list and asks for the session; the sign-in reads the list again and posts.
+    expect(requests.slice(0, 4)).toEqual([
       'GET /console/api/user/methods',
+      'GET /console/api/user/session',
       'GET /console/api/user/methods',
       'POST /console/api/user/password/login',
     ]);
-    expect(page.transport.requests[2].body).toEqual({ username: 'overseer', password: 'lodestar' });
-    expect(requests.slice(3)).toContain('GET /console/api/user/session');
+    expect(page.transport.requests[3].body).toEqual({ username: 'overseer', password: 'lodestar' });
+    expect(requests.slice(4)).toContain('GET /console/api/user/session');
     expect(page.signedIn).toEqual(['/missions/m-7']);
     expect(TestBed.inject(AuthService).authenticated()).toBe(true);
     expect(TestBed.inject(AuthService).redirectUrl()).toBe('');
@@ -427,7 +442,8 @@ describe('LoginMethodsComponent signs in with the password', () => {
       await signIn(page, 'overseer', 'wrong');
       expect(messageOf(page)).toBe(tt.want);
       expect(page.signedIn).toEqual([]);
-      expect(sent(page.transport)).not.toContain('GET /console/api/user/session');
+      // The arrival's session read alone: a refused sign-in checks no session.
+      expect(sent(page.transport).filter((request) => request === 'GET /console/api/user/session')).toHaveLength(1);
       expect(page.element.querySelector('input[name="password"]')).not.toBeNull();
       expect(page.component.busy()).toBe(false);
       // The refusal is rendered in place and raises no notice.
@@ -458,6 +474,7 @@ describe('LoginMethodsComponent signs in with the password', () => {
     await signIn(page);
     expect(sent(page.transport)).toEqual([
       'GET /console/api/user/methods',
+      'GET /console/api/user/session',
       'GET /console/api/user/methods',
       'POST /console/api/user/password/login',
       'GET /console/api/user/pending',
@@ -489,7 +506,7 @@ describe('LoginMethodsComponent signs in with the password', () => {
   it('does nothing while a step is in flight, or when the list offers no password method', async () => {
     const page = await pageOver(server({ methods: { methods: [google], pending: pendingRoutes } }));
     await page.component.login();
-    expect(sent(page.transport)).toEqual(['GET /console/api/user/methods']);
+    expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/session']);
   });
 });
 
@@ -535,7 +552,7 @@ describe('LoginMethodsComponent renders the pending step', () => {
 
   it('without ?pending= the status is not read', async () => {
     const page = await pageOver(server({ status: { status: 200, body: waiting } }));
-    expect(sent(page.transport)).toEqual(['GET /console/api/user/methods']);
+    expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/session']);
     expect(page.component.pending()).toBeUndefined();
   });
 
@@ -742,7 +759,7 @@ describe('LoginMethodsComponent changes a password the operator set', () => {
   const fieldsOf = (page: Page): string[] =>
     Array.from(page.element.querySelectorAll<HTMLInputElement>('input')).map((input) => input.name);
 
-  it('a sign-in whose session must change its password renders the change form in the list\'s place, loads nothing and emits nothing', async () => {
+  it("a sign-in whose session must change its password renders the change form in the list's place, loads nothing and emits nothing", async () => {
     const page = await pageOver(server({ passwordChangeRequired: true }));
     TestBed.inject(AuthService).redirectUrl.set('/missions/m-7');
     await signIn(page);
@@ -839,7 +856,8 @@ describe('LoginMethodsComponent renders the password form for a username that is
 });
 
 describe('LoginMethodsComponent opens an invitation', () => {
-  const noteOf = (page: Page): string | null => page.element.querySelector('.ccc-login-invitation-note')?.textContent?.trim() ?? null;
+  const noteOf = (page: Page): string | null =>
+    page.element.querySelector('.ccc-login-invitation-note')?.textContent?.trim() ?? null;
 
   it('entered with ?invitation=, posts the token after the list and keeps the invitation over the list, checking for a session', async () => {
     const page = await pageOver(server({ methods: mailingList }), { invitation: 'tok-1' });
@@ -851,7 +869,9 @@ describe('LoginMethodsComponent opens an invitation', () => {
     ]);
     expect(page.transport.requests[2].body).toEqual({ token: 'tok-1' });
     expect(page.component.invitation()).toEqual(invited);
-    expect(noteOf(page)).toBe('ensign@fleet.example is invited to anvil. Sign in to accept it, or create an account with a password.');
+    expect(noteOf(page)).toBe(
+      'ensign@fleet.example is invited to anvil. Sign in to accept it, or create an account with a password.',
+    );
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
     expect(buttonsOf(page)).toEqual(['Sign in with Google']);
     expect(page.element.querySelector('.ccc-login-create-account')).not.toBeNull();
@@ -891,7 +911,11 @@ describe('LoginMethodsComponent opens an invitation', () => {
   });
 
   it('a person found signed in is offered to accept it as they are; the acceptance posts, checks the session and emits the page', async () => {
-    const page = await pageOver(server({ methods: mailingList, arrivesSignedIn: true }), { invitation: 'tok-1' }, { home: '/dashboard' });
+    const page = await pageOver(
+      server({ methods: mailingList, arrivesSignedIn: true }),
+      { invitation: 'tok-1' },
+      { home: '/dashboard' },
+    );
     expect(page.component.signedInAs()).toBe('overseer');
     const accept = page.element.querySelector<HTMLButtonElement>('.ccc-login-accept');
     expect(accept?.textContent?.trim()).toBe('Accept as overseer');
@@ -927,7 +951,11 @@ describe('LoginMethodsComponent opens an invitation', () => {
     const page = await pageOver(server({ methods: mailingList }), { invitation: 'tok-1' }, { home: '/dashboard' });
     page.component.openAccountForm();
     await page.settle();
-    expect(page.component.account()).toEqual({ source: 'invitation', email: 'ensign@fleet.example', usernameIsEmail: false });
+    expect(page.component.account()).toEqual({
+      source: 'invitation',
+      email: 'ensign@fleet.example',
+      usernameIsEmail: false,
+    });
     expect(page.element.querySelector('input[name="accountUsername"]')).not.toBeNull();
     expect(page.element.querySelector('input[name="username"]')).toBeNull();
     expect(page.element.querySelector('.ccc-login-account-note')?.textContent?.trim()).toBe(
@@ -1078,7 +1106,11 @@ describe('LoginMethodsComponent signs a person up', () => {
       `POST ${signUpRoutes.complete}`,
       'GET /console/api/user/session',
     ]);
-    expect(page.transport.requests[1].body).toEqual({ token: 'tok-s', password: 'orbit-and-anchor', username: 'rookie' });
+    expect(page.transport.requests[1].body).toEqual({
+      token: 'tok-s',
+      password: 'orbit-and-anchor',
+      username: 'rookie',
+    });
     expect(page.signedIn).toEqual(['/dashboard']);
   });
 
@@ -1141,7 +1173,9 @@ describe('LoginMethodsComponent confirms an email address', () => {
   });
 
   it("a dead or another account's link shows the server's words with Continue, the session standing", async () => {
-    const page = await pageOver(server({ methods: mailingList, arrivesSignedIn: true, emailVerify: dead }), { verify: 'tok-v' });
+    const page = await pageOver(server({ methods: mailingList, arrivesSignedIn: true, emailVerify: dead }), {
+      verify: 'tok-v',
+    });
     expect(page.component.verified()).toBeUndefined();
     expect(messageOf(page)).toBe(dead.body.message);
     expect(page.element.querySelector('.ccc-login-continue')).not.toBeNull();
@@ -1152,6 +1186,106 @@ describe('LoginMethodsComponent confirms an email address', () => {
   it('a redirect method returns to this page with the token, so the confirmation follows the round trip', async () => {
     const page = await pageOver(server({ methods: mailingList }), { verify: 'tok-v' });
     page.component.signInThrough(google);
-    expect(page.left).toEqual([`/console/api/user/google/login?returnUrl=${encodeURIComponent('/login?verify=tok-v')}`]);
+    expect(page.left).toEqual([
+      `/console/api/user/google/login?returnUrl=${encodeURIComponent('/login?verify=tok-v')}`,
+    ]);
+  });
+});
+
+describe('LoginMethodsComponent finds a session standing', () => {
+  const noteOf = (page: Page): string | null =>
+    page.element.querySelector('.ccc-login-signed-in-note')?.textContent?.trim() ?? null;
+  /** The requests of the journey itself, without the digest, domains and flags the first authenticated session read loads. */
+  const stepsOf = (page: Page): string[] =>
+    sent(page.transport).filter((request) => !/permission-digest|user-domains|features/.test(request));
+
+  it("arriving with nothing in the URL, asks for the session after the list; one standing takes the list's place with Continue and Sign out", async () => {
+    const page = await pageOver(server({ arrivesSignedIn: true }));
+    expect(stepsOf(page)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/session']);
+    expect(page.component.signedInAlone()).toBe('overseer');
+    expect(noteOf(page)).toBe('You are signed in as overseer.');
+    expect(page.element.querySelector('input[name="username"]')).toBeNull();
+    expect(buttonsOf(page)).toEqual([]);
+    expect(page.element.querySelector('.ccc-login-continue')).not.toBeNull();
+    expect(page.element.querySelector('.ccc-login-sign-out')).not.toBeNull();
+    expect(page.signedIn).toEqual([]);
+  });
+
+  it('arriving signed out, shows the list alone', async () => {
+    const page = await pageOver(server());
+    expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/session']);
+    expect(page.component.signedInAlone()).toBeUndefined();
+    expect(noteOf(page)).toBeNull();
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+  });
+
+  it('Continue checks the session again and emits the page the guard recorded, else home', async () => {
+    const page = await pageOver(server({ arrivesSignedIn: true }), {}, { home: '/dashboard' });
+    page.transport.requests.length = 0;
+    await page.component.continueAs();
+    await page.settle();
+    expect(sent(page.transport)).toEqual(['GET /console/api/user/session']);
+    expect(page.signedIn).toEqual(['/dashboard']);
+    expect(page.component.signedInAlone()).toBeUndefined();
+  });
+
+  it('Continue goes to the page the guard recorded', async () => {
+    const page = await pageOver(server({ arrivesSignedIn: true }), {}, { home: '/dashboard' });
+    TestBed.inject(AuthService).redirectUrl.set('/missions/m-7');
+    await page.component.continueAs();
+    expect(page.signedIn).toEqual(['/missions/m-7']);
+  });
+
+  it('a recorded page that is the sign-out page itself counts as none', async () => {
+    const page = await pageOver(server({ arrivesSignedIn: true }), {}, { home: '/dashboard' });
+    TestBed.inject(AuthService).redirectUrl.set('/logout');
+    await page.component.continueAs();
+    expect(page.signedIn).toEqual(['/dashboard']);
+  });
+
+  it('Sign out ends the session and shows the list, so the form posts on no session', async () => {
+    const page = await pageOver(server({ arrivesSignedIn: true }));
+    page.transport.requests.length = 0;
+    await page.component.signOut();
+    await page.settle();
+    expect(sent(page.transport)).toEqual(['DELETE /console/api/user/session']);
+    expect(page.component.signedInAlone()).toBeUndefined();
+    expect(noteOf(page)).toBeNull();
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+    expect(page.signedIn).toEqual([]);
+    expect(TestBed.inject(AuthService).authenticated()).toBe(false);
+  });
+
+  it('a session marked for a password change gets the change form on arrival, and the change emits home', async () => {
+    const page = await pageOver(
+      server({ arrivesSignedIn: true, passwordChangeRequired: true }),
+      {},
+      { home: '/dashboard' },
+    );
+    expect(page.component.changing()).toBe(true);
+    expect(page.component.signedInAlone()).toBeUndefined();
+    expect(page.element.querySelector('input[name="oldPassword"]')).not.toBeNull();
+    page.component.oldPassword = 'set-by-operator';
+    page.component.newPassword = 'mine';
+    page.component.newPasswordAgain = 'mine';
+    await page.component.changePassword();
+    await page.settle();
+    expect(page.signedIn).toEqual(['/dashboard']);
+  });
+
+  it('with a step or a link in the URL, the session is read for that alone', async () => {
+    const page = await pageOver(server({ arrivesSignedIn: true, status: { status: 200, body: waiting } }), {
+      pending: '1',
+    });
+    expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/pending']);
+    expect(page.component.signedInAlone()).toBeUndefined();
+  });
+
+  it('does nothing while a step is in flight, or when no session stands', async () => {
+    const page = await pageOver(server());
+    page.transport.requests.length = 0;
+    await page.component.continueAs();
+    await page.component.signOut();
+    expect(sent(page.transport)).toEqual([]);
   });
 });

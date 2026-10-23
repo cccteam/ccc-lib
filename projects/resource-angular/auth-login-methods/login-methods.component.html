@@ -45,6 +45,16 @@
     }
     <button mat-flat-button type="button" class="ccc-login-continue" (click)="proceed()">Continue</button>
   </div>
+} @else if (signedInAlone(); as name) {
+  <div class="ccc-login-signed-in">
+    <p class="ccc-login-signed-in-note">You are signed in as {{ name }}.</p>
+    <button mat-flat-button type="button" class="ccc-login-continue" [disabled]="busy()" (click)="continueAs()">
+      Continue
+    </button>
+    <button mat-button type="button" class="ccc-login-sign-out" [disabled]="busy()" (click)="signOut()">
+      Sign out
+    </button>
+  </div>
 } @else if (pending(); as waiting) {
   <div class="ccc-login-pending">
     @if (waiting.reason === 'confirmation') {
