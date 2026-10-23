@@ -16,7 +16,7 @@ import {
 } from '@cccteam/resource';
 import { AuthService } from '@cccteam/resource-angular/auth-service';
 import { RESOURCE_CLIENT, storeSignal } from '@cccteam/resource-angular/resource-client';
-import { FRONTEND_LOGIN_PATH, SessionInfo } from '@cccteam/resource-angular/types';
+import { FRONTEND_LOGIN_PATH, FRONTEND_SIGN_OUT_PATH, SessionInfo } from '@cccteam/resource-angular/types';
 import { UiCoreService } from '@cccteam/resource-angular/ui-core-service';
 import { firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -105,6 +105,7 @@ export class LoginMethodsComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private document = inject(DOCUMENT);
   private loginPath = inject(FRONTEND_LOGIN_PATH);
+  private signOutPath = inject(FRONTEND_SIGN_OUT_PATH);
   /** Every request is registered as pending work, so the application is stable only once it has answered. */
   private pendingTasks = inject(PendingTasks);
 
@@ -156,8 +157,10 @@ export class LoginMethodsComponent implements OnInit {
   private afterChange = '/';
   /** The invitation the URL's token opened; its note stands over the list until the sign-in that accepts it. */
   invitation = signal<OpenedInvitation | undefined>(undefined);
-  /** The username of the session the page found on arrival with an invitation, who may accept it as they are. */
+  /** The username of the session the page found standing on arrival: with an invitation, who may accept it as they are; alone, who may continue or sign out. */
   signedInAs = signal<string | undefined>(undefined);
+  /** The username of a session found standing with nothing in the URL to act on: Continue and Sign out take the list's place. */
+  signedInAlone = computed(() => (this.invitation() ? undefined : this.signedInAs()));
   /** The account form, taking the list's place: an account with a password, from the invitation or a sign-up link. */
   account = signal<AccountForm | undefined>(undefined);
   /** The sign-up's first step is shown: the address field. */
@@ -380,6 +383,25 @@ export class LoginMethodsComponent implements OnInit {
     this.signedIn.emit(page);
   }
 
+  /** Keeps the session the page found standing: it is checked again and `signedIn` emitted with the page the guard recorded, else `home`. */
+  continueAs(): Promise<void> {
+    if (this.busy() || !this.signedInAlone()) {
+      return Promise.resolve();
+    }
+    return this.step(() => this.complete(this.landing()));
+  }
+
+  /** Ends the session the page found standing and shows the list: the sign-in that follows posts on no session. */
+  signOut(): Promise<void> {
+    if (this.busy() || !this.signedInAlone()) {
+      return Promise.resolve();
+    }
+    return this.step(async () => {
+      await firstValueFrom(this.auth.logout());
+      this.signedInAs.set(undefined);
+    });
+  }
+
   /**
    * Posts the change form: the old password and the new one, typed twice. Two new
    * passwords that differ are refused here, with no request; the server's refusal is
@@ -426,6 +448,9 @@ export class LoginMethodsComponent implements OnInit {
    * Reads the list, the page's first request, then what the URL asks for: the pending
    * step when one waits, the invitation or the sign-up a token names, and the
    * confirmation link's token, posted at once when the page finds a session standing.
+   * With nothing in the URL the page asks for the session: the page ends none on arrival,
+   * so one it finds standing is offered Continue or Sign out in the list's place, and one
+   * that must change its password gets the change form.
    */
   private async arrive(): Promise<void> {
     try {
@@ -448,6 +473,8 @@ export class LoginMethodsComponent implements OnInit {
         if (session) {
           await this.complete(this.landing());
         }
+      } else if (!params.has('pending') && !invitation && !signUp) {
+        await this.findSession();
       }
     } catch (error) {
       this.refusal.set(messageOf(error));
@@ -484,6 +511,24 @@ export class LoginMethodsComponent implements OnInit {
       return;
     }
     this.account.set({ source: 'signUp', token, email: result.email, usernameIsEmail: result.usernameIsEmail });
+  }
+
+  /**
+   * Reads the session the browser arrived with, nothing in the URL asking for anything: a
+   * session standing is named for Continue or Sign out; one marked for a password change
+   * renders the change form, keeping the page the guard recorded for after the change.
+   */
+  private async findSession(): Promise<void> {
+    const session = await firstValueFrom(this.auth.checkUserSession());
+    if (!session?.authenticated) {
+      return;
+    }
+    if (session.passwordChangeRequired) {
+      this.afterChange = this.landing();
+      this.changing.set(true);
+      return;
+    }
+    this.signedInAs.set(session.username);
   }
 
   /** The session the browser arrived with, when one stands and may act; undefined otherwise. */
@@ -648,11 +693,11 @@ export class LoginMethodsComponent implements OnInit {
     }
   }
 
-  /** The router URL a sign-in lands on: the page the login guard turned away from, read once, else `home`. */
+  /** The router URL a sign-in lands on: the page the login guard turned away from, read once, else `home`; the login and sign-out pages themselves count as none. */
   private landing(): string {
     const recorded = this.auth.redirectUrl();
     this.auth.redirectUrl.set('');
-    if (recorded === '' || recorded.startsWith(this.loginPath)) {
+    if (recorded === '' || recorded.startsWith(this.loginPath) || recorded.startsWith(this.signOutPath)) {
       return this.home();
     }
     return recorded;

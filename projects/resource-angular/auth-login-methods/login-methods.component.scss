@@ -14,7 +14,8 @@
 .ccc-login-sign-up,
 .ccc-login-accept,
 .ccc-login-create-account,
-.ccc-login-continue {
+.ccc-login-continue,
+.ccc-login-sign-out {
   width: 100%;
 }
 
@@ -28,7 +29,8 @@
 }
 
 .ccc-login-accept,
-.ccc-login-create-account {
+.ccc-login-create-account,
+.ccc-login-sign-out {
   margin-top: 8px;
 }
 
@@ -38,6 +40,7 @@
 .ccc-login-started-note,
 .ccc-login-starting-note,
 .ccc-login-landed-note,
+.ccc-login-signed-in-note,
 .ccc-login-invitation-note {
   margin: 0 0 12px;
 }

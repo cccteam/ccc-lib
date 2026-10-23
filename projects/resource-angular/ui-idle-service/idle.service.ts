@@ -3,7 +3,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '@cccteam/resource-angular/auth-service';
 import {
   AlertType,
-  FRONTEND_LOGIN_PATH,
+  FRONTEND_SIGN_OUT_PATH,
   IDLE_KEEPALIVE_DURATION,
   IDLE_LOGOUT_ACTION,
   IDLE_SESSION_DURATION,
@@ -22,7 +22,7 @@ export class IdleService implements OnDestroy {
   private core = inject(UiCoreService);
   private router = inject(Router);
   private notifications = inject(NotificationService);
-  private readonly loginPath = inject(FRONTEND_LOGIN_PATH);
+  private readonly signOutPath = inject(FRONTEND_SIGN_OUT_PATH);
 
   private readonly sessionDuration = inject(IDLE_SESSION_DURATION);
   private readonly logoutAction = inject(IDLE_LOGOUT_ACTION);
@@ -93,7 +93,9 @@ export class IdleService implements OnDestroy {
   }
 
   /**
-   * Logs out the user due to inactivity, calls the configured logout action, and stops the service.
+   * Logs the user out due to inactivity: runs the configured idle logout action, stops the
+   * service and sends the browser to the sign-out route (FRONTEND_SIGN_OUT_PATH), whose page
+   * ends the session and forwards to the login page.
    */
   logoutAndStop(): void {
     try {
@@ -103,7 +105,7 @@ export class IdleService implements OnDestroy {
     }
     this.stop();
 
-    this.router.navigate([this.loginPath]);
+    this.router.navigate([this.signOutPath]);
     this.core.publishError({
       message: 'You have been logged out due to inactivity.',
       type: AlertType.IDLE,
