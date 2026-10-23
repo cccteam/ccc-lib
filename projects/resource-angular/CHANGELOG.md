@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.12](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.11...resource-angular/v0.0.12) (2026-10-23)
+
+
+### Features
+
+* a sign-out page ends the session and forwards to the login page, which ends none on arrival ([#151](https://github.com/cccteam/ccc-lib/issues/151)) ([1b438c0](https://github.com/cccteam/ccc-lib/commit/1b438c007a50b82eb3933d3c94102156ec7fe31e))
+
 ## [0.0.11](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.10...resource-angular/v0.0.11) (2026-10-23)
 
 
