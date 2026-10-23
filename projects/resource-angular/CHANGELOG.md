@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.10](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.9...resource-angular/v0.0.10) (2026-10-23)
+
+
+### Features
+
+* **resource,resource-angular:** the login page follows the mailed links; the console invites and shows the address ([#147](https://github.com/cccteam/ccc-lib/issues/147)) ([ac840a9](https://github.com/cccteam/ccc-lib/commit/ac840a9be6434932fe3f3b11cfdbe2fedcb01035))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.8 to ^0.0.9
+
 ## [0.0.9](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.8...resource-angular/v0.0.9) (2026-10-21)
 
 
