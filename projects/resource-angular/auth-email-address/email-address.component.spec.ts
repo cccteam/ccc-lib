@@ -12,7 +12,7 @@ import { EmailAddressComponent } from './email-address.component';
 // The component shows the signed-in person's address as the session the AuthService checked
 // carries it, offers to add or change it where the methods list names the email routes,
 // posts the address through the client, which reads the list again first, and says the
-// confirmation link is on its way whatever the address's state; a refusal is rendered in
+// confirmation link was sent whatever the address's state; a refusal is rendered in
 // place.
 
 const descriptor: ApiDescriptor = {
@@ -25,7 +25,9 @@ const descriptor: ApiDescriptor = {
 
 const emailRoutes = { add: '/api/user/email', verify: '/api/user/email/verify' };
 const mailingList: LoginMethods = {
-  methods: [{ name: 'password', method: 'password', kind: 'password', label: 'Password', path: '/api/user/password/login' }],
+  methods: [
+    { name: 'password', method: 'password', kind: 'password', label: 'Password', path: '/api/user/password/login' },
+  ],
   changePassword: '/api/user/password/change',
   email: emailRoutes,
 };
@@ -71,7 +73,9 @@ async function pageOver(state: Partial<Server> = {}): Promise<Page> {
   const transport = transportOf({ methods: mailingList, session: {}, add: { status: 200, body: {} }, ...state });
   await TestBed.configureTestingModule({
     imports: [EmailAddressComponent],
-    providers: [provideResourceTesting({ transport, client: (t) => createClient(descriptor, { baseUrl: '/api', transport: t }) })],
+    providers: [
+      provideResourceTesting({ transport, client: (t) => createClient(descriptor, { baseUrl: '/api', transport: t }) }),
+    ],
   }).compileComponents();
   await firstValueFrom(TestBed.inject(AuthService).checkUserSession());
   transport.requests.length = 0;
@@ -113,7 +117,7 @@ describe('EmailAddressComponent', () => {
     {
       name: "an operator's unconfirmed entry",
       session: { email: 'pax@fleet.example', emailVerified: false },
-      want: 'pax@fleet.example is on your account, unconfirmed.',
+      want: 'pax@fleet.example is on your account but not confirmed yet.',
       button: 'Confirm the address',
       prefill: 'pax@fleet.example',
     },
@@ -147,7 +151,9 @@ describe('EmailAddressComponent', () => {
     expect(sent(page.transport)).toEqual(['GET /api/user/methods', `POST ${emailRoutes.add}`]);
     expect(page.transport.requests[1].body).toEqual({ email: 'pax@fleet.example' });
     expect(page.component.sent()).toBe('pax@fleet.example');
-    expect(textOf(page.element.querySelector('.ccc-email-note'))).toContain('A link to confirm pax@fleet.example is on its way');
+    expect(textOf(page.element.querySelector('.ccc-email-note'))).toContain(
+      'We sent a confirmation link to pax@fleet.example',
+    );
     expect(page.element.querySelector('input[name="email"]')).toBeNull();
     page.component.done();
     await page.settle();
@@ -155,7 +161,7 @@ describe('EmailAddressComponent', () => {
     expect(page.element.querySelector('.ccc-email-current')).not.toBeNull();
   });
 
-  it('renders a refusal in place: the sentence with the wait for a mailbox sent too many links, the server\'s words otherwise', async () => {
+  it("renders a refusal in place: the sentence with the wait for a mailbox sent too many links, the server's words otherwise", async () => {
     const limited = await pageOver({
       add: { status: 429, body: { message: 'Too many links', code: 'too_many_attempts', retryAfter: 120 } },
     });
@@ -177,7 +183,9 @@ describe('EmailAddressComponent', () => {
   });
 
   it('offers nothing where the list names no email routes', async () => {
-    const page = await pageOver({ methods: { methods: mailingList.methods, changePassword: mailingList.changePassword } });
+    const page = await pageOver({
+      methods: { methods: mailingList.methods, changePassword: mailingList.changePassword },
+    });
     expect(page.element.querySelector('.ccc-email-edit')).toBeNull();
     expect(textOf(page.element.querySelector('.ccc-email-current'))).toBe('No email address is on your account.');
   });

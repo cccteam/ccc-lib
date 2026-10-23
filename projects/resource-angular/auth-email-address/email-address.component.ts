@@ -60,7 +60,7 @@ export class EmailAddressComponent implements OnInit {
     }
     return session.emailVerified
       ? `${session.email} is your email address.`
-      : `${session.email} is on your account, unconfirmed.`;
+      : `${session.email} is on your account but not confirmed yet.`;
   });
   /** The words on the button: what the form does to the account. */
   action = computed(() => {
