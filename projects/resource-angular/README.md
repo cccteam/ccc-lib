@@ -197,6 +197,23 @@ with the wait) is rendered in place.
 <ccc-email-address />
 ```
 
+## The release
+
+`<ccc-release>` (`@cccteam/resource-angular/ui-release`) is the release the application runs, for
+the login page and the footer of every page. Every answer of the server names the release it was
+built from in `X-Api-Version`, the client keeps the last one named (`client.serverRelease`, a store
+read with `get()` and watched with `subscribe()`), and the component renders it: `v0.3.1` for a
+release, a pull request's build as the pipeline names it, `dev` for a server built locally. Nothing
+renders until the client's first answer, which on the login page is the methods list the login
+component reads. When this build of the browser application names a release (`API_VERSION`) that is
+not the server's, a tab kept open across a release until the update notice is taken, the line adds
+which build the tab runs. Nothing about the application is named in it; the page puts its own name
+beside it where it wants one.
+
+```html
+<ccc-release />
+```
+
 ## User management
 
 `<ccc-user-management>` (`@cccteam/resource-angular/ccc-user-management`) is the page that

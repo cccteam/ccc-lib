@@ -24,6 +24,7 @@ import {
 } from './live';
 import { BatchResult, Operation, OperationRoute, operationRoute } from './operations';
 import { ClientResponse, PermissionStore, Requester, RequestOptions, ResponseRequester } from './permissions';
+import { Store } from './store';
 import { dryRunHeader } from './transport';
 import { LinkHeader, ListQuery, ReadOptions, TotalCountHeader, listSearchParams, parseLinkHeader, readSearchParams } from './query';
 import { readMode, wholeListQuery } from './reading';
@@ -334,6 +335,12 @@ export interface ClientBase {
    * cancel. See AuthClient.
    */
   readonly auth: AuthClient;
+  /**
+   * The release the server named on its last answer (`X-Api-Version`, which every answer
+   * of an outlet carries), undefined until an answer named one: what a release line shows,
+   * read with `get()` and watched with `subscribe()`. `dev` is a server built locally.
+   */
+  readonly serverRelease: Store<string | undefined>;
   /** Issues a request under baseUrl; the escape hatch for routes the generator did not describe. */
   readonly request: Requester;
   /** Issues a request and resolves with the headers too. */
@@ -373,10 +380,12 @@ export type Client<G, D> = ClientBase & G & { domain(domain: Domain | string): D
 export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOptions): Client<G, D> {
   const baseUrl = options.baseUrl.replace(/\/+$/, '');
   const transport = options.transport ?? fetchTransport();
+  const serverRelease = new Store<string | undefined>(undefined);
   const requestResponse = createRequester(baseUrl, transport, {
     onError: options.onError,
     apiVersion: options.apiVersion,
     olderServerRetryDelays: options.olderServerRetryDelays,
+    serverRelease,
   });
   const request: Requester = async <T>(method: HttpMethod, path: string, requestOptions?: RequestOptions): Promise<T> =>
     (await requestResponse<T>(method, path, requestOptions)).body;
@@ -404,6 +413,7 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
     live,
     features,
     auth,
+    serverRelease,
     request,
     requestResponse,
     batch: (operations) => batch(request, descriptor, operations),
@@ -510,6 +520,8 @@ interface RequesterOptions {
   onError?: (error: ApiError) => void;
   apiVersion?: string;
   olderServerRetryDelays?: readonly number[];
+  /** Where the release each answer names is kept, when the caller keeps it. */
+  serverRelease?: Store<string | undefined>;
 }
 
 /**
@@ -519,7 +531,9 @@ interface RequesterOptions {
  * server's release is older than this build's, the request is retried after each pause in
  * `olderServerRetryDelays` (a deploy still shifting traffic answers the next try from the
  * new instance); when the retries run out, or when this build is the older one, the
- * refusal is thrown as ApiVersionError, observed by the hook first. A 503 that carries the
+ * refusal is thrown as ApiVersionError, observed by the hook first. Every answer that names
+ * the server's release in the version header, refusals included, is kept in `serverRelease`
+ * before it is judged. A 503 that carries the
  * maintenance marker is the server down for maintenance and is judged the same way, before
  * the caller's declared answers, and thrown as MaintenanceError with the server's
  * Retry-After; a 503 without the marker is an ordinary error. Every other 4xx or 5xx the
@@ -536,6 +550,10 @@ function createRequester(baseUrl: string, transport: Transport, requester: Reque
     let retries = 0;
     for (;;) {
       const response = await transport({ method, url, body: options?.body, headers });
+      const named = response.headers?.[apiVersionHeader.toLowerCase()];
+      if (named !== undefined && named !== '') {
+        requester.serverRelease?.set(named);
+      }
       const serverVersion = versionRefusal(response);
       if (serverVersion !== undefined) {
         const serverOlder = version !== undefined && compareReleases(serverVersion, version) < 0;

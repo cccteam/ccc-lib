@@ -188,3 +188,34 @@ describe('releases', () => {
     });
   }
 });
+
+describe("the server's release", () => {
+  it('is kept from every answer that names one, and told once per change', async () => {
+    const transport = scriptedTransport({ status: 200, body: [], headers: { [header]: 'v2.0.0' } });
+    const client = createClient(descriptor, { baseUrl: '/api', transport });
+    expect(client.serverRelease.get()).toBeUndefined();
+    const seen: (string | undefined)[] = [];
+    client.serverRelease.subscribe((release) => seen.push(release));
+    await client.request('GET', 'user/methods');
+    await client.request('GET', 'user/methods');
+    expect(client.serverRelease.get()).toBe('v2.0.0');
+    expect(seen).toEqual(['v2.0.0']);
+  });
+
+  it('is kept from a refusal too', async () => {
+    const transport = scriptedTransport(refusal('2.0.0'));
+    const client = createClient(descriptor, { baseUrl: '/api', transport, apiVersion: '1.0.0' });
+    await expect(client.request('GET', 'missions')).rejects.toBeInstanceOf(ApiVersionError);
+    expect(client.serverRelease.get()).toBe('2.0.0');
+  });
+
+  it('stays as it was when an answer names none', async () => {
+    const transport = scriptedTransport((request) =>
+      request.url.endsWith('/user/methods') ? { status: 200, body: {}, headers: { [header]: 'dev' } } : { status: 200, body: {} },
+    );
+    const client = createClient(descriptor, { baseUrl: '/api', transport });
+    await client.request('GET', 'user/methods');
+    await client.request('GET', 'missions');
+    expect(client.serverRelease.get()).toBe('dev');
+  });
+});
