@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.13](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.12...resource-angular/v0.0.13) (2026-10-23)
+
+
+### Bug Fixes
+
+* the email address component says in plain words that a confirmation link was sent and that an address is not confirmed yet ([#153](https://github.com/cccteam/ccc-lib/issues/153)) ([3bb1504](https://github.com/cccteam/ccc-lib/commit/3bb1504a3feba67c6e6e58f5674df11941b289a6))
+
 ## [0.0.12](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.11...resource-angular/v0.0.12) (2026-10-23)
 
 
