@@ -184,6 +184,11 @@ session stands: on arrival when the page finds one, else after the sign-in it wa
 method returns to this page with the token, since the round trip reloads the application); the
 component then says the address is confirmed, or renders the server's refusal, and emits `signedIn`
 on Continue. A link that has expired or was already used renders the server's words and the list.
+On arrival the component holds the list back: a progress bar stands in its place and no form shows
+until the reads have answered, so a person found signed in goes straight on to what the link asks
+for (the address confirmed, the invitation to accept as they are, the pending step), or with
+nothing in the URL is offered Continue and Sign out, and is never shown a form to fill in; the form
+shows only to a person the session read finds signed out.
 Cancelling the account form or the sign-up shows the list again and emits `cancelled`.
 
 ## Signing out
