@@ -383,7 +383,9 @@ routes for it.
 An invitation (`?invitation=<token>`) brings a person into the application, or into one of its
 tenants, with the roles it carries. `openInvitation(token)` posts the token: the answer
 describes the invitation (`email`; `tenant`, empty for the global surface; `expiresAt`;
-`signUp`, whether an account with a password may be created here; `usernameIsEmail`), and the
+`signUp`, whether an account with a password may be created here; `usernameIsEmail`; and
+`methods`, the registration names of the listed directory methods that could admit the
+address, absent when the server did not say), and the
 browser now carries it, so the sign-in that follows, by any method, accepts it and the
 server's hook seats the person. `acceptInvitation()` accepts it for a person already signed
 in. `signUpFromInvitation({ password, username? })` creates the invited person's account with

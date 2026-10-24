@@ -81,6 +81,8 @@ export interface StandingInvitation {
   readonly expiresAt: string;
   /** An account created from the invitation has the address as its username; the person chooses one otherwise. */
   readonly usernameIsEmail: boolean;
+  /** The registration names of the listed directory methods that could admit the address, as `OpenedInvitation.methods`; absent when the server did not say. */
+  readonly methods?: readonly string[];
 }
 
 /** The paths of the email address handlers: `add`, where a signed-in person asks for a confirmation link, and `verify`, where the page posts the token it carried. */
@@ -136,6 +138,13 @@ export interface OpenedInvitation {
   readonly signUp: boolean;
   /** That account's username is the address; the person chooses one otherwise. */
   readonly usernameIsEmail: boolean;
+  /**
+   * The registration names of the listed directory methods that could admit the address,
+   * each a listed method's `name`, so a page shows those buttons alone while the invitation
+   * stands; the password method is never among them, `signUp` being its word. Possibly
+   * empty; absent when the server did not say.
+   */
+  readonly methods?: readonly string[];
 }
 
 /**
@@ -532,6 +541,7 @@ export class AuthClient {
       return refusalOf(response);
     }
     const body = response.body ?? {};
+    const methods = methodNamesOf(body.methods);
     return {
       outcome: 'opened',
       email: stringOf(body.email),
@@ -539,6 +549,7 @@ export class AuthClient {
       expiresAt: stringOf(body.expiresAt),
       signUp: body.signUp === true,
       usernameIsEmail: body.usernameIsEmail === true,
+      ...(methods === undefined ? {} : { methods }),
     };
   }
 
@@ -825,12 +836,22 @@ function standingOf(value: Partial<StandingInvitation> | null | undefined): Stan
   if (!value || typeof value !== 'object') {
     return undefined;
   }
+  const methods = methodNamesOf(value.methods);
   return {
     email: stringOf(value.email),
     tenant: stringOf(value.tenant),
     expiresAt: stringOf(value.expiresAt),
     usernameIsEmail: value.usernameIsEmail === true,
+    ...(methods === undefined ? {} : { methods }),
   };
+}
+
+/** The registration names an invitation answer lists, strings only; undefined where it lists none, or what it lists is not a list. */
+function methodNamesOf(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value.filter((name): name is string => typeof name === 'string');
 }
 
 function stringOf(value: unknown): string {

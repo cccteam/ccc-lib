@@ -183,7 +183,10 @@ screen. The browser keeps carrying the invitation when a redirect method refuses
 returns to the login page with `?code=` and no token; the methods list then names it
 (`invitation.standing`), and the component shows the note over the list again, with the refusal's
 sentence under it, so the person sees the invitation, the ways to sign in and the refusal together.
-A token in the URL is opened instead, which also refreshes what the browser carries. A sign-up
+A token in the URL is opened instead, which also refreshes what the browser carries. An invitation
+that names the directory registrations able to admit its address (`methods`) narrows the "Sign in
+with …" buttons to those while it stands, and to none when it names none; the password form stays,
+since a person who has a password may sign in with it to accept. A sign-up
 link (`?signUp=<token>`) opens the same
 account form in the list's place, and the list of a server whose password method offers sign-up
 carries a "Create an account" step, which asks for an address and tells the person the link is on

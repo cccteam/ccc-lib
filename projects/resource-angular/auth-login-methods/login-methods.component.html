@@ -175,7 +175,7 @@
       <button mat-flat-button type="submit" class="ccc-login-submit" [disabled]="busy()">Sign in</button>
     </form>
   }
-  @for (method of redirectMethods(); track method.name) {
+  @for (method of offeredRedirectMethods(); track method.name) {
     <button
       mat-stroked-button
       type="button"

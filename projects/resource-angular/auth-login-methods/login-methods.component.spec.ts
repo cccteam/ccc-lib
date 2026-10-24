@@ -57,6 +57,14 @@ const google: LoginMethod = {
   label: 'Google',
   path: '/console/api/user/google/login',
 };
+/** A second Google registration, a different directory's. */
+const fleetGoogle: LoginMethod = {
+  name: 'google-one',
+  method: 'google',
+  kind: 'redirect',
+  label: 'Fleet Google',
+  path: '/console/api/user/google-one/login',
+};
 const entra: LoginMethod = {
   name: 'lakeside-entra',
   method: 'azure',
@@ -1149,6 +1157,69 @@ describe('LoginMethodsComponent finds the invitation the browser carries', () =>
     expect(noteOf(page)).toBeNull();
     expect(page.element.querySelector('.ccc-login-sign-up')).not.toBeNull();
     expect(messageOf(page)).toBe(DEFAULT_LOGIN_MESSAGES['not_workspace_member']);
+  });
+});
+
+describe('LoginMethodsComponent shows the directory buttons that could admit the invitee', () => {
+  const standing = {
+    email: invited.email,
+    tenant: invited.tenant,
+    expiresAt: invited.expiresAt,
+    usernameIsEmail: false,
+  };
+  /** The list of a server with two Google registrations, whose browser carries the invitation, named as `methods` says. */
+  const listNaming = (methods?: readonly string[]): LoginMethods => ({
+    ...mailingList,
+    methods: [password, google, fleetGoogle],
+    invitation: {
+      ...invitationRoutes,
+      standing: methods === undefined ? standing : { ...standing, methods },
+    },
+  });
+  const noteOf = (page: Page): string | null =>
+    page.element.querySelector('.ccc-login-invitation-note')?.textContent?.trim() ?? null;
+
+  it('shows only the registrations the standing invitation names, the password form and the account staying', async () => {
+    const page = await pageOver(server({ methods: listNaming(['google-one']) }));
+    expect(page.component.invitation()).toEqual({ ...invited, methods: ['google-one'] });
+    expect(buttonsOf(page)).toEqual(['Sign in with Fleet Google']);
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+    expect(orderOf(page)).toEqual(['ccc-login-submit', 'ccc-login-redirect', 'ccc-login-create-account']);
+  });
+
+  it('shows no redirect button when the invitation names none, the note and the account still there', async () => {
+    const page = await pageOver(server({ methods: listNaming([]) }));
+    expect(buttonsOf(page)).toEqual([]);
+    expect(noteOf(page)).toBe(
+      'ensign@fleet.example is invited to anvil. Sign in to accept it, or create an account with a password.',
+    );
+    expect(page.element.querySelector('.ccc-login-create-account')).not.toBeNull();
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+  });
+
+  it('shows every redirect button when the invitation does not say, as an older server answers', async () => {
+    const page = await pageOver(server({ methods: listNaming() }));
+    expect(page.component.invitation()).toEqual(invited);
+    expect(buttonsOf(page)).toEqual(['Sign in with Google', 'Sign in with Fleet Google']);
+  });
+
+  it('narrows the buttons the same way for an invitation opened from its token', async () => {
+    const page = await pageOver(
+      server({
+        methods: { ...mailingList, methods: [password, google, fleetGoogle] },
+        invitationOpen: { status: 200, body: { ...invited, methods: ['google-one'] } },
+      }),
+      { invitation: 'tok-1' },
+    );
+    expect(page.component.invitation()).toEqual({ ...invited, methods: ['google-one'] });
+    expect(buttonsOf(page)).toEqual(['Sign in with Fleet Google']);
+    // The invitation accepted, every button is back for the next person.
+    page.component.username = 'ensign';
+    page.component.password = 'orbit-and-anchor';
+    await page.component.login();
+    await page.settle();
+    expect(page.component.invitation()).toBeUndefined();
+    expect(buttonsOf(page)).toEqual(['Sign in with Google', 'Sign in with Fleet Google']);
   });
 });
 

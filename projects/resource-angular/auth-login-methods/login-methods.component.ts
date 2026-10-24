@@ -83,7 +83,10 @@ export interface AccountForm {
  * list then names the invitation under `invitation.standing`, and the note stands over the
  * list again, with the refusal's sentence under it, so the person sees what they were invited
  * to, the ways to sign in, and why the last attempt was refused, together. A token in the
- * URL is opened instead, which also refreshes what the browser carries. A sign-up link
+ * URL is opened instead, which also refreshes what the browser carries. An invitation that
+ * names the directory registrations able to admit its address (`methods`) narrows the
+ * redirect buttons to those while it stands, and to none when it names none; the password
+ * form stays, since a person who has a password may sign in with it to accept. A sign-up link
  * (`?signUp=`) is opened the same way and renders the account form in the list's place; the
  * list of a server whose password method offers sign-up also carries the "Create an account"
  * step, which asks for an address and mails it the link. A confirmation link (`?verify=`) is
@@ -154,6 +157,16 @@ export class LoginMethodsComponent implements OnInit {
   passwordMethod = computed(() => this.methods().find((method) => method.kind === 'password'));
   /** The redirect methods, one button each, in the server's order. */
   redirectMethods = computed(() => this.methods().filter((method) => method.kind === 'redirect'));
+  /**
+   * The redirect methods offered on screen: while an invitation stands that names the
+   * registrations able to admit the invited address (`methods`), those alone, in the
+   * server's order, and none when it names none; every redirect method otherwise.
+   */
+  offeredRedirectMethods = computed(() => {
+    const admitting = this.invitation()?.methods;
+    const redirects = this.redirectMethods();
+    return admitting ? redirects.filter((method) => admitting.includes(method.name)) : redirects;
+  });
   /** The password method's username is the person's email address: the form asks for the address. */
   usernameIsEmail = computed(() => this.list()?.usernameIsEmail ?? false);
   /** The words over the password form's first field. */
@@ -526,6 +539,7 @@ export class LoginMethodsComponent implements OnInit {
       expiresAt: result.expiresAt,
       signUp: result.signUp,
       usernameIsEmail: result.usernameIsEmail,
+      ...(result.methods === undefined ? {} : { methods: result.methods }),
     });
   }
 
@@ -547,6 +561,7 @@ export class LoginMethodsComponent implements OnInit {
       expiresAt: standing.expiresAt,
       signUp: block.signUp !== undefined,
       usernameIsEmail: standing.usernameIsEmail,
+      ...(standing.methods === undefined ? {} : { methods: standing.methods }),
     };
   }
 
