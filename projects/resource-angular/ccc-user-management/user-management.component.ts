@@ -199,9 +199,9 @@ export class UserManagementComponent {
     return row.emailVerifiedAt === null ? `${row.email} · unconfirmed` : row.email;
   }
 
-  /** The words for the inviter: the username of the user who sent it when this page lists them, else nothing. */
+  /** The words for the inviter: the username the row carries, nothing when the sender is unknown. */
   invitedBy(invitation: InvitationRow): string {
-    return this.rows().find((row) => row.id === invitation.invitedBy)?.username ?? '';
+    return invitation.invitedBy ?? '';
   }
 
   /** The words for how a user signs in: the password and each linked identity's registration. */
