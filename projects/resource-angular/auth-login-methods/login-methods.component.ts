@@ -9,6 +9,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute } from '@angular/router';
 import {
   LoginMethod,
+  LoginMethods,
   OpenedInvitation,
   passwordChangeRequiredCode,
   PendingSignIn,
@@ -77,10 +78,15 @@ export interface AccountForm {
  * may instead create an account with a password, which signs them in and accepts it. That
  * button comes last, under the password form and the redirect buttons, where the open
  * "Create an account" step stands when no invitation does, so account creation is the last
- * thing offered on either screen. A sign-up link (`?signUp=`) is opened the same way and
- * renders the account form in the list's place; the list of a server whose password method
- * offers sign-up also carries the "Create an account" step, which asks for an address and
- * mails it the link. A confirmation link (`?verify=`) is
+ * thing offered on either screen. The browser keeps carrying the invitation when a redirect
+ * method refuses the sign-in and brings it back here with `?code=` and no token; the methods
+ * list then names the invitation under `invitation.standing`, and the note stands over the
+ * list again, with the refusal's sentence under it, so the person sees what they were invited
+ * to, the ways to sign in, and why the last attempt was refused, together. A token in the
+ * URL is opened instead, which also refreshes what the browser carries. A sign-up link
+ * (`?signUp=`) is opened the same way and renders the account form in the list's place; the
+ * list of a server whose password method offers sign-up also carries the "Create an account"
+ * step, which asks for an address and mails it the link. A confirmation link (`?verify=`) is
  * posted once a session stands, on arrival when the page finds one, else after the
  * sign-in it waits for (a redirect method returns to this page with the token); the
  * component then shows what happened and emits `signedIn` on Continue. On every arrival
@@ -162,7 +168,7 @@ export class LoginMethodsComponent implements OnInit {
   changeNote = computed(() => this.ui.loginMessage(passwordChangeRequiredCode));
   /** The router URL the sign-in recorded, emitted once the password is changed. */
   private afterChange = '/';
-  /** The invitation the URL's token opened; its note stands over the list until the sign-in that accepts it. */
+  /** The invitation the URL's token opened, or the one the browser was found carrying; its note stands over the list until the sign-in that accepts it. */
   invitation = signal<OpenedInvitation | undefined>(undefined);
   /** The username of the session the page found standing on arrival: with an invitation, who may accept it as they are; alone, who may continue or sign out. */
   signedInAs = signal<string | undefined>(undefined);
@@ -457,13 +463,15 @@ export class LoginMethodsComponent implements OnInit {
    * Reads the list, the page's first request, then what the URL asks for: the pending
    * step when one waits, the invitation or the sign-up a token names, and the
    * confirmation link's token, posted at once when the page finds a session standing.
-   * Throughout, `arriving` holds the list back: a progress bar stands in its place until
-   * the reads have answered, so a person found signed in goes straight on to what the
-   * link asks for and is never shown a form to fill in. With nothing in the URL the page
-   * asks for the session: the page ends none on arrival, so one it finds standing is
-   * offered Continue or Sign out in the list's place, and one that must change its
-   * password gets the change form; the form appears only once that read says no session
-   * stands.
+   * An invitation the list says the browser carries, with no token in the URL to open,
+   * is kept over the list the way an opened one is, the session read for who may accept
+   * it. Throughout, `arriving` holds the list back: a progress bar stands in its place
+   * until the reads have answered, so a person found signed in goes straight on to what
+   * the link asks for and is never shown a form to fill in. With nothing in the URL and
+   * no invitation carried, the page asks for the session: the page ends none on arrival,
+   * so one it finds standing is offered Continue or Sign out in the list's place, and one
+   * that must change its password gets the change form; the form appears only once that
+   * read says no session stands.
    */
   private async arrive(): Promise<void> {
     const params = this.route.snapshot.queryParamMap;
@@ -473,12 +481,15 @@ export class LoginMethodsComponent implements OnInit {
     const linked = params.has('pending') || invitation !== '' || signUp !== '' || this.verifyToken !== '';
     this.arriving.set(true);
     try {
-      await this.client.auth.methods();
+      const list = await this.client.auth.methods();
+      const carried = this.carriedInvitation(list, invitation);
       if (params.has('pending')) {
         await this.readPending();
       }
       if (invitation !== '') {
         await this.openInvitation(invitation);
+      } else if (carried) {
+        await this.keepInvitation(carried);
       }
       if (signUp !== '') {
         await this.openSignUp(signUp);
@@ -488,7 +499,7 @@ export class LoginMethodsComponent implements OnInit {
         if (session) {
           await this.complete(this.landing());
         }
-      } else if (!linked) {
+      } else if (!linked && !carried) {
         await this.findSession();
       }
     } catch (error) {
@@ -509,13 +520,39 @@ export class LoginMethodsComponent implements OnInit {
       this.refusal.set(this.sentenceOf(result));
       return;
     }
-    this.invitation.set({
+    await this.keepInvitation({
       email: result.email,
       tenant: result.tenant,
       expiresAt: result.expiresAt,
       signUp: result.signUp,
       usernameIsEmail: result.usernameIsEmail,
     });
+  }
+
+  /**
+   * The invitation the list says the browser carries, as the page shows one, when the URL
+   * names no token: a token is opened instead, since opening it also refreshes what the
+   * browser carries. The account with a password is offered where the block names the
+   * sign-up route. Undefined when the browser carries no live invitation.
+   */
+  private carriedInvitation(list: LoginMethods, token: string): OpenedInvitation | undefined {
+    const block = list.invitation;
+    const standing = block?.standing;
+    if (token !== '' || !block || !standing) {
+      return undefined;
+    }
+    return {
+      email: standing.email,
+      tenant: standing.tenant,
+      expiresAt: standing.expiresAt,
+      signUp: block.signUp !== undefined,
+      usernameIsEmail: standing.usernameIsEmail,
+    };
+  }
+
+  /** Keeps the invitation over the list and reads the session: a person found signed in is offered to accept it as they are. */
+  private async keepInvitation(invitation: OpenedInvitation): Promise<void> {
+    this.invitation.set(invitation);
     const session = await this.sessionStanding();
     this.signedInAs.set(session?.username);
   }

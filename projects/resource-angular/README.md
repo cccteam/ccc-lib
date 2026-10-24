@@ -179,7 +179,12 @@ an account with a password, on a form that asks for a username (unless the usern
 and the password twice, which signs them in and accepts the invitation. The button that opens that
 form comes last, under the password form and the redirect buttons, where the "Create an account"
 step stands when no invitation does, so account creation is the last thing offered on either
-screen. A sign-up link (`?signUp=<token>`) opens the same
+screen. The browser keeps carrying the invitation when a redirect method refuses the sign-in and
+returns to the login page with `?code=` and no token; the methods list then names it
+(`invitation.standing`), and the component shows the note over the list again, with the refusal's
+sentence under it, so the person sees the invitation, the ways to sign in and the refusal together.
+A token in the URL is opened instead, which also refreshes what the browser carries. A sign-up
+link (`?signUp=<token>`) opens the same
 account form in the list's place, and the list of a server whose password method offers sign-up
 carries a "Create an account" step, which asks for an address and tells the person the link is on
 its way, whatever the address's state. A confirmation link (`?verify=<token>`) is posted once a

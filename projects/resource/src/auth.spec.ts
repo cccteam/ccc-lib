@@ -534,6 +534,34 @@ describe('the mailed links in the list', () => {
     expect(await auth.methods()).toEqual({ methods: [password], changePassword: changePath });
   });
 
+  it('keeps the invitation the browser carries, as the block names it under standing, and names none where the block has none', async () => {
+    const standing = {
+      email: 'ensign@fleet.example',
+      tenant: 'anvil',
+      expiresAt: '2026-10-30T12:00:00Z',
+      usernameIsEmail: true,
+    };
+    const carrying = authOver(
+      server({ methods: { ...mailingList, invitation: { ...invitationRoutes, standing } } }),
+    ).auth;
+    expect(await carrying.methods()).toEqual({ ...mailingList, invitation: { ...invitationRoutes, standing } });
+    const partial = authOver(
+      server({
+        methods: { ...mailingList, invitation: { ...invitationRoutes, standing: { email: 'ensign@fleet.example' } } },
+      }),
+    ).auth;
+    expect((await partial.methods()).invitation?.standing).toEqual({
+      email: 'ensign@fleet.example',
+      tenant: '',
+      expiresAt: '',
+      usernameIsEmail: false,
+    });
+    const none = authOver(
+      server({ methods: { ...mailingList, invitation: { ...invitationRoutes, standing: null } } }),
+    ).auth;
+    expect(await none.methods()).toEqual(mailingList);
+  });
+
   it("keeps an invitation block without its sign-up route, a server without a password method's", async () => {
     const { auth } = authOver(
       server({ methods: { methods: [google], invitation: { open: invitationRoutes.open, accept: invitationRoutes.accept } } }),
