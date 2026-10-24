@@ -31,7 +31,9 @@ export function operationRoute(operation: Operation): string | undefined {
 
 /**
  * The mutation response: server-generated ids of created rows, keyed by the
- * camelCase plural resource name. Resources without a generated key contribute no
- * entry, so an empty object is a normal success.
+ * camelCase plural resource name on a consolidated route, and under `ids` on a
+ * standalone route, which serves one resource (`iDs` on a server from before the key
+ * changed, which a client still reads). Resources without a generated key contribute
+ * no entry, so an empty object is a normal success.
  */
-export type BatchResult = Record<string, string[]>;
+export type BatchResult = Record<string, string[]> & { ids?: string[]; iDs?: string[] };

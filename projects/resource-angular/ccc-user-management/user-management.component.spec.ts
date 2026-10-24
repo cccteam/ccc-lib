@@ -287,7 +287,7 @@ function transportOf(state: Server): ScriptedTransport {
       return { status: 200, body: state.invitations };
     }
     if (request.method === 'PATCH' && /-users$/.test(path)) {
-      return { status: 200, body: { iDs: ['u-new'] } };
+      return { status: 200, body: { ids: ['u-new'] } };
     }
     if (request.method === 'PATCH' && /-(seats|invitations)$/.test(path)) {
       return { status: 200, body: {} };

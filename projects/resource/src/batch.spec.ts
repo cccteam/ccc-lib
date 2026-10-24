@@ -161,3 +161,32 @@ describe('client.batch', () => {
     expect(transport.requests[0].body).toEqual([{ op: 'patch', path: '/c1', value: { name: 'Halvard Freight' } }]);
   });
 });
+
+// A create answers the key the server generated for the new row: a consolidated route
+// keys the new keys by resource, a standalone route answers them under `ids`, and a server
+// from before the key changed sent `iDs`, which the client still reads.
+describe("a create's new key", () => {
+  const answering = (body: unknown): ScriptedTransport => scriptedTransport({ status: 200, body });
+
+  it('is read by the resource name from a consolidated route', async () => {
+    const client = api(answering({ missions: ['m-9'] }));
+    expect(await client.domain('anvil').missions.create({ notes: 'first light' })).toBe('m-9');
+  });
+
+  it('is read under ids from a standalone route', async () => {
+    const client = api(answering({ ids: ['c-9'] }));
+    expect(await client.clients.create({ name: 'Anvil', trusted: false })).toBe('c-9');
+  });
+
+  it('is read under iDs from a server that still sends it, ids first where both stand', async () => {
+    const client = api(answering({ iDs: ['c-9'] }));
+    expect(await client.clients.create({ name: 'Anvil', trusted: false })).toBe('c-9');
+    const both = api(answering({ ids: ['c-10'], iDs: ['c-9'] }));
+    expect(await both.clients.create({ name: 'Anvil', trusted: false })).toBe('c-10');
+  });
+
+  it('is undefined when the answer names none', async () => {
+    const client = api(answering({}));
+    expect(await client.clients.create({ name: 'Anvil', trusted: false })).toBeUndefined();
+  });
+});
