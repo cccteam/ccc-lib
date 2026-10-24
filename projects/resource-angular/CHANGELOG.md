@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.0.16](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.15...resource-angular/v0.0.16) (2026-10-24)
+
+
+### Bug Fixes
+
+* **resource-angular:** on the invited screen "Create an account with a password" comes last, where the open sign-up link stands, as the note's sentence says ([#159](https://github.com/cccteam/ccc-lib/issues/159)) ([e6f24d9](https://github.com/cccteam/ccc-lib/commit/e6f24d945190e63f05644c86a818c70a6f24c887))
+* **resource-angular:** the login page's refusal sentences read as plain English, and a Google account the application does not accept is told to sign in with the account its organization gave it ([#159](https://github.com/cccteam/ccc-lib/issues/159)) ([e6f24d9](https://github.com/cccteam/ccc-lib/commit/e6f24d945190e63f05644c86a818c70a6f24c887))
+* **resource,ccc-lib:** a create's new keys are read under ids, with iDs as the fallback the current server still sends ([#159](https://github.com/cccteam/ccc-lib/issues/159)) ([e6f24d9](https://github.com/cccteam/ccc-lib/commit/e6f24d945190e63f05644c86a818c70a6f24c887))
+* **resource,resource-angular:** the login page keeps showing an invitation after a refused directory sign-in, from the invitation the methods listing says the browser still carries ([#159](https://github.com/cccteam/ccc-lib/issues/159)) ([e6f24d9](https://github.com/cccteam/ccc-lib/commit/e6f24d945190e63f05644c86a818c70a6f24c887))
+* **resource,resource-angular:** while an invitation stands, the login page offers only the directory buttons that could admit the invited address ([#159](https://github.com/cccteam/ccc-lib/issues/159)) ([e6f24d9](https://github.com/cccteam/ccc-lib/commit/e6f24d945190e63f05644c86a818c70a6f24c887))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.11 to ^0.0.12
+
 ## [0.0.15](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.14...resource-angular/v0.0.15) (2026-10-24)
 
 
