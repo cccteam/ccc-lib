@@ -148,16 +148,6 @@
           Accept as {{ name }}
         </button>
       }
-      @if (invited.signUp) {
-        <button
-          mat-stroked-button
-          type="button"
-          class="ccc-login-create-account"
-          [disabled]="busy()"
-          (click)="openAccountForm()">
-          Create an account with a password
-        </button>
-      }
     </div>
   }
   @if (passwordMethod(); as method) {
@@ -195,7 +185,18 @@
       Sign in with {{ labelOf(method) }}
     </button>
   }
-  @if (signUpOffered() && !invitation()) {
+  @if (invitation(); as invited) {
+    @if (invited.signUp) {
+      <button
+        mat-stroked-button
+        type="button"
+        class="ccc-login-create-account"
+        [disabled]="busy()"
+        (click)="openAccountForm()">
+        Create an account with a password
+      </button>
+    }
+  } @else if (signUpOffered()) {
     <button mat-button type="button" class="ccc-login-sign-up" [disabled]="busy()" (click)="beginSignUp()">
       Create an account
     </button>

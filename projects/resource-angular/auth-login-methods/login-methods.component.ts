@@ -72,12 +72,15 @@ export interface AccountForm {
  * invitation (`?invitation=`) is opened through the client on arrival: its note stands over
  * the list, naming the address and the tenant, and the browser now carries it, so the
  * sign-in that follows, by any method, accepts it and seats the person with the roles it
- * carried; a person the page finds already signed in accepts it with one click, and where
- * the server offers a password method the invited person may instead create an account
- * with a password, which signs them in and accepts it. A sign-up link (`?signUp=`) is
- * opened the same way and renders the account form in the list's place; the list of a
- * server whose password method offers sign-up also carries a "Create an account" step,
- * which asks for an address and mails it the link. A confirmation link (`?verify=`) is
+ * carried; a person the page finds already signed in accepts it with one click, from a
+ * button under the note, and where the server offers a password method the invited person
+ * may instead create an account with a password, which signs them in and accepts it. That
+ * button comes last, under the password form and the redirect buttons, where the open
+ * "Create an account" step stands when no invitation does, so account creation is the last
+ * thing offered on either screen. A sign-up link (`?signUp=`) is opened the same way and
+ * renders the account form in the list's place; the list of a server whose password method
+ * offers sign-up also carries the "Create an account" step, which asks for an address and
+ * mails it the link. A confirmation link (`?verify=`) is
  * posted once a session stands, on arrival when the page finds one, else after the
  * sign-in it waits for (a redirect method returns to this page with the token); the
  * component then shows what happened and emits `signedIn` on Continue. On every arrival

@@ -173,10 +173,13 @@ component follows them from the routes the methods list names, so a server that 
 none of this. An invitation (`?invitation=<token>`) is opened on arrival and stands over the list:
 the note names the address and the tenant, and the browser now carries the invitation, so the
 sign-in that follows, by any method, accepts it and the person is seated with the roles it carried;
-a person the page finds already signed in may accept it as they are with one click, and where the
-server offers a password method the invited person may instead create an account with a password,
-on a form that asks for a username (unless the username is the address) and the password twice,
-which signs them in and accepts the invitation. A sign-up link (`?signUp=<token>`) opens the same
+a person the page finds already signed in may accept it as they are with one click, from a button
+under the note, and where the server offers a password method the invited person may instead create
+an account with a password, on a form that asks for a username (unless the username is the address)
+and the password twice, which signs them in and accepts the invitation. The button that opens that
+form comes last, under the password form and the redirect buttons, where the "Create an account"
+step stands when no invitation does, so account creation is the last thing offered on either
+screen. A sign-up link (`?signUp=<token>`) opens the same
 account form in the list's place, and the list of a server whose password method offers sign-up
 carries a "Create an account" step, which asks for an address and tells the person the link is on
 its way, whatever the address's state. A confirmation link (`?verify=<token>`) is posted once a

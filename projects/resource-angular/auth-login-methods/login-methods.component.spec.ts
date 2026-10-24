@@ -296,6 +296,18 @@ const buttonsOf = (page: Page): string[] =>
   );
 const messageOf = (page: Page): string | null =>
   page.element.querySelector('.ccc-login-message')?.textContent?.trim() ?? null;
+const buttonClasses = [
+  'ccc-login-accept',
+  'ccc-login-submit',
+  'ccc-login-redirect',
+  'ccc-login-create-account',
+  'ccc-login-sign-up',
+];
+/** The buttons on screen, top to bottom, each named by its class. */
+const orderOf = (page: Page): (string | undefined)[] =>
+  Array.from(page.element.querySelectorAll('button')).map((button) =>
+    buttonClasses.find((name) => button.classList.contains(name)),
+  );
 
 describe('LoginMethodsComponent renders the list', () => {
   const shapes: { name: string; methods: LoginMethod[]; wantForm: boolean; wantButtons: string[] }[] = [
@@ -889,6 +901,22 @@ describe('LoginMethodsComponent opens an invitation', () => {
     expect(page.element.querySelector('.ccc-login-accept')).toBeNull();
     // The open sign-up's own step steps aside while an invitation stands.
     expect(page.element.querySelector('.ccc-login-sign-up')).toBeNull();
+  });
+
+  it('offers the account last, under the password form and the redirect buttons, where the open sign-up stands without an invitation', async () => {
+    const invited = await pageOver(server({ methods: mailingList }), { invitation: 'tok-1' });
+    expect(orderOf(invited)).toEqual(['ccc-login-submit', 'ccc-login-redirect', 'ccc-login-create-account']);
+    TestBed.resetTestingModule();
+    const signedIn = await pageOver(server({ methods: mailingList, arrivesSignedIn: true }), { invitation: 'tok-1' });
+    expect(orderOf(signedIn)).toEqual([
+      'ccc-login-accept',
+      'ccc-login-submit',
+      'ccc-login-redirect',
+      'ccc-login-create-account',
+    ]);
+    TestBed.resetTestingModule();
+    const open = await pageOver(server({ methods: mailingList }));
+    expect(orderOf(open)).toEqual(['ccc-login-submit', 'ccc-login-redirect', 'ccc-login-sign-up']);
   });
 
   it('words a global invitation without a tenant, and one without a password method without the account', async () => {
