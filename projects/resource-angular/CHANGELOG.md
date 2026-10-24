@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.14](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.13...resource-angular/v0.0.14) (2026-10-24)
+
+
+### Bug Fixes
+
+* the Invitations table shows who sent an invitation, the username the row carries ([#155](https://github.com/cccteam/ccc-lib/issues/155)) ([9761cf6](https://github.com/cccteam/ccc-lib/commit/9761cf64560c1af1e8d6b80d6ea72fddf79d15f4))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.10 to ^0.0.11
+
 ## [0.0.13](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.12...resource-angular/v0.0.13) (2026-10-23)
 
 
