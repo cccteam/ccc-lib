@@ -80,10 +80,10 @@ export interface AccountForm {
  * which asks for an address and mails it the link. A confirmation link (`?verify=`) is
  * posted once a session stands, on arrival when the page finds one, else after the
  * sign-in it waits for (a redirect method returns to this page with the token); the
- * component then shows what happened and emits `signedIn` on Continue. While the URL
- * names a step or a link, a progress bar stands in the list's place until the reads have
- * answered, so the form shows only to a person found signed out, and one found signed in
- * goes straight on to what the link asks for.
+ * component then shows what happened and emits `signedIn` on Continue. On every arrival
+ * a progress bar stands in the list's place until the reads have answered, so the form
+ * shows only to a person found signed out; one found signed in goes straight on to what
+ * the link asks for, or is offered Continue and Sign out, and is never shown a form first.
  *
  * A session the sign-in establishes may carry `passwordChangeRequired`: an operator set
  * the password, and the server serves nothing but the password change until the person
@@ -175,7 +175,7 @@ export class LoginMethodsComponent implements OnInit {
   landed = signal<string | undefined>(undefined);
   /** The address the followed link confirmed, shown while `landed`. */
   verified = signal<string | undefined>(undefined);
-  /** The URL names a step or a link whose outcome the reads decide: a progress bar stands in the list's place until they have answered. */
+  /** The arrival's reads are in flight: a progress bar stands in the list's place until they have answered. */
   arriving = signal(false);
   /** The confirmation link's token, posted once a session stands. */
   private verifyToken = '';
@@ -454,12 +454,13 @@ export class LoginMethodsComponent implements OnInit {
    * Reads the list, the page's first request, then what the URL asks for: the pending
    * step when one waits, the invitation or the sign-up a token names, and the
    * confirmation link's token, posted at once when the page finds a session standing.
-   * While the URL names any of these, `arriving` holds the list back: a progress bar
-   * stands in its place until the reads have answered, so a person found signed in goes
-   * straight on to what the link asks for and is never shown a form to fill in. With
-   * nothing in the URL the page asks for the session: the page ends none on arrival, so
-   * one it finds standing is offered Continue or Sign out in the list's place, and one
-   * that must change its password gets the change form.
+   * Throughout, `arriving` holds the list back: a progress bar stands in its place until
+   * the reads have answered, so a person found signed in goes straight on to what the
+   * link asks for and is never shown a form to fill in. With nothing in the URL the page
+   * asks for the session: the page ends none on arrival, so one it finds standing is
+   * offered Continue or Sign out in the list's place, and one that must change its
+   * password gets the change form; the form appears only once that read says no session
+   * stands.
    */
   private async arrive(): Promise<void> {
     const params = this.route.snapshot.queryParamMap;
@@ -467,7 +468,7 @@ export class LoginMethodsComponent implements OnInit {
     const signUp = params.get('signUp') ?? '';
     this.verifyToken = params.get('verify') ?? '';
     const linked = params.has('pending') || invitation !== '' || signUp !== '' || this.verifyToken !== '';
-    this.arriving.set(linked);
+    this.arriving.set(true);
     try {
       await this.client.auth.methods();
       if (params.has('pending')) {

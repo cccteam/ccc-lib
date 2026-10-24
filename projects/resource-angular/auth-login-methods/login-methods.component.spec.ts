@@ -29,9 +29,9 @@ import { LoginMethodsComponent, PASSWORDS_DIFFER } from './login-methods.compone
 // sign-in, an acceptance or an account with a password accepts it; a sign-up link opens the
 // account form; a confirmation link is posted once a session stands. The component ends no
 // session on arrival: with nothing in the URL it asks for the session, and one standing is
-// offered Continue or Sign out in the list's place. With a step or a link in the URL, a
-// progress bar holds the list back until the reads have answered, so a person found signed
-// in moves straight on and is never shown a form. Every POST is preceded by a read of the
+// offered Continue or Sign out in the list's place. On every arrival a progress bar holds
+// the list back until the reads have answered, so a person found signed in moves straight
+// on and is never shown a form. Every POST is preceded by a read of the
 // list, so it carries a live XSRF token.
 
 const descriptor: ApiDescriptor = {
@@ -1301,7 +1301,7 @@ describe('LoginMethodsComponent finds a session standing', () => {
   });
 });
 
-describe('LoginMethodsComponent holds the list back while a link in the URL is resolved', () => {
+describe("LoginMethodsComponent holds the list back while the arrival's reads answer", () => {
   /** A promise and the call that settles it. */
   function gate(): { opened: Promise<void>; open(): void } {
     let open = (): void => undefined;
@@ -1451,14 +1451,33 @@ describe('LoginMethodsComponent holds the list back while a link in the URL is r
     expect(forms()).toBe(1);
   });
 
-  it('a plain arrival shows no bar: the list renders as soon as it answers', async () => {
-    const page = await mount(transportOf(server()));
-    page.fixture.detectChanges();
+  it('a plain arrival holds the list back until the session read answers, then shows the form to a person found signed out', async () => {
+    const held = holdingSession(server());
+    const page = await mount(held.transport);
+    await arrivedAt(held, page);
+    expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/session']);
+    held.answer();
+    await page.settle();
     expect(page.component.arriving()).toBe(false);
     expect(barOf(page)).toBeNull();
-    await page.settle();
-    expect(barOf(page)).toBeNull();
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+    expect(page.element.querySelector('input[name="password"]')).not.toBeNull();
+  });
+
+  it('a plain arrival by a person found signed in offers Continue and Sign out once the reads answer, with no form shown before', async () => {
+    const held = holdingSession(server({ arrivesSignedIn: true }));
+    const page = await mount(held.transport);
+    const forms = formsAdded(page);
+    await arrivedAt(held, page);
+    held.answer();
+    await page.settle();
+    expect(page.component.arriving()).toBe(false);
+    expect(barOf(page)).toBeNull();
+    expect(forms()).toBe(0);
+    expect(page.element.querySelector('form')).toBeNull();
+    expect(page.element.querySelector('.ccc-login-signed-in-note')?.textContent?.trim()).toBe('You are signed in as overseer.');
+    expect(page.element.querySelector('.ccc-login-continue')?.textContent?.trim()).toBe('Continue');
+    expect(page.element.querySelector('.ccc-login-sign-out')?.textContent?.trim()).toBe('Sign out');
   });
 
   it("a dead link ends the bar and shows the server's words with the list", async () => {
