@@ -251,7 +251,8 @@ export class ResourceCreateComponent implements OnInit {
             const resourceName = camelCase(this.store.resourceName());
             createIds = (response[resourceName] as string[]) || [];
           } else {
-            createIds = (response['iDs'] || []) as string[];
+            // A standalone route answers the new keys under `ids`; a server from before the key changed sent `iDs`.
+            createIds = (response['ids'] ?? response['iDs'] ?? []) as string[];
           }
 
           if (this.loadCreatedResource() && createIds.length === 1) {

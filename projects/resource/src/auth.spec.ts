@@ -534,6 +534,58 @@ describe('the mailed links in the list', () => {
     expect(await auth.methods()).toEqual({ methods: [password], changePassword: changePath });
   });
 
+  it('keeps the invitation the browser carries, as the block names it under standing, and names none where the block has none', async () => {
+    const standing = {
+      email: 'ensign@fleet.example',
+      tenant: 'anvil',
+      expiresAt: '2026-10-30T12:00:00Z',
+      usernameIsEmail: true,
+    };
+    const carrying = authOver(
+      server({ methods: { ...mailingList, invitation: { ...invitationRoutes, standing } } }),
+    ).auth;
+    expect(await carrying.methods()).toEqual({ ...mailingList, invitation: { ...invitationRoutes, standing } });
+    const partial = authOver(
+      server({
+        methods: { ...mailingList, invitation: { ...invitationRoutes, standing: { email: 'ensign@fleet.example' } } },
+      }),
+    ).auth;
+    expect((await partial.methods()).invitation?.standing).toEqual({
+      email: 'ensign@fleet.example',
+      tenant: '',
+      expiresAt: '',
+      usernameIsEmail: false,
+    });
+    const none = authOver(
+      server({ methods: { ...mailingList, invitation: { ...invitationRoutes, standing: null } } }),
+    ).auth;
+    expect(await none.methods()).toEqual(mailingList);
+  });
+
+  it('keeps the registration names the standing invitation says could admit the address, strings only, and none where it names none', async () => {
+    const standing = { email: 'ensign@fleet.example', tenant: '', expiresAt: 'soon', usernameIsEmail: false };
+    const named = authOver(
+      server({
+        methods: {
+          ...mailingList,
+          invitation: { ...invitationRoutes, standing: { ...standing, methods: ['google-one', 7] } },
+        },
+      }),
+    ).auth;
+    expect((await named.methods()).invitation?.standing).toEqual({ ...standing, methods: ['google-one'] });
+    const unnamed = authOver(
+      server({
+        methods: {
+          ...mailingList,
+          invitation: { ...invitationRoutes, standing: { ...standing, methods: 'google-one' } },
+        },
+      }),
+    ).auth;
+    const kept = (await unnamed.methods()).invitation?.standing;
+    expect(kept).toEqual(standing);
+    expect(Object.keys(kept ?? {})).not.toContain('methods');
+  });
+
   it("keeps an invitation block without its sign-up route, a server without a password method's", async () => {
     const { auth } = authOver(
       server({ methods: { methods: [google], invitation: { open: invitationRoutes.open, accept: invitationRoutes.accept } } }),
@@ -566,6 +618,26 @@ describe('an invitation', () => {
       signUp: false,
       usernameIsEmail: false,
     });
+  });
+
+  it('carries the registration names the server says could admit the address, strings only, and none where the answer names none', async () => {
+    const named = authOver(
+      server({
+        methods: mailingList,
+        invitationOpen: { status: 200, body: { ...opened, methods: ['google-one', 7, null] } },
+      }),
+    ).auth;
+    expect(await named.openInvitation('tok-1')).toEqual({ outcome: 'opened', ...opened, methods: ['google-one'] });
+    const empty = authOver(
+      server({ methods: mailingList, invitationOpen: { status: 200, body: { ...opened, methods: [] } } }),
+    ).auth;
+    expect(await empty.openInvitation('tok-1')).toEqual({ outcome: 'opened', ...opened, methods: [] });
+    const unnamed = authOver(
+      server({ methods: mailingList, invitationOpen: { status: 200, body: { ...opened, methods: 'google-one' } } }),
+    ).auth;
+    const result = await unnamed.openInvitation('tok-1');
+    expect(result).toEqual({ outcome: 'opened', ...opened });
+    expect(Object.keys(result)).not.toContain('methods');
   });
 
   it("resolves a dead link as the server's 404 refusal, through no error hook", async () => {

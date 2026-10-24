@@ -213,15 +213,16 @@ export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
   invalid_state:
     'Sign-in could not be completed because it did not match the sign-in this browser started. Please try again.',
   invalid_pkce: 'Sign-in could not be completed because its verification code was missing. Please try again.',
-  token_exchange_failed: 'The identity provider did not complete the sign-in. Please try again.',
-  no_id_token: 'The identity provider did not return an identity token. Please try again.',
-  verify_id_token_failed: 'The identity token could not be verified. Please try again.',
-  parse_claims_failed: 'The identity token could not be read. Please try again.',
-  not_workspace_member: 'This account is not a member of the required organization.',
+  token_exchange_failed: 'The service you signed in with did not complete the sign-in. Please try again.',
+  no_id_token: 'The service you signed in with did not say who you are. Please try again.',
+  verify_id_token_failed: 'The answer from the service you signed in with could not be verified. Please try again.',
+  parse_claims_failed: 'The answer from the service you signed in with could not be read. Please try again.',
+  not_workspace_member:
+    'This Google account is not one this application accepts. Sign in with the Google account your organization gave you.',
   email_not_verified: 'The email address of this account is not verified.',
   no_roles: 'This account has no role in this application. Please contact your administrator.',
   password_change_required: 'Your password was set by an administrator. Choose a new password to continue.',
-  no_email_claim: 'The identity provider did not say which account signed in.',
+  no_email_claim: 'The service you signed in with did not say which account signed in.',
   unlisted_tenant: 'This account belongs to an organization that cannot sign in here.',
   personal_account: 'Personal Microsoft accounts cannot sign in here. Use your work or school account.',
   organization_mismatch: 'This account belongs to a different organization than the one you signed in through.',
@@ -231,13 +232,13 @@ export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
   policy_denied: 'Signing in this way is not allowed for this account.',
   user_disabled: 'This account has been disabled. Please contact your administrator.',
   pending_expired: 'The sign-in took too long to complete. Please start again.',
-  no_email: 'The identity provider did not provide an email address for this account.',
+  no_email: 'The service you signed in with did not give an email address for this account.',
   too_many_attempts: 'Too many attempts.',
   no_tenant: 'This account is not a member of any organization in this application. Please contact your administrator.',
   connection_not_in_tenant:
-    'Your organization does not sign in through the directory you used. Please sign in the way your organization has set up.',
+    'Your organization does not sign in the way you just tried. Please sign in the way your organization has set up.',
   directory_only:
-    "Your organization signs in through its directory only. Please sign in through your organization's directory.",
+    'Your organization does not sign in with a password here. Please sign in the way your organization has set up.',
 };
 
 /**

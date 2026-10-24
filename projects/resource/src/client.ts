@@ -800,7 +800,9 @@ function createResourceHandle<Row extends object, Key extends unknown[]>(
     }) as Readable<Row, Key>['read'],
     create: async (value) => {
       const result = await mutate(ops.add(value));
-      return result[descriptor.property]?.[0] ?? result['iDs']?.[0];
+      // A consolidated route keys the new keys by resource; a standalone route answers them
+      // under `ids`, and under `iDs` on a server from before the key changed.
+      return result[descriptor.property]?.[0] ?? result['ids']?.[0] ?? result['iDs']?.[0];
     },
     patch: async (key, value) => {
       await mutate(ops.patch(key, value));

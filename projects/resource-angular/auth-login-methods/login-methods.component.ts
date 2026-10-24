@@ -9,6 +9,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute } from '@angular/router';
 import {
   LoginMethod,
+  LoginMethods,
   OpenedInvitation,
   passwordChangeRequiredCode,
   PendingSignIn,
@@ -72,12 +73,23 @@ export interface AccountForm {
  * invitation (`?invitation=`) is opened through the client on arrival: its note stands over
  * the list, naming the address and the tenant, and the browser now carries it, so the
  * sign-in that follows, by any method, accepts it and seats the person with the roles it
- * carried; a person the page finds already signed in accepts it with one click, and where
- * the server offers a password method the invited person may instead create an account
- * with a password, which signs them in and accepts it. A sign-up link (`?signUp=`) is
- * opened the same way and renders the account form in the list's place; the list of a
- * server whose password method offers sign-up also carries a "Create an account" step,
- * which asks for an address and mails it the link. A confirmation link (`?verify=`) is
+ * carried; a person the page finds already signed in accepts it with one click, from a
+ * button under the note, and where the server offers a password method the invited person
+ * may instead create an account with a password, which signs them in and accepts it. That
+ * button comes last, under the password form and the redirect buttons, where the open
+ * "Create an account" step stands when no invitation does, so account creation is the last
+ * thing offered on either screen. The browser keeps carrying the invitation when a redirect
+ * method refuses the sign-in and brings it back here with `?code=` and no token; the methods
+ * list then names the invitation under `invitation.standing`, and the note stands over the
+ * list again, with the refusal's sentence under it, so the person sees what they were invited
+ * to, the ways to sign in, and why the last attempt was refused, together. A token in the
+ * URL is opened instead, which also refreshes what the browser carries. An invitation that
+ * names the directory registrations able to admit its address (`methods`) narrows the
+ * redirect buttons to those while it stands, and to none when it names none; the password
+ * form stays, since a person who has a password may sign in with it to accept. A sign-up link
+ * (`?signUp=`) is opened the same way and renders the account form in the list's place; the
+ * list of a server whose password method offers sign-up also carries the "Create an account"
+ * step, which asks for an address and mails it the link. A confirmation link (`?verify=`) is
  * posted once a session stands, on arrival when the page finds one, else after the
  * sign-in it waits for (a redirect method returns to this page with the token); the
  * component then shows what happened and emits `signedIn` on Continue. On every arrival
@@ -145,6 +157,16 @@ export class LoginMethodsComponent implements OnInit {
   passwordMethod = computed(() => this.methods().find((method) => method.kind === 'password'));
   /** The redirect methods, one button each, in the server's order. */
   redirectMethods = computed(() => this.methods().filter((method) => method.kind === 'redirect'));
+  /**
+   * The redirect methods offered on screen: while an invitation stands that names the
+   * registrations able to admit the invited address (`methods`), those alone, in the
+   * server's order, and none when it names none; every redirect method otherwise.
+   */
+  offeredRedirectMethods = computed(() => {
+    const admitting = this.invitation()?.methods;
+    const redirects = this.redirectMethods();
+    return admitting ? redirects.filter((method) => admitting.includes(method.name)) : redirects;
+  });
   /** The password method's username is the person's email address: the form asks for the address. */
   usernameIsEmail = computed(() => this.list()?.usernameIsEmail ?? false);
   /** The words over the password form's first field. */
@@ -159,7 +181,7 @@ export class LoginMethodsComponent implements OnInit {
   changeNote = computed(() => this.ui.loginMessage(passwordChangeRequiredCode));
   /** The router URL the sign-in recorded, emitted once the password is changed. */
   private afterChange = '/';
-  /** The invitation the URL's token opened; its note stands over the list until the sign-in that accepts it. */
+  /** The invitation the URL's token opened, or the one the browser was found carrying; its note stands over the list until the sign-in that accepts it. */
   invitation = signal<OpenedInvitation | undefined>(undefined);
   /** The username of the session the page found standing on arrival: with an invitation, who may accept it as they are; alone, who may continue or sign out. */
   signedInAs = signal<string | undefined>(undefined);
@@ -454,13 +476,15 @@ export class LoginMethodsComponent implements OnInit {
    * Reads the list, the page's first request, then what the URL asks for: the pending
    * step when one waits, the invitation or the sign-up a token names, and the
    * confirmation link's token, posted at once when the page finds a session standing.
-   * Throughout, `arriving` holds the list back: a progress bar stands in its place until
-   * the reads have answered, so a person found signed in goes straight on to what the
-   * link asks for and is never shown a form to fill in. With nothing in the URL the page
-   * asks for the session: the page ends none on arrival, so one it finds standing is
-   * offered Continue or Sign out in the list's place, and one that must change its
-   * password gets the change form; the form appears only once that read says no session
-   * stands.
+   * An invitation the list says the browser carries, with no token in the URL to open,
+   * is kept over the list the way an opened one is, the session read for who may accept
+   * it. Throughout, `arriving` holds the list back: a progress bar stands in its place
+   * until the reads have answered, so a person found signed in goes straight on to what
+   * the link asks for and is never shown a form to fill in. With nothing in the URL and
+   * no invitation carried, the page asks for the session: the page ends none on arrival,
+   * so one it finds standing is offered Continue or Sign out in the list's place, and one
+   * that must change its password gets the change form; the form appears only once that
+   * read says no session stands.
    */
   private async arrive(): Promise<void> {
     const params = this.route.snapshot.queryParamMap;
@@ -470,12 +494,15 @@ export class LoginMethodsComponent implements OnInit {
     const linked = params.has('pending') || invitation !== '' || signUp !== '' || this.verifyToken !== '';
     this.arriving.set(true);
     try {
-      await this.client.auth.methods();
+      const list = await this.client.auth.methods();
+      const carried = this.carriedInvitation(list, invitation);
       if (params.has('pending')) {
         await this.readPending();
       }
       if (invitation !== '') {
         await this.openInvitation(invitation);
+      } else if (carried) {
+        await this.keepInvitation(carried);
       }
       if (signUp !== '') {
         await this.openSignUp(signUp);
@@ -485,7 +512,7 @@ export class LoginMethodsComponent implements OnInit {
         if (session) {
           await this.complete(this.landing());
         }
-      } else if (!linked) {
+      } else if (!linked && !carried) {
         await this.findSession();
       }
     } catch (error) {
@@ -506,13 +533,41 @@ export class LoginMethodsComponent implements OnInit {
       this.refusal.set(this.sentenceOf(result));
       return;
     }
-    this.invitation.set({
+    await this.keepInvitation({
       email: result.email,
       tenant: result.tenant,
       expiresAt: result.expiresAt,
       signUp: result.signUp,
       usernameIsEmail: result.usernameIsEmail,
+      ...(result.methods === undefined ? {} : { methods: result.methods }),
     });
+  }
+
+  /**
+   * The invitation the list says the browser carries, as the page shows one, when the URL
+   * names no token: a token is opened instead, since opening it also refreshes what the
+   * browser carries. The account with a password is offered where the block names the
+   * sign-up route. Undefined when the browser carries no live invitation.
+   */
+  private carriedInvitation(list: LoginMethods, token: string): OpenedInvitation | undefined {
+    const block = list.invitation;
+    const standing = block?.standing;
+    if (token !== '' || !block || !standing) {
+      return undefined;
+    }
+    return {
+      email: standing.email,
+      tenant: standing.tenant,
+      expiresAt: standing.expiresAt,
+      signUp: block.signUp !== undefined,
+      usernameIsEmail: standing.usernameIsEmail,
+      ...(standing.methods === undefined ? {} : { methods: standing.methods }),
+    };
+  }
+
+  /** Keeps the invitation over the list and reads the session: a person found signed in is offered to accept it as they are. */
+  private async keepInvitation(invitation: OpenedInvitation): Promise<void> {
+    this.invitation.set(invitation);
     const session = await this.sessionStanding();
     this.signedInAs.set(session?.username);
   }

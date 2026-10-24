@@ -51,15 +51,38 @@ export interface PendingRoutes {
 }
 
 /**
- * The paths of the invitation handlers: `open`, where the page posts the token a mailed
+ * The invitation block of the methods list: the paths of the invitation handlers, and the
+ * invitation the browser carries. `open` is where the page posts the token a mailed
  * invitation carried; `accept`, where a signed-in person accepts the invitation the browser
  * carries; and `signUp`, where the invited person creates an account with a password,
- * present when the server offers a password method.
+ * present when the server offers a password method. `standing` describes the invitation
+ * the browser carries, present only while it carries a live one: a login page the browser
+ * comes back to without the token, after a redirect method refused the sign-in, shows the
+ * invitation again from it.
  */
 export interface InvitationRoutes {
   readonly open: string;
   readonly accept: string;
   readonly signUp?: string;
+  readonly standing?: StandingInvitation;
+}
+
+/**
+ * The invitation the browser carries, as the methods list describes it: what opening the
+ * link answered, less `signUp`, which the block's `signUp` route says. The list carries
+ * none when the browser carries no live invitation.
+ */
+export interface StandingInvitation {
+  /** The address the invitation was mailed to. */
+  readonly email: string;
+  /** The tenant the invitation seats the person in; empty for the application's global surface. */
+  readonly tenant: string;
+  /** When the invitation stops being accepted, as the server wrote it. */
+  readonly expiresAt: string;
+  /** An account created from the invitation has the address as its username; the person chooses one otherwise. */
+  readonly usernameIsEmail: boolean;
+  /** The registration names of the listed directory methods that could admit the address, as `OpenedInvitation.methods`; absent when the server did not say. */
+  readonly methods?: readonly string[];
 }
 
 /** The paths of the email address handlers: `add`, where a signed-in person asks for a confirmation link, and `verify`, where the page posts the token it carried. */
@@ -95,7 +118,7 @@ export interface LoginMethods {
    * Absent, or false, where the username is a name of the person's choosing.
    */
   readonly usernameIsEmail?: boolean;
-  /** The invitation routes; absent on a server that serves no invitations. */
+  /** The invitation routes, and the invitation the browser carries; absent on a server that serves no invitations. */
   readonly invitation?: InvitationRoutes;
   /** The email address routes; absent on a server that sends no mail. */
   readonly email?: EmailRoutes;
@@ -115,6 +138,13 @@ export interface OpenedInvitation {
   readonly signUp: boolean;
   /** That account's username is the address; the person chooses one otherwise. */
   readonly usernameIsEmail: boolean;
+  /**
+   * The registration names of the listed directory methods that could admit the address,
+   * each a listed method's `name`, so a page shows those buttons alone while the invitation
+   * stands; the password method is never among them, `signUp` being its word. Possibly
+   * empty; absent when the server did not say.
+   */
+  readonly methods?: readonly string[];
 }
 
 /**
@@ -286,9 +316,17 @@ interface MethodsAnswer {
   pending?: Partial<PendingRoutes> | null;
   changePassword?: string | null;
   usernameIsEmail?: boolean | null;
-  invitation?: Partial<InvitationRoutes> | null;
+  invitation?: InvitationAnswer | null;
   email?: Partial<EmailRoutes> | null;
   signUp?: Partial<SignUpRoutes> | null;
+}
+
+/** The shape the invitation block answers, before it is checked. */
+interface InvitationAnswer {
+  open?: string | null;
+  accept?: string | null;
+  signUp?: string | null;
+  standing?: Partial<StandingInvitation> | null;
 }
 
 /** The list as it is assembled from the answer, before it is handed out read-only. */
@@ -503,6 +541,7 @@ export class AuthClient {
       return refusalOf(response);
     }
     const body = response.body ?? {};
+    const methods = methodNamesOf(body.methods);
     return {
       outcome: 'opened',
       email: stringOf(body.email),
@@ -510,6 +549,7 @@ export class AuthClient {
       expiresAt: stringOf(body.expiresAt),
       signUp: body.signUp === true,
       usernameIsEmail: body.usernameIsEmail === true,
+      ...(methods === undefined ? {} : { methods }),
     };
   }
 
@@ -720,10 +760,12 @@ export class AuthClient {
     }
     const invitation = answer?.invitation;
     if (invitation?.open && invitation.accept) {
+      const standing = standingOf(invitation.standing);
       list.invitation = {
         open: invitation.open,
         accept: invitation.accept,
         ...(invitation.signUp ? { signUp: invitation.signUp } : {}),
+        ...(standing ? { standing } : {}),
       };
     }
     const email = answer?.email;
@@ -787,6 +829,29 @@ function refusalOf(response: ClientResponse<unknown>): SignInRefusal {
     message,
     ...(retryAfter === undefined ? {} : { retryAfter }),
   };
+}
+
+/** The invitation the list says the browser carries, its fields as strings; undefined where the block names none. */
+function standingOf(value: Partial<StandingInvitation> | null | undefined): StandingInvitation | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+  const methods = methodNamesOf(value.methods);
+  return {
+    email: stringOf(value.email),
+    tenant: stringOf(value.tenant),
+    expiresAt: stringOf(value.expiresAt),
+    usernameIsEmail: value.usernameIsEmail === true,
+    ...(methods === undefined ? {} : { methods }),
+  };
+}
+
+/** The registration names an invitation answer lists, strings only; undefined where it lists none, or what it lists is not a list. */
+function methodNamesOf(value: unknown): readonly string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  return value.filter((name): name is string => typeof name === 'string');
 }
 
 function stringOf(value: unknown): string {
