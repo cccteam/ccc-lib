@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.11](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.10...resource/v0.0.11) (2026-10-24)
+
+
+### Bug Fixes
+
+* the Invitations table shows who sent an invitation, the username the row carries ([#155](https://github.com/cccteam/ccc-lib/issues/155)) ([9761cf6](https://github.com/cccteam/ccc-lib/commit/9761cf64560c1af1e8d6b80d6ea72fddf79d15f4))
+
 ## [0.0.10](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.9...resource/v0.0.10) (2026-10-23)
 
 
