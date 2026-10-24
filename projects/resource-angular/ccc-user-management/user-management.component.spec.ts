@@ -199,13 +199,13 @@ const rows = (): ManagedUser[] => [
   user({ id: 'u-pip', username: 'pip', lastSignInAt: null, disabled: true, email: 'pip@fleet.example' }),
 ];
 
-/** Two invitations stand: one the caller may revoke (nova sent it), one not. */
+/** Two invitations stand: one the caller may revoke (nova sent it), one not, whose sender is unknown. */
 const invitationRows = (): ManagedInvitation[] => [
   {
     id: 'inv-1',
     email: 'cass@fleet.example',
     roles: ['Harbormaster'],
-    invitedBy: 'u-nova',
+    invitedBy: 'nova',
     createdAt: '2026-10-20T09:00:00Z',
     expiresAt: '2026-10-27T09:00:00Z',
     [CapabilitiesProperty]: { Delete: true },
@@ -214,7 +214,7 @@ const invitationRows = (): ManagedInvitation[] => [
     id: 'inv-2',
     email: 'quill@fleet.example',
     roles: ['SectorCrew', 'Harbormaster'],
-    invitedBy: 'u-gone',
+    invitedBy: null,
     createdAt: '2026-10-21T09:00:00Z',
     expiresAt: '2026-10-28T09:00:00Z',
     [CapabilitiesProperty]: { Delete: false },

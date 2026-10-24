@@ -90,7 +90,7 @@ export interface InvitationRow {
   id: string;
   email: string;
   roles: string[];
-  /** The id of the user who sent it; null when unknown. */
+  /** The username of the user who sent it; null when unknown. */
   invitedBy: string | null;
   createdAt: string;
   expiresAt: string;
