@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.15](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.14...resource-angular/v0.0.15) (2026-10-24)
+
+
+### Bug Fixes
+
+* the login page shows a progress bar while it reads the session on arrival with a link, instead of the sign-in form ([#157](https://github.com/cccteam/ccc-lib/issues/157)) ([6c8c160](https://github.com/cccteam/ccc-lib/commit/6c8c160121ce1a5e3cf78672a6c64ec2fbca7ff2))
+
 ## [0.0.14](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.13...resource-angular/v0.0.14) (2026-10-24)
 
 
