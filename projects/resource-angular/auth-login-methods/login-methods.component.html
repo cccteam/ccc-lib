@@ -1,4 +1,8 @@
-@if (changing()) {
+@if (arriving()) {
+  <div class="ccc-login-arriving">
+    <mat-progress-bar mode="indeterminate" aria-label="Checking your sign-in"></mat-progress-bar>
+  </div>
+} @else if (changing()) {
   <div class="ccc-login-change">
     <p class="ccc-login-change-note">{{ changeNote() }}</p>
     <form class="ccc-login-form" (ngSubmit)="changePassword()">

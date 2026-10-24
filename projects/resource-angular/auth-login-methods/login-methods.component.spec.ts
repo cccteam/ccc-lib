@@ -29,7 +29,9 @@ import { LoginMethodsComponent, PASSWORDS_DIFFER } from './login-methods.compone
 // sign-in, an acceptance or an account with a password accepts it; a sign-up link opens the
 // account form; a confirmation link is posted once a session stands. The component ends no
 // session on arrival: with nothing in the URL it asks for the session, and one standing is
-// offered Continue or Sign out in the list's place. Every POST is preceded by a read of the
+// offered Continue or Sign out in the list's place. With a step or a link in the URL, a
+// progress bar holds the list back until the reads have answered, so a person found signed
+// in moves straight on and is never shown a form. Every POST is preceded by a read of the
 // list, so it carries a live XSRF token.
 
 const descriptor: ApiDescriptor = {
@@ -222,13 +224,12 @@ interface Page {
   element: HTMLElement;
 }
 
-/** The component over the server, arrived with the query, settled. */
-async function pageOver(
-  state: Server,
+/** The component over the transport, arrived with the query, before its first change detection. */
+async function mount(
+  transport: ScriptedTransport,
   query: Record<string, string> = {},
   inputs: Record<string, unknown> = {},
 ): Promise<Page> {
-  const transport = transportOf(state);
   const params = convertToParamMap(query);
   await TestBed.configureTestingModule({
     imports: [LoginMethodsComponent],
@@ -266,6 +267,16 @@ async function pageOver(
     },
   };
   component.cancelled.subscribe(() => page.cancelled++);
+  return page;
+}
+
+/** The component over the server, arrived with the query, settled. */
+async function pageOver(
+  state: Server,
+  query: Record<string, string> = {},
+  inputs: Record<string, unknown> = {},
+): Promise<Page> {
+  const page = await mount(transportOf(state), query, inputs);
   await page.settle();
   return page;
 }
@@ -1287,5 +1298,174 @@ describe('LoginMethodsComponent finds a session standing', () => {
     await page.component.continueAs();
     await page.component.signOut();
     expect(sent(page.transport)).toEqual([]);
+  });
+});
+
+describe('LoginMethodsComponent holds the list back while a link in the URL is resolved', () => {
+  /** A promise and the call that settles it. */
+  function gate(): { opened: Promise<void>; open(): void } {
+    let open = (): void => undefined;
+    const opened = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    return { opened, open };
+  }
+
+  /** The server's transport with its first session read held: `asked` settles when that read is sent, and `answer()` lets it through. */
+  function holdingSession(state: Server): { transport: ScriptedTransport; asked: Promise<void>; answer(): void } {
+    const inner = transportOf(state);
+    const asked = gate();
+    const answered = gate();
+    let held = false;
+    const transport = scriptedTransport(async (request: TransportRequest) => {
+      if (!held && request.method === 'GET' && request.url === '/console/api/user/session') {
+        held = true;
+        asked.open();
+        await answered.opened;
+      }
+      return inner(request);
+    });
+    return { transport, asked: asked.opened, answer: answered.open };
+  }
+
+  /** Counts every form added to the page from now on; the call returned stops counting and answers the count. */
+  function formsAdded(page: Page): () => number {
+    let count = 0;
+    const countIn = (records: MutationRecord[]): void => {
+      for (const record of records) {
+        record.addedNodes.forEach((node) => {
+          if (node instanceof Element && (node.matches('form') || node.querySelector('form') !== null)) {
+            count++;
+          }
+        });
+      }
+    };
+    const watcher = new MutationObserver(countIn);
+    watcher.observe(page.element, { childList: true, subtree: true });
+    return () => {
+      countIn(watcher.takeRecords());
+      watcher.disconnect();
+      return count;
+    };
+  }
+
+  /** The page arrived and the list answered, the first session read in flight: the bar on screen, nothing else. */
+  async function arrivedAt(held: ReturnType<typeof holdingSession>, page: Page): Promise<void> {
+    page.fixture.detectChanges();
+    await held.asked;
+    page.fixture.detectChanges();
+    expect(page.component.arriving()).toBe(true);
+    expect(barOf(page)).not.toBeNull();
+    expect(page.element.querySelector('form')).toBeNull();
+    expect(page.element.querySelectorAll('button')).toHaveLength(0);
+  }
+
+  const barOf = (page: Page): Element | null => page.element.querySelector('mat-progress-bar');
+
+  it('with ?verify=, the password form is not in the DOM before the session read answers; the bar is', async () => {
+    const held = holdingSession(server({ methods: mailingList }));
+    const page = await mount(held.transport, { verify: 'tok-v' });
+    page.fixture.detectChanges();
+    // Before the list answers: the bar alone, set as the component arrives.
+    expect(page.component.arriving()).toBe(true);
+    expect(barOf(page)).not.toBeNull();
+    expect(page.element.querySelector('form')).toBeNull();
+    await held.asked;
+    page.fixture.detectChanges();
+    // The list has answered and the session read is in flight: still the bar alone.
+    expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/session']);
+    expect(barOf(page)).not.toBeNull();
+    expect(page.element.querySelector('input[name="password"]')).toBeNull();
+    expect(page.element.querySelector('input[name="username"]')).toBeNull();
+    expect(page.element.querySelector('form')).toBeNull();
+    expect(buttonsOf(page)).toEqual([]);
+    held.answer();
+    await page.settle();
+    expect(barOf(page)).toBeNull();
+  });
+
+  it('with ?verify=, a session read that finds nobody signed in ends the bar and shows the form, which still waits for the sign-in', async () => {
+    const held = holdingSession(server({ methods: mailingList }));
+    const page = await mount(held.transport, { verify: 'tok-v' }, { home: '/dashboard' });
+    await arrivedAt(held, page);
+    held.answer();
+    await page.settle();
+    expect(page.component.arriving()).toBe(false);
+    expect(barOf(page)).toBeNull();
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+    expect(page.element.querySelector('input[name="password"]')).not.toBeNull();
+    expect(buttonsOf(page)).toEqual(['Sign in with Google']);
+    expect(page.component.landed()).toBeUndefined();
+    expect(page.signedIn).toEqual([]);
+    page.component.username = 'pax';
+    page.component.password = 'lodestar';
+    await page.component.login();
+    await page.settle();
+    expect(page.component.verified()).toBe('pax@fleet.example');
+    expect(page.component.landed()).toBe('/dashboard');
+  });
+
+  it('with ?verify=, a session read that finds the person signed in moves straight on to the confirmation, with no form in between', async () => {
+    const held = holdingSession(server({ methods: mailingList, arrivesSignedIn: true }));
+    const page = await mount(held.transport, { verify: 'tok-v' }, { home: '/dashboard' });
+    const forms = formsAdded(page);
+    await arrivedAt(held, page);
+    held.answer();
+    await page.settle();
+    expect(page.component.arriving()).toBe(false);
+    expect(barOf(page)).toBeNull();
+    expect(forms()).toBe(0);
+    expect(page.element.querySelector('form')).toBeNull();
+    expect(page.element.querySelector('input[name="username"]')).toBeNull();
+    expect(page.component.verified()).toBe('pax@fleet.example');
+    expect(page.component.landed()).toBe('/dashboard');
+    expect(page.element.querySelector('.ccc-login-landed-note')?.textContent?.trim()).toBe(
+      'pax@fleet.example is confirmed as your email address.',
+    );
+    expect(page.element.querySelector('.ccc-login-continue')).not.toBeNull();
+    expect(sent(page.transport)).toContain(`POST ${emailRoutes.verify}`);
+  });
+
+  it('with ?invitation=, the bar stands until the invitation and the session are read, then the note and the form show', async () => {
+    const held = holdingSession(server({ methods: mailingList }));
+    const page = await mount(held.transport, { invitation: 'tok-1' });
+    await arrivedAt(held, page);
+    expect(page.element.querySelector('.ccc-login-invitation-note')).toBeNull();
+    held.answer();
+    await page.settle();
+    expect(barOf(page)).toBeNull();
+    expect(page.element.querySelector('.ccc-login-invitation-note')).not.toBeNull();
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+  });
+
+  it('with ?invitation=, a person found signed in is offered the acceptance once the reads answer, with no form shown before', async () => {
+    const held = holdingSession(server({ methods: mailingList, arrivesSignedIn: true }));
+    const page = await mount(held.transport, { invitation: 'tok-1' });
+    const forms = formsAdded(page);
+    await arrivedAt(held, page);
+    held.answer();
+    await page.settle();
+    expect(barOf(page)).toBeNull();
+    expect(page.element.querySelector('.ccc-login-accept')?.textContent?.trim()).toBe('Accept as overseer');
+    // The form arrives with the acceptance, in one render, never before it.
+    expect(forms()).toBe(1);
+  });
+
+  it('a plain arrival shows no bar: the list renders as soon as it answers', async () => {
+    const page = await mount(transportOf(server()));
+    page.fixture.detectChanges();
+    expect(page.component.arriving()).toBe(false);
+    expect(barOf(page)).toBeNull();
+    await page.settle();
+    expect(barOf(page)).toBeNull();
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+  });
+
+  it("a dead link ends the bar and shows the server's words with the list", async () => {
+    const page = await pageOver(server({ methods: mailingList, signUpOpen: dead }), { signUp: 'tok-dead' });
+    expect(page.component.arriving()).toBe(false);
+    expect(barOf(page)).toBeNull();
+    expect(messageOf(page)).toBe(dead.body.message);
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
   });
 });

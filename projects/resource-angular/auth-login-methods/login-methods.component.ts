@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute } from '@angular/router';
 import {
   LoginMethod,
@@ -79,7 +80,10 @@ export interface AccountForm {
  * which asks for an address and mails it the link. A confirmation link (`?verify=`) is
  * posted once a session stands, on arrival when the page finds one, else after the
  * sign-in it waits for (a redirect method returns to this page with the token); the
- * component then shows what happened and emits `signedIn` on Continue.
+ * component then shows what happened and emits `signedIn` on Continue. While the URL
+ * names a step or a link, a progress bar stands in the list's place until the reads have
+ * answered, so the form shows only to a person found signed out, and one found signed in
+ * goes straight on to what the link asks for.
  *
  * A session the sign-in establishes may carry `passwordChangeRequired`: an operator set
  * the password, and the server serves nothing but the password change until the person
@@ -94,7 +98,7 @@ export interface AccountForm {
  */
 @Component({
   selector: 'ccc-login-methods',
-  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule],
+  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatProgressBarModule],
   templateUrl: './login-methods.component.html',
   styleUrl: './login-methods.component.scss',
 })
@@ -171,6 +175,8 @@ export class LoginMethodsComponent implements OnInit {
   landed = signal<string | undefined>(undefined);
   /** The address the followed link confirmed, shown while `landed`. */
   verified = signal<string | undefined>(undefined);
+  /** The URL names a step or a link whose outcome the reads decide: a progress bar stands in the list's place until they have answered. */
+  arriving = signal(false);
   /** The confirmation link's token, posted once a session stands. */
   private verifyToken = '';
 
@@ -448,36 +454,43 @@ export class LoginMethodsComponent implements OnInit {
    * Reads the list, the page's first request, then what the URL asks for: the pending
    * step when one waits, the invitation or the sign-up a token names, and the
    * confirmation link's token, posted at once when the page finds a session standing.
-   * With nothing in the URL the page asks for the session: the page ends none on arrival,
-   * so one it finds standing is offered Continue or Sign out in the list's place, and one
+   * While the URL names any of these, `arriving` holds the list back: a progress bar
+   * stands in its place until the reads have answered, so a person found signed in goes
+   * straight on to what the link asks for and is never shown a form to fill in. With
+   * nothing in the URL the page asks for the session: the page ends none on arrival, so
+   * one it finds standing is offered Continue or Sign out in the list's place, and one
    * that must change its password gets the change form.
    */
   private async arrive(): Promise<void> {
+    const params = this.route.snapshot.queryParamMap;
+    const invitation = params.get('invitation') ?? '';
+    const signUp = params.get('signUp') ?? '';
+    this.verifyToken = params.get('verify') ?? '';
+    const linked = params.has('pending') || invitation !== '' || signUp !== '' || this.verifyToken !== '';
+    this.arriving.set(linked);
     try {
       await this.client.auth.methods();
-      const params = this.route.snapshot.queryParamMap;
       if (params.has('pending')) {
         await this.readPending();
       }
-      const invitation = params.get('invitation');
-      if (invitation) {
+      if (invitation !== '') {
         await this.openInvitation(invitation);
       }
-      const signUp = params.get('signUp');
-      if (signUp) {
+      if (signUp !== '') {
         await this.openSignUp(signUp);
       }
-      this.verifyToken = params.get('verify') ?? '';
       if (this.verifyToken !== '') {
         const session = await this.sessionStanding();
         if (session) {
           await this.complete(this.landing());
         }
-      } else if (!params.has('pending') && !invitation && !signUp) {
+      } else if (!linked) {
         await this.findSession();
       }
     } catch (error) {
       this.refusal.set(messageOf(error));
+    } finally {
+      this.arriving.set(false);
     }
   }
 
