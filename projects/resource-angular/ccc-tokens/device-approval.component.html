@@ -1,0 +1,36 @@
+@if (!tokens) {
+  <p class="ccc-device-unserved">{{ noTokensSentence }}</p>
+} @else {
+  @if (decision()) {
+    <p class="ccc-device-decided" role="status">{{ decided() }}</p>
+  } @else if (request(); as waiting) {
+    <p class="ccc-device-request">
+      The program {{ waiting.clientId }} asks to act as you on {{ waiting.outlet }}. The request expires at
+      {{ waiting.expiresAt | date: 'medium' }}.
+    </p>
+    <div class="ccc-device-actions">
+      <button mat-flat-button type="button" class="ccc-device-approve" [disabled]="busy()" (click)="approve()">
+        Approve
+      </button>
+      <button mat-stroked-button type="button" class="ccc-device-deny" [disabled]="busy()" (click)="deny()">
+        Deny
+      </button>
+    </div>
+  } @else {
+    @if (refused()) {
+      <p class="ccc-device-refused" role="alert">{{ noRequestSentence() }}</p>
+    } @else if (busy()) {
+      <p class="ccc-device-note">Looking the request up…</p>
+    }
+    <form class="ccc-device-form" (ngSubmit)="lookUp()">
+      <mat-form-field appearance="outline" class="ccc-device-field">
+        <mat-label>The code the program printed</mat-label>
+        <input matInput name="code" [(ngModel)]="code" autocomplete="off" autocapitalize="characters" required />
+      </mat-form-field>
+      <button mat-flat-button type="submit" class="ccc-device-continue" [disabled]="busy()">Continue</button>
+    </form>
+  }
+  @if (notice(); as sentence) {
+    <p class="ccc-device-notice" role="alert">{{ sentence }}</p>
+  }
+}

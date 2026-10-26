@@ -12,6 +12,7 @@ export * from './src/permissions';
 export * from './src/query';
 export * from './src/reading';
 export * from './src/store';
+export * from './src/tokens';
 export * from './src/transport';
 export * from './src/users';
 export * from './src/versions';

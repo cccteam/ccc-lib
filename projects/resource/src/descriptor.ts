@@ -159,6 +159,16 @@ export interface ApiDescriptor {
    * descriptor from a generator that predates the surfaces, the outlet serves none.
    */
   userSurfaces?: readonly UserSurfaceDescriptor[];
+  /**
+   * The token routes this outlet serves, when its Auth issues tokens for the application's
+   * machine outlets: where the signed-in person lists, issues and revokes their own tokens,
+   * and where they look up, approve and deny a command-line client's device request. The
+   * generator writes the block on the console's session outlet when the Auth has machine
+   * outlets to issue for. Absent, on a descriptor from a generator that predates tokens or
+   * for an Auth with no machine outlet, the outlet issues none: `userTokens(client)` is
+   * undefined and a page over it says so.
+   */
+  tokens?: TokensDescriptor;
 }
 
 /**
@@ -234,4 +244,34 @@ export interface LiveRoutes {
   renewRoute: string;
   unsubscribeRoute: string;
   tokenRoute: string;
+}
+
+/**
+ * The routes of an outlet whose Auth issues tokens, under the API prefix like
+ * `permissionDigestRoute` and `userDomainsRoute`: a path relative to the client's
+ * `baseUrl`, without the prefix and without a leading slash (`user/tokens`, never
+ * `/api/user/tokens`). `route` is where the person's live tokens are listed (GET) and a
+ * new application token is issued (POST); `revokeRoute` where one is revoked by id;
+ * `deviceRoute` where a device request is looked up by the code the program printed
+ * (GET, `userCode` in the query); `approveRoute` and `denyRoute` where it is decided.
+ * `outlets` are the machine outlets the Auth issues tokens for, the choice an issue form
+ * offers.
+ */
+export interface TokensDescriptor {
+  route: string;
+  revokeRoute: string;
+  deviceRoute: string;
+  approveRoute: string;
+  denyRoute: string;
+  outlets: readonly MachineOutletDescriptor[];
+}
+
+/**
+ * One machine outlet of the application: `name` as the server knows it and a token names
+ * it (`machines`), `prefix` where the outlet is mounted (`/machines`), for a page that
+ * tells the person where a token signs in.
+ */
+export interface MachineOutletDescriptor {
+  name: string;
+  prefix: string;
 }

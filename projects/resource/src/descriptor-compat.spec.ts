@@ -3,6 +3,7 @@ import { Domain, ListPermission, Method, Resource } from './brands';
 import { AnyResourceHandle, Client, createClient, MethodHandle } from './client';
 import { ApiDescriptor } from './descriptor';
 import { ChangeFeed, LiveIdentity, noLiveRoutesWarning, subscribeHeader } from './live';
+import { userTokens } from './tokens';
 import { scriptedTransport } from '@cccteam/resource/testing';
 
 // The two directions of descriptor compatibility: the generator and this package
@@ -13,7 +14,9 @@ import { scriptedTransport } from '@cccteam/resource/testing';
 // hands it over: this file compiling under `tsc -p projects/resource/tsconfig.spec.json`
 // is that proof, and the runtime half confirms the client was built over it. Absence is
 // tolerated but announced: a live ask of a descriptor without `live` reaches the client's
-// warn hook once, in words that name the regeneration that would serve it.
+// warn hook once, in words that name the regeneration that would serve it. A descriptor
+// without `tokens`, from a generator that predates them, binds no token handle, and a
+// page over it says so instead of asking.
 
 interface Row {
   id: string;
@@ -28,7 +31,7 @@ interface Sector {
   ships: AnyResourceHandle<Row>;
 }
 
-/** The descriptor an older generator wrote: no `live` block, since it predates live pages. */
+/** The descriptor an older generator wrote: no `live` block and no `tokens` block, since it predates both. */
 const older: ApiDescriptor = {
   permissionDigestRoute: 'permission-digest',
   userDomainsRoute: 'user-domains',
@@ -141,6 +144,9 @@ describe('a descriptor from an older generator, without the live block', () => {
     await expect(client.live.start(feed)).rejects.toThrow('serves no live subscriptions');
     await client.live.stop();
     expect(warnings).toEqual([noLiveRoutesWarning]);
+
+    // Tokens are off: the handle is undefined, and nothing is requested for them.
+    expect(userTokens(client)).toBeUndefined();
 
     // Everything else works: global and domain handles, a method, the digest and its answers.
     expect(await client.shipClasses.read(['sc1'])).toEqual({ id: 'sc1' });

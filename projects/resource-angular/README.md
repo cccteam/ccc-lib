@@ -307,10 +307,49 @@ role, and the refusal of the one it may not is shown in place in the server's wo
 read again after every write, so the rows say what the server says; a list that pages offers the
 turns the server names.
 
+## Tokens
+
+`<ccc-tokens>` (`@cccteam/resource-angular/ccc-tokens`) is the signed-in person's tokens for the
+application's machine outlets, for an account page. It configures itself from the `tokens` block
+of the generated descriptor (see the tokens section of @cccteam/resource): the routes, and the
+machine outlets a token can be issued for. It lists the person's live tokens as the server serves
+them, newest first: an application token by its name, a device grant (the pair a command-line
+client holds after the person approved its request) by the client's name and the kind of each
+row, access or refresh, with the outlet, when it was created, when it expires and when it was
+last used. An inline form issues an application token by name for one outlet, chosen where the
+descriptor lists several and fixed where it lists one; the token's value is shown once, in a
+field with a Copy button (the clipboard where the browser offers one, the field's text selected
+either way), with the sentence that it is not shown again. A revoke asks first; revoking either
+row of a device grant revokes the pair, and the question says so. A refusal is shown in place in
+the server's words, and the list is read again after every write. Where the descriptor carries
+no block, the page says in one sentence that the application issues no tokens for the signed-in
+person.
+
+`<ccc-device-approval>` (the same entry) is the page where the person answers a command-line
+client's request to act as them: the program printed a code and a link, and the person approves
+or denies the request the code stands for. The component takes the code as `userCode`, else
+reads it from the route's `userCode` query parameter, the link the program printed; with a code
+it looks the request up and shows which program asks, for which outlet and until when, with
+Approve and Deny; without one it asks for the code the program printed, in any case and spacing,
+and looks it up on Continue. After a decision it says so; when no request waits on the code,
+expired or already answered, it says so and asks for a code again.
+
+```html
+<ccc-tokens />
+<ccc-device-approval />
+<ccc-device-approval [userCode]="code" />
+```
+
+The device page is reached at the application's device verification path (`/device` by
+default, what the program prints as its link) with `?userCode=XXXX-XXXX`, and belongs behind the
+sign-in guard: a signed-out person who follows the link is sent to sign in and returns to the
+page, code and all, once signed in.
+
 ## Modules Overview
 
 - **`ccc-resource`**: The core module of the library. It contains the components and services related to dynamic page generation and data management.
 - **`ccc-user-management`**: The user-management page over an Auth's surface, configured from the generated descriptor.
+- **`ccc-tokens`**: The signed-in person's token page and the device approval page, configured from the generated descriptor's tokens block.
 - **`auth`**: This module provides authentication and authorization, including the login methods component, the email address component, route guards, and permission directives.
 - **`ui`**: This module contains UI components and services, such as alerts, notifications, and sidenav components.
 - **`utils`**: A collection of utility pipes and functions for various purposes.
