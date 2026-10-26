@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.13](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.12...resource/v0.0.13) (2026-10-26)
+
+
+### Features
+
+* the console's token page and device approval: a person issues, lists and revokes their application tokens and approves a command-line client's request ([#161](https://github.com/cccteam/ccc-lib/issues/161)) ([7cd5ce1](https://github.com/cccteam/ccc-lib/commit/7cd5ce13d810f577b388be423e9452f4f8e14bb9))
+
 ## [0.0.12](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.11...resource/v0.0.12) (2026-10-24)
 
 

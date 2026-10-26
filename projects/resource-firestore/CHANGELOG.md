@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.0.11](https://github.com/cccteam/ccc-lib/compare/resource-firestore/v0.0.10...resource-firestore/v0.0.11) (2026-10-26)
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.12 to ^0.0.13
+
 ## [0.0.10](https://github.com/cccteam/ccc-lib/compare/resource-firestore/v0.0.9...resource-firestore/v0.0.10) (2026-10-24)
 
 

@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.0.17](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.16...resource-angular/v0.0.17) (2026-10-26)
+
+
+### Features
+
+* the console's token page and device approval: a person issues, lists and revokes their application tokens and approves a command-line client's request ([#161](https://github.com/cccteam/ccc-lib/issues/161)) ([7cd5ce1](https://github.com/cccteam/ccc-lib/commit/7cd5ce13d810f577b388be423e9452f4f8e14bb9))
+
+
+### Bug Fixes
+
+* the login component renders nothing until its arrival reads answer, instead of a progress bar on every load, and a page holds its card back on the same signal ([#162](https://github.com/cccteam/ccc-lib/issues/162)) ([e6c3120](https://github.com/cccteam/ccc-lib/commit/e6c312077cac93d85275a76bc8471cee07cd2cb1))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.12 to ^0.0.13
+
 ## [0.0.16](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.15...resource-angular/v0.0.16) (2026-10-24)
 
 
