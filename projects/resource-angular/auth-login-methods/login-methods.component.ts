@@ -5,7 +5,6 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { ActivatedRoute } from '@angular/router';
 import {
   LoginMethod,
@@ -93,7 +92,8 @@ export interface AccountForm {
  * posted once a session stands, on arrival when the page finds one, else after the
  * sign-in it waits for (a redirect method returns to this page with the token); the
  * component then shows what happened and emits `signedIn` on Continue. On every arrival
- * a progress bar stands in the list's place until the reads have answered, so the form
+ * the component renders nothing until the reads have answered (`arriving`, which a page
+ * holds its card back on, so a load shows nothing and then the whole card), so the form
  * shows only to a person found signed out; one found signed in goes straight on to what
  * the link asks for, or is offered Continue and Sign out, and is never shown a form first.
  *
@@ -110,7 +110,7 @@ export interface AccountForm {
  */
 @Component({
   selector: 'ccc-login-methods',
-  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatProgressBarModule],
+  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule],
   templateUrl: './login-methods.component.html',
   styleUrl: './login-methods.component.scss',
 })
@@ -197,8 +197,13 @@ export class LoginMethodsComponent implements OnInit {
   landed = signal<string | undefined>(undefined);
   /** The address the followed link confirmed, shown while `landed`. */
   verified = signal<string | undefined>(undefined);
-  /** The arrival's reads are in flight: a progress bar stands in the list's place until they have answered. */
-  arriving = signal(false);
+  /**
+   * The arrival's reads are in flight: the component renders nothing until they have
+   * answered, and a page holds its card back on this signal (`methods.arriving()` through a
+   * template reference), so a load shows nothing and then the whole card, the way a page
+   * loads. True from the start, so the first render is already held.
+   */
+  arriving = signal(true);
   /** The confirmation link's token, posted once a session stands. */
   private verifyToken = '';
 
@@ -478,9 +483,9 @@ export class LoginMethodsComponent implements OnInit {
    * confirmation link's token, posted at once when the page finds a session standing.
    * An invitation the list says the browser carries, with no token in the URL to open,
    * is kept over the list the way an opened one is, the session read for who may accept
-   * it. Throughout, `arriving` holds the list back: a progress bar stands in its place
-   * until the reads have answered, so a person found signed in goes straight on to what
-   * the link asks for and is never shown a form to fill in. With nothing in the URL and
+   * it. Throughout, `arriving` holds the list back: nothing renders until the reads have
+   * answered, so a person found signed in goes straight on to what the link asks for and
+   * is never shown a form to fill in, and nothing stands in for the page meanwhile. With nothing in the URL and
    * no invitation carried, the page asks for the session: the page ends none on arrival,
    * so one it finds standing is offered Continue or Sign out in the list's place, and one
    * that must change its password gets the change form; the form appears only once that

@@ -30,9 +30,9 @@ import { LoginMethodsComponent, PASSWORDS_DIFFER } from './login-methods.compone
 // found carrying, with no token in the URL, stands the same way; a sign-up link opens the
 // account form; a confirmation link is posted once a session stands. The component ends no
 // session on arrival: with nothing in the URL it asks for the session, and one standing is
-// offered Continue or Sign out in the list's place. On every arrival a progress bar holds
-// the list back until the reads have answered, so a person found signed in moves straight
-// on and is never shown a form. Every POST is preceded by a read of the
+// offered Continue or Sign out in the list's place. On every arrival the component renders
+// nothing until the reads have answered, so a person found signed in moves straight on and
+// is never shown a form, and no progress bar stands in for the page meanwhile. Every POST is preceded by a read of the
 // list, so it carries a live XSRF token.
 
 const descriptor: ApiDescriptor = {
@@ -364,6 +364,9 @@ describe('LoginMethodsComponent renders the list', () => {
     const element = fixture.nativeElement as HTMLElement;
     expect(element.querySelector('form')).toBeNull();
     expect(element.querySelectorAll('button')).toHaveLength(0);
+    expect(element.querySelector('mat-progress-bar')).toBeNull();
+    expect(element.textContent?.trim()).toBe('');
+    expect(fixture.componentInstance.arriving()).toBe(true);
   });
 
   it("takes the application's label for a method by its registration name, the server's otherwise", async () => {
@@ -1526,49 +1529,50 @@ describe("LoginMethodsComponent holds the list back while the arrival's reads an
     };
   }
 
-  /** The page arrived and the list answered, the first session read in flight: the bar on screen, nothing else. */
+  /** The page arrived and the list answered, the first session read in flight: nothing on screen. */
   async function arrivedAt(held: ReturnType<typeof holdingSession>, page: Page): Promise<void> {
     page.fixture.detectChanges();
     await held.asked;
     page.fixture.detectChanges();
     expect(page.component.arriving()).toBe(true);
-    expect(barOf(page)).not.toBeNull();
+    expect(heldBack(page)).toBe(true);
     expect(page.element.querySelector('form')).toBeNull();
     expect(page.element.querySelectorAll('button')).toHaveLength(0);
   }
 
-  const barOf = (page: Page): Element | null => page.element.querySelector('mat-progress-bar');
+  /** Nothing of the component is on screen: no bar, no text, while the arrival's reads are in flight. */
+  const heldBack = (page: Page): boolean => page.element.querySelector('mat-progress-bar') === null && (page.element.textContent?.trim() ?? '') === '';
 
-  it('with ?verify=, the password form is not in the DOM before the session read answers; the bar is', async () => {
+  it('with ?verify=, the password form is not in the DOM before the session read answers; nothing renders', async () => {
     const held = holdingSession(server({ methods: mailingList }));
     const page = await mount(held.transport, { verify: 'tok-v' });
     page.fixture.detectChanges();
-    // Before the list answers: the bar alone, set as the component arrives.
+    // Before the list answers: nothing on screen, held from the component's first render.
     expect(page.component.arriving()).toBe(true);
-    expect(barOf(page)).not.toBeNull();
+    expect(heldBack(page)).toBe(true);
     expect(page.element.querySelector('form')).toBeNull();
     await held.asked;
     page.fixture.detectChanges();
-    // The list has answered and the session read is in flight: still the bar alone.
+    // The list has answered and the session read is in flight: still nothing on screen.
     expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/session']);
-    expect(barOf(page)).not.toBeNull();
+    expect(heldBack(page)).toBe(true);
     expect(page.element.querySelector('input[name="password"]')).toBeNull();
     expect(page.element.querySelector('input[name="username"]')).toBeNull();
     expect(page.element.querySelector('form')).toBeNull();
     expect(buttonsOf(page)).toEqual([]);
     held.answer();
     await page.settle();
-    expect(barOf(page)).toBeNull();
+    expect(page.component.arriving()).toBe(false);
   });
 
-  it('with ?verify=, a session read that finds nobody signed in ends the bar and shows the form, which still waits for the sign-in', async () => {
+  it('with ?verify=, a session read that finds nobody signed in ends the hold and shows the form, which still waits for the sign-in', async () => {
     const held = holdingSession(server({ methods: mailingList }));
     const page = await mount(held.transport, { verify: 'tok-v' }, { home: '/dashboard' });
     await arrivedAt(held, page);
     held.answer();
     await page.settle();
     expect(page.component.arriving()).toBe(false);
-    expect(barOf(page)).toBeNull();
+    expect(page.component.arriving()).toBe(false);
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
     expect(page.element.querySelector('input[name="password"]')).not.toBeNull();
     expect(buttonsOf(page)).toEqual(['Sign in with Google']);
@@ -1590,7 +1594,7 @@ describe("LoginMethodsComponent holds the list back while the arrival's reads an
     held.answer();
     await page.settle();
     expect(page.component.arriving()).toBe(false);
-    expect(barOf(page)).toBeNull();
+    expect(page.component.arriving()).toBe(false);
     expect(forms()).toBe(0);
     expect(page.element.querySelector('form')).toBeNull();
     expect(page.element.querySelector('input[name="username"]')).toBeNull();
@@ -1603,14 +1607,14 @@ describe("LoginMethodsComponent holds the list back while the arrival's reads an
     expect(sent(page.transport)).toContain(`POST ${emailRoutes.verify}`);
   });
 
-  it('with ?invitation=, the bar stands until the invitation and the session are read, then the note and the form show', async () => {
+  it('with ?invitation=, nothing renders until the invitation and the session are read, then the note and the form show', async () => {
     const held = holdingSession(server({ methods: mailingList }));
     const page = await mount(held.transport, { invitation: 'tok-1' });
     await arrivedAt(held, page);
     expect(page.element.querySelector('.ccc-login-invitation-note')).toBeNull();
     held.answer();
     await page.settle();
-    expect(barOf(page)).toBeNull();
+    expect(page.component.arriving()).toBe(false);
     expect(page.element.querySelector('.ccc-login-invitation-note')).not.toBeNull();
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
   });
@@ -1622,7 +1626,7 @@ describe("LoginMethodsComponent holds the list back while the arrival's reads an
     await arrivedAt(held, page);
     held.answer();
     await page.settle();
-    expect(barOf(page)).toBeNull();
+    expect(page.component.arriving()).toBe(false);
     expect(page.element.querySelector('.ccc-login-accept')?.textContent?.trim()).toBe('Accept as overseer');
     // The form arrives with the acceptance, in one render, never before it.
     expect(forms()).toBe(1);
@@ -1636,7 +1640,7 @@ describe("LoginMethodsComponent holds the list back while the arrival's reads an
     held.answer();
     await page.settle();
     expect(page.component.arriving()).toBe(false);
-    expect(barOf(page)).toBeNull();
+    expect(page.component.arriving()).toBe(false);
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
     expect(page.element.querySelector('input[name="password"]')).not.toBeNull();
   });
@@ -1649,7 +1653,7 @@ describe("LoginMethodsComponent holds the list back while the arrival's reads an
     held.answer();
     await page.settle();
     expect(page.component.arriving()).toBe(false);
-    expect(barOf(page)).toBeNull();
+    expect(page.component.arriving()).toBe(false);
     expect(forms()).toBe(0);
     expect(page.element.querySelector('form')).toBeNull();
     expect(page.element.querySelector('.ccc-login-signed-in-note')?.textContent?.trim()).toBe('You are signed in as overseer.');
@@ -1657,10 +1661,10 @@ describe("LoginMethodsComponent holds the list back while the arrival's reads an
     expect(page.element.querySelector('.ccc-login-sign-out')?.textContent?.trim()).toBe('Sign out');
   });
 
-  it("a dead link ends the bar and shows the server's words with the list", async () => {
+  it("a dead link ends the hold and shows the server's words with the list", async () => {
     const page = await pageOver(server({ methods: mailingList, signUpOpen: dead }), { signUp: 'tok-dead' });
     expect(page.component.arriving()).toBe(false);
-    expect(barOf(page)).toBeNull();
+    expect(page.component.arriving()).toBe(false);
     expect(messageOf(page)).toBe(dead.body.message);
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
   });
