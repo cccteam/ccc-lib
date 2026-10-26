@@ -1,0 +1,35 @@
+:host {
+  display: block;
+}
+
+.ccc-device-form,
+.ccc-device-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ccc-device-field {
+  min-width: 18rem;
+}
+
+.ccc-device-request,
+.ccc-device-decided,
+.ccc-device-refused,
+.ccc-device-note {
+  margin: 0 0 12px;
+}
+
+.ccc-device-note {
+  opacity: 0.8;
+}
+
+.ccc-device-refused,
+.ccc-device-notice {
+  color: var(--mat-sys-error, #b3261e);
+}
+
+.ccc-device-notice {
+  margin: 12px 0 0;
+}

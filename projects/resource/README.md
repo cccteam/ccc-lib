@@ -55,7 +55,7 @@ The generator and this package release in either order. A descriptor from a newe
 works with an older client: the generated file writes the descriptor as a value that its
 `createApi` hands to the client, TypeScript checks it against the fields the client declares
 and no others, and the client ignores a field it does not know. A newer client works with an older descriptor: every field
-added after the package's first release is optional (`live` is one), and an absent field means
+added after the package's first release is optional (`live` is one, `tokens` another), and an absent field means
 the API does not serve that feature. An application does nothing about a missing field: the
 feature is off, `api.live.enabled` is false for a descriptor without `live`, a live call is a
 plain request, and every other part of the client works as before. The absence is announced
@@ -483,6 +483,56 @@ own directory vouched for (400); where the username is the address, the row's en
 withholds the username and the address from the write. Removing a person's last seat anywhere
 deletes the account with its identity links, unless a global role keeps it. The Angular
 binding's `<ccc-user-management>` renders a partition over these calls.
+
+## Tokens
+
+An Auth with machine outlets issues tokens for them: application tokens the signed-in person
+issues by name, and the grants a command-line client holds after the person approved its device
+request (RFC 8628: the program prints a code and a link, the person approves on the console, the
+program polls and receives an access token and a refresh token, one family). The descriptor's
+`tokens` block says the console's outlet serves the person's side: `route`, where the person's
+live tokens are listed (GET) and an application token is issued (POST); `revokeRoute`, where one
+is revoked by id; `deviceRoute`, where a device request is looked up by the code the program
+printed (GET, `userCode` in the query); `approveRoute` and `denyRoute`, where it is decided; and
+`outlets`, the machine outlets the Auth issues for, each with its `name` as a token names it and
+the `prefix` it is mounted at. The routes are in the form of `permissionDigestRoute` and
+`userDomainsRoute`: a path under the client's `baseUrl` without the prefix and without a leading
+slash (`user/tokens`). The block is optional: a descriptor from a generator that predates tokens,
+or for an Auth with no machine outlet, carries none, and `userTokens(api)` is then undefined, so
+a page says the application issues none instead of asking.
+
+`userTokens(api)` binds the person's tokens on the client: `outlets`, the descriptor's list;
+`list()`, the live tokens newest first (`TokenRow`: `id`, `kind`, `application`, `access` or
+`refresh`, `name` on an application token, `clientId` on a device grant's two rows, `outlet`,
+`createdAt`, `expiresAt`, and `lastUsedAt` once the token was used, never on a refresh token);
+`issue(name, outlet, expiresIn?)`, answering `IssuedToken` with `token`, the secret, this once;
+`revoke(id)`, which revokes a device grant's pair from either row; and `device(userCode)`,
+`approve(userCode)` and `deny(userCode)`, the code passed through as given, which the server reads
+in any case and spacing. A refusal the server answers with its words resolves as `TokenRefusal`
+(`outcome: 'refused'`, the `status` and the `message`) rather than throwing, so a page renders it
+in place, and `isTokenRefusal(result)` tells it from the result: a name over 200 characters, a
+lifetime over the maximum or an outlet the application has not (400 on an issue); no live token
+of the person's by that id (404 on a revoke); no pending device code, the one sentence for an
+unknown, expired, decided or consumed code (404 on a look-up or a decision). A 401 or 403 is not
+a refusal: it throws as every request does, so the client's error hook sends the person to sign
+in.
+
+```ts
+const tokens = userTokens(api);
+if (tokens) {
+  const issued = await tokens.issue('nightly export', tokens.outlets[0].name);
+  if (!isTokenRefusal(issued)) {
+    show(issued.token); // this once; the list never carries it
+  }
+  const request = await tokens.device('BCDF-GHJK');
+  if (!isTokenRefusal(request)) {
+    await tokens.approve('BCDF-GHJK'); // the program's next poll receives its tokens
+  }
+}
+```
+
+The Angular binding's `<ccc-tokens>` and `<ccc-device-approval>` render the two pages over these
+calls.
 
 ## Transports
 

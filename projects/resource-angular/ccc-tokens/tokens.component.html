@@ -1,0 +1,113 @@
+@if (!tokens) {
+  <p class="ccc-tokens-unserved">{{ noTokensSentence }}</p>
+} @else {
+  <div class="ccc-tokens-header">
+    <h2 class="ccc-tokens-heading">Your tokens</h2>
+  </div>
+  @if (issued(); as token) {
+    <div class="ccc-tokens-issued">
+      <p class="ccc-tokens-issued-note">
+        The token {{ token.name }} for {{ token.outlet }} is ready. Copy it now; it is not shown again.
+      </p>
+      <div class="ccc-tokens-issued-row">
+        <mat-form-field appearance="outline" class="ccc-tokens-issued-field">
+          <mat-label>Token</mat-label>
+          <input matInput #secret name="token" [value]="token.token" readonly autocomplete="off" />
+        </mat-form-field>
+        <button mat-flat-button type="button" class="ccc-tokens-copy" (click)="copy(secret)">Copy</button>
+        @if (copied()) {
+          <span class="ccc-tokens-copied" role="status">Copied.</span>
+        }
+        <button mat-button type="button" class="ccc-tokens-issued-done" (click)="dismissIssued()">Done</button>
+      </div>
+    </div>
+  } @else if (canIssue()) {
+    <form class="ccc-tokens-issue" (ngSubmit)="issue()">
+      <mat-form-field appearance="outline" class="ccc-tokens-field">
+        <mat-label>Name</mat-label>
+        <input matInput name="name" [(ngModel)]="name" [maxlength]="nameMaxLength" autocomplete="off" required />
+        <mat-hint>What the token is for, so you know it in the list.</mat-hint>
+      </mat-form-field>
+      @if (outlets.length > 1) {
+        <mat-form-field appearance="outline" class="ccc-tokens-field">
+          <mat-label>Outlet</mat-label>
+          <mat-select name="outlet" [(ngModel)]="outlet" required>
+            @for (candidate of outlets; track candidate.name) {
+              <mat-option [value]="candidate.name">{{ outletLabel(candidate) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      } @else {
+        <span class="ccc-tokens-outlet">For {{ outletLabel(outlets[0]) }}</span>
+      }
+      <button mat-flat-button type="submit" class="ccc-tokens-submit" [disabled]="busy()">Issue a token</button>
+    </form>
+  }
+  @if (notice(); as sentence) {
+    <p class="ccc-tokens-notice" role="alert">{{ sentence }}</p>
+  }
+  @if (error(); as sentence) {
+    <p class="ccc-tokens-error" role="alert">{{ sentence }}</p>
+  } @else if (loading()) {
+    <p class="ccc-tokens-note">Loading your tokens…</p>
+  } @else if (rows().length === 0) {
+    <p class="ccc-tokens-note">You have no tokens.</p>
+  } @else {
+    <table class="ccc-tokens">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Kind</th>
+          <th>Outlet</th>
+          <th>Created</th>
+          <th>Expires</th>
+          <th>Last used</th>
+          <th><span class="ccc-tokens-visually-hidden">Revoke</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+          <tr class="ccc-token" [class.ccc-token-confirming]="confirmingRevoke() === row.id">
+            <td class="ccc-token-name">{{ labelOf(row) }}</td>
+            <td class="ccc-token-kind">{{ kindOf(row) }}</td>
+            <td class="ccc-token-outlet">{{ row.outlet }}</td>
+            <td class="ccc-token-created">{{ row.createdAt | date: 'medium' }}</td>
+            <td class="ccc-token-expires">{{ row.expiresAt | date: 'medium' }}</td>
+            <td class="ccc-token-last">{{ row.lastUsedAt ? (row.lastUsedAt | date: 'medium') : 'Never' }}</td>
+            <td class="ccc-token-manage">
+              @if (confirmingRevoke() === row.id) {
+                <span class="ccc-token-confirm">{{ revokeQuestion(row) }}</span>
+                <button
+                  mat-flat-button
+                  type="button"
+                  class="ccc-token-revoke-confirm"
+                  [disabled]="busy()"
+                  (click)="revoke(row)">
+                  Confirm
+                </button>
+                <button
+                  mat-button
+                  type="button"
+                  class="ccc-token-revoke-cancel"
+                  [disabled]="busy()"
+                  (click)="cancelRevoke()">
+                  Cancel
+                </button>
+              } @else {
+                <button
+                  mat-button
+                  type="button"
+                  class="ccc-token-revoke"
+                  [disabled]="busy()"
+                  [attr.aria-label]="'Revoke ' + labelOf(row)"
+                  (click)="revoke(row)">
+                  Revoke
+                </button>
+              }
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+}
