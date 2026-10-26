@@ -1,7 +1,5 @@
 @if (arriving()) {
-  <div class="ccc-login-arriving">
-    <mat-progress-bar mode="indeterminate" aria-label="Checking your sign-in"></mat-progress-bar>
-  </div>
+  <!-- The arrival's reads are in flight: nothing renders until they have answered, and the page holds its card back on the same signal. -->
 } @else if (changing()) {
   <div class="ccc-login-change">
     <p class="ccc-login-change-note">{{ changeNote() }}</p>
