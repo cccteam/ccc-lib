@@ -26,6 +26,11 @@ describe('UiCoreService login messages', () => {
       code: 'directory_only',
       want: DEFAULT_LOGIN_MESSAGES['directory_only'],
     },
+    {
+      name: 'a stranger an organization admits by invitation only answers its default sentence',
+      code: 'invitation_only',
+      want: DEFAULT_LOGIN_MESSAGES['invitation_only'],
+    },
     { name: 'an unknown code answers nothing', code: 'call 555-0100 for a password reset', want: '' },
     { name: 'an empty code answers nothing', code: '', want: '' },
     { name: 'a key inherited from Object is not a code', code: 'constructor', want: '' },
@@ -70,6 +75,7 @@ describe('UiCoreService login messages', () => {
       'no_tenant',
       'connection_not_in_tenant',
       'directory_only',
+      'invitation_only',
     ];
     TestBed.configureTestingModule({});
     const ui = TestBed.inject(UiCoreService);
