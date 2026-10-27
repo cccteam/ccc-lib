@@ -239,6 +239,7 @@ export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
     'Your organization does not sign in the way you just tried. Please sign in the way your organization has set up.',
   directory_only:
     'Your organization does not sign in with a password here. Please sign in the way your organization has set up.',
+  invitation_only: 'Your organization signs people in by invitation. Ask your administrator to invite you.',
 };
 
 /**

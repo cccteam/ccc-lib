@@ -448,6 +448,11 @@ describe('LoginMethodsComponent signs in with the password', () => {
       want: DEFAULT_LOGIN_MESSAGES['directory_only'],
     },
     {
+      name: 'a stranger from a directory whose organization admits people by invitation only shows the sentence for invitation_only',
+      answer: { status: 403, body: { message: 'Sign-in denied', code: 'invitation_only' } },
+      want: DEFAULT_LOGIN_MESSAGES['invitation_only'],
+    },
+    {
       name: 'a locked name shows the sentence held for the code the 429 body carries, with the wait in minutes',
       answer: {
         status: 429,
