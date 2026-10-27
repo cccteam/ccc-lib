@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.18](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.17...resource-angular/v0.0.18) (2026-10-27)
+
+
+### Features
+
+* the login page tells a stranger the organization admits people by invitation only ([#164](https://github.com/cccteam/ccc-lib/issues/164)) ([214404f](https://github.com/cccteam/ccc-lib/commit/214404f8897c97b837f960f1c0a45e002ec571fc))
+
 ## [0.0.17](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.16...resource-angular/v0.0.17) (2026-10-26)
 
 
