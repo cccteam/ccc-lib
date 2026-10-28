@@ -211,6 +211,12 @@ $mobile-breakpoint: 480px;
   max-width: none;
 }
 
+// The user-management page's side panels (edit access, manage account, new user) are
+// dialogs anchored to the right edge of the viewport; a sheet has square corners.
+.cdk-overlay-pane.ccc-users-panel {
+  --mat-dialog-container-shape: 0;
+}
+
 .mat-expansion-panel-body {
   padding: 0 !important;
 }

@@ -4,51 +4,11 @@
   <div class="ccc-users-header">
     <h2 class="ccc-users-heading">{{ heading() }}</h2>
     @if (canCreate()) {
-      <button mat-flat-button type="button" class="ccc-users-new" [disabled]="busy()" (click)="toggleCreate()">
-        {{ creating() ? 'Close' : 'New user' }}
+      <button mat-flat-button type="button" class="ccc-users-new" [disabled]="busy()" (click)="openNew()">
+        New user
       </button>
     }
   </div>
-  @if (creating()) {
-    <form class="ccc-users-create" (ngSubmit)="create()">
-      <mat-form-field appearance="outline" class="ccc-users-field">
-        <mat-label>{{ usernameLabel() }}</mat-label>
-        <input
-          matInput
-          name="username"
-          [type]="usernameIsEmail() ? 'email' : 'text'"
-          [(ngModel)]="newUser.username"
-          autocomplete="off"
-          required />
-      </mat-form-field>
-      @if (!usernameIsEmail()) {
-        <mat-form-field appearance="outline" class="ccc-users-field">
-          <mat-label>Email address</mat-label>
-          <input matInput name="email" type="email" [(ngModel)]="newUser.email" autocomplete="off" />
-          <mat-hint>Unconfirmed until the person confirms it themselves.</mat-hint>
-        </mat-form-field>
-      }
-      @if (asksPassword()) {
-        <mat-form-field appearance="outline" class="ccc-users-field">
-          <mat-label>Temporary password</mat-label>
-          <input matInput name="password" type="password" [(ngModel)]="newUser.password" autocomplete="new-password" />
-          <mat-hint>The person changes it at their first sign-in.</mat-hint>
-        </mat-form-field>
-      }
-      @if (asksRole()) {
-        <mat-form-field appearance="outline" class="ccc-users-field">
-          <mat-label>Role</mat-label>
-          <mat-select name="role" [(ngModel)]="newUser.role" required>
-            @for (role of roles(); track role.name) {
-              <mat-option [value]="role.name">{{ role.name }}</mat-option>
-            }
-          </mat-select>
-        </mat-form-field>
-      }
-      <mat-checkbox name="disabled" class="ccc-users-field" [(ngModel)]="newUser.disabled">Start disabled</mat-checkbox>
-      <button mat-flat-button type="submit" class="ccc-users-submit" [disabled]="busy()">Create</button>
-    </form>
-  }
   @if (notice(); as sentence) {
     <p class="ccc-users-notice" role="alert">{{ sentence }}</p>
   }
@@ -75,7 +35,7 @@
       </thead>
       <tbody>
         @for (row of rows(); track row.id) {
-          <tr class="ccc-user" [class.ccc-user-open]="open() === row.id">
+          <tr class="ccc-user" [class.ccc-user-open]="panel()?.user === row.id">
             <td class="ccc-user-username">
               {{ row.username }}
               @if (usernameIsEmail() && row.emailVerifiedAt === null) {
@@ -93,157 +53,62 @@
             </td>
             <td class="ccc-user-means">{{ signsInWith(row) }}</td>
             <td class="ccc-user-roles">
-              {{ row.roles.join(', ') }}
-              @if (row.everywhereRoles.length > 0 && partition()?.scope === 'domain') {
-                <span class="ccc-user-everywhere">(everywhere: {{ row.everywhereRoles.join(', ') }})</span>
+              @if (row.roles.length === 0 && everywhereOf(row).length === 0) {
+                <span class="ccc-users-note">No roles</span>
+              }
+              @for (role of row.roles; track role) {
+                <div class="ccc-user-role">
+                  <span class="ccc-user-role-title">{{ role | roleTitle }}</span>
+                  @if (reachOf(role); as reach) {
+                    <span class="ccc-user-role-kind">{{ reach }}</span>
+                  }
+                </div>
+              }
+              @for (role of everywhereOf(row); track role) {
+                <div class="ccc-user-role ccc-user-role-everywhere">
+                  <span class="ccc-user-role-title">{{ role | roleTitle }}</span>
+                  <span class="ccc-user-role-kind">{{ reachOf(role, true) }}</span>
+                </div>
               }
               @if (row.rolesSynced) {
-                <span class="ccc-user-synced">· from the directory</span>
+                <div class="ccc-user-synced">From the directory</div>
               }
             </td>
             <td class="ccc-user-last">{{ row.lastSignInAt ? (row.lastSignInAt | date: 'medium') : 'Never' }}</td>
             <td class="ccc-user-manage">
+              <button
+                mat-icon-button
+                type="button"
+                class="ccc-user-edit-access"
+                [disabled]="busy()"
+                [attr.aria-label]="'Edit access for ' + row.username"
+                (click)="openAccess(row)">
+                <mat-icon>edit</mat-icon>
+              </button>
               @if (manageable(row)) {
-                <button mat-button type="button" class="ccc-user-toggle" [disabled]="busy()" (click)="toggle(row)">
-                  {{ open() === row.id ? 'Done' : 'Manage' }}
+                <button
+                  mat-icon-button
+                  type="button"
+                  class="ccc-user-manage-account"
+                  [disabled]="busy()"
+                  [attr.aria-label]="'Manage ' + row.username"
+                  (click)="openAccount(row)">
+                  <mat-icon>more_vert</mat-icon>
                 </button>
               }
             </td>
           </tr>
-          @if (open() === row.id) {
-            <tr class="ccc-user-details">
-              <td [attr.colspan]="usernameIsEmail() ? 6 : 7">
-                @if (canRename(row)) {
-                  <form class="ccc-user-action" (ngSubmit)="saveRename(row)">
-                    <mat-form-field appearance="outline" class="ccc-users-field">
-                      <mat-label>Username</mat-label>
-                      <input matInput name="rename" [(ngModel)]="rename" autocomplete="off" required />
-                    </mat-form-field>
-                    <button mat-stroked-button type="submit" class="ccc-user-rename" [disabled]="busy()">Rename</button>
-                  </form>
-                }
-                @if (canSetEmail(row)) {
-                  <form class="ccc-user-action" (ngSubmit)="saveEmail(row)">
-                    <mat-form-field appearance="outline" class="ccc-users-field">
-                      <mat-label>Email address</mat-label>
-                      <input matInput name="address" type="email" [(ngModel)]="address" autocomplete="off" required />
-                      <mat-hint>Unconfirmed until the person confirms it themselves.</mat-hint>
-                    </mat-form-field>
-                    <button mat-stroked-button type="submit" class="ccc-user-set-email" [disabled]="busy()">
-                      Set address
-                    </button>
-                  </form>
-                }
-                <div class="ccc-user-action ccc-user-seats">
-                  <span class="ccc-user-action-label">Roles</span>
-                  @if (row.roles.length === 0) {
-                    <span class="ccc-users-note">None here</span>
-                  }
-                  @for (role of row.roles; track role) {
-                    <span class="ccc-user-seat">
-                      {{ role }}
-                      @if (canUnseat(row)) {
-                        <button
-                          mat-button
-                          type="button"
-                          class="ccc-user-unseat"
-                          [disabled]="busy()"
-                          [attr.aria-label]="'Unseat ' + row.username + ' from ' + role"
-                          (click)="unseat(row, role)">
-                          Unseat
-                        </button>
-                      }
-                    </span>
-                  }
-                  @if (canSeat(row)) {
-                    <form class="ccc-user-seat-form" (ngSubmit)="seat(row)">
-                      <mat-form-field appearance="outline" class="ccc-users-field">
-                        <mat-label>Add a role</mat-label>
-                        <mat-select name="seatRole" [(ngModel)]="seatRole" required>
-                          @for (role of seatable(row); track role.name) {
-                            <mat-option [value]="role.name">{{ roleLabel(role) }}</mat-option>
-                          }
-                        </mat-select>
-                      </mat-form-field>
-                      <button mat-stroked-button type="submit" class="ccc-user-seat-add" [disabled]="busy()">Seat</button>
-                    </form>
-                  }
-                </div>
-                @if (row.identities.length > 0) {
-                  <div class="ccc-user-action ccc-user-identities">
-                    <span class="ccc-user-action-label">Linked identities</span>
-                    @for (identity of row.identities; track identity.id) {
-                      <span class="ccc-user-identity">
-                        {{ registrationLabel(identity) }}{{ identity.email ? ' · ' + identity.email : '' }}
-                        @if (canUnlink(row)) {
-                          <button
-                            mat-button
-                            type="button"
-                            class="ccc-user-unlink"
-                            [disabled]="busy()"
-                            [attr.aria-label]="'Unlink ' + registrationLabel(identity) + ' from ' + row.username"
-                            (click)="unlink(row, identity)">
-                            Unlink
-                          </button>
-                        }
-                      </span>
-                    }
-                  </div>
-                }
-                @if (canSetPassword(row)) {
-                  <form class="ccc-user-action" (ngSubmit)="setPassword(row)">
-                    <mat-form-field appearance="outline" class="ccc-users-field">
-                      <mat-label>Temporary password</mat-label>
-                      <input
-                        matInput
-                        name="temporaryPassword"
-                        type="password"
-                        [(ngModel)]="temporaryPassword"
-                        autocomplete="new-password"
-                        required />
-                      <mat-hint>The person changes it at their next sign-in.</mat-hint>
-                    </mat-form-field>
-                    <button mat-stroked-button type="submit" class="ccc-user-set-password" [disabled]="busy()">
-                      Set password
-                    </button>
-                  </form>
-                }
-                <div class="ccc-user-action ccc-user-account">
-                  @if (canDisable(row)) {
-                    <button
-                      mat-stroked-button
-                      type="button"
-                      class="ccc-user-disable"
-                      [disabled]="busy()"
-                      (click)="setDisabled(row, !row.disabled)">
-                      {{ row.disabled ? 'Enable' : 'Disable' }}
-                    </button>
-                  }
-                  @if (canDelete(row)) {
-                    @if (confirmingDelete() === row.id) {
-                      <span class="ccc-user-confirm">Delete {{ row.username }}?</span>
-                      <button mat-flat-button type="button" class="ccc-user-delete-confirm" [disabled]="busy()" (click)="remove(row)">
-                        Delete
-                      </button>
-                      <button mat-button type="button" class="ccc-user-delete-cancel" [disabled]="busy()" (click)="cancelDelete()">
-                        Keep
-                      </button>
-                    } @else {
-                      <button mat-stroked-button type="button" class="ccc-user-delete" [disabled]="busy()" (click)="remove(row)">
-                        Delete
-                      </button>
-                    }
-                  }
-                </div>
-              </td>
-            </tr>
-          }
         }
       </tbody>
     </table>
     @if (page()?.prev || page()?.next) {
       <div class="ccc-users-paging">
-        <button mat-button type="button" class="ccc-users-prev" [disabled]="busy() || !page()?.prev" (click)="previous()">
+        <button
+          mat-button
+          type="button"
+          class="ccc-users-prev"
+          [disabled]="busy() || !page()?.prev"
+          (click)="previous()">
           Previous
         </button>
         <button mat-button type="button" class="ccc-users-next" [disabled]="busy() || !page()?.next" (click)="next()">
@@ -257,7 +122,12 @@
       <div class="ccc-users-header">
         <h3 class="ccc-invitations-heading">Invitations</h3>
         @if (canInvite()) {
-          <button mat-flat-button type="button" class="ccc-invitations-new" [disabled]="busy()" (click)="toggleInvite()">
+          <button
+            mat-flat-button
+            type="button"
+            class="ccc-invitations-new"
+            [disabled]="busy()"
+            (click)="toggleInvite()">
             {{ inviting() ? 'Close' : 'Invite' }}
           </button>
         }
@@ -266,7 +136,13 @@
         <form class="ccc-invitations-create" (ngSubmit)="invite()">
           <mat-form-field appearance="outline" class="ccc-users-field">
             <mat-label>Email address</mat-label>
-            <input matInput name="inviteEmail" type="email" [(ngModel)]="newInvitation.email" autocomplete="off" required />
+            <input
+              matInput
+              name="inviteEmail"
+              type="email"
+              [(ngModel)]="newInvitation.email"
+              autocomplete="off"
+              required />
           </mat-form-field>
           <mat-form-field appearance="outline" class="ccc-users-field">
             <mat-label>Roles</mat-label>
@@ -277,7 +153,9 @@
             </mat-select>
             <mat-hint>Granted when the invited person signs in.</mat-hint>
           </mat-form-field>
-          <button mat-flat-button type="submit" class="ccc-invitations-submit" [disabled]="busy()">Send invitation</button>
+          <button mat-flat-button type="submit" class="ccc-invitations-submit" [disabled]="busy()">
+            Send invitation
+          </button>
         </form>
       }
       @if (invitations().length === 0) {
@@ -298,7 +176,7 @@
             @for (invitation of invitations(); track invitation.id) {
               <tr class="ccc-invitation">
                 <td class="ccc-invitation-email">{{ invitation.email }}</td>
-                <td class="ccc-invitation-roles">{{ invitation.roles.join(', ') }}</td>
+                <td class="ccc-invitation-roles">{{ titlesOf(invitation.roles) }}</td>
                 <td class="ccc-invitation-by">{{ invitedBy(invitation) }}</td>
                 <td class="ccc-invitation-sent">{{ invitation.createdAt | date: 'medium' }}</td>
                 <td class="ccc-invitation-expires">{{ invitation.expiresAt | date: 'medium' }}</td>
@@ -323,3 +201,362 @@
     </div>
   }
 }
+
+<!-- The side panel: one template for the access, account and new-user panels, opened as a
+     dialog anchored to the right edge. Its content is this component's, so the fields and
+     the roles rows bind to the same state as the table. -->
+<ng-template #panelTemplate>
+  @if (panel(); as open) {
+    <div class="ccc-panel">
+      <div class="ccc-panel-header">
+        <h2 class="ccc-panel-heading">{{ panelHeading() }}</h2>
+        <button
+          mat-icon-button
+          type="button"
+          class="ccc-panel-dismiss"
+          aria-label="Close the panel"
+          (click)="closePanel()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      @if (notice(); as sentence) {
+        <p class="ccc-users-notice ccc-panel-notice" role="alert">{{ sentence }}</p>
+      }
+      @switch (open.kind) {
+        @case ('access') {
+          @if (panelUser(); as user) {
+            <form class="ccc-access" (ngSubmit)="saveAccess()">
+              <h3 class="ccc-panel-subheading">Assign roles</h3>
+              @if (accessRows().length === 0) {
+                <p class="ccc-users-note ccc-access-none">{{ user.username }} has no roles here.</p>
+              }
+              @for (row of accessRows(); track row.key) {
+                <div class="ccc-role-row" [class.ccc-role-row-locked]="row.locked !== undefined">
+                  <div class="ccc-role-row-field">
+                    <mat-form-field
+                      appearance="outline"
+                      class="ccc-users-field ccc-role-picker"
+                      subscriptSizing="dynamic">
+                      <mat-label>Role</mat-label>
+                      <input
+                        matInput
+                        type="text"
+                        [name]="'role-' + row.key"
+                        [ngModel]="row.value"
+                        (ngModelChange)="typed(row, $event, accessRows())"
+                        [matAutocomplete]="options"
+                        [disabled]="row.locked !== undefined"
+                        autocomplete="off" />
+                      <mat-autocomplete #options="matAutocomplete" class="ccc-role-options" [displayWith]="titleOf">
+                        @for (role of optionsFor(row, accessRows()); track role.name) {
+                          <mat-option [value]="role.name" class="ccc-role-option">
+                            <span class="ccc-role-option-title">{{ role.name | roleTitle }}</span>
+                            @if (kindOf(role); as kind) {
+                              <span class="ccc-role-option-kind">{{ kind }}</span>
+                            }
+                            @if (role.description) {
+                              <span class="ccc-role-option-description">{{ role.description }}</span>
+                            }
+                          </mat-option>
+                        }
+                      </mat-autocomplete>
+                    </mat-form-field>
+                    @if (wordsFor(row); as words) {
+                      <p class="ccc-role-row-words">{{ words }}</p>
+                    }
+                  </div>
+                  @if (row.locked === undefined) {
+                    <button
+                      mat-icon-button
+                      type="button"
+                      class="ccc-role-remove"
+                      [disabled]="busy()"
+                      [attr.aria-label]="
+                        row.role === '' ? 'Remove this row' : 'Remove the ' + titleOf(row.role) + ' role'
+                      "
+                      (click)="removeRole(accessRows, row)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  }
+                </div>
+              }
+              @if (canSeat(user)) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="ccc-role-add"
+                  [disabled]="busy()"
+                  (click)="addRole(accessRows)">
+                  Add another role
+                </button>
+              }
+              <div class="ccc-panel-actions">
+                <button mat-button type="button" class="ccc-panel-cancel" [disabled]="busy()" (click)="closePanel()">
+                  Cancel
+                </button>
+                <button mat-flat-button type="submit" class="ccc-access-save" [disabled]="busy()">Save</button>
+              </div>
+            </form>
+          } @else {
+            <p class="ccc-users-note">This user is no longer on the list.</p>
+            <div class="ccc-panel-actions">
+              <button mat-button type="button" class="ccc-panel-cancel" (click)="closePanel()">Close</button>
+            </div>
+          }
+        }
+        @case ('account') {
+          @if (panelUser(); as user) {
+            <div class="ccc-account">
+              @if (canRename(user)) {
+                <form class="ccc-user-action" (ngSubmit)="saveRename(user)">
+                  <mat-form-field appearance="outline" class="ccc-users-field">
+                    <mat-label>Username</mat-label>
+                    <input matInput name="rename" [(ngModel)]="rename" autocomplete="off" required />
+                  </mat-form-field>
+                  <button mat-stroked-button type="submit" class="ccc-user-rename" [disabled]="busy()">Save</button>
+                </form>
+              }
+              @if (canSetEmail(user)) {
+                <form class="ccc-user-action" (ngSubmit)="saveEmail(user)">
+                  <mat-form-field appearance="outline" class="ccc-users-field">
+                    <mat-label>Email address</mat-label>
+                    <input matInput name="address" type="email" [(ngModel)]="address" autocomplete="off" required />
+                    <mat-hint>Not confirmed until the person confirms it themselves.</mat-hint>
+                  </mat-form-field>
+                  <button mat-stroked-button type="submit" class="ccc-user-set-email" [disabled]="busy()">Save</button>
+                </form>
+              }
+              @if (canSetPassword(user)) {
+                <form class="ccc-user-action" (ngSubmit)="setPassword(user)">
+                  <mat-form-field appearance="outline" class="ccc-users-field">
+                    <mat-label>Temporary password</mat-label>
+                    <input
+                      matInput
+                      name="temporaryPassword"
+                      type="password"
+                      [(ngModel)]="temporaryPassword"
+                      autocomplete="new-password"
+                      required />
+                    <mat-hint>The person changes it at their next sign-in.</mat-hint>
+                  </mat-form-field>
+                  <button mat-stroked-button type="submit" class="ccc-user-set-password" [disabled]="busy()">
+                    Set password
+                  </button>
+                </form>
+              }
+              @if (user.identities.length > 0) {
+                <div class="ccc-user-action ccc-user-identities">
+                  <h3 class="ccc-panel-subheading">Linked identities</h3>
+                  @for (identity of user.identities; track identity.id) {
+                    <div class="ccc-user-identity">
+                      <span class="ccc-user-identity-words">
+                        {{ registrationLabel(identity) }}{{ identity.email ? ' · ' + identity.email : '' }}
+                      </span>
+                      @if (canUnlink(user)) {
+                        @if (confirmingUnlink() === identity.id) {
+                          <span class="ccc-user-confirm"
+                            >Unlink {{ registrationLabel(identity) }} from {{ user.username }}?</span
+                          >
+                          <button
+                            mat-flat-button
+                            type="button"
+                            class="ccc-user-unlink-confirm"
+                            [disabled]="busy()"
+                            (click)="unlink(user, identity)">
+                            Unlink
+                          </button>
+                          <button
+                            mat-button
+                            type="button"
+                            class="ccc-user-unlink-cancel"
+                            [disabled]="busy()"
+                            (click)="cancelUnlink()">
+                            Keep
+                          </button>
+                        } @else {
+                          <button
+                            mat-button
+                            type="button"
+                            class="ccc-user-unlink"
+                            [disabled]="busy()"
+                            [attr.aria-label]="'Unlink ' + registrationLabel(identity) + ' from ' + user.username"
+                            (click)="unlink(user, identity)">
+                            Unlink
+                          </button>
+                        }
+                      }
+                    </div>
+                  }
+                </div>
+              }
+              @if (canDisable(user)) {
+                <div class="ccc-user-action ccc-user-account-status">
+                  <span class="ccc-user-action-words">
+                    {{
+                      user.disabled ? user.username + ' is disabled and cannot sign in.' : user.username + ' is active.'
+                    }}
+                  </span>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="ccc-user-disable"
+                    [disabled]="busy()"
+                    (click)="setDisabled(user, !user.disabled)">
+                    {{ user.disabled ? 'Enable' : 'Disable' }}
+                  </button>
+                </div>
+              }
+              @if (canDelete(user)) {
+                <div class="ccc-user-action ccc-user-account-delete">
+                  @if (confirmingDelete() === user.id) {
+                    <span class="ccc-user-confirm">Delete {{ user.username }}? This cannot be undone.</span>
+                    <button
+                      mat-flat-button
+                      type="button"
+                      class="ccc-user-delete-confirm"
+                      [disabled]="busy()"
+                      (click)="remove(user)">
+                      Delete
+                    </button>
+                    <button
+                      mat-button
+                      type="button"
+                      class="ccc-user-delete-cancel"
+                      [disabled]="busy()"
+                      (click)="cancelDelete()">
+                      Keep
+                    </button>
+                  } @else {
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      class="ccc-user-delete"
+                      [disabled]="busy()"
+                      (click)="remove(user)">
+                      Delete
+                    </button>
+                  }
+                </div>
+              }
+              <div class="ccc-panel-actions">
+                <button mat-button type="button" class="ccc-panel-cancel" [disabled]="busy()" (click)="closePanel()">
+                  Done
+                </button>
+              </div>
+            </div>
+          } @else {
+            <p class="ccc-users-note">This user is no longer on the list.</p>
+            <div class="ccc-panel-actions">
+              <button mat-button type="button" class="ccc-panel-cancel" (click)="closePanel()">Close</button>
+            </div>
+          }
+        }
+        @case ('new') {
+          <form class="ccc-users-create" (ngSubmit)="create()">
+            <mat-form-field appearance="outline" class="ccc-users-field">
+              <mat-label>{{ usernameLabel() }}</mat-label>
+              <input
+                matInput
+                name="username"
+                [type]="usernameIsEmail() ? 'email' : 'text'"
+                [(ngModel)]="newUser.username"
+                autocomplete="off"
+                required />
+            </mat-form-field>
+            @if (!usernameIsEmail()) {
+              <mat-form-field appearance="outline" class="ccc-users-field">
+                <mat-label>Email address</mat-label>
+                <input matInput name="email" type="email" [(ngModel)]="newUser.email" autocomplete="off" />
+                <mat-hint>Not confirmed until the person confirms it themselves.</mat-hint>
+              </mat-form-field>
+            }
+            @if (asksPassword()) {
+              <mat-form-field appearance="outline" class="ccc-users-field">
+                <mat-label>Temporary password</mat-label>
+                <input
+                  matInput
+                  name="password"
+                  type="password"
+                  [(ngModel)]="newUser.password"
+                  autocomplete="new-password" />
+                <mat-hint>The person changes it at their first sign-in.</mat-hint>
+              </mat-form-field>
+            }
+            <mat-checkbox name="disabled" class="ccc-users-field" [(ngModel)]="newUser.disabled"
+              >Start disabled</mat-checkbox
+            >
+            @if (asksRoles()) {
+              <h3 class="ccc-panel-subheading">Assign roles</h3>
+              @for (row of newRoles(); track row.key; let first = $first) {
+                <div class="ccc-role-row">
+                  <div class="ccc-role-row-field">
+                    <mat-form-field
+                      appearance="outline"
+                      class="ccc-users-field ccc-role-picker"
+                      subscriptSizing="dynamic">
+                      <mat-label>Role</mat-label>
+                      <input
+                        matInput
+                        type="text"
+                        [name]="'new-role-' + row.key"
+                        [ngModel]="row.value"
+                        (ngModelChange)="typed(row, $event, newRoles())"
+                        [matAutocomplete]="newOptions"
+                        [required]="first && asksRole()"
+                        autocomplete="off" />
+                      <mat-autocomplete #newOptions="matAutocomplete" class="ccc-role-options" [displayWith]="titleOf">
+                        @for (role of optionsFor(row, newRoles()); track role.name) {
+                          <mat-option [value]="role.name" class="ccc-role-option">
+                            <span class="ccc-role-option-title">{{ role.name | roleTitle }}</span>
+                            @if (kindOf(role); as kind) {
+                              <span class="ccc-role-option-kind">{{ kind }}</span>
+                            }
+                            @if (role.description) {
+                              <span class="ccc-role-option-description">{{ role.description }}</span>
+                            }
+                          </mat-option>
+                        }
+                      </mat-autocomplete>
+                    </mat-form-field>
+                    @if (wordsFor(row); as words) {
+                      <p class="ccc-role-row-words">{{ words }}</p>
+                    }
+                  </div>
+                  @if (!(first && asksRole())) {
+                    <button
+                      mat-icon-button
+                      type="button"
+                      class="ccc-role-remove"
+                      [disabled]="busy()"
+                      [attr.aria-label]="
+                        row.role === '' ? 'Remove this row' : 'Remove the ' + titleOf(row.role) + ' role'
+                      "
+                      (click)="removeRole(newRoles, row)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  }
+                </div>
+              }
+              @if (canSeatMore()) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="ccc-role-add"
+                  [disabled]="busy()"
+                  (click)="addRole(newRoles)">
+                  Add another role
+                </button>
+              }
+            }
+            <div class="ccc-panel-actions">
+              <button mat-button type="button" class="ccc-panel-cancel" [disabled]="busy()" (click)="closePanel()">
+                Cancel
+              </button>
+              <button mat-flat-button type="submit" class="ccc-users-submit" [disabled]="busy()">Create</button>
+            </div>
+          </form>
+        }
+      }
+    </div>
+  }
+</ng-template>

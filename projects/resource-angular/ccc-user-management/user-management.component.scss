@@ -14,17 +14,14 @@
   margin: 0;
 }
 
-.ccc-users-create,
 .ccc-invitations-create,
-.ccc-user-action,
-.ccc-user-seat-form {
+.ccc-user-action {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
 }
 
-.ccc-users-create,
 .ccc-invitations-create {
   margin-bottom: 1rem;
 }
@@ -59,35 +56,26 @@
 }
 
 .ccc-user-open > td {
-  border-bottom: none;
+  background: rgba(0, 0, 0, 0.04);
 }
 
-.ccc-user-details > td {
-  padding-top: 0;
-  padding-bottom: 1rem;
+// The roles column: one line per role, its title and where it reaches side by side.
+.ccc-user-role {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem;
 }
 
-.ccc-user-action {
-  padding: 0.5rem 0;
-}
-
-.ccc-user-action-label {
-  font-weight: 500;
-  min-width: 8rem;
-}
-
-.ccc-user-seat,
-.ccc-user-identity {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
+.ccc-user-role-kind,
 .ccc-user-mark,
-.ccc-user-synced,
-.ccc-user-everywhere {
+.ccc-user-synced {
   font-size: 0.85em;
   opacity: 0.7;
+}
+
+.ccc-user-manage {
+  white-space: nowrap;
 }
 
 .ccc-users-paging {
@@ -114,4 +102,121 @@
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+// The side panel: a sheet on the right edge, its heading at the top, its actions at the end.
+.ccc-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 100%;
+  padding: 1rem 1.5rem 1.5rem;
+  box-sizing: border-box;
+}
+
+.ccc-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ccc-panel-heading {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.ccc-panel-subheading {
+  margin: 0.5rem 0 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.ccc-panel-notice {
+  margin: 0;
+}
+
+.ccc-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.ccc-access,
+.ccc-users-create,
+.ccc-account {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ccc-panel .ccc-users-field {
+  width: 100%;
+}
+
+// One roles row: the picker with its words under it, and the remove button beside it.
+.ccc-role-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.ccc-role-row-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.ccc-role-row-words {
+  margin: 0.25rem 0 0 1rem;
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
+.ccc-role-row-locked .ccc-role-row-words {
+  font-style: italic;
+}
+
+.ccc-role-add {
+  align-self: flex-start;
+}
+
+// An option of the role picker: the title, where the role reaches, and what it is for, stacked.
+.ccc-role-option {
+  --mat-option-label-text-line-height: 1.3;
+
+  .mdc-list-item__primary-text {
+    display: flex;
+    flex-direction: column;
+    padding: 0.25rem 0;
+  }
+}
+
+.ccc-role-option-kind,
+.ccc-role-option-description {
+  font-size: 0.85em;
+  opacity: 0.75;
+}
+
+.ccc-user-identity,
+.ccc-user-account-status,
+.ccc-user-account-delete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ccc-user-identities {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.ccc-user-action-words {
+  flex: 1;
+}
+
+.ccc-user-confirm {
+  font-weight: 500;
 }

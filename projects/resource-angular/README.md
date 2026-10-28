@@ -271,41 +271,79 @@ generator program's declaration, its members composes the component twice:
 <ccc-user-management [domain]="tenant()" />
 ```
 
-What the page offers follows from the surface's shape and the caller's grants, and from nothing
-else. A password method gives the create form a temporary-password field and every row a
-set-password action; the person changes a password an operator set at their next sign-in, through
-the login component's change form. An external registration gives the rows their linked identities
-and an unlink action; the server keeps the last way in. The tenant partition's create asks for the
-role that seats the new user in the tenant, and every request goes under the domain segment. A row
-whose seats a directory writes (`rolesSynced`) shows them read-only. The global partition's role
-picker labels a domain-kind role "(every tenant)", since seating it there seats the user in every
-tenant; the tenant partition's picker lists the tenant roles alone.
+The page follows the pattern of a cloud console's IAM page. The table has one row per user: the
+username, the email address and whether the person confirmed it, the status, how they sign in, the
+roles and the last sign-in. The roles column lists the user's roles one per line, each by its title
+with where it reaches beside it. A role's title is its name split at the capitals, so
+`FeatureAdministrator` reads "Feature Administrator" (`roleTitle` and the `roleTitle` pipe, exported
+from the same entry, for a page that shows a role elsewhere); where it reaches comes from the roles
+resource's `kind` and from the partition: in an application with tenants, "Everywhere" for a global
+role, "Every tenant" for a seat held in every tenant, and the tenant's name under its own partition;
+an application without tenants says nothing, since every role then reaches the whole of it. A row
+whose seats a directory writes (`rolesSynced`) says "From the directory". Each row ends in a pencil
+("Edit access for hollis") that opens the access panel and a menu button ("Manage hollis") that
+opens the account panel; both are side panels on the right edge of the page, and only one is open
+at a time.
 
-Each row shows the person's email address and whether they confirmed it: an operator enters one on
-the create form or on the row, unconfirmed, which reserves the address until the person confirms it
-themselves (through `<ccc-email-address>` and the login page's confirmation link). Where the
-password method declares the username as the address (`usernameIsEmail`), the username column is
-the address, the create form asks for it as the username, and neither is edited by hand: a verified
-new address renames the person.
+The access panel, "Edit access for hollis", lists the user's roles under "Assign roles": one row
+per role, a searchable picker holding the role's title with, under it, where the role reaches and
+the description the role file gives it, and a remove button; "Add another role" appends an empty
+row. The picker lists the roles the partition's roles resource serves, each option showing the
+title, where it reaches and the description, and narrows them as the person types, over the title,
+the name and the description; a role the user holds already, or another row names, is not offered
+again. Save applies the difference between the rows and the seats the user held when the panel
+opened, through the seats resource, one call per change, the unseats first and then the seats; if
+a call fails the rest are not sent, the panel says which role and what the server said ("Could not
+add the Harbormaster role to nova: Harbormaster required"), the page is read again so the table
+shows what the server lists, and the rows are rebuilt from it. Cancel discards the rows. A role the
+caller may not change is shown with the reason under it and cannot be edited or removed: "Assigned
+by the directory." where the directory writes the seats (and no role can be added), "You cannot
+change this role." where the digest withholds the unseat, and in the tenant partition "Assigned for
+every tenant. You cannot change it here." under a seat held in every tenant; "Add another role" is
+there only where the digest grants the seat.
+
+The account panel, "Manage hollis", holds the rest: the username with a Save, the email address with
+a Save (an operator's entry is unconfirmed and reserves the address until the person confirms it
+themselves, through `<ccc-email-address>` and the login page's confirmation link), a temporary
+password with "Set password" where the Auth has a password method (the person changes it at their
+next sign-in, through the login component's change form), the linked identities with an Unlink
+each where the Auth has a registration (the server keeps the last way in), Enable or Disable with a
+sentence saying which the user is, and Delete. Deleting and unlinking ask once, in the panel, before
+they go. The panel stays open after a field is saved and follows the row as the server lists it
+again; a delete closes it. Where the password method declares the username as the address
+(`usernameIsEmail`), the username column is the address, the new-user panel asks for it as the
+username, and neither is edited by hand: a verified new address renames the person.
+
+"New user" opens a panel of the same shape: the username (or the address), the email address, a
+temporary password where the Auth has a password method, "Start disabled", then the roles rows and
+Create. In the tenant partition the first role is required and rides the create, which seats the new
+user in the tenant; every further role, and in the global partition every role, is seated by a call
+per role once the server has said the new user's id. A seat the server refuses leaves the user
+created and says so: "quill was created, but the Harbormaster role could not be assigned: …".
 
 Below the users stand the partition's invitations, where the descriptor names the resource: an
-address invited to hold roles, listed with the roles, the inviter when the page lists them, when it
-was sent and when it expires, until whoever follows the mailed link signs in (by any method, or by
-creating an account with a password) and is seated with the roles, or the invitation is revoked or
-expires. The invite form takes the address and the roles; an invitation is the same request whether
-an account holds the address or not, and the page does not learn which. The block is shown when the
-caller may list or send invitations, and a partition whose descriptor names none has no block.
+address invited to hold roles, listed with the roles by title, the inviter when the page lists them,
+when it was sent and when it expires, until whoever follows the mailed link signs in (by any method,
+or by creating an account with a password) and is seated with the roles, or the invitation is
+revoked or expires. The invite form takes the address and the roles; an invitation is the same
+request whether an account holds the address or not, and the page does not learn which. The block
+is shown when the caller may list or send invitations, and a partition whose descriptor names none
+has no block.
 
 Every control follows a capability. The digest decides whether users are created, seats written and
 invitations sent; the row's capability envelope, asked for on every read, decides the rename, the
 address, the disable, the delete, the methods and the revoke per row, so one's own row loses its
 disable and its delete, and a user seated outside the tenant loses the account-level actions,
-without the page knowing why. A row with nothing to do for the caller has no manage button. A role
-file scopes all of it with the same conditions as the application's own resources: a role granted
-`Create` on the seats resource under `new.role != 'Administrator'` seats people into every other
-role, and the refusal of the one it may not is shown in place in the server's words. The lists are
-read again after every write, so the rows say what the server says; a list that pages offers the
-turns the server names.
+without the page knowing why. A row with no account action for the caller has no menu button; the
+pencil stays, since the access panel shows the roles read-only with the reasons. A role file scopes
+all of it with the same conditions as the application's own resources: a role granted `Create` on
+the seats resource under `new.role != 'Administrator'` seats people into every other role, and the
+refusal of the one it may not is shown in place in the server's words. The lists are read again
+after every write, so the rows say what the server says; a list that pages offers the turns the
+server names.
+
+The side panels are Material dialogs anchored to the right edge (`panelClass: 'ccc-users-panel'`);
+the library's stylesheet (`@use '@cccteam/resource-angular/styles'`) squares their corners.
 
 ## Tokens
 
