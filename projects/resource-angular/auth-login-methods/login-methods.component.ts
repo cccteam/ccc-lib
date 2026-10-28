@@ -3,10 +3,13 @@ import { Component, computed, inject, input, OnInit, output, PendingTasks, signa
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { ActivatedRoute } from '@angular/router';
 import {
+  EmailCodeResult,
+  EmailCodeStep,
   LoginMethod,
   LoginMethods,
   OpenedInvitation,
@@ -66,7 +69,15 @@ export interface AccountForm {
  * answered to a password sign-in, is read from the pending status route and takes the
  * list's place: for a confirmation, the password form of the user the sign-in matched,
  * posting to the confirmation route, with a cancel that returns to the list; for a step
- * the server names a page for, the browser goes there.
+ * the server names a page for, the browser goes there. A sign-in held for the second
+ * factor, when the policy accepts the mailed code (the status carries `emailCode`), runs
+ * the code step: the code is mailed at once to the address the account holds, and the step
+ * says where it went over the code field, a "Remember this browser" box, and a button for
+ * a new code; a person whose account holds no address is asked for one first. A wrong code
+ * (`invalid_code`) or one entered after the code sent died (`code_expired`) keeps the form
+ * with its sentence; with the box checked, the server remembers the browser, and this
+ * person's next sign-ins from it skip the code. A second-factor step the application's own
+ * factors alone satisfy shows a note and the cancel.
  *
  * The mailed links the server sends all lead here, each with its token in the URL. An
  * invitation (`?invitation=`) is opened through the client on arrival: its note stands over
@@ -110,7 +121,7 @@ export interface AccountForm {
  */
 @Component({
   selector: 'ccc-login-methods',
-  imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule],
+  imports: [FormsModule, MatButtonModule, MatCheckboxModule, MatFormFieldModule, MatInputModule],
   templateUrl: './login-methods.component.html',
   styleUrl: './login-methods.component.scss',
 })
@@ -137,6 +148,11 @@ export class LoginMethodsComponent implements OnInit {
   username = '';
   password = '';
   confirmation = '';
+  /** The sign-in code typed, and whether this browser is to be remembered so it is not asked for a code next time. */
+  signInCode = '';
+  rememberDevice = false;
+  /** The address a person whose account holds none gives for the code. */
+  codeEmail = '';
   oldPassword = '';
   newPassword = '';
   newPasswordAgain = '';
@@ -264,6 +280,41 @@ export class LoginMethodsComponent implements OnInit {
     });
   }
 
+  /** The sentence over the code step: where the code went, or where one goes. */
+  codeNote(step: EmailCodeStep): string {
+    return step.codeSent
+      ? `We sent a sign-in code to ${step.codeEmail}. Enter it to finish signing in.`
+      : `A sign-in code can be sent to ${step.codeEmail}.`;
+  }
+
+  /** Has the sign-in code mailed, replacing one standing. */
+  sendCode(): Promise<void> {
+    if (this.busy() || !this.pending()?.emailCode) {
+      return Promise.resolve();
+    }
+    return this.step(() => this.mailCode(() => this.client.auth.sendCode()));
+  }
+
+  /** Posts the address a person whose account holds none typed, and has the code mailed to it. */
+  enrollEmail(): Promise<void> {
+    if (this.busy() || !this.pending()?.emailCode) {
+      return Promise.resolve();
+    }
+    return this.step(() => this.mailCode(() => this.client.auth.enrollEmail(this.codeEmail)));
+  }
+
+  /** Enters the sign-in code, asking for this browser to be remembered when the box is checked. */
+  verifyCode(): Promise<void> {
+    const waiting = this.pending();
+    if (this.busy() || !waiting?.emailCode) {
+      return Promise.resolve();
+    }
+    return this.step(async () => {
+      const result = await this.client.auth.verifyCode(this.signInCode, this.rememberDevice);
+      await this.follow(result, () => (waiting.returnUrl ? this.routerUrl(waiting.returnUrl) : this.landing()));
+    });
+  }
+
   /**
    * Sends the browser to a redirect method's path, naming the page the sign-in returns to:
    * the page the guard recorded, or this page with the confirmation link's token when one
@@ -300,6 +351,7 @@ export class LoginMethodsComponent implements OnInit {
       await this.client.auth.cancelPending();
       this.pending.set(undefined);
       this.confirmation = '';
+      this.clearCodeForm();
       this.cancelled.emit();
     });
   }
@@ -614,7 +666,9 @@ export class LoginMethodsComponent implements OnInit {
   /**
    * Reads the pending status and renders what it says: the step while one waits, the list
    * with the refusal's sentence (`pending_expired`) when the sign-in is gone, the list alone
-   * when none waits.
+   * when none waits. A sign-in that waits for the code, with no code standing and an
+   * address to send it to, has the code mailed at once, so the step opens with the mail
+   * on its way; a reload finds the code standing and sends none.
    */
   private async readPending(): Promise<void> {
     const status = await this.client.auth.pending();
@@ -626,7 +680,11 @@ export class LoginMethodsComponent implements OnInit {
           expiresAt: status.expiresAt,
           returnUrl: status.returnUrl,
           ...(status.factors ? { factors: status.factors } : {}),
+          ...(status.emailCode ? { emailCode: status.emailCode } : {}),
         });
+        if (status.emailCode && !status.emailCode.codeSent && !status.emailCode.enrollEmail) {
+          await this.mailCode(() => this.client.auth.sendCode());
+        }
         return;
       case 'none':
         this.pending.set(undefined);
@@ -655,6 +713,7 @@ export class LoginMethodsComponent implements OnInit {
           return;
         }
         this.confirmation = '';
+        this.clearCodeForm();
         await this.readPending();
         return;
       case 'refused':
@@ -669,6 +728,42 @@ export class LoginMethodsComponent implements OnInit {
         this.refusal.set(this.sentenceOf(result));
         return;
     }
+  }
+
+  /**
+   * Has the code mailed through `send` and renders the answer: the step now says a code
+   * stands, at the address the server named; a refusal is rendered in place, and one that
+   * ends the pending sign-in, or says it does not wait for the code, returns to the list.
+   */
+  private async mailCode(send: () => Promise<EmailCodeResult>): Promise<void> {
+    const result = await send();
+    if (result.outcome === 'refused') {
+      if (result.code === 'pending_expired' || result.status === 404 || result.status === 409) {
+        this.pending.set(undefined);
+      }
+      this.refusal.set(this.sentenceOf(result));
+      return;
+    }
+    const waiting = this.pending();
+    if (!waiting) {
+      return;
+    }
+    this.clearCodeForm();
+    this.pending.set({
+      ...waiting,
+      emailCode: {
+        codeEmail: result.codeEmail,
+        enrollEmail: false,
+        codeSent: true,
+        codeExpiresAt: result.codeExpiresAt,
+      },
+    });
+  }
+
+  private clearCodeForm(): void {
+    this.signInCode = '';
+    this.rememberDevice = false;
+    this.codeEmail = '';
   }
 
   /** Renders the refusal of an invitation that is gone and drops its note: the list stands alone. */
@@ -699,6 +794,7 @@ export class LoginMethodsComponent implements OnInit {
     }
     this.password = '';
     this.confirmation = '';
+    this.clearCodeForm();
     this.pending.set(undefined);
     this.invitation.set(undefined);
     this.signedInAs.set(undefined);

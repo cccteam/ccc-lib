@@ -406,6 +406,21 @@
                   </button>
                 </div>
               }
+              @if (canResetFactors(user)) {
+                <div class="ccc-user-action ccc-user-account-factors">
+                  <span class="ccc-user-action-words">
+                    A browser {{ user.username }} asked to be remembered skips the sign-in code.
+                  </span>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="ccc-user-reset-factors"
+                    [disabled]="busy()"
+                    (click)="resetFactors(user)">
+                    Forget remembered browsers
+                  </button>
+                </div>
+              }
               @if (canDelete(user)) {
                 <div class="ccc-user-action ccc-user-account-delete">
                   @if (confirmingDelete() === user.id) {

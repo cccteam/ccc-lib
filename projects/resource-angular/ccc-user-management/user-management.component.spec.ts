@@ -100,6 +100,10 @@ const descriptor = {
     ),
     UnlinkMembersUserIdentity: methodEntry('UnlinkMembersUserIdentity', 'unlink-members-user-identity', 'global'),
     SetKioskUserPassword: methodEntry('SetKioskUserPassword', 'set-kiosk-user-password', 'global'),
+    ResetCrewUserFactors: methodEntry('ResetCrewUserFactors', 'reset-crew-user-factors', 'global'),
+    ResetCrewSectorUserFactors: methodEntry('ResetCrewSectorUserFactors', 'reset-crew-sector-user-factors', 'domain'),
+    ResetKioskUserFactors: methodEntry('ResetKioskUserFactors', 'reset-kiosk-user-factors', 'global'),
+    ResetMembersUserFactors: methodEntry('ResetMembersUserFactors', 'reset-members-user-factors', 'global'),
   },
   userSurfaces: [
     {
@@ -118,6 +122,7 @@ const descriptor = {
           invitations: 'CrewInvitations',
           setPassword: 'SetCrewUserPassword',
           unlinkIdentity: 'UnlinkCrewUserIdentity',
+          resetFactors: 'ResetCrewUserFactors',
         },
         {
           scope: 'domain',
@@ -127,6 +132,7 @@ const descriptor = {
           invitations: 'CrewSectorInvitations',
           setPassword: 'SetCrewSectorUserPassword',
           unlinkIdentity: 'UnlinkCrewSectorUserIdentity',
+          resetFactors: 'ResetCrewSectorUserFactors',
         },
       ],
     },
@@ -144,6 +150,7 @@ const descriptor = {
           seats: 'KioskSeats',
           roles: 'KioskRoles',
           setPassword: 'SetKioskUserPassword',
+          resetFactors: 'ResetKioskUserFactors',
         },
       ],
     },
@@ -161,6 +168,7 @@ const descriptor = {
           seats: 'MembersSeats',
           roles: 'MembersRoles',
           unlinkIdentity: 'UnlinkMembersUserIdentity',
+          resetFactors: 'ResetMembersUserFactors',
         },
       ],
     },
@@ -175,7 +183,7 @@ const withoutSurfaces = Object.fromEntries(
 const everything = {
   Update: ['username', 'disabled', 'email'],
   Delete: true,
-  Execute: ['SetCrewUserPassword', 'UnlinkCrewUserIdentity'],
+  Execute: ['SetCrewUserPassword', 'UnlinkCrewUserIdentity', 'ResetCrewUserFactors'],
 };
 
 function user(overrides: Partial<ManagedUser> & { id: string; username: string }): ManagedUser {
@@ -289,6 +297,10 @@ const grantedAll: Record<string, Record<string, string>> = {
   SetCrewSectorUserPassword: { Execute: 'granted' },
   UnlinkCrewSectorUserIdentity: { Execute: 'granted' },
   UnlinkMembersUserIdentity: { Execute: 'granted' },
+  ResetCrewUserFactors: { Execute: 'granted' },
+  ResetCrewSectorUserFactors: { Execute: 'granted' },
+  ResetKioskUserFactors: { Execute: 'granted' },
+  ResetMembersUserFactors: { Execute: 'granted' },
 };
 
 function server(overrides: Partial<Server> = {}): Server {
@@ -330,7 +342,7 @@ function transportOf(state: Server): ScriptedTransport {
     if (request.method === 'PATCH' && /-(seats|invitations)$/.test(path)) {
       return { status: 200, body: {} };
     }
-    if (request.method === 'POST' && /^\/api\/(sectors\/[^/]+\/)?(set-|unlink-)/.test(path)) {
+    if (request.method === 'POST' && /^\/api\/(sectors\/[^/]+\/)?(set-|unlink-|reset-)/.test(path)) {
       return { status: 200, body: undefined };
     }
     return { status: 404, body: { message: `unscripted ${request.method} ${request.url}` } };
@@ -1125,6 +1137,10 @@ describe('UserManagementComponent manages an account', () => {
     expect(hollis.querySelector('.ccc-user-set-email')).not.toBeNull();
     expect(hollis.querySelector('.ccc-user-unlink')).not.toBeNull();
     expect(hollis.querySelector('.ccc-user-set-password')).not.toBeNull();
+    expect(hollis.querySelector('.ccc-user-reset-factors')).not.toBeNull();
+    expect(textOf(hollis.querySelector('.ccc-user-account-factors .ccc-user-action-words'))).toBe(
+      'A browser hollis asked to be remembered skips the sign-in code.',
+    );
     expect(hollis.querySelector('.ccc-user-disable')).not.toBeNull();
     expect(hollis.querySelector('.ccc-user-delete')).not.toBeNull();
     expect(hollis.querySelector('.ccc-role-row')).toBeNull();
@@ -1140,6 +1156,7 @@ describe('UserManagementComponent manages an account', () => {
     expect(nova.querySelector('.ccc-user-disable')).toBeNull();
     expect(nova.querySelector('.ccc-user-delete')).toBeNull();
     expect(nova.querySelector('.ccc-user-set-password')).toBeNull();
+    expect(nova.querySelector('.ccc-user-reset-factors')).toBeNull();
   });
 
   const writes: {
@@ -1187,6 +1204,11 @@ describe('UserManagementComponent manages an account', () => {
         return page.component.setPassword(row);
       },
       want: { method: 'POST', url: '/api/set-crew-user-password', body: { user: 'u-pip', password: 'anvil-run-9' } },
+    },
+    {
+      name: 'forget remembered browsers posts the user to the reset method',
+      act: (page, row) => page.component.resetFactors(row),
+      want: { method: 'POST', url: '/api/reset-crew-user-factors', body: { user: 'u-pip' } },
     },
     {
       name: 'delete asks first, then removes the user',

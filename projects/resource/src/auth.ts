@@ -43,11 +43,19 @@ export interface LoginMethod {
   readonly path: string;
 }
 
-/** The paths of the pending sign-in's handlers: its status, the password confirmation, and the cancel. */
+/**
+ * The paths of the pending sign-in's handlers: its status, the password confirmation, the
+ * cancel, and the sign-in code's three, present on a server that sends mail: `sendCode`,
+ * where the page has the code mailed; `verifyCode`, where it posts the code entered; and
+ * `enrollEmail`, where a person whose account holds no email address gives one for the code.
+ */
 export interface PendingRoutes {
   readonly status: string;
   readonly confirm: string;
   readonly cancel: string;
+  readonly sendCode?: string;
+  readonly verifyCode?: string;
+  readonly enrollEmail?: string;
 }
 
 /**
@@ -241,8 +249,9 @@ export interface PendingSignInResult {
 
 /**
  * Why a sign-in waits: `confirmation`, the identity matches a user that has a password,
- * which must be entered before the two are linked; `mfa`, the sign-in policy requires the
- * application's MFA step. A later server may add a reason.
+ * which must be entered before the two are linked; `mfa`, the sign-in policy requires a
+ * second factor: the sign-in code this client drives, when the step carries `emailCode`,
+ * or the application's own. A later server may add a reason.
  */
 export type PendingReason = 'confirmation' | 'mfa' | (string & {});
 
@@ -257,6 +266,42 @@ export interface PendingSignIn {
   readonly returnUrl: string;
   /** The methods the sign-in policy accepts for the MFA step; absent or empty for any. */
   readonly factors?: readonly string[];
+  /**
+   * Where the sign-in code stands, present while the sign-in waits for the second factor
+   * and the policy accepts the mailed code: the step this client drives. Absent on a
+   * confirmation, and on a second-factor step the application's own factors alone satisfy.
+   */
+  readonly emailCode?: EmailCodeStep;
+}
+
+/**
+ * Where the sign-in code stands. `codeEmail` is the address the code goes to, masked by the
+ * server (`p•••@example.com`), empty while the account holds none; `enrollEmail` says the
+ * account holds none, and the page asks for one and posts it to `enrollEmail()` before a
+ * code can be sent; `codeSent` says a code stands, mailed and not yet expired, used or out
+ * of attempts, and `codeExpiresAt` is when it stops being accepted, as the server wrote it.
+ */
+export interface EmailCodeStep {
+  readonly codeEmail: string;
+  readonly enrollEmail: boolean;
+  readonly codeSent: boolean;
+  readonly codeExpiresAt?: string;
+}
+
+/**
+ * What having the code mailed answers: `sent`, with the masked address it went to and when
+ * it stops being accepted, or the server's refusal: 409 when the pending sign-in waits for
+ * no second factor, the policy does not accept the mailed code, or the account holds no
+ * address (on an enrollment, already holds one); `too_many_attempts` with the wait when
+ * the address was sent three codes within fifteen minutes; 400 on an enrollment of what
+ * is not an address; `pending_expired` when the sign-in is gone.
+ */
+export type EmailCodeResult = EmailCodeSent | SignInRefusal;
+
+export interface EmailCodeSent {
+  readonly outcome: 'sent';
+  readonly codeEmail: string;
+  readonly codeExpiresAt: string;
 }
 
 /**
@@ -282,6 +327,8 @@ export interface AuthClientOptions {
 /** The statuses a sign-in step resolves as a refusal rather than throws; 429 is the attempt limiter's. */
 const signInRefusals: readonly number[] = [401, 403, 429];
 const confirmRefusals: readonly number[] = [401, 403, 404, 409, 429];
+/** A code mailed, or an address given for it: 400 for what is not an address, 404 and 409 for a sign-in that does not wait for the code, 429 for an address sent too many. */
+const codeRefusals: readonly number[] = [400, 401, 403, 404, 409, 429];
 const statusRefusals: readonly number[] = [401, 403];
 const changeRefusals: readonly number[] = [400, 401, 403, 409];
 /** A mailed link's token posted back: 404 for a link that is dead, 400 for a body that carries none. */
@@ -336,6 +383,12 @@ type ListDraft = { -readonly [K in keyof LoginMethods]: LoginMethods[K] };
 interface SignInAnswer {
   mfaIsRequired?: boolean;
   redirectUrl?: string;
+}
+
+/** The shape the send and enrollment routes answer on 200. */
+interface EmailCodeAnswer {
+  codeEmail?: unknown;
+  codeExpiresAt?: unknown;
 }
 
 /** The shape a refusal answers: the server's words, its code when it has one, and the wait in seconds when it names one. */
@@ -460,6 +513,7 @@ export class AuthClient {
       return refusalOf(response);
     }
     const body = response.body ?? {};
+    const emailCode = emailCodeOf(body.emailCode);
     return {
       outcome: 'waiting',
       reason: stringOf(body.reason),
@@ -467,6 +521,7 @@ export class AuthClient {
       expiresAt: stringOf(body.expiresAt),
       returnUrl: stringOf(body.returnUrl),
       ...(Array.isArray(body.factors) ? { factors: body.factors.map(String) } : {}),
+      ...(emailCode ? { emailCode } : {}),
     };
   }
 
@@ -493,6 +548,59 @@ export class AuthClient {
   async cancelPending(): Promise<void> {
     const routes = await this.pendingRoutes(true);
     await this.options.request('POST', routes.cancel, { absolute: true });
+  }
+
+  /**
+   * Has the sign-in code mailed to the address the account holds, replacing a code
+   * standing: reads the methods list again, then posts to the send route. The result is
+   * `sent`, with the masked address and when the code stops being accepted, or the
+   * server's refusal (see EmailCodeResult). A server whose pending routes name no send
+   * route sends no mail, and the call throws saying so.
+   */
+  async sendCode(): Promise<EmailCodeResult> {
+    const routes = await this.codeRoutes();
+    const response = await this.options.request<EmailCodeAnswer | RefusalAnswer | null>('POST', routes.sendCode, {
+      absolute: true,
+      accept: codeRefusals,
+    });
+    return emailCodeResultOf(response);
+  }
+
+  /**
+   * Gives the address of an account that holds none, and has the sign-in code mailed to
+   * it: reads the methods list again, then posts the address to the enrollment route. The
+   * address is written on the account, verified, once its code is entered; an address
+   * another account holds is answered as sent, and that account is told by mail, so the
+   * screen reveals nothing. The result is as sendCode's.
+   */
+  async enrollEmail(email: string): Promise<EmailCodeResult> {
+    const routes = await this.codeRoutes();
+    const response = await this.options.request<EmailCodeAnswer | RefusalAnswer | null>('POST', routes.enrollEmail, {
+      body: { email },
+      absolute: true,
+      accept: codeRefusals,
+    });
+    return emailCodeResultOf(response);
+  }
+
+  /**
+   * Enters the sign-in code: reads the methods list again, then posts the code to the
+   * verification route, asking for the browser to be remembered when `rememberDevice` is
+   * set, so this person's next sign-ins from it skip the code for the period the server
+   * keeps a remembered browser. The result is the session, a further step, or the server's
+   * refusal: a wrong code answers 401 with `invalid_code`, and the code stands with one
+   * fewer attempt; a code entered while none stands (none sent, or the one sent expired,
+   * was used or took its last attempt) answers 401 with `code_expired`, and the page has a
+   * new one sent; an expired sign-in answers `pending_expired`.
+   */
+  async verifyCode(code: string, rememberDevice: boolean): Promise<SignInResult> {
+    const routes = await this.codeRoutes();
+    const response = await this.options.request<SignInAnswer | RefusalAnswer | null>('POST', routes.verifyCode, {
+      body: { code, rememberDevice },
+      absolute: true,
+      accept: confirmRefusals,
+    });
+    return signInResultOf(response);
   }
 
   /**
@@ -730,6 +838,17 @@ export class AuthClient {
   }
 
   /** The list as the page may render it: each method with its fields as strings, the kinds this client drives only. */
+  /** The pending routes with the sign-in code's three, the list read again first; a server that names none sends no code. */
+  private async codeRoutes(): Promise<Required<PendingRoutes>> {
+    const routes = await this.pendingRoutes(true);
+    if (!routes.sendCode || !routes.verifyCode || !routes.enrollEmail) {
+      throw new Error(
+        'this server names no sign-in code routes in its methods list: it sends no mail, and no sign-in of its waits on the code',
+      );
+    }
+    return { ...routes, sendCode: routes.sendCode, verifyCode: routes.verifyCode, enrollEmail: routes.enrollEmail };
+  }
+
   private listOf(answer: MethodsAnswer | null): LoginMethods {
     const methods: LoginMethod[] = [];
     for (const entry of answer?.methods ?? []) {
@@ -749,7 +868,14 @@ export class AuthClient {
     const list: ListDraft = { methods };
     const pending = answer?.pending;
     if (pending?.status && pending.confirm && pending.cancel) {
-      list.pending = { status: pending.status, confirm: pending.confirm, cancel: pending.cancel };
+      list.pending = {
+        status: pending.status,
+        confirm: pending.confirm,
+        cancel: pending.cancel,
+        ...(pending.sendCode && pending.verifyCode && pending.enrollEmail
+          ? { sendCode: pending.sendCode, verifyCode: pending.verifyCode, enrollEmail: pending.enrollEmail }
+          : {}),
+      };
     }
     const changePassword = answer?.changePassword;
     if (typeof changePassword === 'string' && changePassword !== '') {
@@ -856,4 +982,28 @@ function methodNamesOf(value: unknown): readonly string[] | undefined {
 
 function stringOf(value: unknown): string {
   return typeof value === 'string' ? value : '';
+}
+
+/** The result of having the code mailed: a refusal for a status the step accepts, else sent, with the address and the expiry as the server wrote them. */
+function emailCodeResultOf(response: ClientResponse<EmailCodeAnswer | RefusalAnswer | null>): EmailCodeResult {
+  if (response.status >= 400) {
+    return refusalOf(response);
+  }
+  const answer = (response.body ?? {}) as EmailCodeAnswer;
+  return { outcome: 'sent', codeEmail: stringOf(answer.codeEmail), codeExpiresAt: stringOf(answer.codeExpiresAt) };
+}
+
+/** The sign-in code's state as the status answers it, when it answers one; a field left out reads as empty or false. */
+function emailCodeOf(value: unknown): EmailCodeStep | undefined {
+  if (!value || typeof value !== 'object') {
+    return undefined;
+  }
+  const state = value as Partial<Record<keyof EmailCodeStep, unknown>>;
+  const codeExpiresAt = stringOf(state.codeExpiresAt);
+  return {
+    codeEmail: stringOf(state.codeEmail),
+    enrollEmail: state.enrollEmail === true,
+    codeSent: state.codeSent === true,
+    ...(codeExpiresAt === '' ? {} : { codeExpiresAt }),
+  };
 }

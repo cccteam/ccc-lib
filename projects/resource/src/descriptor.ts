@@ -216,9 +216,11 @@ export interface UserRegistrationDescriptor {
  * tenant or everywhere, with their seats there). `users`, `seats`, `roles` and
  * `invitations` name the partition's resources in `resources` (`invitations`, the
  * standing invitations into the partition, is absent on a descriptor from a generator
- * that predates them); `setPassword` and `unlinkIdentity` the methods in `methods`,
- * absent where the Auth's methods give none (no password method; no external
- * registration).
+ * that predates them); `setPassword`, `unlinkIdentity` and `resetFactors` the methods in
+ * `methods`: the first two absent where the Auth's methods give none (no password method;
+ * no external registration), the last, which forgets the browsers a user asked to be
+ * remembered so their next sign-in asks for the second factor, on every Auth, absent only
+ * on a descriptor from a generator that predates the second factor.
  */
 export interface UserPartitionDescriptor {
   readonly scope: ScopeKind;
@@ -228,6 +230,7 @@ export interface UserPartitionDescriptor {
   readonly invitations?: string;
   readonly setPassword?: string;
   readonly unlinkIdentity?: string;
+  readonly resetFactors?: string;
 }
 
 /** The route the enabled set of feature flags is read from, under the API prefix like every other route. */

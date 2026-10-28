@@ -142,7 +142,9 @@ const emptyNewInvitation = (): NewInvitation => ({ email: '', roles: [] });
  * The account panel holds the rest: the username, the email address (an operator's entry
  * is unverified and reserves the address), a temporary password where the Auth has a
  * password method, the linked identities with an unlink where it has a registration,
- * enable or disable, and delete; deleting and unlinking ask once. Where the password
+ * enable or disable, a button that forgets the browsers the person asked to be remembered
+ * at the sign-in code step where the caller may run the reset method, and delete; deleting
+ * and unlinking ask once. Where the password
  * method declares the username as the address, the username column is the address and
  * neither is edited by hand: a verified new address renames the person. The new-user
  * panel takes the account fields and the roles, one required in the tenant partition,
@@ -496,6 +498,12 @@ export class UserManagementComponent {
     );
   }
 
+  /** Whether the partition has the reset method and the caller may run it on the row: the row's remembered browsers can be forgotten. */
+  canResetFactors(row: ManagedUser): boolean {
+    const method = this.partition()?.resetFactors;
+    return method !== undefined && (this.users()?.users.rowCan(row, 'Execute', method as Method) ?? false);
+  }
+
   canSeat(row: ManagedUser): boolean {
     return !row.rolesSynced && (this.users()?.canSeat() ?? false) && this.seatable(row).length > 0;
   }
@@ -526,7 +534,8 @@ export class UserManagementComponent {
       this.canDisable(row) ||
       this.canDelete(row) ||
       this.canSetPassword(row) ||
-      this.canUnlink(row)
+      this.canUnlink(row) ||
+      this.canResetFactors(row)
     );
   }
 
@@ -779,6 +788,15 @@ export class UserManagementComponent {
 
   cancelUnlink(): void {
     this.confirmingUnlink.set(undefined);
+  }
+
+  /** Forgets the browsers the row's person asked to be remembered: their next sign-in asks for the second factor. */
+  resetFactors(row: UserRow): Promise<void> {
+    const partition = this.users();
+    if (!partition) {
+      return Promise.resolve();
+    }
+    return this.act(() => partition.resetFactors(row.id));
   }
 
   /** The same page again, after a write or on request. */

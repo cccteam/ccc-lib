@@ -38,12 +38,30 @@ const crew: UserSurfaceDescriptor = {
   openSignUp: false,
   registrations: [{ name: 'google', kind: 'google', label: 'Google', invited: false, syncsRoles: true }],
   partitions: [
-    { scope: 'global', users: 'CrewUsers', seats: 'CrewSeats', roles: 'CrewRoles', invitations: 'CrewInvitations', setPassword: 'SetCrewUserPassword', unlinkIdentity: 'UnlinkCrewUserIdentity' },
-    { scope: 'domain', users: 'CrewSectorUsers', seats: 'CrewSectorSeats', roles: 'CrewSectorRoles', invitations: 'CrewSectorInvitations', setPassword: 'SetCrewSectorUserPassword', unlinkIdentity: 'UnlinkCrewSectorUserIdentity' },
+    {
+      scope: 'global',
+      users: 'CrewUsers',
+      seats: 'CrewSeats',
+      roles: 'CrewRoles',
+      invitations: 'CrewInvitations',
+      setPassword: 'SetCrewUserPassword',
+      unlinkIdentity: 'UnlinkCrewUserIdentity',
+      resetFactors: 'ResetCrewUserFactors',
+    },
+    {
+      scope: 'domain',
+      users: 'CrewSectorUsers',
+      seats: 'CrewSectorSeats',
+      roles: 'CrewSectorRoles',
+      invitations: 'CrewSectorInvitations',
+      setPassword: 'SetCrewSectorUserPassword',
+      unlinkIdentity: 'UnlinkCrewSectorUserIdentity',
+      resetFactors: 'ResetCrewSectorUserFactors',
+    },
   ],
 };
 
-/** An Auth with a password method alone: a create, a set-password, and no unlink. */
+/** An Auth with a password method alone: a create, a set-password, and no unlink; its descriptor predates the second factor, so no reset. */
 const kiosk: UserSurfaceDescriptor = {
   auth: 'Kiosk',
   label: 'Kiosk',
@@ -58,7 +76,16 @@ const members: UserSurfaceDescriptor = {
   label: 'Members',
   password: false,
   registrations: [{ name: 'directory', kind: 'google', label: 'Company directory', invited: false, syncsRoles: true }],
-  partitions: [{ scope: 'global', users: 'MembersUsers', seats: 'MembersSeats', roles: 'MembersRoles', unlinkIdentity: 'UnlinkMembersUserIdentity' }],
+  partitions: [
+    {
+      scope: 'global',
+      users: 'MembersUsers',
+      seats: 'MembersSeats',
+      roles: 'MembersRoles',
+      unlinkIdentity: 'UnlinkMembersUserIdentity',
+      resetFactors: 'ResetMembersUserFactors',
+    },
+  ],
 };
 
 const descriptor: ApiDescriptor = {
@@ -89,6 +116,9 @@ const descriptor: ApiDescriptor = {
     UnlinkCrewSectorUserIdentity: method('UnlinkCrewSectorUserIdentity', 'unlink-crew-sector-user-identity', 'domain'),
     SetKioskUserPassword: method('SetKioskUserPassword', 'set-kiosk-user-password', 'global'),
     UnlinkMembersUserIdentity: method('UnlinkMembersUserIdentity', 'unlink-members-user-identity', 'global'),
+    ResetCrewUserFactors: method('ResetCrewUserFactors', 'reset-crew-user-factors', 'global'),
+    ResetCrewSectorUserFactors: method('ResetCrewSectorUserFactors', 'reset-crew-sector-user-factors', 'domain'),
+    ResetMembersUserFactors: method('ResetMembersUserFactors', 'reset-members-user-factors', 'global'),
   },
   userSurfaces: [crew, kiosk, members],
 };
@@ -99,6 +129,7 @@ const digest = {
   CrewSeats: { List: 'granted', Create: 'granted', Delete: 'granted' },
   SetCrewUserPassword: { Execute: 'granted' },
   UnlinkCrewUserIdentity: { Execute: 'conditional' },
+  ResetCrewUserFactors: { Execute: 'granted' },
   CrewSectorSeats: { List: 'granted', Create: 'conditional' },
   CrewInvitations: { List: 'granted', Create: 'conditional' },
   CrewSectorInvitations: { List: 'granted', Create: 'granted', Delete: 'granted' },
@@ -224,6 +255,16 @@ describe('a partition bound on the client', () => {
     expect(transport.requests[1].body).toEqual({ user: 'u1', identity: 'i1' });
   });
 
+  it('posts the reset to its route, global and under the tenant, and refuses it on a descriptor that predates the second factor', async () => {
+    const { client, transport } = clientOver();
+    await userPartition(client, crew, crew.partitions[0]).resetFactors('u1');
+    await userPartition(client, crew, crew.partitions[1], 'anvil' as Domain).resetFactors('u1');
+    expect(sent(transport)).toEqual(['POST /api/reset-crew-user-factors', 'POST /api/sectors/anvil/reset-crew-sector-user-factors']);
+    expect(transport.requests[0].body).toEqual({ user: 'u1' });
+    expect(transport.requests[1].body).toEqual({ user: 'u1' });
+    await expect(userPartition(client, kiosk, kiosk.partitions[0]).resetFactors('u1')).rejects.toThrow(/predates the second factor/);
+  });
+
   it('refuses a method the partition does not have', async () => {
     const { client } = clientOver();
     await expect(userPartition(client, kiosk, kiosk.partitions[0]).unlinkIdentity('u1', 'i1')).rejects.toThrow(/no external registration/);
@@ -238,6 +279,9 @@ describe('a partition bound on the client', () => {
     expect(crewGlobal.canCreateUsers()).toBe(true);
     expect(crewGlobal.canSeat()).toBe(true);
     expect(crewGlobal.canUnseat()).toBe(true);
+    expect(crewGlobal.canResetFactors()).toBe(true);
+    expect(userPartition(client, kiosk, kiosk.partitions[0]).canResetFactors()).toBe(false);
+    expect(userPartition(client, members, members.partitions[0]).canResetFactors()).toBe(false);
     expect(crewGlobal.canSetPassword()).toBe(true);
     expect(crewGlobal.canUnlinkIdentity()).toBe(true);
     expect(crewGlobal.canListInvitations()).toBe(true);

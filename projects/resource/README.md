@@ -305,7 +305,8 @@ shape of the session library's login routes.
 `name` it was registered under, the library `method` behind it (`password`, `google`, `azure`,
 `workos`), its `kind` (`password`, a form the page posts; `redirect`, a navigation that sends
 the browser to the identity provider), its `label` and its `path`; and `pending`, the pending
-sign-in's status, confirmation and cancel paths. The answer is kept in `api.auth.snapshot`, a
+sign-in's status, confirmation and cancel paths, with the sign-in code's send, verification and
+enrollment paths on a server that sends mail. The answer is kept in `api.auth.snapshot`, a
 `Store` a framework mirrors into its own reactivity, so a page re-renders whenever the list is
 read again. A listed method of a kind the client does not drive is left out and announced once
 through the warn hook.
@@ -346,8 +347,26 @@ step, or a refusal: a wrong password answers 401 in the server's words and leave
 place), and `cancelPending()` discards it. A server whose list names no pending routes never
 holds a sign-in, and these three throw saying so.
 
-A refusal the server answers on a step (401, 403 or 429, and 404 or 409 on a confirmation)
-resolves as `refused` with the server's code and words and never reaches the client's error
+A sign-in the policy holds for a second factor waits with the reason `mfa`, and when the policy
+accepts the mailed code the status carries `emailCode`, the step this client drives: the masked
+address the code goes to (`codeEmail`, `n•••@fleet.example`), whether a code stands (`codeSent`,
+`codeExpiresAt`) and whether the account holds no address yet (`enrollEmail`). `sendCode()` has
+the code mailed, replacing one standing, and answers `sent` with the address and the expiry, or
+the refusal (409 when the sign-in does not wait for the code or the account holds no address;
+`too_many_attempts` with the wait when the address was sent three codes within fifteen minutes);
+`enrollEmail(email)` gives the address of an account that holds none and has the code mailed to
+it, and the address is written on the account, verified, once its code is entered (an address
+another account holds is answered as sent and that account told by mail, so the screen reveals
+nothing); `verifyCode(code, rememberDevice)` enters the code and resolves as a sign-in step does,
+a wrong code refused with `invalid_code` and the code standing with one fewer attempt, a code
+entered while none stands (none sent; the one sent expired, was used or took its last attempt)
+with `code_expired`. With `rememberDevice` the server remembers the browser, and this person's
+next sign-ins from it skip the code for as long as the server keeps a remembered browser. A
+server whose pending routes name none of the three sends no mail, and they throw saying so.
+
+A refusal the server answers on a step (401, 403 or 429; 404 or 409 on a confirmation or the
+code; 400 on an address given for the code) resolves as `refused` with the server's code and
+words and never reaches the client's error
 hook, so nothing sends the browser to the login page it is on and nothing raises a notice. The
 429 is the session library's attempt limiter: a name whose failed password attempts reached the
 limit is refused with the code `too_many_attempts` and the wait before the next attempt, which
@@ -427,10 +446,12 @@ so neither is edited by hand: a verified new address renames the person) and `op
 lets a stranger create an account from a mailed link), the external `registrations` (each with
 `invited`, the directory admits only people created first, and `syncsRoles`, the directory
 writes their seats at every sign-in), and the `partitions`, global first, each naming its
-`users`, `seats`, `roles` and `invitations` resources and its `setPassword` and
-`unlinkIdentity` methods where the Auth has them. `userSurfaces(descriptor)` lists them; a
-descriptor from a generator that predates the surfaces carries none, and one that predates the
-mailed links carries no `invitations` and neither flag.
+`users`, `seats`, `roles` and `invitations` resources, its `setPassword` and `unlinkIdentity`
+methods where the Auth has them, and its `resetFactors` method, which forgets the browsers a user
+asked to be remembered at the sign-in code step. `userSurfaces(descriptor)` lists them; a
+descriptor from a generator that predates the surfaces carries none, one that predates the
+mailed links carries no `invitations` and neither flag, and one that predates the second factor
+no `resetFactors`.
 
 The rows have the same shape on every application (`UserRow`, `SeatRow`, `RoleRow`,
 `UserIdentity`, `InvitationRow`): a user carries `id`, `username`, `disabled`, `hasPassword`,
@@ -447,13 +468,14 @@ those rows (`users.create` takes `username`, an optional `password`, `disabled` 
 and the tenant partition's `role`; `users.patch` takes `username`, `disabled` and `email`;
 `seats.create` takes `user` and `role`, the seat's key; `invitations.create` takes `email` and
 `roles`, and `invitations.remove` revokes by id; the `invitations` handle is absent where the
-descriptor names none), `setPassword(user, password)` and `unlinkIdentity(user, identity)`
-posting to the methods' routes, and `canCreateUsers()`, `canSeat()`, `canUnseat()`,
-`canSetPassword()`, `canUnlinkIdentity()`, `canListInvitations()`, `canInvite()` and
-`canRevokeInvitations()`, the digest's answer folded with what the Auth's methods give the
-partition: no create on an Auth with no way for the new user to sign in, no set-password
-without a password method, no unlink without a registration, nothing about invitations where
-the partition has none. The tenant partition needs its domain; the global one takes none.
+descriptor names none), `setPassword(user, password)`, `unlinkIdentity(user, identity)` and
+`resetFactors(user)` posting to the methods' routes, and `canCreateUsers()`, `canSeat()`,
+`canUnseat()`, `canSetPassword()`, `canUnlinkIdentity()`, `canResetFactors()`,
+`canListInvitations()`, `canInvite()` and `canRevokeInvitations()`, the digest's answer folded
+with what the Auth's methods give the partition: no create on an Auth with no way for the new
+user to sign in, no set-password without a password method, no unlink without a registration,
+no reset on a descriptor that predates the second factor, nothing about invitations where the
+partition has none. The tenant partition needs its domain; the global one takes none.
 
 ```ts
 const [crew] = userSurfaces(api.descriptor);

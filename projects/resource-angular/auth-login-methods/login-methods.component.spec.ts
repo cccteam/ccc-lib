@@ -76,6 +76,9 @@ const pendingRoutes = {
   status: '/console/api/user/pending',
   confirm: '/console/api/user/pending/confirm',
   cancel: '/console/api/user/pending/cancel',
+  sendCode: '/console/api/user/pending/code',
+  verifyCode: '/console/api/user/pending/code/verify',
+  enrollEmail: '/console/api/user/pending/email',
 };
 const changePath = '/console/api/user/password/change';
 const consoleList: LoginMethods = { methods: [password, google], pending: pendingRoutes, changePassword: changePath };
@@ -111,6 +114,8 @@ const waiting = {
   expiresAt: '2026-10-17T12:10:00Z',
   returnUrl: '/console/missions',
 };
+/** What the send and enrollment routes answer: the masked address the code went to, and when it stops being accepted. */
+const codeMailed = { codeEmail: 'n•••@fleet.example', codeSent: true, codeExpiresAt: '2026-10-17T12:10:00Z' };
 
 /** What the server answers each route with; a spec changes an entry to script a step. */
 interface Server {
@@ -118,6 +123,9 @@ interface Server {
   login: TransportResponse;
   status: TransportResponse;
   confirm: TransportResponse;
+  sendCode: TransportResponse;
+  verifyCode: TransportResponse;
+  enrollEmail: TransportResponse;
   /** What the change route answers; a server that accepts the change also clears the mark. */
   change: TransportResponse;
   invitationOpen: TransportResponse;
@@ -140,6 +148,9 @@ function server(overrides: Partial<Server> = {}): Server {
     login: { status: 200, body: { mfaIsRequired: false } },
     status: { status: 404, body: { message: 'no pending sign-in' } },
     confirm: { status: 200, body: { mfaIsRequired: false } },
+    sendCode: { status: 200, body: codeMailed },
+    verifyCode: { status: 200, body: { mfaIsRequired: false } },
+    enrollEmail: { status: 200, body: codeMailed },
     change: { status: 200, body: undefined },
     invitationOpen: { status: 200, body: invited },
     invitationAccept: { status: 200, body: { accepted: true } },
@@ -191,6 +202,12 @@ function transportOf(state: Server): ScriptedTransport {
         return signsIn(state.confirm);
       case 'POST /console/api/user/pending/cancel':
         return { status: 200, body: undefined };
+      case 'POST /console/api/user/pending/code':
+        return state.sendCode;
+      case 'POST /console/api/user/pending/code/verify':
+        return signsIn(state.verifyCode);
+      case 'POST /console/api/user/pending/email':
+        return state.enrollEmail;
       case `POST ${changePath}`:
         if (state.change.status < 400) {
           state.passwordChangeRequired = false;
@@ -776,6 +793,227 @@ describe('LoginMethodsComponent renders the pending step', () => {
     ]);
     expect(page.component.pending()).toBeUndefined();
     expect(page.cancelled).toBe(1);
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+  });
+});
+
+describe('LoginMethodsComponent runs the sign-in code step', () => {
+  /** The sign-in waits for the code; none stands yet, and the account holds an address. */
+  const codeStep = {
+    ...waiting,
+    reason: 'mfa',
+    factors: ['email-code'],
+    emailCode: { codeEmail: 'n•••@fleet.example', codeSent: false },
+  };
+  /** A code stands, as after a reload of the step. */
+  const standing = { ...codeStep, emailCode: codeMailed };
+  /** The account holds no address: one is asked for before a code can be sent. */
+  const noAddress = { ...codeStep, emailCode: { enrollEmail: true, codeSent: false } };
+  const mailed = { codeEmail: 'n•••@fleet.example', enrollEmail: false, codeSent: true, codeExpiresAt: '2026-10-17T12:10:00Z' };
+  const noteOf = (page: Page): string | null =>
+    page.element.querySelector('.ccc-login-pending-note')?.textContent?.trim() ?? null;
+  const resendOf = (page: Page): string | null =>
+    page.element.querySelector('button.ccc-login-resend')?.textContent?.trim() ?? null;
+
+  it('entered with ?pending=mfa and no code standing, has the code mailed at once and shows the code form with where it went', async () => {
+    const page = await pageOver(server({ status: { status: 200, body: codeStep } }), { pending: 'mfa' });
+    expect(sent(page.transport)).toEqual([
+      'GET /console/api/user/methods',
+      'GET /console/api/user/pending',
+      'GET /console/api/user/methods',
+      'POST /console/api/user/pending/code',
+    ]);
+    expect(page.component.pending()?.emailCode).toEqual(mailed);
+    expect(noteOf(page)).toBe('We sent a sign-in code to n•••@fleet.example. Enter it to finish signing in.');
+    expect(page.element.querySelector('input[name="code"]')).not.toBeNull();
+    expect(page.element.querySelector('input[name="confirmation"]')).toBeNull();
+    expect(page.element.querySelector('input[name="username"]')).toBeNull();
+    expect(resendOf(page)).toBe('Send a new code');
+    expect(page.element.querySelector('button.ccc-login-cancel')).not.toBeNull();
+  });
+
+  it('a code already standing is not sent again: the form shows at once', async () => {
+    const page = await pageOver(server({ status: { status: 200, body: standing } }), { pending: 'mfa' });
+    expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/pending']);
+    expect(page.element.querySelector('input[name="code"]')).not.toBeNull();
+  });
+
+  it('a password sign-in the policy holds for the code reads the status and has the code mailed', async () => {
+    const page = await pageOver(
+      server({ login: { status: 200, body: { mfaIsRequired: true } }, status: { status: 200, body: codeStep } }),
+    );
+    page.component.username = 'nova';
+    page.component.password = 'lodestar';
+    await page.component.login();
+    await page.settle();
+    expect(sent(page.transport).slice(2)).toEqual([
+      'GET /console/api/user/methods',
+      'POST /console/api/user/password/login',
+      'GET /console/api/user/pending',
+      'GET /console/api/user/methods',
+      'POST /console/api/user/pending/code',
+    ]);
+    expect(page.element.querySelector('input[name="code"]')).not.toBeNull();
+    expect(page.signedIn).toEqual([]);
+  });
+
+  it('a sending the server refuses shows its sentence with the wait, and the send button in the form\'s place', async () => {
+    const page = await pageOver(
+      server({
+        status: { status: 200, body: codeStep },
+        sendCode: { status: 429, body: { message: 'too many codes', code: 'too_many_attempts', retryAfter: 600 } },
+      }),
+      { pending: 'mfa' },
+    );
+    expect(messageOf(page)).toBe(`${DEFAULT_LOGIN_MESSAGES['too_many_attempts']} Try again in 10 minutes.`);
+    expect(page.component.pending()?.emailCode?.codeSent).toBe(false);
+    expect(noteOf(page)).toBe('A sign-in code can be sent to n•••@fleet.example.');
+    expect(page.element.querySelector('input[name="code"]')).toBeNull();
+    expect(resendOf(page)).toBe('Send code');
+  });
+
+  it('an account without an address asks for one, posts it to the enrollment route, then shows the code form', async () => {
+    const page = await pageOver(server({ status: { status: 200, body: noAddress } }), { pending: 'mfa' });
+    expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/pending']);
+    expect(page.element.querySelector('input[name="codeEmail"]')).not.toBeNull();
+    expect(page.element.querySelector('input[name="code"]')).toBeNull();
+    expect(noteOf(page)).toBe('Your account has no email address yet. Enter one and we will send a sign-in code to it.');
+    page.component.codeEmail = 'nova@fleet.example';
+    await page.component.enrollEmail();
+    await page.settle();
+    expect(sent(page.transport).slice(2)).toEqual(['GET /console/api/user/methods', 'POST /console/api/user/pending/email']);
+    expect(page.transport.requests[3].body).toEqual({ email: 'nova@fleet.example' });
+    expect(page.component.pending()?.emailCode).toEqual(mailed);
+    expect(page.element.querySelector('input[name="codeEmail"]')).toBeNull();
+    expect(page.element.querySelector('input[name="code"]')).not.toBeNull();
+  });
+
+  it('an address the server refuses shows its words and keeps the address form', async () => {
+    const page = await pageOver(
+      server({
+        status: { status: 200, body: noAddress },
+        enrollEmail: { status: 400, body: { message: 'not an email address' } },
+      }),
+      { pending: 'mfa' },
+    );
+    page.component.codeEmail = 'nova';
+    await page.component.enrollEmail();
+    await page.settle();
+    expect(messageOf(page)).toBe('not an email address');
+    expect(page.element.querySelector('input[name="codeEmail"]')).not.toBeNull();
+  });
+
+  async function enterCode(page: Page, code: string, remember = false): Promise<void> {
+    page.component.signInCode = code;
+    page.component.rememberDevice = remember;
+    await page.component.verifyCode();
+    await page.settle();
+  }
+
+  it('enters the code after reading the list again, with the box as checked, checks the session and emits the page the sign-in returns to', async () => {
+    const page = await pageOver(server({ status: { status: 200, body: standing } }), { pending: 'mfa' });
+    await enterCode(page, '123456', true);
+    expect(sent(page.transport).slice(2, 5)).toEqual([
+      'GET /console/api/user/methods',
+      'POST /console/api/user/pending/code/verify',
+      'GET /console/api/user/session',
+    ]);
+    expect(page.transport.requests[3].body).toEqual({ code: '123456', rememberDevice: true });
+    expect(page.signedIn).toEqual(['/console/missions']);
+    expect(page.component.pending()).toBeUndefined();
+    expect(page.component.signInCode).toBe('');
+    expect(page.component.rememberDevice).toBe(false);
+  });
+
+  it('posts the box unchecked as false', async () => {
+    const page = await pageOver(server({ status: { status: 200, body: standing } }), { pending: 'mfa' });
+    await enterCode(page, '123456');
+    expect(page.transport.requests[3].body).toEqual({ code: '123456', rememberDevice: false });
+  });
+
+  const wrongCodes: { name: string; answer: TransportResponse; want: string }[] = [
+    {
+      name: 'a wrong code shows its sentence and keeps the form',
+      answer: { status: 401, body: { message: 'the code is not the one sent', code: 'invalid_code' } },
+      want: DEFAULT_LOGIN_MESSAGES['invalid_code'],
+    },
+    {
+      name: 'a code entered while none stands says to ask for a new one and keeps the form',
+      answer: { status: 401, body: { message: 'no sign-in code stands', code: 'code_expired' } },
+      want: DEFAULT_LOGIN_MESSAGES['code_expired'],
+    },
+    {
+      name: 'a locked attempt shows the sentence with the wait and keeps the form',
+      answer: {
+        status: 429,
+        body: { message: 'Too many sign-in attempts', code: 'too_many_attempts', retryAfter: 90 },
+        headers: { 'retry-after': '90' },
+      },
+      want: `${DEFAULT_LOGIN_MESSAGES['too_many_attempts']} Try again in 2 minutes.`,
+    },
+  ];
+  for (const tt of wrongCodes) {
+    it(tt.name, async () => {
+      const page = await pageOver(server({ status: { status: 200, body: standing }, verifyCode: tt.answer }), {
+        pending: 'mfa',
+      });
+      await enterCode(page, '000000');
+      expect(messageOf(page)).toBe(tt.want);
+      expect(page.component.pending()?.emailCode).toEqual(mailed);
+      expect(page.element.querySelector('input[name="code"]')).not.toBeNull();
+      expect(page.signedIn).toEqual([]);
+    });
+  }
+
+  const endings: { name: string; answer: TransportResponse; want: string }[] = [
+    {
+      name: 'an expired sign-in returns to the list with its sentence',
+      answer: { status: 401, body: { message: 'the pending sign-in has expired', code: 'pending_expired' } },
+      want: DEFAULT_LOGIN_MESSAGES['pending_expired'],
+    },
+    {
+      name: "a sign-in that does not wait for the code returns to the list with the server's words",
+      answer: { status: 409, body: { message: 'the pending sign-in waits for a password confirmation, not a second factor' } },
+      want: 'the pending sign-in waits for a password confirmation, not a second factor',
+    },
+  ];
+  for (const tt of endings) {
+    it(tt.name, async () => {
+      const page = await pageOver(server({ status: { status: 200, body: standing }, verifyCode: tt.answer }), {
+        pending: 'mfa',
+      });
+      await enterCode(page, '123456');
+      expect(messageOf(page)).toBe(tt.want);
+      expect(page.component.pending()).toBeUndefined();
+      expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+    });
+  }
+
+  it('sends a new code on request, replacing the one standing, and clears the code typed', async () => {
+    const page = await pageOver(server({ status: { status: 200, body: standing } }), { pending: 'mfa' });
+    page.component.signInCode = '12';
+    await page.component.sendCode();
+    await page.settle();
+    expect(sent(page.transport).slice(2)).toEqual(['GET /console/api/user/methods', 'POST /console/api/user/pending/code']);
+    expect(page.component.signInCode).toBe('');
+    expect(page.component.pending()?.emailCode).toEqual(mailed);
+    expect(page.element.querySelector('input[name="code"]')).not.toBeNull();
+  });
+
+  it('cancels the step through the cancel route, returns to the list and says so', async () => {
+    const page = await pageOver(server({ status: { status: 200, body: standing } }), { pending: 'mfa' });
+    page.component.signInCode = '12';
+    page.component.rememberDevice = true;
+    await page.component.cancel();
+    await page.settle();
+    expect(sent(page.transport).slice(2)).toEqual([
+      'GET /console/api/user/methods',
+      'POST /console/api/user/pending/cancel',
+    ]);
+    expect(page.component.pending()).toBeUndefined();
+    expect(page.cancelled).toBe(1);
+    expect(page.component.signInCode).toBe('');
+    expect(page.component.rememberDevice).toBe(false);
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
   });
 });
