@@ -219,6 +219,16 @@
                       {{ row.disabled ? 'Enable' : 'Disable' }}
                     </button>
                   }
+                  @if (canResetFactors(row)) {
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      class="ccc-user-reset-factors"
+                      [disabled]="busy()"
+                      (click)="resetFactors(row)">
+                      Forget remembered browsers
+                    </button>
+                  }
                   @if (canDelete(row)) {
                     @if (confirmingDelete() === row.id) {
                       <span class="ccc-user-confirm">Delete {{ row.username }}?</span>

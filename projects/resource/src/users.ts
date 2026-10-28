@@ -141,6 +141,10 @@ export interface UnlinkUserIdentityRequest {
   identity: string;
 }
 
+export interface ResetUserFactorsRequest {
+  user: string;
+}
+
 export type UsersHandle = ResourceHandle<UserRow, [string], 'list' | 'read' | 'create' | 'patch' | 'remove', UserCreate, UserPatch>;
 export type SeatsHandle = ResourceHandle<SeatRow, [string, string], 'list' | 'read' | 'create' | 'remove', SeatCreate>;
 export type RolesHandle = ResourceHandle<RoleRow, [string], 'list' | 'read'>;
@@ -181,10 +185,14 @@ export interface UserPartitionClient {
   canSetPassword(): boolean;
   /** Whether the partition has the unlink method and the digest grants its Execute. */
   canUnlinkIdentity(): boolean;
+  /** Whether the partition has the reset method and the digest grants its Execute. */
+  canResetFactors(): boolean;
   /** Sets a temporary password an operator chose: the user changes it before anything else is served. */
   setPassword(user: string, password: string): Promise<void>;
   /** Unlinks one identity from the user; the last way in is refused by the server. */
   unlinkIdentity(user: string, identity: string): Promise<void>;
+  /** Forgets the browsers the user asked to be remembered, so their next sign-in asks for the second factor. */
+  resetFactors(user: string): Promise<void>;
 }
 
 /**
@@ -256,6 +264,7 @@ export function userPartition(
     canRevokeInvitations: () => invitations?.can(DeletePermission) ?? false,
     canSetPassword: () => canExecute(partition.setPassword),
     canUnlinkIdentity: () => canExecute(partition.unlinkIdentity),
+    canResetFactors: () => canExecute(partition.resetFactors),
     setPassword: async (user, password) => {
       if (!partition.setPassword) {
         throw new Error(`the ${surface.auth} surface has no password method: nothing sets a password`);
@@ -269,6 +278,15 @@ export function userPartition(
       }
       const body: UnlinkUserIdentityRequest = { user, identity };
       await client.request('POST', methodPath(partition.unlinkIdentity), { body });
+    },
+    resetFactors: async (user) => {
+      if (!partition.resetFactors) {
+        throw new Error(
+          `the ${surface.auth} surface's descriptor names no reset method: it predates the second factor, and nothing forgets a remembered browser`,
+        );
+      }
+      const body: ResetUserFactorsRequest = { user };
+      await client.request('POST', methodPath(partition.resetFactors), { body });
     },
   };
 }

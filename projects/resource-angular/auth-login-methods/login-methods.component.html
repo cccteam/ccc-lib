@@ -74,6 +74,47 @@
         </mat-form-field>
         <button mat-flat-button type="submit" class="ccc-login-submit" [disabled]="busy()">Confirm</button>
       </form>
+    } @else if (waiting.emailCode; as step) {
+      @if (step.enrollEmail) {
+        <p class="ccc-login-pending-note">
+          Your account has no email address yet. Enter one and we will send a sign-in code to it.
+        </p>
+        <form class="ccc-login-form" (ngSubmit)="enrollEmail()">
+          <mat-form-field appearance="outline" class="ccc-login-field">
+            <mat-label>Email address</mat-label>
+            <input matInput name="codeEmail" type="email" [(ngModel)]="codeEmail" autocomplete="email" required />
+          </mat-form-field>
+          <button mat-flat-button type="submit" class="ccc-login-submit" [disabled]="busy()">Send code</button>
+        </form>
+      } @else {
+        <p class="ccc-login-pending-note">{{ codeNote(step) }}</p>
+        @if (step.codeSent) {
+          <form class="ccc-login-form" (ngSubmit)="verifyCode()">
+            <mat-form-field appearance="outline" class="ccc-login-field">
+              <mat-label>Sign-in code</mat-label>
+              <input
+                matInput
+                name="code"
+                type="text"
+                inputmode="numeric"
+                [(ngModel)]="signInCode"
+                autocomplete="one-time-code"
+                required />
+            </mat-form-field>
+            <mat-checkbox name="rememberDevice" class="ccc-login-remember" [(ngModel)]="rememberDevice">
+              Remember this browser
+            </mat-checkbox>
+            <button mat-flat-button type="submit" class="ccc-login-submit" [disabled]="busy()">Sign in</button>
+          </form>
+          <button mat-button type="button" class="ccc-login-resend" [disabled]="busy()" (click)="sendCode()">
+            Send a new code
+          </button>
+        } @else {
+          <button mat-flat-button type="button" class="ccc-login-resend" [disabled]="busy()" (click)="sendCode()">
+            Send code
+          </button>
+        }
+      }
     } @else {
       <p class="ccc-login-pending-note">This sign-in needs another step before it completes.</p>
     }

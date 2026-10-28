@@ -82,6 +82,10 @@ const descriptor = {
     UnlinkCrewSectorUserIdentity: methodEntry('UnlinkCrewSectorUserIdentity', 'unlink-crew-sector-user-identity', 'domain'),
     UnlinkMembersUserIdentity: methodEntry('UnlinkMembersUserIdentity', 'unlink-members-user-identity', 'global'),
     SetKioskUserPassword: methodEntry('SetKioskUserPassword', 'set-kiosk-user-password', 'global'),
+    ResetCrewUserFactors: methodEntry('ResetCrewUserFactors', 'reset-crew-user-factors', 'global'),
+    ResetCrewSectorUserFactors: methodEntry('ResetCrewSectorUserFactors', 'reset-crew-sector-user-factors', 'domain'),
+    ResetKioskUserFactors: methodEntry('ResetKioskUserFactors', 'reset-kiosk-user-factors', 'global'),
+    ResetMembersUserFactors: methodEntry('ResetMembersUserFactors', 'reset-members-user-factors', 'global'),
   },
   userSurfaces: [
     {
@@ -100,6 +104,7 @@ const descriptor = {
           invitations: 'CrewInvitations',
           setPassword: 'SetCrewUserPassword',
           unlinkIdentity: 'UnlinkCrewUserIdentity',
+          resetFactors: 'ResetCrewUserFactors',
         },
         {
           scope: 'domain',
@@ -109,6 +114,7 @@ const descriptor = {
           invitations: 'CrewSectorInvitations',
           setPassword: 'SetCrewSectorUserPassword',
           unlinkIdentity: 'UnlinkCrewSectorUserIdentity',
+          resetFactors: 'ResetCrewSectorUserFactors',
         },
       ],
     },
@@ -120,7 +126,14 @@ const descriptor = {
       openSignUp: true,
       registrations: [],
       partitions: [
-        { scope: 'global', users: 'KioskUsers', seats: 'KioskSeats', roles: 'KioskRoles', setPassword: 'SetKioskUserPassword' },
+        {
+          scope: 'global',
+          users: 'KioskUsers',
+          seats: 'KioskSeats',
+          roles: 'KioskRoles',
+          setPassword: 'SetKioskUserPassword',
+          resetFactors: 'ResetKioskUserFactors',
+        },
       ],
     },
     {
@@ -135,6 +148,7 @@ const descriptor = {
           seats: 'MembersSeats',
           roles: 'MembersRoles',
           unlinkIdentity: 'UnlinkMembersUserIdentity',
+          resetFactors: 'ResetMembersUserFactors',
         },
       ],
     },
@@ -146,7 +160,11 @@ const withoutSurfaces = Object.fromEntries(
   Object.entries(descriptor).filter(([key]) => key !== 'userSurfaces'),
 ) as ApiDescriptor;
 
-const everything = { Update: ['username', 'disabled', 'email'], Delete: true, Execute: ['SetCrewUserPassword', 'UnlinkCrewUserIdentity'] };
+const everything = {
+  Update: ['username', 'disabled', 'email'],
+  Delete: true,
+  Execute: ['SetCrewUserPassword', 'UnlinkCrewUserIdentity', 'ResetCrewUserFactors'],
+};
 
 function user(overrides: Partial<ManagedUser> & { id: string; username: string }): ManagedUser {
   return {
@@ -258,6 +276,10 @@ const grantedAll: Record<string, Record<string, string>> = {
   SetCrewSectorUserPassword: { Execute: 'granted' },
   UnlinkCrewSectorUserIdentity: { Execute: 'granted' },
   UnlinkMembersUserIdentity: { Execute: 'granted' },
+  ResetCrewUserFactors: { Execute: 'granted' },
+  ResetCrewSectorUserFactors: { Execute: 'granted' },
+  ResetKioskUserFactors: { Execute: 'granted' },
+  ResetMembersUserFactors: { Execute: 'granted' },
 };
 
 function server(overrides: Partial<Server> = {}): Server {
@@ -292,7 +314,7 @@ function transportOf(state: Server): ScriptedTransport {
     if (request.method === 'PATCH' && /-(seats|invitations)$/.test(path)) {
       return { status: 200, body: {} };
     }
-    if (request.method === 'POST' && /^\/api\/(sectors\/[^/]+\/)?(set-|unlink-)/.test(path)) {
+    if (request.method === 'POST' && /^\/api\/(sectors\/[^/]+\/)?(set-|unlink-|reset-)/.test(path)) {
       return { status: 200, body: undefined };
     }
     return { status: 404, body: { message: `unscripted ${request.method} ${request.url}` } };
@@ -547,6 +569,7 @@ describe('UserManagementComponent acts on a row', () => {
     expect(hollis.querySelector('.ccc-user-seat-form')).toBeNull();
     expect(hollis.querySelector('.ccc-user-unlink')).not.toBeNull();
     expect(hollis.querySelector('.ccc-user-set-password')).not.toBeNull();
+    expect(hollis.querySelector('.ccc-user-reset-factors')).not.toBeNull();
     expect(hollis.querySelector('.ccc-user-disable')).not.toBeNull();
     expect(hollis.querySelector('.ccc-user-delete')).not.toBeNull();
     const nova = await open(page, 'nova');
@@ -554,6 +577,7 @@ describe('UserManagementComponent acts on a row', () => {
     expect(nova.querySelector('.ccc-user-disable')).toBeNull();
     expect(nova.querySelector('.ccc-user-delete')).toBeNull();
     expect(nova.querySelector('.ccc-user-set-password')).toBeNull();
+    expect(nova.querySelector('.ccc-user-reset-factors')).toBeNull();
     expect(nova.querySelector('.ccc-user-unseat')).not.toBeNull();
     expect(nova.querySelector('.ccc-user-seat-form')).not.toBeNull();
     expect(page.component.seatable(page.component.rows()[1]).map((role) => role.name)).toEqual(['Harbormaster', 'SectorCrew']);
@@ -592,6 +616,11 @@ describe('UserManagementComponent acts on a row', () => {
         return page.component.setPassword(row);
       },
       want: { method: 'POST', url: '/api/set-crew-user-password', body: { user: 'u-pip', password: 'anvil-run-9' } },
+    },
+    {
+      name: 'forget remembered browsers posts the user to the reset method',
+      act: (page, row) => page.component.resetFactors(row),
+      want: { method: 'POST', url: '/api/reset-crew-user-factors', body: { user: 'u-pip' } },
     },
     {
       name: 'seat creates the seat',

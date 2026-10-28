@@ -154,6 +154,21 @@ with a cancel that returns to the list and emits `cancelled`; a step the server 
 (a pending hook's `redirectUrl`) sends the browser there. A step that has expired returns to the
 list with the sentence for `pending_expired`.
 
+A sign-in the policy holds for a second factor shows the sign-in code step when the policy accepts
+the mailed code: the code is mailed at once to the address the account holds, and the step says
+where it went (the address masked, `n•••@fleet.example`) over the code field, a "Remember this
+browser" box, Sign in, and Send a new code, which replaces the code standing. A person whose
+account holds no email address is asked for one first, and it is written on the account,
+confirmed, when its code is entered. A wrong code shows the sentence for `invalid_code` and keeps
+the form, the code standing with one fewer attempt; a code entered after the one sent expired or
+ran out of attempts shows the sentence for `code_expired`, and a new one is a click away; an
+address sent three codes within fifteen minutes is refused with `too_many_attempts` and the wait,
+the send button then standing in the form's place. With the box checked, the server remembers the
+browser, and this person's next sign-ins from it skip the code until the server forgets it, or an
+operator does from the user-management page. A second-factor step the policy satisfies by the
+application's own factors alone shows a note and the cancel, for the application's page to take
+over.
+
 A session the sign-in establishes may carry `passwordChangeRequired`: an operator set the password
 (the seed's first administrator, a user created or reset through the user-management surface), and
 the server serves nothing but the password change, the session read and the logout until the person
@@ -275,7 +290,11 @@ What the page offers follows from the surface's shape and the caller's grants, a
 else. A password method gives the create form a temporary-password field and every row a
 set-password action; the person changes a password an operator set at their next sign-in, through
 the login component's change form. An external registration gives the rows their linked identities
-and an unlink action; the server keeps the last way in. The tenant partition's create asks for the
+and an unlink action; the server keeps the last way in. Every row has a forget-remembered-browsers
+action where the caller may run it, which forgets the browsers the person asked to be remembered
+at the sign-in code step, so their next sign-in asks for the code again (the descriptor from a
+generator that predates the second factor names no such method, and the action is not shown). The
+tenant partition's create asks for the
 role that seats the new user in the tenant, and every request goes under the domain segment. A row
 whose seats a directory writes (`rolesSynced`) shows them read-only. The global partition's role
 picker labels a domain-kind role "(every tenant)", since seating it there seats the user in every

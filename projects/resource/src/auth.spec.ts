@@ -49,6 +49,14 @@ const pendingRoutes = {
   confirm: '/console/api/user/pending/confirm',
   cancel: '/console/api/user/pending/cancel',
 };
+/** The pending routes of a server that sends mail: the sign-in code's three beside the other three. */
+const codeRoutes = {
+  ...pendingRoutes,
+  sendCode: '/console/api/user/pending/code',
+  verifyCode: '/console/api/user/pending/code/verify',
+  enrollEmail: '/console/api/user/pending/email',
+};
+const codeMailed = { codeEmail: 'n•••@fleet.example', codeSent: true, codeExpiresAt: '2026-10-17T12:10:00Z' };
 const changePath = '/console/api/user/password/change';
 const consoleList: LoginMethods = { methods: [password, google], pending: pendingRoutes, changePassword: changePath };
 const invitationRoutes = {
@@ -80,6 +88,9 @@ interface Server {
   status: TransportResponse;
   confirm: TransportResponse;
   cancel: TransportResponse;
+  sendCode: TransportResponse;
+  verifyCode: TransportResponse;
+  enrollEmail: TransportResponse;
   change: TransportResponse;
   invitationOpen: TransportResponse;
   invitationAccept: TransportResponse;
@@ -98,6 +109,9 @@ function server(overrides: Partial<Server> = {}): Server {
     status: { status: 404, body: { message: 'no pending sign-in' } },
     confirm: { status: 200, body: { mfaIsRequired: false } },
     cancel: { status: 200, body: undefined },
+    sendCode: { status: 200, body: codeMailed },
+    verifyCode: { status: 200, body: { mfaIsRequired: false } },
+    enrollEmail: { status: 200, body: codeMailed },
     change: { status: 200, body: undefined },
     invitationOpen: { status: 200, body: opened },
     invitationAccept: { status: 200, body: { accepted: true } },
@@ -126,6 +140,12 @@ function transportOf(state: Server): ScriptedTransport {
         return state.confirm;
       case 'POST /console/api/user/pending/cancel':
         return state.cancel;
+      case 'POST /console/api/user/pending/code':
+        return state.sendCode;
+      case 'POST /console/api/user/pending/code/verify':
+        return state.verifyCode;
+      case 'POST /console/api/user/pending/email':
+        return state.enrollEmail;
       case 'POST /console/api/user/password/change':
         return state.change;
       case 'POST /console/api/user/invitation':
@@ -482,6 +502,184 @@ describe('the pending sign-in', () => {
     const { auth, transport } = authOver(server());
     await auth.cancelPending();
     expect(sent(transport)).toEqual(['GET /console/api/user/methods', 'POST /console/api/user/pending/cancel']);
+  });
+});
+
+describe('the sign-in code', () => {
+  const mailing = (overrides: Partial<Server> = {}): Server =>
+    server({ methods: { ...consoleList, pending: codeRoutes }, ...overrides });
+  const codeStep = {
+    reason: 'mfa',
+    email: 'nova@fleet.example',
+    expiresAt: '2026-10-17T12:10:00Z',
+    returnUrl: '/console/missions',
+    factors: ['email-code'],
+  };
+
+  it('is reported on the status with where it stands, the fields left out reading as empty or false', async () => {
+    const { auth } = authOver(
+      mailing({ status: { status: 200, body: { ...codeStep, emailCode: { codeEmail: 'n•••@fleet.example', codeSent: false } } } }),
+    );
+    expect(await auth.pending()).toEqual({
+      outcome: 'waiting',
+      ...codeStep,
+      emailCode: { codeEmail: 'n•••@fleet.example', enrollEmail: false, codeSent: false },
+    });
+  });
+
+  it('is reported standing, with its expiry, and as waiting for an address', async () => {
+    const standing = authOver(mailing({ status: { status: 200, body: { ...codeStep, emailCode: codeMailed } } }));
+    expect(await standing.auth.pending()).toEqual({
+      outcome: 'waiting',
+      ...codeStep,
+      emailCode: { codeEmail: 'n•••@fleet.example', enrollEmail: false, codeSent: true, codeExpiresAt: '2026-10-17T12:10:00Z' },
+    });
+    const enrolling = authOver(
+      mailing({ status: { status: 200, body: { ...codeStep, emailCode: { enrollEmail: true, codeSent: false } } } }),
+    );
+    expect(await enrolling.auth.pending()).toEqual({
+      outcome: 'waiting',
+      ...codeStep,
+      emailCode: { codeEmail: '', enrollEmail: true, codeSent: false },
+    });
+  });
+
+  it('is absent from a step that carries none, and from a status whose emailCode is not an object', async () => {
+    const { auth } = authOver(mailing({ status: { status: 200, body: { ...codeStep, emailCode: 'soon' } } }));
+    expect(await auth.pending()).toEqual({ outcome: 'waiting', ...codeStep });
+  });
+
+  it('keeps the three routes the list names, and leaves them off a list that names them in part', async () => {
+    const mailingList = authOver(mailing());
+    expect((await mailingList.auth.methods()).pending).toEqual(codeRoutes);
+    const partial = authOver(
+      server({ methods: { ...consoleList, pending: { ...pendingRoutes, sendCode: codeRoutes.sendCode } } }),
+    );
+    expect((await partial.auth.methods()).pending).toEqual(pendingRoutes);
+  });
+
+  it('is sent after the list is read again, posting nothing, and answers where it went and when it expires', async () => {
+    const { auth, transport } = authOver(mailing());
+    await auth.methods();
+    expect(await auth.sendCode()).toEqual({
+      outcome: 'sent',
+      codeEmail: 'n•••@fleet.example',
+      codeExpiresAt: '2026-10-17T12:10:00Z',
+    });
+    expect(sent(transport)).toEqual([
+      'GET /console/api/user/methods',
+      'GET /console/api/user/methods',
+      'POST /console/api/user/pending/code',
+    ]);
+    expect(transport.requests[2].body).toBeUndefined();
+  });
+
+  it('takes the address of an account that holds none after the list is read again, and answers as a sending does', async () => {
+    const { auth, transport } = authOver(mailing());
+    expect(await auth.enrollEmail('nova@fleet.example')).toEqual({
+      outcome: 'sent',
+      codeEmail: 'n•••@fleet.example',
+      codeExpiresAt: '2026-10-17T12:10:00Z',
+    });
+    expect(sent(transport)).toEqual(['GET /console/api/user/methods', 'POST /console/api/user/pending/email']);
+    expect(transport.requests[1].body).toEqual({ email: 'nova@fleet.example' });
+  });
+
+  const sendings: { name: string; answer: TransportResponse; want: unknown }[] = [
+    {
+      name: 'a sign-in that does not wait for the code resolves as refused',
+      answer: { status: 409, body: { message: 'the pending sign-in waits for a password confirmation, not a second factor' } },
+      want: {
+        outcome: 'refused',
+        status: 409,
+        message: 'the pending sign-in waits for a password confirmation, not a second factor',
+      },
+    },
+    {
+      name: 'an address sent too many codes resolves as refused with the code and the wait',
+      answer: { status: 429, body: { message: 'too many codes', code: 'too_many_attempts', retryAfter: 600 } },
+      want: { outcome: 'refused', status: 429, code: 'too_many_attempts', message: 'too many codes', retryAfter: 600 },
+    },
+    {
+      name: 'an expired pending sign-in resolves with its code',
+      answer: { status: 401, body: { message: 'the pending sign-in has expired', code: 'pending_expired' } },
+      want: { outcome: 'refused', status: 401, code: 'pending_expired', message: 'the pending sign-in has expired' },
+    },
+    {
+      name: 'no pending sign-in resolves as refused',
+      answer: { status: 404, body: { message: 'no pending sign-in' } },
+      want: { outcome: 'refused', status: 404, message: 'no pending sign-in' },
+    },
+  ];
+  for (const tt of sendings) {
+    it(tt.name, async () => {
+      const { auth, errors } = authOver(mailing({ sendCode: tt.answer, enrollEmail: tt.answer }));
+      expect(await auth.sendCode()).toEqual(tt.want);
+      expect(await auth.enrollEmail('nova@fleet.example')).toEqual(tt.want);
+      expect(errors).toEqual([]);
+    });
+  }
+
+  it('resolves what is not an address as the refusal of an enrollment, through no error hook', async () => {
+    const { auth, errors } = authOver(mailing({ enrollEmail: { status: 400, body: { message: 'not an email address' } } }));
+    expect(await auth.enrollEmail('nova')).toEqual({ outcome: 'refused', status: 400, message: 'not an email address' });
+    expect(errors).toEqual([]);
+  });
+
+  it('is entered after the list is read again, posting the code and the remembering asked for, and resolves the session', async () => {
+    const { auth, transport } = authOver(mailing());
+    expect(await auth.verifyCode('123456', true)).toEqual({ outcome: 'session' });
+    expect(await auth.verifyCode('123456', false)).toEqual({ outcome: 'session' });
+    expect(sent(transport)).toEqual([
+      'GET /console/api/user/methods',
+      'POST /console/api/user/pending/code/verify',
+      'GET /console/api/user/methods',
+      'POST /console/api/user/pending/code/verify',
+    ]);
+    expect(transport.requests[1].body).toEqual({ code: '123456', rememberDevice: true });
+    expect(transport.requests[3].body).toEqual({ code: '123456', rememberDevice: false });
+  });
+
+  const entries: { name: string; answer: TransportResponse; want: unknown }[] = [
+    {
+      name: 'a wrong code resolves with its code',
+      answer: { status: 401, body: { message: 'the code is not the one sent', code: 'invalid_code' } },
+      want: { outcome: 'refused', status: 401, code: 'invalid_code', message: 'the code is not the one sent' },
+    },
+    {
+      name: 'a code entered while none stands resolves with its code',
+      answer: { status: 401, body: { message: 'no sign-in code stands: ask for a new one', code: 'code_expired' } },
+      want: { outcome: 'refused', status: 401, code: 'code_expired', message: 'no sign-in code stands: ask for a new one' },
+    },
+    {
+      name: 'a sign-in that does not wait for the code resolves as refused',
+      answer: { status: 409, body: { message: 'the pending sign-in waits for a password confirmation, not a second factor' } },
+      want: {
+        outcome: 'refused',
+        status: 409,
+        message: 'the pending sign-in waits for a password confirmation, not a second factor',
+      },
+    },
+    {
+      name: 'the policy asking for a further step resolves a pending step',
+      answer: { status: 200, body: { mfaIsRequired: true } },
+      want: { outcome: 'pending' },
+    },
+  ];
+  for (const tt of entries) {
+    it(tt.name, async () => {
+      const { auth, errors } = authOver(mailing({ verifyCode: tt.answer }));
+      expect(await auth.verifyCode('000000', false)).toEqual(tt.want);
+      expect(errors).toEqual([]);
+    });
+  }
+
+  it('throws on a server whose pending routes name no code routes', async () => {
+    const { auth, transport } = authOver(server());
+    await expect(auth.sendCode()).rejects.toThrow('names no sign-in code routes');
+    await expect(auth.enrollEmail('nova@fleet.example')).rejects.toThrow('names no sign-in code routes');
+    await expect(auth.verifyCode('123456', false)).rejects.toThrow('names no sign-in code routes');
+    expect(sent(transport).filter((request) => request.startsWith('POST'))).toEqual([]);
   });
 });
 
