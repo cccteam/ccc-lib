@@ -287,8 +287,10 @@ at a time.
 
 The access panel, "Edit access for hollis", lists the user's roles under "Assign roles": one row
 per role, a searchable picker holding the role's title with, under it, where the role reaches and
-the description the role file gives it, and a remove button; "Add another role" appends an empty
-row. The picker lists the roles the partition's roles resource serves, each option showing the
+the description the role file gives it, and a remove button; "Add another role" ("Add a role" while
+there are none) appends an empty row. On the global page a seat held in every tenant is a row like
+the others, since the global seats resource seated it and unseats it; in the tenant partition it is
+shown locked. The picker lists the roles the partition's roles resource serves, each option showing the
 title, where it reaches and the description, and narrows them as the person types, over the title,
 the name and the description; a role the user holds already, or another row names, is not offered
 again. Save applies the difference between the rows and the seats the user held when the panel
@@ -299,15 +301,15 @@ shows what the server lists, and the rows are rebuilt from it. Cancel discards t
 caller may not change is shown with the reason under it and cannot be edited or removed: "Assigned
 by the directory." where the directory writes the seats (and no role can be added), "You cannot
 change this role." where the digest withholds the unseat, and in the tenant partition "Assigned for
-every tenant. You cannot change it here." under a seat held in every tenant; "Add another role" is
-there only where the digest grants the seat.
+every tenant. You cannot change it here." under a seat held in every tenant; the button that adds a
+role is there only where the digest grants the seat.
 
 The account panel, "Manage hollis", holds the rest: the username with a Save, the email address with
 a Save (an operator's entry is unconfirmed and reserves the address until the person confirms it
 themselves, through `<ccc-email-address>` and the login page's confirmation link), a temporary
 password with "Set password" where the Auth has a password method (the person changes it at their
-next sign-in, through the login component's change form), the linked identities with an Unlink
-each where the Auth has a registration (the server keeps the last way in), Enable or Disable with a
+next sign-in, through the login component's change form), "Signs in with": the linked identities
+with an Unlink each where the Auth has a registration (the server keeps the last way in), Enable or Disable with a
 sentence saying which the user is, and Delete. Deleting and unlinking ask once, in the panel, before
 they go. The panel stays open after a field is saved and follows the row as the server lists it
 again; a delete closes it. Where the password method declares the username as the address
@@ -315,7 +317,7 @@ again; a delete closes it. Where the password method declares the username as th
 username, and neither is edited by hand: a verified new address renames the person.
 
 "New user" opens a panel of the same shape: the username (or the address), the email address, a
-temporary password where the Auth has a password method, "Start disabled", then the roles rows and
+temporary password where the Auth has a password method, "The account starts disabled", then the roles rows and
 Create. In the tenant partition the first role is required and rides the create, which seats the new
 user in the tenant; every further role, and in the global partition every role, is seated by a call
 per role once the server has said the new user's id. A seat the server refuses leaves the user

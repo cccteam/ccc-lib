@@ -464,6 +464,17 @@ const optionsShown = (input: HTMLInputElement): string[][] => {
     textOf(option.querySelector('.ccc-role-option-description')),
   ]);
 };
+/** How each option of the picker lays out its three lines: the computed display of the title, the kind and the description. */
+const optionLinesShown = (input: HTMLInputElement): string[][] => {
+  const id = input.getAttribute('aria-controls');
+  const list = id === null ? null : document.getElementById(id);
+  return Array.from(list?.querySelectorAll<HTMLElement>('.ccc-role-option') ?? []).map((option) =>
+    ['title', 'kind', 'description'].map((part) => {
+      const span = option.querySelector<HTMLElement>(`.ccc-role-option-${part}`);
+      return span ? getComputedStyle(span).display : '';
+    }),
+  );
+};
 /** The one PATCH the action sent: its route and its operations. */
 const patchSent = (page: Page): { url: string; body: unknown } => {
   const patch = page.transport.requests.find((r) => r.method === 'PATCH');
@@ -582,6 +593,21 @@ describe('UserManagementComponent reads the partition', () => {
       ],
     },
     {
+      name: "the global page lists a seat held in every tenant as 'Every tenant' after the global seats, once where the global list names it too",
+      inputs: {},
+      row: user({
+        id: 'u-ash',
+        username: 'ash',
+        roles: ['Headquarters', 'Harbormaster'],
+        everywhereRoles: ['Harbormaster', 'Archivist'],
+      }),
+      want: [
+        ['Headquarters', 'Everywhere'],
+        ['Harbormaster', 'Every tenant'],
+        ['Archivist', 'Every tenant'],
+      ],
+    },
+    {
       name: 'an application without tenants says nothing about where a role reaches',
       inputs: { auth: 'Members' },
       row: user({ id: 'u-ash', username: 'ash', roles: ['Headquarters', 'Harbormaster'] }),
@@ -650,7 +676,8 @@ describe('UserManagementComponent creates a user', () => {
     const fields = Array.from(panel.querySelectorAll<HTMLInputElement>('.ccc-users-create input')).map((i) => i.name);
     expect(fields.slice(0, 4)).toEqual(['username', 'email', 'password', 'disabled']);
     expect(fields[4]).toMatch(/^new-role-\d+$/);
-    expect(panel.querySelector('.ccc-role-add')).not.toBeNull();
+    expect(textOf(panel.querySelector('mat-checkbox'))).toBe('The account starts disabled');
+    expect(textOf(panel.querySelector('.ccc-role-add'))).toBe('Add another role');
     page.transport.requests.length = 0;
     page.component.newUser = {
       username: 'quill',
@@ -881,6 +908,7 @@ describe('UserManagementComponent edits access', () => {
     await click(page, panel.querySelector('.ccc-role-remove'));
     expect(roleRowsOf(panelOf())).toEqual([]);
     expect(textOf(panelOf().querySelector('.ccc-access-none'))).toBe('nova has no roles here.');
+    expect(textOf(panelOf().querySelector('.ccc-role-add'))).toBe('Add a role');
     page.transport.requests.length = 0;
     await click(page, panelOf().querySelector('.ccc-panel-cancel'));
     expect(panelOpen()).toBe(false);
@@ -906,6 +934,7 @@ describe('UserManagementComponent edits access', () => {
     expect(optionsShown(picker)).toEqual([
       ['Harbormaster', 'Every tenant', 'Runs a sector: its berths and its manifests.'],
     ]);
+    expect(optionLinesShown(picker)).toEqual([['block', 'block', 'block']]);
     await typeInto(page, picker, 'berths');
     expect(names()).toEqual(['Harbormaster']);
     await typeInto(page, picker, 'sector');
@@ -943,6 +972,43 @@ describe('UserManagementComponent edits access', () => {
     ]);
   });
 
+  it('on the global page a seat held in every tenant is a row like the others: listed, not offered again, and removed through the global seats resource on Save', async () => {
+    const page = await pageOver(
+      server({
+        rows: [user({ id: 'u-ash', username: 'ash', roles: ['Headquarters'], everywhereRoles: ['Harbormaster'] })],
+      }),
+    );
+    expect(roleLines(rowsOf(page)[0])).toEqual([
+      ['Headquarters', 'Everywhere'],
+      ['Harbormaster', 'Every tenant'],
+    ]);
+    const panel = await openAccess(page, 'ash');
+    expect(roleRowsOf(panel)).toEqual([
+      { text: 'Headquarters', words: 'Everywhere · Runs the whole fleet.', disabled: false, removable: true },
+      {
+        text: 'Harbormaster',
+        words: 'Every tenant · Runs a sector: its berths and its manifests.',
+        disabled: false,
+        removable: true,
+      },
+    ]);
+    expect(page.component.seatable(rowOf(page, 'ash')).map((role) => role.name)).toEqual(['SectorCrew']);
+    await click(page, panel.querySelector('.ccc-role-add'));
+    const [, , added] = page.component.accessRows();
+    expect(page.component.optionsFor(added, page.component.accessRows()).map((role) => role.name)).toEqual([
+      'SectorCrew',
+    ]);
+    await click(page, panelOf().querySelectorAll('.ccc-role-remove')[1]);
+    expect(roleRowsOf(panelOf()).map((row) => row.text)).toEqual(['Headquarters', '']);
+    page.transport.requests.length = 0;
+    await click(page, panelOf().querySelector('.ccc-access-save'));
+    expect(writesSent(page)).toEqual([
+      { method: 'PATCH', url: '/api/crew-seats', body: [{ op: 'remove', path: '/u-ash/Harbormaster' }] },
+    ]);
+    expect(sent(page.transport).slice(1)).toContainEqual(expect.stringMatching(/^GET \/api\/crew-users\?/));
+    expect(panelOpen()).toBe(false);
+  });
+
   const readOnly: {
     name: string;
     row: ManagedUser;
@@ -952,7 +1018,13 @@ describe('UserManagementComponent edits access', () => {
   }[] = [
     {
       name: 'the seats a directory writes are shown with the reason, cannot be edited or removed, and no role can be added',
-      row: user({ id: 'u-hollis', username: 'hollis', roles: ['Harbormaster', 'SectorCrew'], rolesSynced: true }),
+      row: user({
+        id: 'u-hollis',
+        username: 'hollis',
+        roles: ['Harbormaster'],
+        everywhereRoles: ['SectorCrew'],
+        rolesSynced: true,
+      }),
       wantWords: assignedByDirectory,
       wantAdd: false,
     },
@@ -977,7 +1049,7 @@ describe('UserManagementComponent edits access', () => {
       const panel = await openAccess(page, 'hollis');
       const shown = roleRowsOf(panel);
       expect(shown.map((row) => row.text)).toEqual(
-        tt.row.roles.map((role) => (role === 'SectorCrew' ? 'Sector Crew' : role)),
+        [...tt.row.roles, ...tt.row.everywhereRoles].map((role) => (role === 'SectorCrew' ? 'Sector Crew' : role)),
       );
       expect(shown.every((row) => row.words === tt.wantWords && row.disabled && !row.removable)).toBe(true);
       expect(panel.querySelector('.ccc-role-add') !== null).toBe(tt.wantAdd);
@@ -1056,6 +1128,7 @@ describe('UserManagementComponent manages an account', () => {
     expect(hollis.querySelector('.ccc-user-disable')).not.toBeNull();
     expect(hollis.querySelector('.ccc-user-delete')).not.toBeNull();
     expect(hollis.querySelector('.ccc-role-row')).toBeNull();
+    expect(textOf(hollis.querySelector('.ccc-user-identities .ccc-panel-subheading'))).toBe('Signs in with');
     expect(textOf(hollis.querySelector('.ccc-user-identity-words'))).toBe('Fleet directory · hollis@fleet.example');
     expect(textOf(hollis.querySelector('.ccc-user-action-words'))).toBe('hollis is active.');
     await click(page, hollis.querySelector('.ccc-panel-cancel'));
@@ -1325,7 +1398,7 @@ describe('UserManagementComponent manages the invitations', () => {
     expect(createOnly.element.querySelector('.ccc-invitations-new')).not.toBeNull();
     expect(sent(createOnly.transport)).not.toContainEqual(expect.stringMatching(/crew-invitations/));
     expect(textOf(createOnly.element.querySelector('.ccc-invitations .ccc-users-note'))).toBe(
-      'No standing invitations.',
+      'No invitations are waiting.',
     );
     TestBed.resetTestingModule();
     const neither = await pageOver(server({ digest: { ...grantedAll, CrewInvitations: {} } }));

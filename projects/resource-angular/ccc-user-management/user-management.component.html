@@ -159,7 +159,7 @@
         </form>
       }
       @if (invitations().length === 0) {
-        <p class="ccc-users-note">No standing invitations.</p>
+        <p class="ccc-users-note">No invitations are waiting.</p>
       } @else {
         <table class="ccc-users ccc-invitations-table">
           <thead>
@@ -287,7 +287,7 @@
                   class="ccc-role-add"
                   [disabled]="busy()"
                   (click)="addRole(accessRows)">
-                  Add another role
+                  {{ addRoleWords(accessRows()) }}
                 </button>
               }
               <div class="ccc-panel-actions">
@@ -346,7 +346,7 @@
               }
               @if (user.identities.length > 0) {
                 <div class="ccc-user-action ccc-user-identities">
-                  <h3 class="ccc-panel-subheading">Linked identities</h3>
+                  <h3 class="ccc-panel-subheading">Signs in with</h3>
                   @for (identity of user.identities; track identity.id) {
                     <div class="ccc-user-identity">
                       <span class="ccc-user-identity-words">
@@ -482,9 +482,9 @@
                 <mat-hint>The person changes it at their first sign-in.</mat-hint>
               </mat-form-field>
             }
-            <mat-checkbox name="disabled" class="ccc-users-field" [(ngModel)]="newUser.disabled"
-              >Start disabled</mat-checkbox
-            >
+            <mat-checkbox name="disabled" class="ccc-users-field" [(ngModel)]="newUser.disabled">
+              The account starts disabled
+            </mat-checkbox>
             @if (asksRoles()) {
               <h3 class="ccc-panel-subheading">Assign roles</h3>
               @for (row of newRoles(); track row.key; let first = $first) {
@@ -544,7 +544,7 @@
                   class="ccc-role-add"
                   [disabled]="busy()"
                   (click)="addRole(newRoles)">
-                  Add another role
+                  {{ addRoleWords(newRoles()) }}
                 </button>
               }
             }

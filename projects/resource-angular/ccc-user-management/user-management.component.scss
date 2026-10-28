@@ -156,6 +156,43 @@
   width: 100%;
 }
 
+// An account action: the field grows and its button sits at the end of the same row, level
+// with the field's box; the status sentence and its button share a row the same way, and
+// the delete stands on its own row at the bottom.
+.ccc-panel .ccc-user-action {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+
+  > .ccc-users-field {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+  }
+
+  > button {
+    flex: none;
+    margin-top: 0.5rem;
+  }
+}
+
+// The identities block stacks its rows the panel's full width, each row's unlink at the end.
+.ccc-panel .ccc-user-identities {
+  align-items: stretch;
+}
+
+.ccc-panel .ccc-user-account-status,
+.ccc-panel .ccc-user-account-delete {
+  align-items: center;
+
+  > button {
+    margin-top: 0;
+  }
+}
+
+.ccc-panel .ccc-user-account-delete {
+  margin-top: 0.5rem;
+}
+
 // One roles row: the picker with its words under it, and the remove button beside it.
 .ccc-role-row {
   display: flex;
@@ -182,21 +219,21 @@
   align-self: flex-start;
 }
 
-// An option of the role picker: the title, where the role reaches, and what it is for, stacked.
-.ccc-role-option {
-  --mat-option-label-text-line-height: 1.3;
-
-  .mdc-list-item__primary-text {
-    display: flex;
-    flex-direction: column;
-    padding: 0.25rem 0;
-  }
+// An option of the role picker: the title, where the role reaches, and what it is for, each
+// on its own line. The option's own wrapper is Material's, outside this component's style
+// scope; the library stylesheet stacks it as a column, and these spans are blocks on their
+// own account so an application without that stylesheet reads three lines too.
+.ccc-role-option-title,
+.ccc-role-option-kind,
+.ccc-role-option-description {
+  display: block;
 }
 
 .ccc-role-option-kind,
 .ccc-role-option-description {
   font-size: 0.85em;
   opacity: 0.75;
+  line-height: 1.3;
 }
 
 .ccc-user-identity,
@@ -213,7 +250,8 @@
   align-items: stretch;
 }
 
-.ccc-user-action-words {
+.ccc-user-action-words,
+.ccc-user-identity-words {
   flex: 1;
 }
 

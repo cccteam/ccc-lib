@@ -130,12 +130,14 @@ const emptyNewInvitation = (): NewInvitation => ({ email: '', roles: [] });
  * menu button that opens the account panel; both are side panels on the right.
  *
  * The access panel lists the user's roles, one picker per role with where it reaches and
- * its description under it, a remove button per row and "Add another role"; Save applies
- * the difference to the user's seats, unseats first, then seats, one call per change, and
- * if a call fails it stops, says which role and what the server said, and the table shows
- * what the server says. A role the caller may not change, or a seat the directory writes,
- * is shown with the reason under it and cannot be edited. The picker is a searchable list:
- * typing narrows it by title, name and description.
+ * its description under it, a remove button per row and a button for another role; on the
+ * global page a seat held in every tenant is a row like the others, seated and unseated
+ * through the global seats resource, and in the tenant partition it is shown locked. Save
+ * applies the difference to the user's seats, unseats first, then seats, one call per
+ * change, and if a call fails it stops, says which role and what the server said, and the
+ * table shows what the server says. A role the caller may not change, or a seat the
+ * directory writes, is shown with the reason under it and cannot be edited. The picker is
+ * a searchable list: typing narrows it by title, name and description.
  *
  * The account panel holds the rest: the username, the email address (an operator's entry
  * is unverified and reserves the address), a temporary password where the Auth has a
@@ -382,9 +384,16 @@ export class UserManagementComponent {
     return listed ? this.kindOf(listed) : '';
   }
 
-  /** The seats a row holds in every tenant, shown beside the tenant's own in its partition; none elsewhere. */
+  /**
+   * The seats a row holds in every tenant: in the tenant partition shown beside the
+   * tenant's own, and on the global page rows like the others (a domain role seated
+   * there is held in every tenant), left out where the global list names them already.
+   */
   everywhereOf(row: UserRow): string[] {
-    return this.partition()?.scope === 'domain' ? row.everywhereRoles : [];
+    if (this.partition()?.scope === 'domain') {
+      return row.everywhereRoles;
+    }
+    return row.everywhereRoles.filter((role) => !row.roles.includes(role));
   }
 
   /** The words for a role in a list: its title, and where it reaches when that is worth saying. */
@@ -427,9 +436,9 @@ export class UserManagementComponent {
     );
   }
 
-  /** The roles the row does not hold yet. */
+  /** The roles the row does not hold yet, here or in every tenant. */
   seatable(row: UserRow): RoleRow[] {
-    return this.roles().filter((role) => !row.roles.includes(role.name));
+    return this.roles().filter((role) => !row.roles.includes(role.name) && !row.everywhereRoles.includes(role.name));
   }
 
   canCreate(): boolean {
@@ -523,9 +532,14 @@ export class UserManagementComponent {
 
   /** Opens the access panel over a row: one roles row per seat, locked where the caller may not change it. */
   openAccess(row: ManagedUser): void {
-    this.accessHeld = this.canUnseat(row) ? [...row.roles] : [];
+    this.accessHeld = this.removable(row);
     this.accessRows.set(this.heldRows(row));
     this.show({ kind: 'access', user: row.id });
+  }
+
+  /** The words for the button that adds a roles row: the first role, or another. */
+  addRoleWords(rows: readonly RoleChoice[]): string {
+    return rows.length === 0 ? 'Add a role' : 'Add another role';
   }
 
   /** Opens the account panel over a row, its fields holding what the row says. */
@@ -656,7 +670,7 @@ export class UserManagementComponent {
     }).then(() => {
       const fresh = this.panelUser();
       if (fresh && this.panel()?.kind === 'access') {
-        this.accessHeld = this.canUnseat(fresh) ? [...fresh.roles] : [];
+        this.accessHeld = this.removable(fresh);
         this.accessRows.set(this.heldRows(fresh));
       }
     });
@@ -803,17 +817,27 @@ export class UserManagementComponent {
 
   /**
    * The roles rows a user's seats make: one per role held in the partition, locked with
-   * the reason where the directory writes the seats or the caller may not unseat, and in
-   * the tenant partition one per seat held in every tenant, locked since the tenant's
-   * page cannot change it.
+   * the reason where the directory writes the seats or the caller may not unseat, and one
+   * per seat held in every tenant: on the global page a row like the others, since the
+   * global seats resource seated it and unseats it; in the tenant partition locked, since
+   * the tenant's page cannot change it.
    */
   private heldRows(row: ManagedUser): RoleChoice[] {
     const reason = row.rolesSynced ? assignedByDirectory : this.canUnseat(row) ? undefined : cannotChangeRole;
     const held = row.roles.map((role) => this.choice(role, reason));
+    const tenant = this.partition()?.scope === 'domain';
     const everywhere = this.everywhereOf(row).map((role) =>
-      this.choice(role, row.rolesSynced ? assignedByDirectory : assignedForEveryTenant),
+      this.choice(role, row.rolesSynced ? assignedByDirectory : tenant ? assignedForEveryTenant : reason),
     );
     return [...held, ...everywhere];
+  }
+
+  /** The seats the caller may unseat the row from: the ones the partition's seats resource holds, when the digest grants it. */
+  private removable(row: ManagedUser): string[] {
+    if (!this.canUnseat(row)) {
+      return [];
+    }
+    return this.partition()?.scope === 'domain' ? [...row.roles] : [...row.roles, ...this.everywhereOf(row)];
   }
 
   private choice(role: string, locked: string | undefined): RoleChoice {
