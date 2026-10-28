@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.0.19](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.18...resource-angular/v0.0.19) (2026-10-28)
+
+
+### Features
+
+* the login page runs the sign-in code step: the code is mailed at once to the address the account holds, the step says where it went, a wrong or dead code keeps the form with its sentence, a box has the browser remembered, and a person whose account holds no address gives one first ([#166](https://github.com/cccteam/ccc-lib/issues/166)) ([ccc825d](https://github.com/cccteam/ccc-lib/commit/ccc825d986794712c48f1157a75e4d8438340c53))
+* the sign-in client drives the code step: the methods list keeps the send, verify and enrollment routes, the pending status carries where the code stands, and sendCode, enrollEmail and verifyCode resolve the server's refusals in place ([#166](https://github.com/cccteam/ccc-lib/issues/166)) ([ccc825d](https://github.com/cccteam/ccc-lib/commit/ccc825d986794712c48f1157a75e4d8438340c53))
+* the users page forgets a person's remembered browsers, so their next sign-in asks for the code again, through the partition's reset method and the client's resetFactors ([#166](https://github.com/cccteam/ccc-lib/issues/166)) ([ccc825d](https://github.com/cccteam/ccc-lib/commit/ccc825d986794712c48f1157a75e4d8438340c53))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.13 to ^0.0.14
+
 ## [0.0.18](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.17...resource-angular/v0.0.18) (2026-10-27)
 
 
