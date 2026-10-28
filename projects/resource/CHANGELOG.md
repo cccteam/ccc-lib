@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.15](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.14...resource/v0.0.15) (2026-10-28)
+
+
+### Features
+
+* **resource,resource-angular:** the Users page follows the IAM pattern: roles by title with where they apply, an access panel whose Save applies the difference, an account panel for the rest, and a role's description on its row ([#167](https://github.com/cccteam/ccc-lib/issues/167)) ([9817c78](https://github.com/cccteam/ccc-lib/commit/9817c78fa18b1dc093f1ddc326bf4b0e0fefd0a9))
+
 ## [0.0.14](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.13...resource/v0.0.14) (2026-10-28)
 
 

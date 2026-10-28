@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.20](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.19...resource-angular/v0.0.20) (2026-10-28)
+
+
+### Features
+
+* **resource,resource-angular:** the Users page follows the IAM pattern: roles by title with where they apply, an access panel whose Save applies the difference, an account panel for the rest, and a role's description on its row ([#167](https://github.com/cccteam/ccc-lib/issues/167)) ([9817c78](https://github.com/cccteam/ccc-lib/commit/9817c78fa18b1dc093f1ddc326bf4b0e0fefd0a9))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.14 to ^0.0.15
+
 ## [0.0.19](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.18...resource-angular/v0.0.19) (2026-10-28)
 
 
