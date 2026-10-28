@@ -232,6 +232,8 @@ export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
   policy_denied: 'Signing in this way is not allowed for this account.',
   user_disabled: 'This account has been disabled. Please contact your administrator.',
   pending_expired: 'The sign-in took too long to complete. Please start again.',
+  invalid_code: 'That code is not the one we sent. Check it and try again.',
+  code_expired: 'That code is no longer valid. Ask for a new one.',
   no_email: 'The service you signed in with did not give an email address for this account.',
   too_many_attempts: 'Too many attempts.',
   no_tenant: 'This account is not a member of any organization in this application. Please contact your administrator.',

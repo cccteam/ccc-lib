@@ -70,6 +70,8 @@ describe('UiCoreService login messages', () => {
       'policy_denied',
       'user_disabled',
       'pending_expired',
+      'invalid_code',
+      'code_expired',
       'no_email',
       'too_many_attempts',
       'no_tenant',
