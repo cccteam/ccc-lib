@@ -124,10 +124,15 @@ export interface SeatCreate {
   role: string;
 }
 
-/** One role a seat may take; `kind` says global or domain in the global partition and is absent in the tenant one. */
+/**
+ * One role a seat may take: its name, its `kind` (global or domain in the global
+ * partition; absent in the tenant one, whose roles are the domain ones alone) and the
+ * description the role file gives it, absent on a server that predates descriptions.
+ */
 export interface RoleRow {
   name: string;
   kind?: 'global' | 'domain';
+  description?: string;
 }
 
 /** The bodies of the two methods. */

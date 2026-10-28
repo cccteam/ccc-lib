@@ -459,8 +459,10 @@ The rows have the same shape on every application (`UserRow`, `SeatRow`, `RoleRo
 `emailVerifiedAt` (the person's address and when they proved they read it; null while an
 operator's entry stands unverified, which reserves the address and is trusted for nothing),
 its `identities`, the `roles` held in the partition's scope, the `everywhereRoles` held in
-every domain, and `rolesSynced` when its seats are a directory's; an invitation carries `id`,
-`email`, the `roles` its acceptance grants, `invitedBy`, `createdAt` and `expiresAt`.
+every domain, and `rolesSynced` when its seats are a directory's; a role carries its `name`, its
+`kind` (`global` or `domain` in the global partition, absent in the tenant one) and the
+`description` the role file gives it, absent on a server that predates descriptions; an invitation
+carries `id`, `email`, the `roles` its acceptance grants, `invitedBy`, `createdAt` and `expiresAt`.
 `userPartition(api, surface, partition, domain?)` binds one partition: the handles typed over
 those rows (`users.create` takes `username`, an optional `password`, `disabled` and `email`,
 and the tenant partition's `role`; `users.patch` takes `username`, `disabled` and `email`;
