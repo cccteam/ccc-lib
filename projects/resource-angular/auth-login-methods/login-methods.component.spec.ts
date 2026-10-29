@@ -1338,6 +1338,8 @@ describe('LoginMethodsComponent renders the password form for a username that is
 describe('LoginMethodsComponent opens an invitation', () => {
   const noteOf = (page: Page): string | null =>
     page.element.querySelector('.ccc-login-invitation-note')?.textContent?.trim() ?? null;
+  const titleOf = (page: Page): string | null =>
+    page.element.querySelector('.ccc-login-invitation-title')?.textContent?.trim() ?? null;
 
   it('entered with ?invitation=, posts the token after the list and keeps the invitation over the list, checking for a session', async () => {
     const page = await pageOver(server({ methods: mailingList }), { invitation: 'tok-1' });
@@ -1349,11 +1351,15 @@ describe('LoginMethodsComponent opens an invitation', () => {
     ]);
     expect(page.transport.requests[2].body).toEqual({ token: 'tok-1' });
     expect(page.component.invitation()).toEqual(invited);
+    expect(titleOf(page)).toBe("You're invited to anvil");
+    // An older server did not say what holds the address: every path is offered, as before.
     expect(noteOf(page)).toBe(
-      'ensign@fleet.example is invited to anvil. Sign in to accept it, or create an account with a password.',
+      'The invitation is for ensign@fleet.example. Sign in to accept it, or create an account with a password.',
     );
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
-    expect(buttonsOf(page)).toEqual(['Sign in with Google']);
+    // The invitation names the account: the button continues as it, and no "Use a different account" is offered.
+    expect(buttonsOf(page)).toEqual(['Continue with Google as ensign@fleet.example']);
+    expect(page.element.querySelector('.ccc-login-different-account')).toBeNull();
     expect(page.element.querySelector('.ccc-login-create-account')).not.toBeNull();
     expect(page.element.querySelector('.ccc-login-accept')).toBeNull();
     // The open sign-up's own step steps aside while an invitation stands.
@@ -1362,19 +1368,13 @@ describe('LoginMethodsComponent opens an invitation', () => {
 
   it('offers the account last, under the password form and the redirect buttons, where the open sign-up stands without an invitation', async () => {
     const invited = await pageOver(server({ methods: mailingList }), { invitation: 'tok-1' });
-    expect(orderOf(invited)).toEqual([
-      'ccc-login-submit',
-      'ccc-login-redirect',
-      'ccc-login-different-account',
-      'ccc-login-create-account',
-    ]);
+    expect(orderOf(invited)).toEqual(['ccc-login-submit', 'ccc-login-redirect', 'ccc-login-create-account']);
     TestBed.resetTestingModule();
     const signedIn = await pageOver(server({ methods: mailingList, arrivesSignedIn: true }), { invitation: 'tok-1' });
     expect(orderOf(signedIn)).toEqual([
       'ccc-login-accept',
       'ccc-login-submit',
       'ccc-login-redirect',
-      'ccc-login-different-account',
       'ccc-login-create-account',
     ]);
     TestBed.resetTestingModule();
@@ -1395,7 +1395,8 @@ describe('LoginMethodsComponent opens an invitation', () => {
       }),
       { invitation: 'tok-1' },
     );
-    expect(noteOf(page)).toBe('ensign@fleet.example is invited. Sign in to accept it.');
+    expect(titleOf(page)).toBe("You're invited");
+    expect(noteOf(page)).toBe('The invitation is for ensign@fleet.example. Sign in to accept it.');
     expect(page.element.querySelector('.ccc-login-create-account')).toBeNull();
   });
 
@@ -1540,6 +1541,107 @@ describe('LoginMethodsComponent opens an invitation', () => {
     expect(page.component.invitation()).toEqual(invited);
     expect(page.cancelled).toBe(1);
   });
+
+  it('where the server says no account holds the address and no directory admits it, opens the account form by itself, without a Cancel', async () => {
+    const page = await pageOver(
+      server({
+        methods: mailingList,
+        invitationOpen: { status: 200, body: { ...invited, methods: [], accountExists: false, hasPassword: false } },
+      }),
+      { invitation: 'tok-1' },
+      { home: '/dashboard' },
+    );
+    expect(page.component.invitation()).toEqual({ ...invited, methods: [], accountExists: false, hasPassword: false });
+    expect(page.component.invitationPaths()).toEqual({ known: true, redirects: [], password: false, create: true });
+    expect(page.component.account()).toEqual({ source: 'invitation', email: invited.email, usernameIsEmail: false });
+    expect(titleOf(page)).toBe("You're invited to anvil");
+    expect(page.element.querySelector('input[name="accountUsername"]')).not.toBeNull();
+    expect(page.element.querySelector('.ccc-login-cancel')).toBeNull();
+    page.transport.requests.length = 0;
+    page.component.accountUsername = 'ensign';
+    page.component.accountPassword = 'orbit-and-anchor';
+    page.component.accountPasswordAgain = 'orbit-and-anchor';
+    await page.component.createAccount();
+    await page.settle();
+    expect(page.signedIn).toEqual(['/dashboard']);
+    expect(page.component.accountOpenedItself()).toBe(false);
+  });
+
+  it('where the server says a directory admits the address, offers "Continue with … as …" alone, naming the account to the provider', async () => {
+    const page = await pageOver(
+      server({
+        methods: { ...mailingList, methods: [password, google, fleetGoogle] },
+        invitationOpen: {
+          status: 200,
+          body: { ...invited, methods: ['google-one'], accountExists: false, hasPassword: false },
+        },
+      }),
+      { invitation: 'tok-1' },
+      { home: '/dashboard' },
+    );
+    expect(buttonsOf(page)).toEqual(['Continue with Fleet Google as ensign@fleet.example']);
+    expect(page.element.querySelector('input[name="username"]')).toBeNull();
+    expect(page.element.querySelector('.ccc-login-create-account')).toBeNull();
+    expect(page.element.querySelector('.ccc-login-different-account')).toBeNull();
+    expect(page.component.account()).toBeUndefined();
+    page.component.signInThrough(fleetGoogle);
+    expect(page.left).toEqual([
+      `/console/api/user/google-one/login?returnUrl=${encodeURIComponent('/dashboard')}&login_hint=${encodeURIComponent('ensign@fleet.example')}`,
+    ]);
+  });
+
+  it('where an account with a password holds the address, offers the password form, saying so, beside the directory button', async () => {
+    const page = await pageOver(
+      server({
+        methods: { ...mailingList, methods: [password, google, fleetGoogle] },
+        invitationOpen: {
+          status: 200,
+          body: { ...invited, methods: ['google-one'], accountExists: true, hasPassword: true },
+        },
+      }),
+      { invitation: 'tok-1' },
+    );
+    expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
+    expect(page.element.querySelector('.ccc-login-password-note')?.textContent?.trim()).toBe(
+      'Sign in with your password to accept it.',
+    );
+    expect(buttonsOf(page)).toEqual(['Continue with Fleet Google as ensign@fleet.example']);
+    expect(page.element.querySelector('.ccc-login-create-account')).toBeNull();
+    expect(page.component.account()).toBeUndefined();
+  });
+
+  it('where the account that holds the address has no password, offers the directory button alone', async () => {
+    const page = await pageOver(
+      server({
+        methods: { ...mailingList, methods: [password, google, fleetGoogle] },
+        invitationOpen: {
+          status: 200,
+          body: { ...invited, methods: ['google-one'], accountExists: true, hasPassword: false },
+        },
+      }),
+      { invitation: 'tok-1' },
+    );
+    expect(page.element.querySelector('input[name="username"]')).toBeNull();
+    expect(page.element.querySelector('.ccc-login-password-note')).toBeNull();
+    expect(buttonsOf(page)).toEqual(['Continue with Fleet Google as ensign@fleet.example']);
+    expect(page.element.querySelector('.ccc-login-create-account')).toBeNull();
+  });
+
+  it('a person found signed in is offered the acceptance alone, where a stranger would get the account form', async () => {
+    const page = await pageOver(
+      server({
+        methods: mailingList,
+        arrivesSignedIn: true,
+        invitationOpen: { status: 200, body: { ...invited, methods: [], accountExists: false, hasPassword: false } },
+      }),
+      { invitation: 'tok-1' },
+    );
+    expect(page.component.account()).toBeUndefined();
+    expect(page.element.querySelector('.ccc-login-accept')?.textContent?.trim()).toBe('Accept as overseer');
+    expect(page.element.querySelector('input[name="username"]')).toBeNull();
+    expect(buttonsOf(page)).toEqual([]);
+    expect(page.element.querySelector('.ccc-login-create-account')).toBeNull();
+  });
 });
 
 describe('LoginMethodsComponent finds the invitation the browser carries', () => {
@@ -1560,11 +1662,11 @@ describe('LoginMethodsComponent finds the invitation the browser carries', () =>
     expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/session']);
     expect(page.component.invitation()).toEqual(invited);
     expect(noteOf(page)).toBe(
-      'ensign@fleet.example is invited to anvil. Sign in to accept it, or create an account with a password.',
+      'The invitation is for ensign@fleet.example. Sign in to accept it, or create an account with a password.',
     );
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
-    // After a refusal the redirect button itself asks for the chooser and says so, so no "Use a different account" stands under it.
-    expect(buttonsOf(page)).toEqual(['Choose a Google account']);
+    // The button continues as the invited account; after the refusal it also asks the provider for its chooser.
+    expect(buttonsOf(page)).toEqual(['Continue with Google as ensign@fleet.example']);
     expect(orderOf(page)).toEqual(['ccc-login-submit', 'ccc-login-redirect', 'ccc-login-create-account']);
     expect(page.element.querySelector('.ccc-login-sign-up')).toBeNull();
     expect(page.element.querySelector('.ccc-login-accept')).toBeNull();
@@ -1585,7 +1687,7 @@ describe('LoginMethodsComponent finds the invitation the browser carries', () =>
       }),
     );
     expect(page.component.invitation()).toEqual({ ...invited, signUp: false });
-    expect(noteOf(page)).toBe('ensign@fleet.example is invited to anvil. Sign in to accept it.');
+    expect(noteOf(page)).toBe('The invitation is for ensign@fleet.example. Sign in to accept it.');
     expect(page.element.querySelector('.ccc-login-create-account')).toBeNull();
     expect(page.element.querySelector('.ccc-login-accept')?.textContent?.trim()).toBe('Accept as overseer');
     // The session found standing is offered the acceptance, not Continue and Sign out.
@@ -1608,7 +1710,42 @@ describe('LoginMethodsComponent finds the invitation the browser carries', () =>
       'GET /console/api/user/session',
     ]);
     expect(page.component.invitation()).toEqual({ ...invited, email: 'cadet@fleet.example' });
-    expect(noteOf(page)).toContain('cadet@fleet.example is invited to anvil.');
+    expect(noteOf(page)).toContain('The invitation is for cadet@fleet.example.');
+  });
+
+  it('refused as another account than the invited one, names the address and sends the provider the account with its chooser', async () => {
+    const page = await pageOver(
+      server({
+        methods: {
+          ...mailingList,
+          invitation: {
+            ...invitationRoutes,
+            standing: { ...standing, methods: ['google'], accountExists: false, hasPassword: false },
+          },
+        },
+      }),
+      { code: 'invitation_address' },
+      { home: '/dashboard' },
+    );
+    expect(page.component.invitation()).toEqual({
+      ...invited,
+      methods: ['google'],
+      accountExists: false,
+      hasPassword: false,
+    });
+    expect(messageOf(page)).toBe('This invitation is for ensign@fleet.example. Sign in with that account.');
+    expect(buttonsOf(page)).toEqual(['Continue with Google as ensign@fleet.example']);
+    expect(page.element.querySelector('input[name="username"]')).toBeNull();
+    expect(page.component.account()).toBeUndefined();
+    page.component.signInThrough(google);
+    expect(page.left).toEqual([
+      `/console/api/user/google/login?returnUrl=${encodeURIComponent('/dashboard')}&prompt=select_account&login_hint=${encodeURIComponent('ensign@fleet.example')}`,
+    ]);
+  });
+
+  it('says the default sentence for invitation_address when no invitation stands any more', async () => {
+    const page = await pageOver(server({ methods: mailingList }), { code: 'invitation_address' });
+    expect(messageOf(page)).toBe(DEFAULT_LOGIN_MESSAGES['invitation_address']);
   });
 
   it('a list naming no standing invitation shows no note, the refusal alone over the list', async () => {
@@ -1642,21 +1779,16 @@ describe('LoginMethodsComponent shows the directory buttons that could admit the
   it('shows only the registrations the standing invitation names, the password form and the account staying', async () => {
     const page = await pageOver(server({ methods: listNaming(['google-one']) }));
     expect(page.component.invitation()).toEqual({ ...invited, methods: ['google-one'] });
-    expect(buttonsOf(page)).toEqual(['Sign in with Fleet Google']);
+    expect(buttonsOf(page)).toEqual(['Continue with Fleet Google as ensign@fleet.example']);
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
-    expect(orderOf(page)).toEqual([
-      'ccc-login-submit',
-      'ccc-login-redirect',
-      'ccc-login-different-account',
-      'ccc-login-create-account',
-    ]);
+    expect(orderOf(page)).toEqual(['ccc-login-submit', 'ccc-login-redirect', 'ccc-login-create-account']);
   });
 
   it('shows no redirect button when the invitation names none, the note and the account still there', async () => {
     const page = await pageOver(server({ methods: listNaming([]) }));
     expect(buttonsOf(page)).toEqual([]);
     expect(noteOf(page)).toBe(
-      'ensign@fleet.example is invited to anvil. Sign in to accept it, or create an account with a password.',
+      'The invitation is for ensign@fleet.example. Sign in to accept it, or create an account with a password.',
     );
     expect(page.element.querySelector('.ccc-login-create-account')).not.toBeNull();
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
@@ -1665,7 +1797,10 @@ describe('LoginMethodsComponent shows the directory buttons that could admit the
   it('shows every redirect button when the invitation does not say, as an older server answers', async () => {
     const page = await pageOver(server({ methods: listNaming() }));
     expect(page.component.invitation()).toEqual(invited);
-    expect(buttonsOf(page)).toEqual(['Sign in with Google', 'Sign in with Fleet Google']);
+    expect(buttonsOf(page)).toEqual([
+      'Continue with Google as ensign@fleet.example',
+      'Continue with Fleet Google as ensign@fleet.example',
+    ]);
   });
 
   it('narrows the buttons the same way for an invitation opened from its token', async () => {
@@ -1677,8 +1812,8 @@ describe('LoginMethodsComponent shows the directory buttons that could admit the
       { invitation: 'tok-1' },
     );
     expect(page.component.invitation()).toEqual({ ...invited, methods: ['google-one'] });
-    expect(buttonsOf(page)).toEqual(['Sign in with Fleet Google']);
-    // The invitation accepted, every button is back for the next person.
+    expect(buttonsOf(page)).toEqual(['Continue with Fleet Google as ensign@fleet.example']);
+    // The invitation accepted, every button is back for the next person, in its plain words.
     page.component.username = 'ensign';
     page.component.password = 'orbit-and-anchor';
     await page.component.login();

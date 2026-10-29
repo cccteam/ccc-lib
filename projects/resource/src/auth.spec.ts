@@ -254,6 +254,16 @@ describe('a redirect method', () => {
     );
   });
 
+  it('names the account the provider should take, as its login hint, beside the chooser or alone', () => {
+    const { auth } = authOver(server());
+    expect(auth.signInUrl(google, '/console/missions', { loginHint: 'ensign@fleet.example' })).toBe(
+      '/console/api/user/google/login?returnUrl=%2Fconsole%2Fmissions&login_hint=ensign%40fleet.example',
+    );
+    expect(auth.signInUrl(google, undefined, { selectAccount: true, loginHint: 'ensign@fleet.example' })).toBe(
+      '/console/api/user/google/login?prompt=select_account&login_hint=ensign%40fleet.example',
+    );
+  });
+
   it('is refused as a URL when it is a password method', () => {
     const { auth } = authOver(server());
     expect(() => auth.signInUrl(password)).toThrow('not a redirect');
@@ -773,6 +783,27 @@ describe('the mailed links in the list', () => {
     expect(await none.methods()).toEqual(mailingList);
   });
 
+  it('keeps what the standing block says of the invited account, and nothing where the server did not say', async () => {
+    const plain = {
+      email: 'ensign@fleet.example',
+      tenant: 'anvil',
+      expiresAt: '2026-10-30T12:00:00Z',
+      usernameIsEmail: true,
+      methods: ['google'],
+    };
+    const standing = { ...plain, accountExists: true, hasPassword: true };
+    const carrying = authOver(
+      server({ methods: { ...mailingList, invitation: { ...invitationRoutes, standing } } }),
+    ).auth;
+    expect((await carrying.methods()).invitation?.standing).toEqual(standing);
+    const unsaid = authOver(
+      server({
+        methods: { ...mailingList, invitation: { ...invitationRoutes, standing: { ...standing, accountExists: 'yes' } } },
+      }),
+    ).auth;
+    expect((await unsaid.methods()).invitation?.standing).toEqual(plain);
+  });
+
   it('keeps the registration names the standing invitation says could admit the address, strings only, and none where it names none', async () => {
     const standing = { email: 'ensign@fleet.example', tenant: '', expiresAt: 'soon', usernameIsEmail: false };
     const named = authOver(
@@ -809,6 +840,35 @@ describe('the mailed links in the list', () => {
 });
 
 describe('an invitation', () => {
+  it('carries what the server says of the invited account, and nothing where an older server says nothing', async () => {
+    const known = authOver(
+      server({
+        methods: mailingList,
+        invitationOpen: { status: 200, body: { ...opened, accountExists: true, hasPassword: false } },
+      }),
+    ).auth;
+    expect(await known.openInvitation('tok-1')).toEqual({
+      outcome: 'opened',
+      ...opened,
+      accountExists: true,
+      hasPassword: false,
+    });
+    // hasPassword is read only beside accountExists, and is false unless the server said true.
+    const partial = authOver(
+      server({ methods: mailingList, invitationOpen: { status: 200, body: { ...opened, accountExists: false } } }),
+    ).auth;
+    expect(await partial.openInvitation('tok-1')).toEqual({
+      outcome: 'opened',
+      ...opened,
+      accountExists: false,
+      hasPassword: false,
+    });
+    const older = authOver(
+      server({ methods: mailingList, invitationOpen: { status: 200, body: { ...opened, hasPassword: true } } }),
+    ).auth;
+    expect(await older.openInvitation('tok-1')).toEqual({ outcome: 'opened', ...opened });
+  });
+
   it('is opened after the list is read again, posting the token, and described as the server answers', async () => {
     const { auth, transport } = authOver(server({ methods: mailingList }));
     const result = await auth.openInvitation('tok-1');

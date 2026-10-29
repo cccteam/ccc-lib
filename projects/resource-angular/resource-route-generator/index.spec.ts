@@ -3,7 +3,7 @@ import { CanMatchFn, Route } from '@angular/router';
 import { createClient } from '@cccteam/resource';
 import { scriptedTransport } from '@cccteam/resource/testing';
 import { AuthorizationGuard } from '@cccteam/resource-angular/auth-authorization-guard';
-import { resourcePageRoute } from '@cccteam/resource-angular/resource-nav';
+import { generatedNavItems, resourcePageRoute } from '@cccteam/resource-angular/resource-nav';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 import { provideResourceTesting } from '@cccteam/resource-angular/testing';
 import {
@@ -82,6 +82,24 @@ describe('resourceRoutes', () => {
       }
     });
   }
+
+  describe('in the navigation', () => {
+    it('lists the page at the top level when the config names no group, and in its group when it does', () => {
+      const top = config_();
+      resourceRoutes(top, meta);
+      expect(generatedNavItems).toContain(top.nav.navItem);
+      expect(top.nav.navItem.route).toEqual(['clients']);
+      const grouped = rootConfig({
+        routeData: { route: 'crew/clients' },
+        nav: { navItem: { label: 'Clients' }, group: 'Crew' },
+        parentConfig: listViewConfig({ primaryResource: clients, listColumns: [], elements: [] }),
+      });
+      resourceRoutes(grouped, meta);
+      expect(generatedNavItems).not.toContain(grouped.nav.navItem);
+      expect(generatedNavItems.find((item) => item.label === 'Crew')?.children).toContain(grouped.nav.navItem);
+      expect(grouped.nav.navItem.route).toEqual(['crew/clients']);
+    });
+  });
 
   describe('over a view declaring its table', () => {
     const boards = 'CrewBoards' as Resource;

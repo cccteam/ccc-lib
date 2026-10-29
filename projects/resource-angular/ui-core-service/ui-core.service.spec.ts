@@ -78,6 +78,7 @@ describe('UiCoreService login messages', () => {
       'connection_not_in_tenant',
       'directory_only',
       'invitation_only',
+      'invitation_address',
     ];
     // The login page's own codes, never sent by a server: the arrival's reads got no answer it could show.
     const pageCodes = ['unreachable'];

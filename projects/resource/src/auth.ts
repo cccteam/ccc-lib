@@ -91,6 +91,10 @@ export interface StandingInvitation {
   readonly usernameIsEmail: boolean;
   /** The registration names of the listed directory methods that could admit the address, as `OpenedInvitation.methods`; absent when the server did not say. */
   readonly methods?: readonly string[];
+  /** An account already holds the invited address; absent when the server did not say (an older server). */
+  readonly accountExists?: boolean;
+  /** That account signs in with a password; absent when the server did not say. */
+  readonly hasPassword?: boolean;
 }
 
 /** The paths of the email address handlers: `add`, where a signed-in person asks for a confirmation link, and `verify`, where the page posts the token it carried. */
@@ -153,6 +157,14 @@ export interface OpenedInvitation {
    * empty; absent when the server did not say.
    */
   readonly methods?: readonly string[];
+  /**
+   * An account already holds the invited address, and whether it signs in with a password:
+   * the page offers that account's password form, and offers to create an account only
+   * where none holds the address. Absent when the server did not say (an older server),
+   * where the page offers every path.
+   */
+  readonly accountExists?: boolean;
+  readonly hasPassword?: boolean;
 }
 
 /**
@@ -324,6 +336,14 @@ export interface SignInUrlOptions {
    * account". Any other prompt is the server's to refuse.
    */
   readonly selectAccount?: boolean;
+  /**
+   * The account the provider should take (`login_hint` on the method's path): the
+   * person's email address, so a provider holding that account signed in takes it and
+   * skips its chooser, and one not holding it pre-fills its sign-in form. The login page
+   * sends the invited address while an invitation stands. A hint is never read back by
+   * the server; the identity comes from the provider.
+   */
+  readonly loginHint?: string;
 }
 
 export interface AuthClientOptions {
@@ -359,6 +379,12 @@ const verifyRefusals: readonly number[] = [400, 404, 409];
  * 401, returning the browser to the login page, where the change form is served.
  */
 export const passwordChangeRequiredCode = 'password_change_required';
+/**
+ * The refusal code of a directory sign-in that carried an invitation mailed to another
+ * address: the invitation is accepted only as the invited address, and still stands. A login
+ * page names the invited address with it, which it knows from the invitation it carries.
+ */
+export const invitationAddressCode = 'invitation_address';
 
 /** Whether a refusal is the server's answer to a session whose password must change: a 403 carrying the code. */
 export function refusedForPasswordChange(refusal: { status: number; body: unknown }): boolean {
@@ -464,10 +490,11 @@ export class AuthClient {
   /**
    * The URL a redirect method's button sends the browser to: the method's path, naming
    * the page in the application the sign-in returns to as `returnUrl` when one is given,
-   * and asking the provider for its account chooser (`prompt=select_account`) when
-   * `options.selectAccount` is set. The server sanitizes the page to a path in the
-   * application. Nothing is requested here: the page assigns the URL to the browser's
-   * location.
+   * asking the provider for its account chooser (`prompt=select_account`) when
+   * `options.selectAccount` is set, and naming the account the provider should take
+   * (`login_hint`) when `options.loginHint` is set. The server sanitizes the page to a
+   * path in the application. Nothing is requested here: the page assigns the URL to the
+   * browser's location.
    */
   signInUrl(method: LoginMethod, returnUrl?: string, options: SignInUrlOptions = {}): string {
     if (method.kind !== 'redirect') {
@@ -478,6 +505,7 @@ export class AuthClient {
     const query = [
       returnUrl ? `returnUrl=${encodeURIComponent(returnUrl)}` : '',
       options.selectAccount ? 'prompt=select_account' : '',
+      options.loginHint ? `login_hint=${encodeURIComponent(options.loginHint)}` : '',
     ]
       .filter((part) => part !== '')
       .join('&');
@@ -677,6 +705,7 @@ export class AuthClient {
       signUp: body.signUp === true,
       usernameIsEmail: body.usernameIsEmail === true,
       ...(methods === undefined ? {} : { methods }),
+      ...accountFactsOf(body),
     };
   }
 
@@ -988,7 +1017,24 @@ function standingOf(value: Partial<StandingInvitation> | null | undefined): Stan
     expiresAt: stringOf(value.expiresAt),
     usernameIsEmail: value.usernameIsEmail === true,
     ...(methods === undefined ? {} : { methods }),
+    ...accountFactsOf(value),
   };
+}
+
+/**
+ * The account facts an invitation answer carries, when it carries them: whether an account
+ * holds the invited address and whether it signs in with a password. Both are read only
+ * when the server said whether an account exists; an older server says nothing, and the
+ * facts stay absent.
+ */
+function accountFactsOf(value: { accountExists?: unknown; hasPassword?: unknown }): {
+  accountExists?: boolean;
+  hasPassword?: boolean;
+} {
+  if (typeof value.accountExists !== 'boolean') {
+    return {};
+  }
+  return { accountExists: value.accountExists, hasPassword: value.hasPassword === true };
 }
 
 /** The registration names an invitation answer lists, strings only; undefined where it lists none, or what it lists is not a list. */

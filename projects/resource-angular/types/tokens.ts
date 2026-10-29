@@ -230,6 +230,8 @@ export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
   organization_mismatch: 'This account belongs to a different organization than the one you signed in through.',
   identity_rejected: 'This account could not be matched to a user of this application.',
   not_invited: 'This account has not been invited to this application.',
+  // The login page names the invited address itself while the invitation stands; this is the sentence without it.
+  invitation_address: 'This invitation is for another account. Sign in with the account it was sent to.',
   guest_account: 'Guest accounts cannot sign in here. Use an account that is a member of the organization.',
   policy_denied: 'Signing in this way is not allowed for this account.',
   user_disabled: 'This account has been disabled. Please contact your administrator.',

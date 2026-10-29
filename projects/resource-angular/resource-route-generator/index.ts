@@ -16,7 +16,8 @@ import {
 } from '@cccteam/resource-angular/types';
 
 /**
- * Builds the routes for a config-driven resource and registers its navigation item.
+ * Builds the routes for a config-driven resource and lists it in the navigation, in the
+ * group the config names or at the top level when it names none.
  *
  * The routes are guarded by the resource's List permission, answered from the permission
  * digest by the AuthorizationGuard, and the navigation item carries the same scope so a
@@ -57,15 +58,10 @@ export const resourceRoutes = (config: RootConfig, resourceMeta: (resource: Reso
   // The page is matched only while its flag is on; an ungated page is matched as any other.
   const gated = (route: Route): Route => (meta.feature ? { ...route, canMatch: [featureMatch(meta.feature)] } : route);
 
-  if (config.nav.group) {
-    if (config.routeData.route) {
-      addNavItem(config.nav, config.routeData.route);
-    } else {
-      addNavItem(config.nav, meta.route);
-    }
-  }
-
   const pageRoute = config.routeData.route || meta.route;
+  // The page is listed in the navigation at its route: in the group the config names, or
+  // at the top level when it names none.
+  addNavItem(config.nav, pageRoute);
   const rowResource = writeResource(resource, meta);
   const keyless = keyFields(meta).length === 0;
   if (!keyless) {
