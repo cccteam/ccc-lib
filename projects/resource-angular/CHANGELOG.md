@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.21](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.20...resource-angular/v0.0.21) (2026-10-29)
+
+
+### Features
+
+* **resource-angular:** the login card says the server did not answer, the tokens page and the Users page act one step at a time in named dialogs, and an action dialog any page may ask in ([#170](https://github.com/cccteam/ccc-lib/issues/170)) ([73b75ec](https://github.com/cccteam/ccc-lib/commit/73b75ec0717cc9a2ccec8102c5cbeb2bb140a828))
+* the login page declares the sign-in steps it renders (cccteam.signInSteps in @cccteam/resource-angular's package.json, SIGN_IN_STEPS in the component), for the framework's release check, and a step it does not render says the page is older than the server and asks for a reload instead of "needs another step" ([#171](https://github.com/cccteam/ccc-lib/issues/171)) ([f248c7a](https://github.com/cccteam/ccc-lib/commit/f248c7afc3f423904d482b5eadfa9604758c9d55))
+
 ## [0.0.20](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.19...resource-angular/v0.0.20) (2026-10-28)
 
 

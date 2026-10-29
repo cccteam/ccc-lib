@@ -1,6 +1,6 @@
 {
   "name": "@cccteam/resource-angular",
-  "version": "0.0.20",
+  "version": "0.0.21",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/cccteam/ccc-lib.git",
@@ -24,7 +24,10 @@
   },
   "sideEffects": false,
   "cccteam": {
-    "signInSteps": ["confirmation", "mfa:email-code"]
+    "signInSteps": [
+      "confirmation",
+      "mfa:email-code"
+    ]
   },
   "exports": {
     "./styles": {
