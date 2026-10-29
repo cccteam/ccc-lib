@@ -133,6 +133,18 @@ page as the one to return to, resolved against the document's base; the server's
 the browser back there signed in, or back to the login page with `?code=` for a refusal or
 `?pending=` for a step that waits.
 
+After a refusal, every redirect button asks the provider for its account chooser
+(`prompt=select_account` on the method's path), so a person refused with the wrong account picks
+another instead of being sent round the same loop by a provider that signs its one signed-in
+account in again without asking; on a stop without a refusal, a "Use a different account" button
+under each redirect button asks the same, and the redirect button itself asks nothing, so the
+single-account person pays no click. An arrival from a deep link (the guard recorded the page) into
+an application whose only method is a redirect forwards to it at once, rendering nothing: the
+provider signs the person in and returns them to the page, an expired session included. The page
+stops, with its buttons, when the guard recorded nothing (a direct visit, a bookmark, the page
+sign-out lands on), when the URL carries a refusal code, a step or a mailed link's token, when the
+list offers more than one method or a password, and when a session is found standing.
+
 The page ends no session on arrival, so a link to it signs nobody out: a bookmark, the back
 button, a mailed link. With nothing in the URL to act on, the component reads the session after
 the list, and one it finds standing takes the list's place with who is signed in, Continue (the

@@ -327,6 +327,8 @@ switch (result.outcome) {
 
 // A redirect method is a navigation, with the page to return to.
 location.assign(api.auth.signInUrl(google, '/console/missions'));
+// After a refusal, or under "Use a different account": the provider shows its account chooser.
+location.assign(api.auth.signInUrl(google, '/console/missions', { selectAccount: true }));
 ```
 
 Every step that posts reads the list again first. The list's answer refreshes the XSRF cookie

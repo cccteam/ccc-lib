@@ -241,6 +241,19 @@ describe('a redirect method', () => {
     expect(auth.signInUrl(google)).toBe('/console/api/user/google/login');
   });
 
+  it('asks the provider for its account chooser when told to, beside the page or alone', () => {
+    const { auth } = authOver(server());
+    expect(auth.signInUrl(google, '/console/missions', { selectAccount: true })).toBe(
+      '/console/api/user/google/login?returnUrl=%2Fconsole%2Fmissions&prompt=select_account',
+    );
+    expect(auth.signInUrl(google, undefined, { selectAccount: true })).toBe(
+      '/console/api/user/google/login?prompt=select_account',
+    );
+    expect(auth.signInUrl(google, '/console/missions', { selectAccount: false })).toBe(
+      '/console/api/user/google/login?returnUrl=%2Fconsole%2Fmissions',
+    );
+  });
+
   it('is refused as a URL when it is a password method', () => {
     const { auth } = authOver(server());
     expect(() => auth.signInUrl(password)).toThrow('not a redirect');
