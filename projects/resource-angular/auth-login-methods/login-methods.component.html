@@ -224,18 +224,24 @@
       class="ccc-login-redirect"
       [disabled]="busy()"
       (click)="signInThrough(method)">
-      Sign in with {{ labelOf(method) }}
+      {{ redirectCaption(method) }}
     </button>
-    @if (!afterRefusal()) {
-      <button
-        mat-button
-        type="button"
-        class="ccc-login-different-account"
-        [disabled]="busy()"
-        (click)="signInThrough(method, true)">
-        Use a different {{ labelOf(method) }} account
-      </button>
-    }
+  }
+  @if (offeredRedirectMethods().length > 0 && !afterRefusal()) {
+    <div class="ccc-login-chooser">
+      @if (differentAccount()) {
+        <span class="ccc-login-chooser-note">The provider will ask you which account</span>
+      } @else {
+        <button
+          mat-button
+          type="button"
+          class="ccc-login-different-account"
+          [disabled]="busy()"
+          (click)="useDifferentAccount()">
+          Use a different account
+        </button>
+      }
+    </div>
   }
   @if (invitation(); as invited) {
     @if (invited.signUp) {

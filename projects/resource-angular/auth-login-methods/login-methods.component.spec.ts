@@ -434,7 +434,8 @@ describe('LoginMethodsComponent renders the list', () => {
       await page.settle();
       expect(page.component.arriving()).toBe(false);
       expect(retryButton(page)).toBeNull();
-      expect(buttonsOf(page)).toEqual(['Sign in with Google']);
+      // The URL carries a refusal, so the button already asks for the chooser and says so.
+      expect(buttonsOf(page)).toEqual(['Choose a Google account']);
       expect(messageOf(page)).toBe('This account has no role in this application. Please contact your administrator.');
       expect(sent(transport).filter((line) => line === 'GET /console/api/user/methods')).toHaveLength(2);
     });
@@ -649,23 +650,53 @@ describe('LoginMethodsComponent sends the browser to a redirect method', () => {
     expect(page.left).toEqual([]);
   });
 
-  it('after a refusal in the URL, asks the provider for its account chooser, and offers no "Use a different account"', async () => {
+  it('after a refusal in the URL, asks the provider for its account chooser, says so on the button, and offers no "Use a different account"', async () => {
     const page = await pageOver(server(), { code: 'not_invited' }, { home: '/dashboard' });
     expect(page.element.querySelector('.ccc-login-different-account')).toBeNull();
+    expect(page.element.querySelector('.ccc-login-chooser-note')).toBeNull();
+    expect(buttonsOf(page)).toEqual(['Choose a Google account']);
     page.component.signInThrough(google);
     expect(page.left).toEqual([
       `/console/api/user/google/login?returnUrl=${encodeURIComponent('/dashboard')}&prompt=select_account`,
     ]);
   });
 
-  it('offers "Use a different account" under the button on a stop without a refusal, which asks for the chooser', async () => {
-    const page = await pageOver(server(), {}, { home: '/dashboard' });
+  it('offers one "Use a different account" under the redirect buttons on a stop without a refusal; pressed, every button becomes a chooser', async () => {
+    const page = await pageOver(
+      server({ methods: { methods: [password, google, entra], pending: pendingRoutes } }),
+      {},
+      { home: '/dashboard' },
+    );
     const links = Array.from(page.element.querySelectorAll<HTMLButtonElement>('.ccc-login-different-account'));
-    expect(links.map((link) => link.textContent?.trim())).toEqual(['Use a different Google account']);
-    links[0]?.click();
-    expect(page.left).toEqual([
-      `/console/api/user/google/login?returnUrl=${encodeURIComponent('/dashboard')}&prompt=select_account`,
+    expect(links.map((link) => link.textContent?.trim())).toEqual(['Use a different account']);
+    expect(buttonsOf(page)).toEqual(['Sign in with Google', 'Sign in with Lakeside staff']);
+    expect(orderOf(page)).toEqual([
+      'ccc-login-submit',
+      'ccc-login-redirect',
+      'ccc-login-redirect',
+      'ccc-login-different-account',
     ]);
+    links[0]?.click();
+    page.fixture.detectChanges();
+    // The press sends nobody anywhere: it changes what the buttons will ask for, and says so.
+    expect(page.left).toEqual([]);
+    expect(buttonsOf(page)).toEqual(['Choose a Google account', 'Choose a Lakeside staff account']);
+    expect(page.element.querySelector('.ccc-login-different-account')).toBeNull();
+    expect(page.element.querySelector('.ccc-login-chooser-note')?.textContent?.trim()).toBe(
+      'The provider will ask you which account',
+    );
+    page.component.signInThrough(entra);
+    expect(page.left).toEqual([
+      `/console/api/user/lakeside-entra/login?returnUrl=${encodeURIComponent('/dashboard')}&prompt=select_account`,
+    ]);
+    // A label that opens with a vowel takes "an".
+    expect(page.component.redirectCaption({ ...google, label: 'Okta' })).toBe('Choose an Okta account');
+  });
+
+  it('offers no "Use a different account" when the list has no redirect method', async () => {
+    const page = await pageOver(server({ methods: { methods: [password], pending: pendingRoutes } }));
+    expect(page.element.querySelector('.ccc-login-different-account')).toBeNull();
+    expect(page.element.querySelector('.ccc-login-chooser')).toBeNull();
   });
 });
 
@@ -1532,8 +1563,8 @@ describe('LoginMethodsComponent finds the invitation the browser carries', () =>
       'ensign@fleet.example is invited to anvil. Sign in to accept it, or create an account with a password.',
     );
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
-    expect(buttonsOf(page)).toEqual(['Sign in with Google']);
-    // After a refusal the redirect button itself asks for the chooser, so no "Use a different account" stands under it.
+    // After a refusal the redirect button itself asks for the chooser and says so, so no "Use a different account" stands under it.
+    expect(buttonsOf(page)).toEqual(['Choose a Google account']);
     expect(orderOf(page)).toEqual(['ccc-login-submit', 'ccc-login-redirect', 'ccc-login-create-account']);
     expect(page.element.querySelector('.ccc-login-sign-up')).toBeNull();
     expect(page.element.querySelector('.ccc-login-accept')).toBeNull();
