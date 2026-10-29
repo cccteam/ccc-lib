@@ -218,7 +218,7 @@ const rows = (): ManagedUser[] => [
       {
         id: 'i-1',
         method: 'google',
-        connection: 'google',
+        connection: 'fleet.example',
         subject: '1001',
         organization: 'fleet.example',
         email: 'hollis@fleet.example',
@@ -570,7 +570,11 @@ describe('UserManagementComponent reads the partition', () => {
       'pip@fleet.example · unconfirmed',
     ]);
     expect(table.map((row) => cell(row, 'status'))).toEqual(['Active', 'Active · password change pending', 'Disabled']);
-    expect(table.map((row) => cell(row, 'means'))).toEqual(['Password, Fleet directory', 'Password', 'Password']);
+    expect(table.map((row) => cell(row, 'means'))).toEqual([
+      'Password, Google (fleet.example)',
+      'Password',
+      'Password',
+    ]);
     expect(roleLines(table[0])).toEqual([
       ['Harbormaster', 'Every tenant'],
       ['Sector Crew', 'Every tenant'],
@@ -1233,7 +1237,7 @@ describe('UserManagementComponent manages an account', () => {
       'Change email address',
       'Set a temporary password',
       'Forget remembered browsers',
-      'Unlink Fleet directory',
+      'Unlink Google (fleet.example)',
       'Disable',
       'Delete',
     ]);
@@ -1385,7 +1389,7 @@ describe('UserManagementComponent manages an account', () => {
     const page = await pageOver(state);
     page.transport.requests.length = 0;
     await pick(page, 'hollis', '.ccc-user-unlink');
-    expect(textOf(inDialog('.ccc-action-title'))).toBe('Unlink Fleet directory from hollis?');
+    expect(textOf(inDialog('.ccc-action-title'))).toBe('Unlink Google (fleet.example) from hollis?');
     expect(textOf(inDialog('.ccc-action-words'))).toBe('hollis can no longer sign in that way.');
     await cancelDialog(page);
     expect(page.transport.requests).toEqual([]);
@@ -1555,6 +1559,24 @@ describe('UserManagementComponent manages the invitations', () => {
     TestBed.resetTestingModule();
     const neither = await pageOver(server({ digest: { ...grantedAll, CrewInvitations: {} } }));
     expect(neither.element.querySelector('.ccc-invitations')).toBeNull();
+  });
+
+  it('names an identity by its provider and the organization the link carries, never by its connection', async () => {
+    const page = await pageOver(server());
+    const link = {
+      id: 'i-9',
+      connection: 'c-1',
+      subject: 's-1',
+      email: null,
+      linkedAt: '2026-10-02T09:00:00Z',
+      lastUsedAt: '2026-10-02T09:00:00Z',
+    };
+    expect(page.component.identityLabel({ ...link, method: 'google', organization: 'fleet.example' })).toBe(
+      'Google (fleet.example)',
+    );
+    expect(page.component.identityLabel({ ...link, method: 'azure', organization: null })).toBe('Microsoft');
+    expect(page.component.identityLabel({ ...link, method: 'workos', organization: 'org_01' })).toBe('WorkOS (org_01)');
+    expect(page.component.identityLabel({ ...link, method: 'saml', organization: null })).toBe('saml');
   });
 
   it('a partition whose descriptor names no invitations has no block', async () => {
