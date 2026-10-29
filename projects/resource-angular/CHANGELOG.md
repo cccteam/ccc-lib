@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.23](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.22...resource-angular/v0.0.23) (2026-10-29)
+
+
+### Features
+
+* **resource,resource-angular:** the login page forwards a deep link straight to the only redirect sign-in method and stops on a direct visit, a refusal, a step or a second method; after a refusal the same redirect button asks the provider for its account chooser (prompt=select_account, through signInUrl's new selectAccount option) and a direct visit offers "Use a different account" under each redirect button ([#175](https://github.com/cccteam/ccc-lib/issues/175)) ([b293031](https://github.com/cccteam/ccc-lib/commit/b29303151f87cc46c78c043f5268f9898e285a7b))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.15 to ^0.0.16
+
 ## [0.0.22](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.21...resource-angular/v0.0.22) (2026-10-29)
 
 
