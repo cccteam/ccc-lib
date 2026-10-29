@@ -1,3 +1,5 @@
+import { CdkMenuModule } from '@angular/cdk/menu';
+import { ConnectedPosition } from '@angular/cdk/overlay';
 import { DatePipe } from '@angular/common';
 import {
   Component,
@@ -22,7 +24,6 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import {
   Capability,
@@ -120,6 +121,22 @@ interface NewInvitation {
 const emptyNewInvitation = (): NewInvitation => ({ email: '', roles: [] });
 
 /**
+ * Where a row's actions menu opens: the places its trigger tries in order, the first that
+ * fits taken. Below the button with the right edges aligned, the usual dropdown; above it
+ * the same way; beside it to its left with the top edges aligned; then with the bottom
+ * edges aligned. Material's own menu knows below and above alone and, when neither fits, is
+ * pushed into the window over the button that opened it; a place beside the button keeps
+ * that button and the other rows' buttons in view, and when neither alignment fits the
+ * menu is shifted along the button to stay in the window, still beside it.
+ */
+export const rowMenuPositions: ConnectedPosition[] = [
+  { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top' },
+  { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom' },
+  { originX: 'start', originY: 'top', overlayX: 'end', overlayY: 'top' },
+  { originX: 'start', originY: 'bottom', overlayX: 'end', overlayY: 'bottom' },
+];
+
+/**
  * The user-management page over one partition of an Auth's surface. The component
  * configures itself from the descriptor's `userSurfaces` block: `auth` names the surface
  * (the first one by default) and `domain` binds the tenant partition, the global one when
@@ -176,6 +193,7 @@ const emptyNewInvitation = (): NewInvitation => ({ email: '', roles: [] });
 @Component({
   selector: 'ccc-user-management',
   imports: [
+    CdkMenuModule,
     DatePipe,
     FormsModule,
     MatAutocompleteModule,
@@ -185,7 +203,6 @@ const emptyNewInvitation = (): NewInvitation => ({ email: '', roles: [] });
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatMenuModule,
     MatSelectModule,
     RoleTitlePipe,
   ],
@@ -203,6 +220,8 @@ export class UserManagementComponent {
   private dialogRef: MatDialogRef<unknown> | undefined;
   /** The next roles row's key. */
   private nextKey = 0;
+  /** Where a row's actions menu opens, handed to the row's trigger. */
+  readonly menuPositions = rowMenuPositions;
 
   /** The Auth whose surface the page serves, by name; the descriptor's first surface when omitted. */
   auth = input<string | undefined>(undefined);
@@ -765,7 +784,11 @@ export class UserManagementComponent {
     const confirmed = await askInDialog(
       this.dialog,
       disabled
-        ? { title: `Disable ${row.username}?`, words: `${row.username} cannot sign in until enabled again.`, confirm: 'Disable' }
+        ? {
+            title: `Disable ${row.username}?`,
+            words: `${row.username} cannot sign in until enabled again.`,
+            confirm: 'Disable',
+          }
         : { title: `Enable ${row.username}?`, words: `${row.username} can sign in again.`, confirm: 'Enable' },
     );
     if (confirmed !== true) {

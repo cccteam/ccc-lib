@@ -449,10 +449,10 @@ const openMenu = async (page: Page, username: string): Promise<HTMLElement> => {
 };
 /** The menu's items by their words, top to bottom. */
 const menuItems = (menu: HTMLElement): string[] =>
-  Array.from(menu.querySelectorAll('.mat-mdc-menu-item')).map((item) => textOf(item));
-/** Closes the open menu by its backdrop. */
+  Array.from(menu.querySelectorAll('.ccc-menu-item')).map((item) => textOf(item));
+/** Closes the open menu by a click elsewhere on the page. */
 const closeMenu = async (page: Page): Promise<void> => {
-  await click(page, document.body.querySelector('.cdk-overlay-backdrop'));
+  await click(page, page.element.querySelector('.ccc-users-heading'));
   await turn();
   await page.settle();
 };
@@ -1012,7 +1012,12 @@ describe('UserManagementComponent edits access', () => {
     const page = await pageOver(
       server({
         rows: [
-          user({ id: 'u-ash', username: 'ash', roles: ['Headquarters'], everywhereRoles: ['Harbormaster', 'SectorCrew'] }),
+          user({
+            id: 'u-ash',
+            username: 'ash',
+            roles: ['Headquarters'],
+            everywhereRoles: ['Harbormaster', 'SectorCrew'],
+          }),
         ],
       }),
     );
@@ -1023,7 +1028,9 @@ describe('UserManagementComponent edits access', () => {
     TestBed.resetTestingModule();
     const tenant = await pageOver(
       server({
-        rows: [user({ id: 'u-ash', username: 'ash', roles: ['SectorCrew', 'DockHand'], everywhereRoles: ['Harbormaster'] })],
+        rows: [
+          user({ id: 'u-ash', username: 'ash', roles: ['SectorCrew', 'DockHand'], everywhereRoles: ['Harbormaster'] }),
+        ],
         roles: [{ name: 'DockHand' }, { name: 'Harbormaster' }, { name: 'SectorCrew' }],
       }),
       { domain: 'sector-7' },
@@ -1239,6 +1246,28 @@ describe('UserManagementComponent manages an account', () => {
     const pip = await openMenu(page, 'pip');
     expect(menuItems(pip)).toContain('Enable');
     expect(menuItems(pip)).not.toContain('Disable');
+  });
+
+  it("the row's menu opens from its button at the first of four places that fits, below, above, then beside it, with the menu roles, and the button says it is open until a click elsewhere closes it", async () => {
+    const page = await pageOver(server());
+    const button = page.element.querySelector<HTMLButtonElement>('button[aria-label="Actions for hollis"]');
+    expect(button?.getAttribute('aria-haspopup')).toBe('menu');
+    expect(button?.getAttribute('aria-expanded')).toBe('false');
+    expect(page.component.menuPositions.map((p) => `${p.originX}-${p.originY}/${p.overlayX}-${p.overlayY}`)).toEqual([
+      'end-bottom/end-top',
+      'end-top/end-bottom',
+      'start-top/end-top',
+      'start-bottom/end-bottom',
+    ]);
+    const menu = await openMenu(page, 'hollis');
+    expect(menu.getAttribute('role')).toBe('menu');
+    expect(Array.from(menu.querySelectorAll('.ccc-menu-item')).map((item) => item.getAttribute('role'))).toEqual(
+      Array(8).fill('menuitem'),
+    );
+    expect(button?.getAttribute('aria-expanded')).toBe('true');
+    await closeMenu(page);
+    expect(document.body.querySelector('.ccc-user-actions-menu')).toBeNull();
+    expect(button?.getAttribute('aria-expanded')).toBe('false');
   });
 
   const writes: {
