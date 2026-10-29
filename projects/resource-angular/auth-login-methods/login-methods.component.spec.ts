@@ -16,7 +16,8 @@ import { DEFAULT_LOGIN_MESSAGES } from '@cccteam/resource-angular/types';
 import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
 import { of } from 'rxjs';
 
-import { LoginMethodsComponent, PASSWORDS_DIFFER } from './login-methods.component';
+import packageJson from '../package.json';
+import { LoginMethodsComponent, PAGE_OLDER_THAN_SERVER, PASSWORDS_DIFFER, SIGN_IN_STEPS } from './login-methods.component';
 
 // The component renders the login page's methods from the server's list, in every shape
 // the list takes, drives the password form and the redirect buttons from it, renders a
@@ -632,17 +633,35 @@ describe('LoginMethodsComponent renders the pending step', () => {
     expect(messageOf(page)).toBeNull();
   });
 
-  it('a step other than the confirmation shows a note and the cancel', async () => {
-    const page = await pageOver(
-      server({ status: { status: 200, body: { ...waiting, reason: 'mfa', factors: ['totp'] } } }),
-      {
-        pending: 'mfa',
-      },
-    );
-    expect(page.element.querySelector('input[name="confirmation"]')).toBeNull();
-    expect(page.element.textContent).toContain('another step');
-    expect(page.element.querySelector('button.ccc-login-cancel')).not.toBeNull();
+  for (const body of [
+    { ...waiting, reason: 'mfa', factors: ['totp'] },
+    { ...waiting, reason: 'device-approval' },
+  ]) {
+    it(`a step this page does not render (${body.reason}) says the page is older than the server, with the cancel`, async () => {
+      const page = await pageOver(server({ status: { status: 200, body } }), { pending: body.reason });
+      expect(page.element.querySelector('input[name="confirmation"]')).toBeNull();
+      expect(page.element.querySelector('input[name="code"]')).toBeNull();
+      expect(page.element.querySelector('.ccc-login-pending-note')?.textContent?.trim()).toBe(PAGE_OLDER_THAN_SERVER);
+      expect(page.element.querySelector('button.ccc-login-cancel')).not.toBeNull();
+    });
+  }
+
+  it('declares the steps it renders in the package as in the code', () => {
+    expect(packageJson.cccteam.signInSteps).toEqual([...SIGN_IN_STEPS]);
   });
+
+  for (const step of SIGN_IN_STEPS) {
+    it(`renders the ${step} step it declares`, async () => {
+      const [reason, factor] = step.split(':');
+      const body =
+        factor === 'email-code'
+          ? { ...waiting, reason, factors: [factor], emailCode: { ...codeMailed } }
+          : { ...waiting, reason };
+      const page = await pageOver(server({ status: { status: 200, body } }), { pending: reason });
+      expect(page.element.querySelector('.ccc-login-pending-note')?.textContent?.trim()).not.toBe(PAGE_OLDER_THAN_SERVER);
+      expect(page.element.querySelector(factor ? 'input[name="code"]' : 'input[name="confirmation"]')).not.toBeNull();
+    });
+  }
 
   async function confirmWith(page: Page, secret: string): Promise<void> {
     page.component.confirmation = secret;

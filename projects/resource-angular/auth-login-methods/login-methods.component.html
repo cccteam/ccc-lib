@@ -116,7 +116,7 @@
         }
       }
     } @else {
-      <p class="ccc-login-pending-note">This sign-in needs another step before it completes.</p>
+      <p class="ccc-login-pending-note">{{ pageOlderThanServer }}</p>
     }
     <button mat-button type="button" class="ccc-login-cancel" [disabled]="busy()" (click)="cancel()">Cancel</button>
   </div>

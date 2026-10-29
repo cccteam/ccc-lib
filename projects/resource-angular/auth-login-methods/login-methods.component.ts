@@ -76,8 +76,11 @@ export interface AccountForm {
  * a new code; a person whose account holds no address is asked for one first. A wrong code
  * (`invalid_code`) or one entered after the code sent died (`code_expired`) keeps the form
  * with its sentence; with the box checked, the server remembers the browser, and this
- * person's next sign-ins from it skip the code. A second-factor step the application's own
- * factors alone satisfy shows a note and the cancel.
+ * person's next sign-ins from it skip the code. A step this page does not render, a reason
+ * it does not know or a second-factor step without the mailed code, shows the note that the
+ * page is older than the server, asking for a reload, with the cancel; the steps the page
+ * renders are declared in `SIGN_IN_STEPS` and, for the framework's release check, under
+ * `cccteam.signInSteps` in the package's package.json.
  *
  * The mailed links the server sends all lead here, each with its token in the URL. An
  * invitation (`?invitation=`) is opened through the client on arrival: its note stands over
@@ -191,6 +194,8 @@ export class LoginMethodsComponent implements OnInit {
   signUpOffered = computed(() => this.list()?.signUp !== undefined);
   /** The step the sign-in waits on, taking the list's place; undefined while the list is shown. */
   pending = signal<PendingSignIn | undefined>(undefined);
+  /** The note for a step this page does not render (PAGE_OLDER_THAN_SERVER), for the template. */
+  readonly pageOlderThanServer = PAGE_OLDER_THAN_SERVER;
   /** The session carries `passwordChangeRequired`: the change form takes the list's place until the person sets a password of their own. */
   changing = signal(false);
   /** The sentence over the change form: the one the application holds for the server's code. */
@@ -893,6 +898,21 @@ export class LoginMethodsComponent implements OnInit {
 
 /** The sentence for a new password typed differently the second time; nothing is posted. */
 export const PASSWORDS_DIFFER = 'The new passwords do not match. Type the same password twice.';
+
+/**
+ * The sign-in steps this page renders, as the server's pending status names them: the
+ * pending reason, and for the second factor the factor this page drives after a colon.
+ * The package declares the same list under `cccteam.signInSteps` in its package.json, which
+ * impulse's release check holds the steps a generated server asks for to, so a framework
+ * release never pairs a server with a page that cannot render what the server asks; the
+ * component's spec holds the two lists together and each step to its branch.
+ */
+export const SIGN_IN_STEPS = ['confirmation', 'mfa:email-code'] as const;
+
+/** The note for a step this page does not render: the page is older than the server that asked for it. */
+export const PAGE_OLDER_THAN_SERVER =
+  "We can't finish this sign-in on this page, because the page is older than the server. " +
+  'Reload the page and try again. If this keeps happening, tell whoever runs this application.';
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
