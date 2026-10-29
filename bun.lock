@@ -62,14 +62,14 @@
     },
     "projects/resource": {
       "name": "@cccteam/resource",
-      "version": "0.0.15",
+      "version": "0.0.16",
       "dependencies": {
         "tslib": "^2.3.0",
       },
     },
     "projects/resource-angular": {
       "name": "@cccteam/resource-angular",
-      "version": "0.0.20",
+      "version": "0.0.23",
       "dependencies": {
         "date-fns": "^4.1.0",
         "date-fns-tz": "^3.2.0",
@@ -87,7 +87,7 @@
     },
     "projects/resource-firestore": {
       "name": "@cccteam/resource-firestore",
-      "version": "0.0.13",
+      "version": "0.0.14",
       "dependencies": {
         "tslib": "^2.3.0",
       },

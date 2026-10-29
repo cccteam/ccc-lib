@@ -51,6 +51,9 @@ export type ManagedUser = WithCapabilities<UserRow>;
 /** A standing invitation as the component reads it: with the envelope that says whether the caller may revoke it. */
 export type ManagedInvitation = WithCapabilities<InvitationRow>;
 
+/** The provider behind each library method, as a person names it. */
+const providerNames: Readonly<Record<string, string>> = { google: 'Google', azure: 'Microsoft', workos: 'WorkOS' };
+
 /** Which side panel stands open beside the table, and whose row it is over. */
 export interface OpenPanel {
   kind: 'access' | 'new';
@@ -351,16 +354,21 @@ export class UserManagementComponent {
 
   /** The words for how a user signs in: the password and each linked identity's registration. */
   signsInWith(row: UserRow): string {
-    const means = row.identities.map((identity) => this.registrationLabel(identity));
+    const means = row.identities.map((identity) => this.identityLabel(identity));
     if (row.hasPassword) {
       means.unshift('Password');
     }
     return means.length === 0 ? 'No way to sign in' : means.join(', ');
   }
 
-  /** The registration's label for an identity, else the connection it was linked through. */
-  registrationLabel(identity: UserIdentity): string {
-    return this.surface()?.registrations.find((reg) => reg.name === identity.connection)?.label ?? identity.connection;
+  /**
+   * The words for an identity: the provider's name, with the organization the link carries
+   * ("Google (fleet.example)"). The row's connection is the directory's key, not a name a
+   * person knows, and the registration the identity came through is not recorded on the link.
+   */
+  identityLabel(identity: UserIdentity): string {
+    const provider = providerNames[identity.method] ?? identity.method;
+    return identity.organization ? `${provider} (${identity.organization})` : provider;
   }
 
   /** Whether the application has tenants: the surface has a tenant partition, so where a role reaches is worth saying. */
@@ -842,7 +850,7 @@ export class UserManagementComponent {
       return;
     }
     const confirmed = await askInDialog(this.dialog, {
-      title: `Unlink ${this.registrationLabel(identity)} from ${row.username}?`,
+      title: `Unlink ${this.identityLabel(identity)} from ${row.username}?`,
       words: `${row.username} can no longer sign in that way.`,
       confirm: 'Unlink',
     });

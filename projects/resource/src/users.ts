@@ -15,8 +15,15 @@ import { ApiDescriptor, UserPartitionDescriptor, UserSurfaceDescriptor } from '.
 /** One external identity linked to a user: how they sign in through a registration. */
 export interface UserIdentity {
   id: string;
-  /** The library method behind the link (`google`, `azure`, `workos`) and the registration it was linked through. */
+  /** The library method behind the link: `google`, `azure` or `workos`. */
   method: string;
+  /**
+   * The connection and the subject are the link's key: the connection is the directory the
+   * identity came from as the library keys it (a Google Workspace by the registration's name
+   * for it or its domain, a Microsoft tenant by its id, a WorkOS connection by its id), and
+   * the subject the directory's identifier for the person. Neither is a name a person knows;
+   * a page names the identity by its method and organization.
+   */
   connection: string;
   subject: string;
   /** The tenant key the registration stored on the link (the Workspace, the Entra tenant, the organization); null where it stored none. */

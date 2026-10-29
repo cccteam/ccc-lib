@@ -309,8 +309,9 @@ generator program's declaration, its members composes the component twice:
 ```
 
 The page follows the pattern of a cloud console's IAM page. The table has one row per user: the
-username, the email address and whether the person confirmed it, the status, how they sign in, the
-roles and the last sign-in. The roles column lists the user's roles one per line, each by its title
+username, the email address and whether the person confirmed it, the status, how they sign in (the
+password, and each linked identity by its provider and the organization the link carries, "Google
+(fleet.example)"), the roles and the last sign-in. The roles column lists the user's roles one per line, each by its title
 with where it reaches beside it. A role's title is its name split at the capitals, so
 `FeatureAdministrator` reads "Feature Administrator" (`roleTitle` and the `roleTitle` pipe, exported
 from the same entry, for a page that shows a role elsewhere); where it reaches comes from the roles
