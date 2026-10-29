@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.22](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.21...resource-angular/v0.0.22) (2026-10-29)
+
+
+### Features
+
+* **resource-angular:** the Users page's row menu opens beside its button when neither below nor above has room, never over it, and the button says its menu is open ([#173](https://github.com/cccteam/ccc-lib/issues/173)) ([96a0ba9](https://github.com/cccteam/ccc-lib/commit/96a0ba978f65756e010167c2041c0668fdab55ea))
+
 ## [0.0.21](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.20...resource-angular/v0.0.21) (2026-10-29)
 
 
