@@ -82,50 +82,81 @@
                 class="ccc-user-actions"
                 [disabled]="busy()"
                 [attr.aria-label]="'Actions for ' + row.username"
-                [matMenuTriggerFor]="actions">
+                [cdkMenuTriggerFor]="actions"
+                [cdkMenuPosition]="menuPositions">
                 <mat-icon>more_vert</mat-icon>
               </button>
-              <mat-menu #actions="matMenu" class="ccc-user-actions-menu">
-                <button mat-menu-item type="button" class="ccc-user-edit-access" (click)="openAccess(row)">
-                  {{ accessWords(row) }}
-                </button>
-                @if (canRename(row)) {
-                  <button mat-menu-item type="button" class="ccc-user-rename" (click)="rename(row)">Rename</button>
-                }
-                @if (canSetEmail(row)) {
-                  <button mat-menu-item type="button" class="ccc-user-set-email" (click)="changeEmail(row)">
-                    Change email address
+              <ng-template #actions>
+                <div cdkMenu class="ccc-menu ccc-user-actions-menu">
+                  <button
+                    cdkMenuItem
+                    type="button"
+                    class="ccc-menu-item ccc-user-edit-access"
+                    (click)="openAccess(row)">
+                    {{ accessWords(row) }}
                   </button>
-                }
-                @if (canSetPassword(row)) {
-                  <button mat-menu-item type="button" class="ccc-user-set-password" (click)="setPassword(row)">
-                    Set a temporary password
-                  </button>
-                }
-                @if (canResetFactors(row)) {
-                  <button mat-menu-item type="button" class="ccc-user-reset-factors" (click)="resetFactors(row)">
-                    Forget remembered browsers
-                  </button>
-                }
-                @if (canUnlink(row)) {
-                  @for (identity of row.identities; track identity.id) {
-                    <button mat-menu-item type="button" class="ccc-user-unlink" (click)="unlink(row, identity)">
-                      Unlink {{ registrationLabel(identity) }}
+                  @if (canRename(row)) {
+                    <button cdkMenuItem type="button" class="ccc-menu-item ccc-user-rename" (click)="rename(row)">
+                      Rename
                     </button>
                   }
-                }
-                @if (canDisable(row) || canDelete(row)) {
-                  <mat-divider />
-                }
-                @if (canDisable(row)) {
-                  <button mat-menu-item type="button" class="ccc-user-disable" (click)="setDisabled(row, !row.disabled)">
-                    {{ row.disabled ? 'Enable' : 'Disable' }}
-                  </button>
-                }
-                @if (canDelete(row)) {
-                  <button mat-menu-item type="button" class="ccc-user-delete" (click)="remove(row)">Delete</button>
-                }
-              </mat-menu>
+                  @if (canSetEmail(row)) {
+                    <button
+                      cdkMenuItem
+                      type="button"
+                      class="ccc-menu-item ccc-user-set-email"
+                      (click)="changeEmail(row)">
+                      Change email address
+                    </button>
+                  }
+                  @if (canSetPassword(row)) {
+                    <button
+                      cdkMenuItem
+                      type="button"
+                      class="ccc-menu-item ccc-user-set-password"
+                      (click)="setPassword(row)">
+                      Set a temporary password
+                    </button>
+                  }
+                  @if (canResetFactors(row)) {
+                    <button
+                      cdkMenuItem
+                      type="button"
+                      class="ccc-menu-item ccc-user-reset-factors"
+                      (click)="resetFactors(row)">
+                      Forget remembered browsers
+                    </button>
+                  }
+                  @if (canUnlink(row)) {
+                    @for (identity of row.identities; track identity.id) {
+                      <button
+                        cdkMenuItem
+                        type="button"
+                        class="ccc-menu-item ccc-user-unlink"
+                        (click)="unlink(row, identity)">
+                        Unlink {{ registrationLabel(identity) }}
+                      </button>
+                    }
+                  }
+                  @if (canDisable(row) || canDelete(row)) {
+                    <mat-divider class="ccc-menu-divider" />
+                  }
+                  @if (canDisable(row)) {
+                    <button
+                      cdkMenuItem
+                      type="button"
+                      class="ccc-menu-item ccc-user-disable"
+                      (click)="setDisabled(row, !row.disabled)">
+                      {{ row.disabled ? 'Enable' : 'Disable' }}
+                    </button>
+                  }
+                  @if (canDelete(row)) {
+                    <button cdkMenuItem type="button" class="ccc-menu-item ccc-user-delete" (click)="remove(row)">
+                      Delete
+                    </button>
+                  }
+                </div>
+              </ng-template>
             </td>
           </tr>
         }
