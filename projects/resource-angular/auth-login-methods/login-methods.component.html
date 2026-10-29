@@ -125,6 +125,9 @@
   </div>
 } @else if (account(); as form) {
   <div class="ccc-login-account">
+    @if (form.source === 'invitation' && invitation(); as invited) {
+      <h2 class="ccc-login-invitation-title">{{ invitationTitle(invited) }}</h2>
+    }
     <p class="ccc-login-account-note">{{ accountNote(form) }}</p>
     <form class="ccc-login-form" (ngSubmit)="createAccount()">
       @if (!form.usernameIsEmail) {
@@ -155,9 +158,11 @@
       </mat-form-field>
       <button mat-flat-button type="submit" class="ccc-login-submit" [disabled]="busy()">Create account</button>
     </form>
-    <button mat-button type="button" class="ccc-login-cancel" [disabled]="busy()" (click)="cancelAccount()">
-      Cancel
-    </button>
+    @if (!accountOpenedItself()) {
+      <button mat-button type="button" class="ccc-login-cancel" [disabled]="busy()" (click)="cancelAccount()">
+        Cancel
+      </button>
+    }
   </div>
 } @else if (started(); as address) {
   <div class="ccc-login-started">
@@ -184,6 +189,7 @@
 } @else {
   @if (invitation(); as invited) {
     <div class="ccc-login-invitation">
+      <h2 class="ccc-login-invitation-title">{{ invitationTitle(invited) }}</h2>
       <p class="ccc-login-invitation-note">{{ invitationNote(invited) }}</p>
       @if (signedInAs(); as name) {
         <button mat-flat-button type="button" class="ccc-login-accept" [disabled]="busy()" (click)="accept()">
@@ -193,29 +199,34 @@
     </div>
   }
   @if (passwordMethod(); as method) {
-    <form class="ccc-login-form" (ngSubmit)="login()">
-      <mat-form-field appearance="outline" class="ccc-login-field">
-        <mat-label>{{ usernameLabel() }}</mat-label>
-        <input
-          matInput
-          name="username"
-          [type]="usernameIsEmail() ? 'email' : 'text'"
-          [(ngModel)]="username"
-          autocomplete="username"
-          required />
-      </mat-form-field>
-      <mat-form-field appearance="outline" class="ccc-login-field">
-        <mat-label>{{ labelOf(method) }}</mat-label>
-        <input
-          matInput
-          name="password"
-          type="password"
-          [(ngModel)]="password"
-          autocomplete="current-password"
-          required />
-      </mat-form-field>
-      <button mat-flat-button type="submit" class="ccc-login-submit" [disabled]="busy()">Sign in</button>
-    </form>
+    @if (!invitationPaths() || invitationPaths()!.password) {
+      @if (invitationPaths()?.known) {
+        <p class="ccc-login-password-note">Sign in with your password to accept it.</p>
+      }
+      <form class="ccc-login-form" (ngSubmit)="login()">
+        <mat-form-field appearance="outline" class="ccc-login-field">
+          <mat-label>{{ usernameLabel() }}</mat-label>
+          <input
+            matInput
+            name="username"
+            [type]="usernameIsEmail() ? 'email' : 'text'"
+            [(ngModel)]="username"
+            autocomplete="username"
+            required />
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="ccc-login-field">
+          <mat-label>{{ labelOf(method) }}</mat-label>
+          <input
+            matInput
+            name="password"
+            type="password"
+            [(ngModel)]="password"
+            autocomplete="current-password"
+            required />
+        </mat-form-field>
+        <button mat-flat-button type="submit" class="ccc-login-submit" [disabled]="busy()">Sign in</button>
+      </form>
+    }
   }
   @for (method of offeredRedirectMethods(); track method.name) {
     <button
@@ -227,7 +238,7 @@
       {{ redirectCaption(method) }}
     </button>
   }
-  @if (offeredRedirectMethods().length > 0 && !afterRefusal()) {
+  @if (offeredRedirectMethods().length > 0 && !afterRefusal() && !invitation()) {
     <div class="ccc-login-chooser">
       @if (differentAccount()) {
         <span class="ccc-login-chooser-note">The provider will ask you which account</span>
@@ -243,8 +254,8 @@
       }
     </div>
   }
-  @if (invitation(); as invited) {
-    @if (invited.signUp) {
+  @if (invitationPaths(); as paths) {
+    @if (!paths.known && paths.create) {
       <button
         mat-stroked-button
         type="button"

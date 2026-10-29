@@ -31,6 +31,19 @@
   margin-bottom: 16px;
 }
 
+// The invitation's heading: who is invited where, over the ways to accept it.
+.ccc-login-invitation-title {
+  margin: 0 0 8px;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+}
+
+.ccc-login-password-note {
+  margin: 0 0 8px;
+  color: var(--mat-sys-on-surface-variant, #49454f);
+}
+
 // One small line for the card, at the lower right under the redirect buttons: the
 // "Use a different account" link, or the note that takes its place once it was pressed.
 .ccc-login-chooser {

@@ -208,23 +208,27 @@ page renders.
 
 The server's mailed links all lead to the login page, each with its token in the URL, and the
 component follows them from the routes the methods list names, so a server that sends no mail shows
-none of this. An invitation (`?invitation=<token>`) is opened on arrival and stands over the list:
-the note names the address and the tenant, and the browser now carries the invitation, so the
-sign-in that follows, by any method, accepts it and the person is seated with the roles it carried;
-a person the page finds already signed in may accept it as they are with one click, from a button
-under the note, and where the server offers a password method the invited person may instead create
-an account with a password, on a form that asks for a username (unless the username is the address)
-and the password twice, which signs them in and accepts the invitation. The button that opens that
-form comes last, under the password form and the redirect buttons, where the "Create an account"
-step stands when no invitation does, so account creation is the last thing offered on either
-screen. The browser keeps carrying the invitation when a redirect method refuses the sign-in and
-returns to the login page with `?code=` and no token; the methods list then names it
-(`invitation.standing`), and the component shows the note over the list again, with the refusal's
-sentence under it, so the person sees the invitation, the ways to sign in and the refusal together.
-A token in the URL is opened instead, which also refreshes what the browser carries. An invitation
-that names the directory registrations able to admit its address (`methods`) narrows the "Sign in
-with …" buttons to those while it stands, and to none when it names none; the password form stays,
-since a person who has a password may sign in with it to accept. A sign-up
+none of this. An invitation (`?invitation=<token>`) is opened on arrival and stands over the list
+as the invitation screen: "You're invited to <tenant>" and the address, over every way that can
+accept this invitation for that address and none that cannot. A directory registration that could
+admit the address is a "Continue with <label> as <address>" button, which sends the address to the
+provider as its login hint, so the provider takes that account and skips its chooser; the password
+form shows when an account with a password holds the address ("Sign in with your password to
+accept it."); and where no account holds the address and the server offers a password method, the
+account form opens by itself, asking for a username (unless the username is the address) and the
+password twice, which creates the account, signs the person in and accepts the invitation, but only
+where no directory could admit the address, since the invited person has that account already. The
+"Use a different account" link is not offered while an invitation stands: the invitation names the
+account. A person the page finds already signed in may accept it as they are with one click, from a
+button under the heading. Under an older server that does not say whether an account holds the
+address, every path is offered as before, the account form behind a "Create an account with a
+password" button last. The browser keeps carrying the invitation when a redirect method refuses the
+sign-in and returns to the login page with `?code=` and no token; the methods list then names it
+(`invitation.standing`), and the component shows the screen again, with the refusal's sentence under
+it. A directory sign-in as another account than the invited one is refused by the server
+(`invitation_address`), and the screen says "This invitation is for <address>. Sign in with that
+account.", the button now asking the provider for its chooser. A token in the URL is opened instead,
+which also refreshes what the browser carries. A sign-up
 link (`?signUp=<token>`) opens the same
 account form in the list's place, and the list of a server whose password method offers sign-up
 carries a "Create an account" step, which asks for an address and tells the person the link is on

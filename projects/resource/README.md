@@ -395,20 +395,26 @@ server offers a password method), `email` (`add`, `verify`) and `signUp` (`start
 the password method declares the username as the person's email address, so the form asks for
 the address and an account created from a link takes no username of its own. The `invitation`
 block also carries `standing` while the browser holds a live invitation: its `email`, `tenant`,
-`expiresAt` and `usernameIsEmail`, what opening the link answered, so a login page the browser
-comes back to without the token (a redirect method refused the sign-in and returned with
-`?code=`) shows the invitation again; it is absent when the browser holds none. Each step below
+`expiresAt`, `usernameIsEmail`, `methods`, `accountExists` and `hasPassword`, what opening the
+link answered, so a login page the browser comes back to without the token (a redirect method
+refused the sign-in and returned with `?code=`) shows the invitation again; it is absent when
+the browser holds none. Each step below
 reads the list again first, like every step that posts, and throws when the list names no
 routes for it.
 
 An invitation (`?invitation=<token>`) brings a person into the application, or into one of its
 tenants, with the roles it carries. `openInvitation(token)` posts the token: the answer
 describes the invitation (`email`; `tenant`, empty for the global surface; `expiresAt`;
-`signUp`, whether an account with a password may be created here; `usernameIsEmail`; and
+`signUp`, whether an account with a password may be created here; `usernameIsEmail`;
 `methods`, the registration names of the listed directory methods that could admit the
-address, absent when the server did not say), and the
-browser now carries it, so the sign-in that follows, by any method, accepts it and the
-server's hook seats the person. `acceptInvitation()` accepts it for a person already signed
+address, absent when the server did not say; and `accountExists` and `hasPassword`, whether
+an account already holds the address and signs in with a password, absent when the server did
+not say), and the browser now carries it, so the sign-in that follows accepts it and the
+server's hook seats the person: a password sign-in or sign-up by whoever holds the link, a
+directory sign-in only as the invited address (another address is refused with
+`invitation_address`, the invitation still standing). `signInUrl(method, returnUrl, {
+loginHint })` names the account the provider should take, which a login page sets to the
+invited address. `acceptInvitation()` accepts it for a person already signed
 in. `signUpFromInvitation({ password, username? })` creates the invited person's account with
 a password, the address verified, and signs them in, answering as a sign-in step does. A link
 that has expired or was already used resolves `refused` with 404 and the server's words; a

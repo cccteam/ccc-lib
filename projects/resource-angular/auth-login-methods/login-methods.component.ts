@@ -10,6 +10,7 @@ import { ActivatedRoute } from '@angular/router';
 import {
   EmailCodeResult,
   EmailCodeStep,
+  invitationAddressCode,
   LoginMethod,
   LoginMethods,
   OpenedInvitation,
@@ -97,23 +98,31 @@ export interface AccountForm {
  * `cccteam.signInSteps` in the package's package.json.
  *
  * The mailed links the server sends all lead here, each with its token in the URL. An
- * invitation (`?invitation=`) is opened through the client on arrival: its note stands over
- * the list, naming the address and the tenant, and the browser now carries it, so the
- * sign-in that follows, by any method, accepts it and seats the person with the roles it
- * carried; a person the page finds already signed in accepts it with one click, from a
- * button under the note, and where the server offers a password method the invited person
- * may instead create an account with a password, which signs them in and accepts it. That
- * button comes last, under the password form and the redirect buttons, where the open
- * "Create an account" step stands when no invitation does, so account creation is the last
- * thing offered on either screen. The browser keeps carrying the invitation when a redirect
- * method refuses the sign-in and brings it back here with `?code=` and no token; the methods
- * list then names the invitation under `invitation.standing`, and the note stands over the
- * list again, with the refusal's sentence under it, so the person sees what they were invited
- * to, the ways to sign in, and why the last attempt was refused, together. A token in the
- * URL is opened instead, which also refreshes what the browser carries. An invitation that
- * names the directory registrations able to admit its address (`methods`) narrows the
- * redirect buttons to those while it stands, and to none when it names none; the password
- * form stays, since a person who has a password may sign in with it to accept. A sign-up link
+ * invitation (`?invitation=`) is opened through the client on arrival and the card becomes
+ * the invitation screen: "You're invited to <tenant>" and the address, over every way that
+ * can accept this invitation for that address and none that cannot (`invitationPaths`). The
+ * browser now carries the invitation, so the sign-in that follows accepts it and seats the
+ * person with the roles it carried. A directory registration the server says could admit
+ * the address (`methods`) is a "Continue with <label> as <address>" button, which sends the
+ * address to the provider as its login hint, so the provider takes that account; the
+ * server accepts a directory sign-in only as the invited address, refusing another with
+ * `invitation_address`, and the screen then says so, naming the address. The password form
+ * shows when an account with a password holds the address (`accountExists`, `hasPassword`),
+ * with a note saying it accepts; and where no account holds the address and the server
+ * offers a password method, the account form opens by itself, without a Cancel, but only
+ * where no directory could admit the address, since the invited person has that account
+ * already. "Use a different account" is not offered while an invitation stands: the
+ * invitation names the account. A person the page finds already signed in accepts it with
+ * one click, from a button under the heading. Under an older server that does not say what
+ * holds the address every path is offered, the account form behind a "Create an account
+ * with a password" button that comes last, under the password form and the redirect
+ * buttons, where the open "Create an account" step stands when no invitation does. The
+ * browser keeps carrying the invitation when a redirect method refuses the sign-in and
+ * brings it back here with `?code=` and no token; the methods list then names the
+ * invitation under `invitation.standing`, and the screen stands again, with the refusal's
+ * sentence under it, so the person sees what they were invited to, the ways to sign in, and
+ * why the last attempt was refused, together. A token in the URL is opened instead, which
+ * also refreshes what the browser carries. A sign-up link
  * (`?signUp=`) is opened the same way and renders the account form in the list's place; the
  * list of a server whose password method offers sign-up also carries the "Create an account"
  * step, which asks for an address and mails it the link. A confirmation link (`?verify=`) is
@@ -203,6 +212,30 @@ export class LoginMethodsComponent implements OnInit {
     const redirects = this.redirectMethods();
     return admitting ? redirects.filter((method) => admitting.includes(method.name)) : redirects;
   });
+  /**
+   * What the card offers for the invitation it carries, from what the server said of the
+   * invited address: the directory buttons that could admit it (`redirects`); the password
+   * form when an account with a password holds the address (`password`); and the account
+   * form when no account holds it and the server offers a password method, only where no
+   * directory could admit it, since the invited person has that account already (`create`).
+   * `known` is false under an older server that did not say whether an account exists:
+   * every path is then offered, as before. Undefined while no invitation stands.
+   */
+  invitationPaths = computed(() => {
+    const invited = this.invitation();
+    if (!invited) {
+      return undefined;
+    }
+    const redirects = this.offeredRedirectMethods();
+    const known = invited.accountExists !== undefined;
+    const passwordListed = this.passwordMethod() !== undefined;
+    return {
+      known,
+      redirects,
+      password: passwordListed && (!known || invited.hasPassword === true),
+      create: invited.signUp && (!known || (!invited.accountExists && redirects.length === 0)),
+    };
+  });
   /** The password method's username is the person's email address: the form asks for the address. */
   usernameIsEmail = computed(() => this.list()?.usernameIsEmail ?? false);
   /** The words over the password form's first field. */
@@ -227,6 +260,8 @@ export class LoginMethodsComponent implements OnInit {
   signedInAlone = computed(() => (this.invitation() ? undefined : this.signedInAs()));
   /** The account form, taking the list's place: an account with a password, from the invitation or a sign-up link. */
   account = signal<AccountForm | undefined>(undefined);
+  /** The account form opened by itself, the one way to accept the invitation: no Cancel, since there is nothing to go back to. */
+  accountOpenedItself = signal(false);
   /** The sign-up's first step is shown: the address field. */
   starting = signal(false);
   /** The address a sign-up link was sent to; the note takes the list's place. */
@@ -264,7 +299,20 @@ export class LoginMethodsComponent implements OnInit {
    * held for the URL's code; nothing while the server is unreachable, so one message
    * stands at a time, and the URL's sentence shows again once Try again succeeds.
    */
-  message = computed(() => (this.unreachable() ? undefined : (this.refusal() ?? this.ui.loginMessage(this.code()))));
+  message = computed(() => {
+    if (this.unreachable()) {
+      return undefined;
+    }
+    const refusal = this.refusal();
+    if (refusal !== undefined) {
+      return refusal;
+    }
+    const invited = this.invitation();
+    if (this.code() === invitationAddressCode && invited) {
+      return `This invitation is for ${invited.email}. Sign in with that account.`;
+    }
+    return this.ui.loginMessage(this.code());
+  });
   /** The URL carries a refusal: the redirect buttons ask the provider for its account chooser by themselves, and "Use a different account" is not offered. */
   afterRefusal = computed(() => this.code() !== '');
   /** "Use a different account" was pressed: the redirect buttons ask the provider for its account chooser, and a note stands where the link was. */
@@ -294,13 +342,23 @@ export class LoginMethodsComponent implements OnInit {
     return `${matched} Enter that account's password to link the two.`;
   }
 
-  /** The sentence over the list for an opened invitation: who is invited where, and what accepts it. */
+  /** The invitation screen's heading: where the person is invited. */
+  invitationTitle(invitation: OpenedInvitation): string {
+    return invitation.tenant === '' ? "You're invited" : `You're invited to ${invitation.tenant}`;
+  }
+
+  /**
+   * The sentence under the heading: the address the invitation is for, and, under an older
+   * server that did not say what holds the address, what accepts it.
+   */
   invitationNote(invitation: OpenedInvitation): string {
-    const where = invitation.tenant === '' ? '' : ` to ${invitation.tenant}`;
+    if (invitation.accountExists !== undefined) {
+      return `The invitation is for ${invitation.email}.`;
+    }
     const accepts = invitation.signUp
       ? 'Sign in to accept it, or create an account with a password.'
       : 'Sign in to accept it.';
-    return `${invitation.email} is invited${where}. ${accepts}`;
+    return `The invitation is for ${invitation.email}. ${accepts}`;
   }
 
   /** The sentence over the account form: what the person chooses, and the address the account holds. */
@@ -315,9 +373,17 @@ export class LoginMethodsComponent implements OnInit {
     return this.labels()[method.name] ?? method.label;
   }
 
-  /** A redirect button's words: "Sign in with Google", or "Choose a Google account" while the chooser is asked for. */
+  /**
+   * A redirect button's words: "Continue with Google as pat@lakeside.edu" while an invitation
+   * stands, since the invitation names the account; else "Sign in with Google", or "Choose a
+   * Google account" while the chooser is asked for.
+   */
   redirectCaption(method: LoginMethod): string {
     const label = this.labelOf(method);
+    const invited = this.invitation();
+    if (invited) {
+      return `Continue with ${label} as ${invited.email}`;
+    }
     if (!this.choosing()) {
       return `Sign in with ${label}`;
     }
@@ -388,7 +454,8 @@ export class LoginMethodsComponent implements OnInit {
    * the page the guard recorded, or this page with the confirmation link's token when one
    * waits to be posted, since the round trip through the identity provider reloads the
    * application. The provider is asked for its account chooser while the card is choosing
-   * (after a refusal, or once "Use a different account" was pressed).
+   * (after a refusal, or once "Use a different account" was pressed), and is told the
+   * account to take while an invitation stands: the invited address, as its login hint.
    */
   signInThrough(method: LoginMethod): void {
     if (this.busy()) {
@@ -396,7 +463,13 @@ export class LoginMethodsComponent implements OnInit {
     }
     const page =
       this.verifyToken === '' ? this.landing() : `${this.loginPath}?verify=${encodeURIComponent(this.verifyToken)}`;
-    this.leaveFor(this.client.auth.signInUrl(method, this.browserPath(page), { selectAccount: this.choosing() }));
+    const invited = this.invitation();
+    this.leaveFor(
+      this.client.auth.signInUrl(method, this.browserPath(page), {
+        selectAccount: this.choosing(),
+        ...(invited ? { loginHint: invited.email } : {}),
+      }),
+    );
   }
 
   /** Confirms the pending sign-in with the password of the user it matched. */
@@ -440,13 +513,18 @@ export class LoginMethodsComponent implements OnInit {
     });
   }
 
-  /** Shows the account form for the opened invitation: an account with a password, which accepts it. */
-  openAccountForm(): void {
+  /**
+   * Shows the account form for the opened invitation: an account with a password, which
+   * accepts it. `itself` marks a form the screen opened without being asked, the one way
+   * to accept, which offers no Cancel.
+   */
+  openAccountForm(itself = false): void {
     const invitation = this.invitation();
     if (this.busy() || !invitation?.signUp) {
       return;
     }
     this.refusal.set(undefined);
+    this.accountOpenedItself.set(itself);
     this.account.set({ source: 'invitation', email: invitation.email, usernameIsEmail: invitation.usernameIsEmail });
   }
 
@@ -698,6 +776,9 @@ export class LoginMethodsComponent implements OnInit {
       signUp: result.signUp,
       usernameIsEmail: result.usernameIsEmail,
       ...(result.methods === undefined ? {} : { methods: result.methods }),
+      ...(result.accountExists === undefined
+        ? {}
+        : { accountExists: result.accountExists, hasPassword: result.hasPassword === true }),
     });
   }
 
@@ -720,14 +801,26 @@ export class LoginMethodsComponent implements OnInit {
       signUp: block.signUp !== undefined,
       usernameIsEmail: standing.usernameIsEmail,
       ...(standing.methods === undefined ? {} : { methods: standing.methods }),
+      ...(standing.accountExists === undefined
+        ? {}
+        : { accountExists: standing.accountExists, hasPassword: standing.hasPassword === true }),
     };
   }
 
-  /** Keeps the invitation over the list and reads the session: a person found signed in is offered to accept it as they are. */
+  /**
+   * Keeps the invitation over the list and reads the session: a person found signed in is
+   * offered to accept it as they are. For a person signed out whose one way to accept is a
+   * new account with a password (no account holds the address and no directory could admit
+   * it), the account form opens by itself.
+   */
   private async keepInvitation(invitation: OpenedInvitation): Promise<void> {
     this.invitation.set(invitation);
     const session = await this.sessionStanding();
     this.signedInAs.set(session?.username);
+    const paths = this.invitationPaths();
+    if (!session?.username && paths?.known && paths.create) {
+      this.openAccountForm(true);
+    }
   }
 
   /** Opens the sign-up the URL's token names and renders its account form; a link the server refuses renders its words. */
@@ -876,6 +969,7 @@ export class LoginMethodsComponent implements OnInit {
 
   private clearAccountForm(): void {
     this.account.set(undefined);
+    this.accountOpenedItself.set(false);
     this.accountUsername = '';
     this.accountPassword = '';
     this.accountPasswordAgain = '';
