@@ -59,6 +59,20 @@ export interface AccountForm {
  * the server's callback brings the browser back there signed in, or back to this page with
  * `?code=` for a refusal or `?pending=` for a step that waits.
  *
+ * After a refusal, every redirect button asks the provider for its account chooser
+ * (`prompt=select_account` on the method's path), so a person refused with the wrong
+ * account picks another instead of being sent round the same loop by a provider that
+ * signs its one signed-in account in again without asking; on a stop without a refusal, a
+ * "Use a different account" button under each redirect button asks the same, and the
+ * redirect button itself asks nothing, so the single-account person pays no click. An
+ * arrival from a deep link, the guard having recorded the page, into an application whose
+ * only method is a redirect forwards to it at once, rendering nothing: the provider signs
+ * the person in and returns them to the page, an expired session included. The page
+ * stops, with its buttons, when the guard recorded nothing (a direct visit, a bookmark, the
+ * page sign-out lands on), when the URL carries a refusal code or a step or a mailed link's
+ * token, when the list offers more than one method or a password, and when a session is
+ * found standing.
+ *
  * A refusal arriving in the URL renders the sentence the application holds for the code
  * (`LOGIN_MESSAGES`, through UiCoreService) and nothing for a code it does not know; one
  * the server answers on a step renders that sentence when its body carries a code, whatever
@@ -251,6 +265,8 @@ export class LoginMethodsComponent implements OnInit {
    * stands at a time, and the URL's sentence shows again once Try again succeeds.
    */
   message = computed(() => (this.unreachable() ? undefined : (this.refusal() ?? this.ui.loginMessage(this.code()))));
+  /** The URL carries a refusal: the redirect buttons ask the provider for its account chooser, and "Use a different account" is not offered beside them. */
+  afterRefusal = computed(() => this.code() !== '');
 
   ngOnInit(): void {
     void this.tracked(() => this.arrive());
@@ -344,15 +360,20 @@ export class LoginMethodsComponent implements OnInit {
    * Sends the browser to a redirect method's path, naming the page the sign-in returns to:
    * the page the guard recorded, or this page with the confirmation link's token when one
    * waits to be posted, since the round trip through the identity provider reloads the
-   * application.
+   * application. The provider is asked for its account chooser after a refusal, and from
+   * "Use a different account" (`differentAccount`).
    */
-  signInThrough(method: LoginMethod): void {
+  signInThrough(method: LoginMethod, differentAccount = false): void {
     if (this.busy()) {
       return;
     }
     const page =
       this.verifyToken === '' ? this.landing() : `${this.loginPath}?verify=${encodeURIComponent(this.verifyToken)}`;
-    this.leaveFor(this.client.auth.signInUrl(method, this.browserPath(page)));
+    this.leaveFor(
+      this.client.auth.signInUrl(method, this.browserPath(page), {
+        selectAccount: differentAccount || this.afterRefusal(),
+      }),
+    );
   }
 
   /** Confirms the pending sign-in with the password of the user it matched. */
@@ -566,8 +587,11 @@ export class LoginMethodsComponent implements OnInit {
    * no invitation carried, the page asks for the session: the page ends none on arrival,
    * so one it finds standing is offered Continue or Sign out in the list's place, and one
    * that must change its password gets the change form; the form appears only once that
-   * read says no session stands. A read that fails ends the arrival in `unreachable`:
-   * the card offers Try again, which runs the arrival again.
+   * read says no session stands. When that read finds none, the list's only method is a
+   * redirect, the URL carries no refusal and the guard recorded a page, the browser is
+   * forwarded to the method at once and the card stays held back, so a deep link into an
+   * application with one way to sign in never shows this page. A read that fails ends the
+   * arrival in `unreachable`: the card offers Try again, which runs the arrival again.
    */
   private async arrive(): Promise<void> {
     const params = this.route.snapshot.queryParamMap;
@@ -575,6 +599,8 @@ export class LoginMethodsComponent implements OnInit {
     const signUp = params.get('signUp') ?? '';
     this.verifyToken = params.get('verify') ?? '';
     const linked = params.has('pending') || invitation !== '' || signUp !== '' || this.verifyToken !== '';
+    const refused = (params.get('code') ?? '') !== '';
+    let forwarded = false;
     this.arriving.set(true);
     this.unreachable.set(false);
     this.refusal.set(undefined);
@@ -599,12 +625,36 @@ export class LoginMethodsComponent implements OnInit {
         }
       } else if (!linked && !carried) {
         await this.findSession();
+        const only = refused ? undefined : this.onlyRedirectMethod(list);
+        if (only) {
+          forwarded = true;
+          this.leaveFor(this.client.auth.signInUrl(only, this.browserPath(this.landing())));
+        }
       }
     } catch {
       this.unreachable.set(true);
     } finally {
-      this.arriving.set(false);
+      if (!forwarded) {
+        this.arriving.set(false);
+      }
     }
+  }
+
+  /**
+   * The redirect method a deep link is forwarded to: the list's only method, when it is a
+   * redirect, the guard recorded a page other than this one or the sign-out page, and no
+   * session was found standing; undefined when the page stops instead.
+   */
+  private onlyRedirectMethod(list: LoginMethods): LoginMethod | undefined {
+    const only = list.methods.length === 1 ? list.methods[0] : undefined;
+    if (!only || only.kind !== 'redirect' || this.signedInAs() !== undefined || this.changing()) {
+      return undefined;
+    }
+    const recorded = this.auth.redirectUrl();
+    if (recorded === '' || recorded.startsWith(this.loginPath) || recorded.startsWith(this.signOutPath)) {
+      return undefined;
+    }
+    return only;
   }
 
   /**

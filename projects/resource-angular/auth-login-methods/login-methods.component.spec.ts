@@ -12,7 +12,7 @@ import {
 import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing';
 import { AuthService } from '@cccteam/resource-angular/auth-service';
 import { provideResourceTesting } from '@cccteam/resource-angular/testing';
-import { DEFAULT_LOGIN_MESSAGES } from '@cccteam/resource-angular/types';
+import { DEFAULT_LOGIN_MESSAGES, FRONTEND_LOGIN_PATH } from '@cccteam/resource-angular/types';
 import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
 import { of } from 'rxjs';
 
@@ -327,6 +327,7 @@ const buttonClasses = [
   'ccc-login-accept',
   'ccc-login-submit',
   'ccc-login-redirect',
+  'ccc-login-different-account',
   'ccc-login-create-account',
   'ccc-login-sign-up',
 ];
@@ -647,6 +648,105 @@ describe('LoginMethodsComponent sends the browser to a redirect method', () => {
     page.component.signInThrough(google);
     expect(page.left).toEqual([]);
   });
+
+  it('after a refusal in the URL, asks the provider for its account chooser, and offers no "Use a different account"', async () => {
+    const page = await pageOver(server(), { code: 'not_invited' }, { home: '/dashboard' });
+    expect(page.element.querySelector('.ccc-login-different-account')).toBeNull();
+    page.component.signInThrough(google);
+    expect(page.left).toEqual([
+      `/console/api/user/google/login?returnUrl=${encodeURIComponent('/dashboard')}&prompt=select_account`,
+    ]);
+  });
+
+  it('offers "Use a different account" under the button on a stop without a refusal, which asks for the chooser', async () => {
+    const page = await pageOver(server(), {}, { home: '/dashboard' });
+    const links = Array.from(page.element.querySelectorAll<HTMLButtonElement>('.ccc-login-different-account'));
+    expect(links.map((link) => link.textContent?.trim())).toEqual(['Use a different Google account']);
+    links[0]?.click();
+    expect(page.left).toEqual([
+      `/console/api/user/google/login?returnUrl=${encodeURIComponent('/dashboard')}&prompt=select_account`,
+    ]);
+  });
+});
+
+describe('LoginMethodsComponent forwards a deep link to the only redirect method', () => {
+  const googleOnly: LoginMethods = { methods: [google], pending: pendingRoutes };
+
+  /** The component over the server, the guard having recorded the page, arrived and settled. */
+  async function arrivedFrom(
+    recorded: string | (() => string),
+    state: Server,
+    query: Record<string, string> = {},
+  ): Promise<Page> {
+    const page = await mount(transportOf(state), query);
+    TestBed.inject(AuthService).redirectUrl.set(typeof recorded === 'string' ? recorded : recorded());
+    await page.settle();
+    return page;
+  }
+
+  it('forwards at once, naming the recorded page as the one to return to, and renders nothing meanwhile', async () => {
+    const unmount = mountedAt('/console/');
+    try {
+      const page = await arrivedFrom('/missions?sector=anvil', server({ methods: googleOnly }));
+      expect(page.left).toEqual([
+        `/console/api/user/google/login?returnUrl=${encodeURIComponent('/console/missions?sector=anvil')}`,
+      ]);
+      expect(page.component.arriving()).toBe(true);
+      expect(page.element.textContent?.trim()).toBe('');
+      expect(sent(page.transport)).toEqual(['GET /console/api/user/methods', 'GET /console/api/user/session']);
+    } finally {
+      unmount();
+    }
+  });
+
+  const stops: {
+    name: string;
+    recorded: string | (() => string);
+    state: () => Server;
+    query?: Record<string, string>;
+  }[] = [
+    { name: 'a direct visit, no page recorded', recorded: '', state: () => server({ methods: googleOnly }) },
+    {
+      name: 'the login page itself recorded, where a sign-out lands',
+      recorded: () => TestBed.inject(FRONTEND_LOGIN_PATH),
+      state: () => server({ methods: googleOnly }),
+    },
+    {
+      name: 'a refusal code in the URL',
+      recorded: '/missions',
+      state: () => server({ methods: googleOnly }),
+      query: { code: 'not_invited' },
+    },
+    {
+      name: 'a step in the URL',
+      recorded: '/missions',
+      state: () => server({ methods: googleOnly, status: { status: 200, body: waiting } }),
+      query: { pending: 'confirmation' },
+    },
+    { name: 'a password method beside the redirect', recorded: '/missions', state: () => server() },
+    {
+      name: 'two redirect methods',
+      recorded: '/missions',
+      state: () => server({ methods: { methods: [google, entra], pending: pendingRoutes } }),
+    },
+    {
+      name: 'the password method alone',
+      recorded: '/missions',
+      state: () => server({ methods: { methods: [password], pending: pendingRoutes } }),
+    },
+    {
+      name: 'a session found standing',
+      recorded: '/missions',
+      state: () => server({ methods: googleOnly, arrivesSignedIn: true }),
+    },
+  ];
+  for (const tt of stops) {
+    it(`stops on ${tt.name}`, async () => {
+      const page = await arrivedFrom(tt.recorded, tt.state(), tt.query);
+      expect(page.left).toEqual([]);
+      expect(page.component.arriving()).toBe(false);
+    });
+  }
 });
 
 describe('LoginMethodsComponent renders the pending step', () => {
@@ -1231,18 +1331,29 @@ describe('LoginMethodsComponent opens an invitation', () => {
 
   it('offers the account last, under the password form and the redirect buttons, where the open sign-up stands without an invitation', async () => {
     const invited = await pageOver(server({ methods: mailingList }), { invitation: 'tok-1' });
-    expect(orderOf(invited)).toEqual(['ccc-login-submit', 'ccc-login-redirect', 'ccc-login-create-account']);
+    expect(orderOf(invited)).toEqual([
+      'ccc-login-submit',
+      'ccc-login-redirect',
+      'ccc-login-different-account',
+      'ccc-login-create-account',
+    ]);
     TestBed.resetTestingModule();
     const signedIn = await pageOver(server({ methods: mailingList, arrivesSignedIn: true }), { invitation: 'tok-1' });
     expect(orderOf(signedIn)).toEqual([
       'ccc-login-accept',
       'ccc-login-submit',
       'ccc-login-redirect',
+      'ccc-login-different-account',
       'ccc-login-create-account',
     ]);
     TestBed.resetTestingModule();
     const open = await pageOver(server({ methods: mailingList }));
-    expect(orderOf(open)).toEqual(['ccc-login-submit', 'ccc-login-redirect', 'ccc-login-sign-up']);
+    expect(orderOf(open)).toEqual([
+      'ccc-login-submit',
+      'ccc-login-redirect',
+      'ccc-login-different-account',
+      'ccc-login-sign-up',
+    ]);
   });
 
   it('words a global invitation without a tenant, and one without a password method without the account', async () => {
@@ -1422,6 +1533,7 @@ describe('LoginMethodsComponent finds the invitation the browser carries', () =>
     );
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
     expect(buttonsOf(page)).toEqual(['Sign in with Google']);
+    // After a refusal the redirect button itself asks for the chooser, so no "Use a different account" stands under it.
     expect(orderOf(page)).toEqual(['ccc-login-submit', 'ccc-login-redirect', 'ccc-login-create-account']);
     expect(page.element.querySelector('.ccc-login-sign-up')).toBeNull();
     expect(page.element.querySelector('.ccc-login-accept')).toBeNull();
@@ -1501,7 +1613,12 @@ describe('LoginMethodsComponent shows the directory buttons that could admit the
     expect(page.component.invitation()).toEqual({ ...invited, methods: ['google-one'] });
     expect(buttonsOf(page)).toEqual(['Sign in with Fleet Google']);
     expect(page.element.querySelector('input[name="username"]')).not.toBeNull();
-    expect(orderOf(page)).toEqual(['ccc-login-submit', 'ccc-login-redirect', 'ccc-login-create-account']);
+    expect(orderOf(page)).toEqual([
+      'ccc-login-submit',
+      'ccc-login-redirect',
+      'ccc-login-different-account',
+      'ccc-login-create-account',
+    ]);
   });
 
   it('shows no redirect button when the invitation names none, the note and the account still there', async () => {

@@ -226,6 +226,16 @@
       (click)="signInThrough(method)">
       Sign in with {{ labelOf(method) }}
     </button>
+    @if (!afterRefusal()) {
+      <button
+        mat-button
+        type="button"
+        class="ccc-login-different-account"
+        [disabled]="busy()"
+        (click)="signInThrough(method, true)">
+        Use a different {{ labelOf(method) }} account
+      </button>
+    }
   }
   @if (invitation(); as invited) {
     @if (invited.signUp) {

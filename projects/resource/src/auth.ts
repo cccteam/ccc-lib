@@ -315,6 +315,17 @@ export type PendingStatus =
   | SignInRefusal;
 
 /** What createClient hands the sign-in client. */
+/** What a redirect method's URL asks of the provider beyond the page to return to. */
+export interface SignInUrlOptions {
+  /**
+   * Ask the provider for its account chooser (`prompt=select_account` on the method's
+   * path), so a provider holding one signed-in account does not sign that account in
+   * again without asking: the login page asks after a refusal, and under "Use a different
+   * account". Any other prompt is the server's to refuse.
+   */
+  readonly selectAccount?: boolean;
+}
+
 export interface AuthClientOptions {
   /** Issues the requests, resolving with the status; the client's own requester, so every request carries what the client's do. */
   request: ResponseRequester;
@@ -452,17 +463,25 @@ export class AuthClient {
 
   /**
    * The URL a redirect method's button sends the browser to: the method's path, naming
-   * the page in the application the sign-in returns to as `returnUrl` when one is given.
-   * The server sanitizes the page to a path in the application. Nothing is requested
-   * here: the page assigns the URL to the browser's location.
+   * the page in the application the sign-in returns to as `returnUrl` when one is given,
+   * and asking the provider for its account chooser (`prompt=select_account`) when
+   * `options.selectAccount` is set. The server sanitizes the page to a path in the
+   * application. Nothing is requested here: the page assigns the URL to the browser's
+   * location.
    */
-  signInUrl(method: LoginMethod, returnUrl?: string): string {
+  signInUrl(method: LoginMethod, returnUrl?: string, options: SignInUrlOptions = {}): string {
     if (method.kind !== 'redirect') {
       throw new Error(
         `the ${method.name} sign-in method is a ${method.kind} method, not a redirect: post its form with signInWithPassword`,
       );
     }
-    return returnUrl ? `${method.path}?returnUrl=${encodeURIComponent(returnUrl)}` : method.path;
+    const query = [
+      returnUrl ? `returnUrl=${encodeURIComponent(returnUrl)}` : '',
+      options.selectAccount ? 'prompt=select_account' : '',
+    ]
+      .filter((part) => part !== '')
+      .join('&');
+    return query === '' ? method.path : `${method.path}?${query}`;
   }
 
   /**
