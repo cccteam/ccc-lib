@@ -436,16 +436,67 @@ const click = async (page: Page, element: Element | null): Promise<void> => {
   element.click();
   await page.settle();
 };
-/** Opens a row's access panel by its pencil. */
+/** A turn of the clock: a dialog's answer and a menu's closing travel through a timer before the call is made. */
+const turn = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+/** Opens a row's actions menu by its button, and hands back the menu's panel in the overlay. */
+const openMenu = async (page: Page, username: string): Promise<HTMLElement> => {
+  await click(page, page.element.querySelector(`button[aria-label="Actions for ${username}"]`));
+  const menu = document.body.querySelector<HTMLElement>('.cdk-overlay-container .ccc-user-actions-menu');
+  if (!menu) {
+    throw new Error('no menu open');
+  }
+  return menu;
+};
+/** The menu's items by their words, top to bottom. */
+const menuItems = (menu: HTMLElement): string[] =>
+  Array.from(menu.querySelectorAll('.mat-mdc-menu-item')).map((item) => textOf(item));
+/** Closes the open menu by its backdrop. */
+const closeMenu = async (page: Page): Promise<void> => {
+  await click(page, document.body.querySelector('.cdk-overlay-backdrop'));
+  await turn();
+  await page.settle();
+};
+/** Picks an item of a row's menu by its class. */
+const pick = async (page: Page, username: string, item: string): Promise<void> => {
+  const menu = await openMenu(page, username);
+  await click(page, menu.querySelector(item));
+  await turn();
+  await page.settle();
+};
+/** Opens a row's access panel through its menu. */
 const openAccess = async (page: Page, username: string): Promise<HTMLElement> => {
-  await click(page, page.element.querySelector(`button[aria-label="Edit access for ${username}"]`));
+  await pick(page, username, '.ccc-user-edit-access');
   return panelOf();
 };
-/** Opens a row's account panel by its menu button. */
-const openAccount = async (page: Page, username: string): Promise<HTMLElement> => {
-  await click(page, page.element.querySelector(`button[aria-label="Manage ${username}"]`));
-  return panelOf();
+/** An element of the open action dialog, in the overlay. */
+const inDialog = (selector: string): HTMLElement | null =>
+  document.querySelector<HTMLElement>(`.cdk-overlay-container ${selector}`);
+const dialogOpen = (): boolean => inDialog('.ccc-action-form') !== null;
+/** Types into the dialog's one field. */
+const typeInDialog = async (page: Page, text: string): Promise<void> => {
+  const input = inDialog('input') as HTMLInputElement | null;
+  if (!input) {
+    throw new Error('no field in the dialog');
+  }
+  input.value = text;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await page.settle();
 };
+/** Presses the dialog's confirming button and waits for the call it makes. */
+const confirmDialog = async (page: Page): Promise<void> => {
+  await click(page, inDialog('.ccc-action-confirm'));
+  await turn();
+  await page.settle();
+};
+const cancelDialog = async (page: Page): Promise<void> => {
+  await click(page, inDialog('.ccc-action-cancel'));
+  await turn();
+  await page.settle();
+};
+/** The first option a picker's open list shows. */
+const optionOf = (picker: HTMLInputElement): HTMLElement | null =>
+  document.getElementById(picker.getAttribute('aria-controls') ?? '')?.querySelector<HTMLElement>('.ccc-role-option') ??
+  null;
 /** The roles rows of the open panel: the picker's text, the words under it, and whether it can be changed. */
 const roleRowsOf = (panel: HTMLElement): { text: string; words: string; disabled: boolean; removable: boolean }[] =>
   Array.from(panel.querySelectorAll<HTMLElement>('.ccc-role-row')).map((row) => {
@@ -531,16 +582,12 @@ describe('UserManagementComponent reads the partition', () => {
     expect(cell(table[2], 'last')).toBe('Never');
     expect(cell(table[0], 'last')).not.toBe('Never');
     expect(page.component.roles().map((role) => role.name)).toEqual(['Harbormaster', 'Headquarters', 'SectorCrew']);
-    expect(buttons(page, '.ccc-user-edit-access').map((b) => b.getAttribute('aria-label'))).toEqual([
-      'Edit access for hollis',
-      'Edit access for nova',
-      'Edit access for pip',
+    expect(buttons(page, '.ccc-user-actions').map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Actions for hollis',
+      'Actions for nova',
+      'Actions for pip',
     ]);
-    expect(buttons(page, '.ccc-user-manage-account').map((b) => b.getAttribute('aria-label'))).toEqual([
-      'Manage hollis',
-      'Manage nova',
-      'Manage pip',
-    ]);
+    expect(buttons(page, '.ccc-user-edit-access')).toEqual([]);
   });
 
   const selections: {
@@ -822,7 +869,7 @@ describe('UserManagementComponent creates a user', () => {
       'Signs in with',
       'Roles',
       'Last sign-in',
-      'Manage',
+      'Actions',
     ]);
     expect(cell(rowsOf(page)[0], 'username')).toBe('kay@fleet.example · unconfirmed');
     expect(rowsOf(page)[0].querySelector('.ccc-user-email')).toBeNull();
@@ -847,52 +894,86 @@ describe('UserManagementComponent creates a user', () => {
 });
 
 describe('UserManagementComponent edits access', () => {
-  it('the pencil opens the access panel with one row per seat: the title in the picker, where it reaches and the description under it, a remove button, and a button for another role', async () => {
+  it("the menu's Edit access opens the access panel with one row per seat, held as it is: the title in the picker, where it reaches and the description under it, a trash can, and a button for another role; Done closes it without a request", async () => {
     const page = await pageOver(server());
     const panel = await openAccess(page, 'nova');
     expect(textOf(panel.querySelector('.ccc-panel-heading'))).toBe('Edit access for nova');
     expect(textOf(panel.querySelector('.ccc-panel-subheading'))).toBe('Assign roles');
     expect(roleRowsOf(panel)).toEqual([
-      { text: 'Headquarters', words: 'Everywhere · Runs the whole fleet.', disabled: false, removable: true },
+      { text: 'Headquarters', words: 'Everywhere · Runs the whole fleet.', disabled: true, removable: true },
     ]);
     expect(textOf(panel.querySelector('.ccc-role-add'))).toBe('Add another role');
-    expect(textOf(panel.querySelector('.ccc-access-save'))).toBe('Save');
-    expect(textOf(panel.querySelector('.ccc-panel-cancel'))).toBe('Cancel');
+    expect(panel.querySelector('.ccc-access-save')).toBeNull();
+    expect(textOf(panel.querySelector('.ccc-panel-done'))).toBe('Done');
     expect(rowsOf(page)[1].classList.contains('ccc-user-open')).toBe(true);
-  });
-
-  it('Save applies the difference between the rows and the seats, unseats first, then seats, one call per change in order, reads the page again and closes the panel', async () => {
-    const page = await pageOver(server());
-    const panel = await openAccess(page, 'nova');
-    await click(page, panel.querySelector('.ccc-role-remove'));
-    await click(page, panel.querySelector('.ccc-role-add'));
-    await click(page, panel.querySelector('.ccc-role-add'));
-    const [first, second] = pickerInputs(panelOf());
-    await typeInto(page, first, 'Harbormaster');
-    await typeInto(page, second, 'Sector Crew');
     page.transport.requests.length = 0;
-    await click(page, panelOf().querySelector('.ccc-access-save'));
-    expect(writesSent(page)).toEqual([
-      { method: 'PATCH', url: '/api/crew-seats', body: [{ op: 'remove', path: '/u-nova/Headquarters' }] },
-      { method: 'PATCH', url: '/api/crew-seats', body: [{ op: 'add', path: '/u-nova/Harbormaster', value: {} }] },
-      { method: 'PATCH', url: '/api/crew-seats', body: [{ op: 'add', path: '/u-nova/SectorCrew', value: {} }] },
-    ]);
-    expect(sent(page.transport).slice(3)).toContainEqual(expect.stringMatching(/^GET \/api\/crew-users\?/));
-    expect(page.component.notice()).toBeUndefined();
+    await click(page, panel.querySelector('.ccc-panel-done'));
     expect(panelOpen()).toBe(false);
-    expect(page.component.busy()).toBe(false);
+    expect(page.transport.requests).toEqual([]);
   });
 
-  it('a call that fails stops the rest, says which role and what the server said, reads the page again and rebuilds the rows from what the server lists', async () => {
+  it('choosing a role in a new row seats it at once, one call, reads the page again and rebuilds the rows from what the server lists, the panel staying open', async () => {
     const state = server();
     const page = await pageOver(state);
     const panel = await openAccess(page, 'nova');
+    await click(page, panel.querySelector('.ccc-role-add'));
+    const [, picker] = pickerInputs(panelOf());
+    await typeInto(page, picker, 'crew');
+    expect(optionsShown(picker)).toEqual([['Sector Crew', 'Every tenant', '']]);
+    state.rows = rows().map((row) => (row.id === 'u-nova' ? { ...row, roles: ['Headquarters', 'SectorCrew'] } : row));
+    page.transport.requests.length = 0;
+    await click(page, optionOf(picker));
+    await turn();
+    await page.settle();
+    expect(writesSent(page)).toEqual([
+      { method: 'PATCH', url: '/api/crew-seats', body: [{ op: 'add', path: '/u-nova/SectorCrew', value: {} }] },
+    ]);
+    expect(sent(page.transport).slice(1)).toContainEqual(expect.stringMatching(/^GET \/api\/crew-users\?/));
+    expect(page.component.notice()).toBeUndefined();
+    expect(panelOpen()).toBe(true);
+    expect(roleRowsOf(panelOf())).toEqual([
+      { text: 'Headquarters', words: 'Everywhere · Runs the whole fleet.', disabled: true, removable: true },
+      { text: 'Sector Crew', words: 'Every tenant', disabled: true, removable: true },
+    ]);
+    expect(roleLines(rowsOf(page)[1])).toEqual([
+      ['Headquarters', 'Everywhere'],
+      ['Sector Crew', 'Every tenant'],
+    ]);
+    expect(page.component.busy()).toBe(false);
+  });
+
+  it('the trash can asks in a dialog that names the role and the person; Cancel sends nothing, Remove unseats in one call and reads the page again', async () => {
+    const state = server();
+    const page = await pageOver(state);
+    const panel = await openAccess(page, 'nova');
+    page.transport.requests.length = 0;
     await click(page, panel.querySelector('.ccc-role-remove'));
+    expect(textOf(inDialog('.ccc-action-title'))).toBe('Remove the Headquarters role from nova?');
+    expect(textOf(inDialog('.ccc-action-words'))).toBe('nova loses what it allows at once.');
+    expect(textOf(inDialog('.ccc-action-confirm'))).toBe('Remove');
+    await cancelDialog(page);
+    expect(page.transport.requests).toEqual([]);
+    expect(roleRowsOf(panelOf()).map((row) => row.text)).toEqual(['Headquarters']);
+    state.rows = rows().map((row) => (row.id === 'u-nova' ? { ...row, roles: [] } : row));
+    await click(page, panelOf().querySelector('.ccc-role-remove'));
+    await confirmDialog(page);
+    expect(writesSent(page)).toEqual([
+      { method: 'PATCH', url: '/api/crew-seats', body: [{ op: 'remove', path: '/u-nova/Headquarters' }] },
+    ]);
+    expect(sent(page.transport).slice(1)).toContainEqual(expect.stringMatching(/^GET \/api\/crew-users\?/));
+    expect(panelOpen()).toBe(true);
+    expect(roleRowsOf(panelOf())).toEqual([]);
+    expect(textOf(panelOf().querySelector('.ccc-access-none'))).toBe('nova has no roles here.');
+    expect(textOf(panelOf().querySelector('.ccc-role-add'))).toBe('Add a role');
+  });
+
+  it('a seat the server refuses says which role and what the server said, reads the page again and rebuilds the rows from what the server lists', async () => {
+    const state = server();
+    const page = await pageOver(state);
+    const panel = await openAccess(page, 'nova');
     await click(page, panel.querySelector('.ccc-role-add'));
-    await click(page, panel.querySelector('.ccc-role-add'));
-    const [first, second] = pickerInputs(panelOf());
-    await typeInto(page, first, 'Harbormaster');
-    await typeInto(page, second, 'Sector Crew');
+    const [, picker] = pickerInputs(panelOf());
+    await typeInto(page, picker, 'harbor');
     state.answer = (request) =>
       request.method === 'PATCH' &&
       request.url.endsWith('crew-seats') &&
@@ -900,12 +981,13 @@ describe('UserManagementComponent edits access', () => {
         ? { status: 403, body: { message: 'Harbormaster required' } }
         : undefined;
     page.transport.requests.length = 0;
-    await click(page, panelOf().querySelector('.ccc-access-save'));
+    await click(page, optionOf(picker));
+    await turn();
+    await page.settle();
     expect(writesSent(page).map((w) => `${w.url} ${JSON.stringify(w.body)}`)).toEqual([
-      '/api/crew-seats [{"op":"remove","path":"/u-nova/Headquarters"}]',
       '/api/crew-seats [{"op":"add","path":"/u-nova/Harbormaster","value":{}}]',
     ]);
-    expect(sent(page.transport).slice(2)).toContainEqual(expect.stringMatching(/^GET \/api\/crew-users\?/));
+    expect(sent(page.transport).slice(1)).toContainEqual(expect.stringMatching(/^GET \/api\/crew-users\?/));
     expect(page.component.notice()).toBe('Could not add the Harbormaster role to nova: Harbormaster required');
     expect(textOf(panelOf().querySelector('.ccc-panel-notice'))).toBe(
       'Could not add the Harbormaster role to nova: Harbormaster required',
@@ -914,25 +996,44 @@ describe('UserManagementComponent edits access', () => {
     expect(page.component.busy()).toBe(false);
   });
 
-  it('Cancel discards the rows without a request, and a Save with nothing changed sends none', async () => {
+  it('an empty row is dropped without a request or a question', async () => {
     const page = await pageOver(server());
     const panel = await openAccess(page, 'nova');
-    await click(page, panel.querySelector('.ccc-role-remove'));
-    expect(roleRowsOf(panelOf())).toEqual([]);
-    expect(textOf(panelOf().querySelector('.ccc-access-none'))).toBe('nova has no roles here.');
-    expect(textOf(panelOf().querySelector('.ccc-role-add'))).toBe('Add a role');
+    await click(page, panel.querySelector('.ccc-role-add'));
+    expect(roleRowsOf(panelOf()).map((row) => row.text)).toEqual(['Headquarters', '']);
     page.transport.requests.length = 0;
-    await click(page, panelOf().querySelector('.ccc-panel-cancel'));
-    expect(panelOpen()).toBe(false);
-    expect(page.transport.requests).toEqual([]);
-    const again = await openAccess(page, 'nova');
-    expect(roleRowsOf(again).map((row) => row.text)).toEqual(['Headquarters']);
-    await click(page, again.querySelector('.ccc-access-save'));
-    expect(panelOpen()).toBe(false);
+    await click(page, panelOf().querySelectorAll('.ccc-role-remove')[1]);
+    expect(dialogOpen()).toBe(false);
+    expect(roleRowsOf(panelOf()).map((row) => row.text)).toEqual(['Headquarters']);
     expect(page.transport.requests).toEqual([]);
   });
 
-  it('the picker narrows the roles by what is typed, over the title, the name and the description, leaves out the roles other rows hold, and shows each option with its title, where it reaches and its description', async () => {
+  it('says so where the add button would be when the person holds every role there is, and in the tenant partition that none is left here', async () => {
+    const page = await pageOver(
+      server({
+        rows: [
+          user({ id: 'u-ash', username: 'ash', roles: ['Headquarters'], everywhereRoles: ['Harbormaster', 'SectorCrew'] }),
+        ],
+      }),
+    );
+    const panel = await openAccess(page, 'ash');
+    expect(panel.querySelector('.ccc-role-add')).toBeNull();
+    expect(textOf(panel.querySelector('.ccc-access-all'))).toBe('ash holds every role this application has.');
+    expect(textOf(panel.querySelector('.ccc-panel-heading'))).toBe('Edit access for ash');
+    TestBed.resetTestingModule();
+    const tenant = await pageOver(
+      server({
+        rows: [user({ id: 'u-ash', username: 'ash', roles: ['SectorCrew', 'DockHand'], everywhereRoles: ['Harbormaster'] })],
+        roles: [{ name: 'DockHand' }, { name: 'Harbormaster' }, { name: 'SectorCrew' }],
+      }),
+      { domain: 'sector-7' },
+    );
+    const here = await openAccess(tenant, 'ash');
+    expect(here.querySelector('.ccc-role-add')).toBeNull();
+    expect(textOf(here.querySelector('.ccc-access-all'))).toBe('ash holds every role there is here.');
+  });
+
+  it('the picker narrows the roles by what is typed, over the title, the name and the description, leaves out the roles other rows hold, and shows each option with its title, where it reaches and its description on their own lines', async () => {
     const page = await pageOver(server());
     const panel = await openAccess(page, 'nova');
     await click(page, panel.querySelector('.ccc-role-add'));
@@ -961,30 +1062,10 @@ describe('UserManagementComponent edits access', () => {
     await typeInto(page, picker, 'nobody');
     expect(row.role).toBe('');
     expect(names()).toEqual([]);
+    expect(page.transport.requests.filter((r) => r.method !== 'GET')).toEqual([]);
   });
 
-  it('choosing an option sets the row to the role and shows its title in the picker', async () => {
-    const page = await pageOver(server());
-    const panel = await openAccess(page, 'pip');
-    await click(page, panel.querySelector('.ccc-role-add'));
-    const [picker] = pickerInputs(panelOf());
-    await typeInto(page, picker, 'crew');
-    expect(optionsShown(picker)).toEqual([['Sector Crew', 'Every tenant', '']]);
-    const option =
-      document
-        .getElementById(picker.getAttribute('aria-controls') ?? '')
-        ?.querySelector<HTMLElement>('.ccc-role-option') ?? null;
-    await click(page, option);
-    expect(page.component.accessRows()[0].role).toBe('SectorCrew');
-    expect(pickerInputs(panelOf())[0].value).toBe('Sector Crew');
-    page.transport.requests.length = 0;
-    await click(page, panelOf().querySelector('.ccc-access-save'));
-    expect(writesSent(page)).toEqual([
-      { method: 'PATCH', url: '/api/crew-seats', body: [{ op: 'add', path: '/u-pip/SectorCrew', value: {} }] },
-    ]);
-  });
-
-  it('on the global page a seat held in every tenant is a row like the others: listed, not offered again, and removed through the global seats resource on Save', async () => {
+  it('on the global page a seat held in every tenant is a row like the others: listed, not offered again, and unseated through the global seats resource', async () => {
     const page = await pageOver(
       server({
         rows: [user({ id: 'u-ash', username: 'ash', roles: ['Headquarters'], everywhereRoles: ['Harbormaster'] })],
@@ -996,11 +1077,11 @@ describe('UserManagementComponent edits access', () => {
     ]);
     const panel = await openAccess(page, 'ash');
     expect(roleRowsOf(panel)).toEqual([
-      { text: 'Headquarters', words: 'Everywhere · Runs the whole fleet.', disabled: false, removable: true },
+      { text: 'Headquarters', words: 'Everywhere · Runs the whole fleet.', disabled: true, removable: true },
       {
         text: 'Harbormaster',
         words: 'Every tenant · Runs a sector: its berths and its manifests.',
-        disabled: false,
+        disabled: true,
         removable: true,
       },
     ]);
@@ -1010,15 +1091,15 @@ describe('UserManagementComponent edits access', () => {
     expect(page.component.optionsFor(added, page.component.accessRows()).map((role) => role.name)).toEqual([
       'SectorCrew',
     ]);
-    await click(page, panelOf().querySelectorAll('.ccc-role-remove')[1]);
-    expect(roleRowsOf(panelOf()).map((row) => row.text)).toEqual(['Headquarters', '']);
     page.transport.requests.length = 0;
-    await click(page, panelOf().querySelector('.ccc-access-save'));
+    await click(page, panelOf().querySelectorAll('.ccc-role-remove')[1]);
+    expect(textOf(inDialog('.ccc-action-title'))).toBe('Remove the Harbormaster role from ash?');
+    await confirmDialog(page);
     expect(writesSent(page)).toEqual([
       { method: 'PATCH', url: '/api/crew-seats', body: [{ op: 'remove', path: '/u-ash/Harbormaster' }] },
     ]);
     expect(sent(page.transport).slice(1)).toContainEqual(expect.stringMatching(/^GET \/api\/crew-users\?/));
-    expect(panelOpen()).toBe(false);
+    expect(panelOpen()).toBe(true);
   });
 
   const readOnly: {
@@ -1027,6 +1108,7 @@ describe('UserManagementComponent edits access', () => {
     digest?: Record<string, Record<string, string>>;
     wantWords: string;
     wantAdd: boolean;
+    wantHeading: string;
   }[] = [
     {
       name: 'the seats a directory writes are shown with the reason, cannot be edited or removed, and no role can be added',
@@ -1039,6 +1121,7 @@ describe('UserManagementComponent edits access', () => {
       }),
       wantWords: assignedByDirectory,
       wantAdd: false,
+      wantHeading: 'View access for hollis',
     },
     {
       name: 'a caller who may not unseat sees the reason under each role, and may still add one',
@@ -1046,33 +1129,37 @@ describe('UserManagementComponent edits access', () => {
       digest: { ...grantedAll, CrewSeats: { List: 'granted', Create: 'granted' } },
       wantWords: cannotChangeRole,
       wantAdd: true,
+      wantHeading: 'Edit access for hollis',
     },
     {
-      name: 'a caller who may neither seat nor unseat sees the roles and the reasons alone',
+      name: 'a caller who may neither seat nor unseat views the roles and the reasons alone',
       row: user({ id: 'u-hollis', username: 'hollis', roles: ['Harbormaster'] }),
       digest: { ...grantedAll, CrewSeats: { List: 'granted' } },
       wantWords: cannotChangeRole,
       wantAdd: false,
+      wantHeading: 'View access for hollis',
     },
   ];
   for (const tt of readOnly) {
     it(tt.name, async () => {
       const page = await pageOver(server({ rows: [tt.row], ...(tt.digest ? { digest: tt.digest } : {}) }));
       const panel = await openAccess(page, 'hollis');
+      expect(textOf(panel.querySelector('.ccc-panel-heading'))).toBe(tt.wantHeading);
       const shown = roleRowsOf(panel);
       expect(shown.map((row) => row.text)).toEqual(
         [...tt.row.roles, ...tt.row.everywhereRoles].map((role) => (role === 'SectorCrew' ? 'Sector Crew' : role)),
       );
       expect(shown.every((row) => row.words === tt.wantWords && row.disabled && !row.removable)).toBe(true);
       expect(panel.querySelector('.ccc-role-add') !== null).toBe(tt.wantAdd);
+      expect(panel.querySelector('.ccc-access-all')).toBeNull();
       page.transport.requests.length = 0;
-      await click(page, panel.querySelector('.ccc-access-save'));
+      await click(page, panel.querySelector('.ccc-panel-done'));
       expect(page.transport.requests).toEqual([]);
       expect(panelOpen()).toBe(false);
     });
   }
 
-  it("in the tenant partition the tenant's seats carry its name, an everywhere seat is shown with the reason it cannot be changed here and is not offered again, and a change goes under the domain segment", async () => {
+  it("in the tenant partition the tenant's seats carry its name, an everywhere seat is shown with the reason it cannot be changed here and is not offered again, and a seat goes under the domain segment", async () => {
     const page = await pageOver(
       server({
         rows: [user({ id: 'u-ash', username: 'ash', roles: ['SectorCrew'], everywhereRoles: ['Harbormaster'] })],
@@ -1086,7 +1173,7 @@ describe('UserManagementComponent edits access', () => {
     );
     const panel = await openAccess(page, 'ash');
     expect(roleRowsOf(panel)).toEqual([
-      { text: 'Sector Crew', words: 'sector-7 · Works the berths.', disabled: false, removable: true },
+      { text: 'Sector Crew', words: 'sector-7 · Works the berths.', disabled: true, removable: true },
       { text: 'Harbormaster', words: assignedForEveryTenant, disabled: true, removable: false },
     ]);
     await click(page, panel.querySelector('.ccc-role-add'));
@@ -1099,9 +1186,10 @@ describe('UserManagementComponent edits access', () => {
     expect(optionsShown(picker)).toEqual([]);
     await typeInto(page, picker, 'dock');
     expect(optionsShown(picker)).toEqual([['Dock Hand', 'sector-7', '']]);
-    await typeInto(page, picker, 'Dock Hand');
     page.transport.requests.length = 0;
-    await click(page, panelOf().querySelector('.ccc-access-save'));
+    await click(page, optionOf(picker));
+    await turn();
+    await page.settle();
     expect(writesSent(page)).toEqual([
       {
         method: 'PATCH',
@@ -1129,47 +1217,42 @@ describe('UserManagementComponent edits access', () => {
 });
 
 describe('UserManagementComponent manages an account', () => {
-  it("the menu button opens the account panel, whose actions follow the row's envelope: one's own row keeps the rename and the unlink alone", async () => {
+  it("the row's menu names the actions the caller may take, the two that change whether the person can sign in last: one's own row keeps the rename alone", async () => {
     const page = await pageOver(server());
-    const hollis = await openAccount(page, 'hollis');
-    expect(textOf(hollis.querySelector('.ccc-panel-heading'))).toBe('Manage hollis');
-    expect(hollis.querySelector('.ccc-user-rename')).not.toBeNull();
-    expect(hollis.querySelector('.ccc-user-set-email')).not.toBeNull();
-    expect(hollis.querySelector('.ccc-user-unlink')).not.toBeNull();
-    expect(hollis.querySelector('.ccc-user-set-password')).not.toBeNull();
-    expect(hollis.querySelector('.ccc-user-reset-factors')).not.toBeNull();
-    expect(textOf(hollis.querySelector('.ccc-user-account-factors .ccc-user-action-words'))).toBe(
-      'A browser hollis asked to be remembered skips the sign-in code.',
-    );
-    expect(hollis.querySelector('.ccc-user-disable')).not.toBeNull();
-    expect(hollis.querySelector('.ccc-user-delete')).not.toBeNull();
-    expect(hollis.querySelector('.ccc-role-row')).toBeNull();
-    expect(textOf(hollis.querySelector('.ccc-user-identities .ccc-panel-subheading'))).toBe('Signs in with');
-    expect(textOf(hollis.querySelector('.ccc-user-identity-words'))).toBe('Fleet directory · hollis@fleet.example');
-    expect(textOf(hollis.querySelector('.ccc-user-action-words'))).toBe('hollis is active.');
-    await click(page, hollis.querySelector('.ccc-panel-cancel'));
-    expect(panelOpen()).toBe(false);
-    const nova = await openAccount(page, 'nova');
-    expect(textOf(nova.querySelector('.ccc-panel-heading'))).toBe('Manage nova');
-    expect(nova.querySelector('.ccc-user-rename')).not.toBeNull();
-    expect(nova.querySelector('.ccc-user-set-email')).toBeNull();
-    expect(nova.querySelector('.ccc-user-disable')).toBeNull();
-    expect(nova.querySelector('.ccc-user-delete')).toBeNull();
-    expect(nova.querySelector('.ccc-user-set-password')).toBeNull();
-    expect(nova.querySelector('.ccc-user-reset-factors')).toBeNull();
+    const hollis = await openMenu(page, 'hollis');
+    expect(menuItems(hollis)).toEqual([
+      'View access',
+      'Rename',
+      'Change email address',
+      'Set a temporary password',
+      'Forget remembered browsers',
+      'Unlink Fleet directory',
+      'Disable',
+      'Delete',
+    ]);
+    expect(hollis.querySelector('mat-divider')).not.toBeNull();
+    await closeMenu(page);
+    const nova = await openMenu(page, 'nova');
+    expect(menuItems(nova)).toEqual(['Edit access', 'Rename']);
+    expect(nova.querySelector('mat-divider')).toBeNull();
+    await closeMenu(page);
+    const pip = await openMenu(page, 'pip');
+    expect(menuItems(pip)).toContain('Enable');
+    expect(menuItems(pip)).not.toContain('Disable');
   });
 
   const writes: {
     name: string;
-    act: (page: Page, row: ManagedUser) => Promise<void>;
+    item: string;
+    dialog: { title: string; words?: string; field?: string; confirm: string };
+    type?: string;
     want: { method: string; url: string; body: unknown };
   }[] = [
     {
-      name: 'rename patches the username',
-      act: (page, row) => {
-        page.component.rename = 'pippa';
-        return page.component.saveRename(row);
-      },
+      name: 'Rename asks for the new username and patches it',
+      item: '.ccc-user-rename',
+      dialog: { title: 'Rename pip', field: 'pip', confirm: 'Rename' },
+      type: 'pippa',
       want: {
         method: 'PATCH',
         url: '/api/crew-users',
@@ -1177,8 +1260,9 @@ describe('UserManagementComponent manages an account', () => {
       },
     },
     {
-      name: 'enable patches the disabled flag',
-      act: (page, row) => page.component.setDisabled(row, false),
+      name: 'Enable asks and patches the disabled flag',
+      item: '.ccc-user-disable',
+      dialog: { title: 'Enable pip?', words: 'pip can sign in again.', confirm: 'Enable' },
       want: {
         method: 'PATCH',
         url: '/api/crew-users',
@@ -1186,11 +1270,15 @@ describe('UserManagementComponent manages an account', () => {
       },
     },
     {
-      name: 'set address patches the address, unverified',
-      act: (page, row) => {
-        page.component.address = 'pippa@fleet.example';
-        return page.component.saveEmail(row);
+      name: 'Change email address asks for the address and patches it, unverified',
+      item: '.ccc-user-set-email',
+      dialog: {
+        title: 'Change the email address of pip',
+        words: 'Not confirmed until the person confirms it themselves.',
+        field: 'pip@fleet.example',
+        confirm: 'Change',
       },
+      type: 'pippa@fleet.example',
       want: {
         method: 'PATCH',
         url: '/api/crew-users',
@@ -1198,40 +1286,51 @@ describe('UserManagementComponent manages an account', () => {
       },
     },
     {
-      name: 'set password posts the temporary password to the method',
-      act: (page, row) => {
-        page.component.temporaryPassword = 'anvil-run-9';
-        return page.component.setPassword(row);
+      name: 'Set a temporary password asks for it and posts it to the method',
+      item: '.ccc-user-set-password',
+      dialog: {
+        title: 'Set a temporary password for pip',
+        words: 'The person changes it at their next sign-in.',
+        field: '',
+        confirm: 'Set password',
       },
+      type: 'anvil-run-9',
       want: { method: 'POST', url: '/api/set-crew-user-password', body: { user: 'u-pip', password: 'anvil-run-9' } },
     },
     {
-      name: 'forget remembered browsers posts the user to the reset method',
-      act: (page, row) => page.component.resetFactors(row),
+      name: 'Forget remembered browsers asks and posts the user to the reset method',
+      item: '.ccc-user-reset-factors',
+      dialog: {
+        title: 'Forget the browsers pip asked to be remembered?',
+        words: 'Their next sign-in from each of them asks for the code again.',
+        confirm: 'Forget',
+      },
       want: { method: 'POST', url: '/api/reset-crew-user-factors', body: { user: 'u-pip' } },
     },
     {
-      name: 'delete asks first, then removes the user',
-      act: async (page, row) => {
-        await page.component.remove(row);
-        await page.settle();
-        expect(page.component.confirmingDelete()).toBe('u-pip');
-        expect(textOf(panelOf().querySelector('.ccc-user-confirm'))).toBe('Delete pip? This cannot be undone.');
-        expect(page.transport.requests).toEqual([]);
-        await page.component.remove(row);
-      },
+      name: 'Delete asks and removes the user',
+      item: '.ccc-user-delete',
+      dialog: { title: 'Delete pip?', words: 'This cannot be undone.', confirm: 'Delete' },
       want: { method: 'PATCH', url: '/api/crew-users', body: [{ op: 'remove', path: '/u-pip' }] },
     },
   ];
   for (const tt of writes) {
-    it(`${tt.name}, then reads the page again`, async () => {
+    it(`${tt.name}, in one call, then reads the page again`, async () => {
       const page = await pageOver(server());
-      await openAccount(page, 'pip');
-      const row = rowOf(page, 'pip');
       page.transport.requests.length = 0;
-      await tt.act(page, row);
-      await page.settle();
-      const first = page.transport.requests[0];
+      await pick(page, 'pip', tt.item);
+      expect(textOf(inDialog('.ccc-action-title'))).toBe(tt.dialog.title);
+      expect(textOf(inDialog('.ccc-action-words'))).toBe(tt.dialog.words ?? '');
+      expect(textOf(inDialog('.ccc-action-confirm'))).toBe(tt.dialog.confirm);
+      const field = inDialog('input') as HTMLInputElement | null;
+      expect(field?.value ?? null).toBe(tt.dialog.field ?? null);
+      expect(page.transport.requests).toEqual([]);
+      if (tt.type !== undefined) {
+        await typeInDialog(page, tt.type);
+      }
+      await confirmDialog(page);
+      expect(dialogOpen()).toBe(false);
+      const [first] = page.transport.requests;
       expect(`${first.method} ${first.url}`).toBe(`${tt.want.method} ${tt.want.url}`);
       expect(first.body).toEqual(tt.want.body);
       expect(sent(page.transport).slice(1)).toContainEqual(expect.stringMatching(/^GET \/api\/crew-users\?/));
@@ -1240,90 +1339,91 @@ describe('UserManagementComponent manages an account', () => {
     });
   }
 
-  it('the panel stays open after a field is saved and follows the row as the server now lists it; a delete closes it', async () => {
-    const state = server();
-    const page = await pageOver(state);
-    const panel = await openAccount(page, 'pip');
-    state.rows = rows().map((row) => (row.id === 'u-pip' ? { ...row, disabled: false } : row));
-    await click(page, panel.querySelector('.ccc-user-disable'));
-    expect(panelOpen()).toBe(true);
-    expect(textOf(panelOf().querySelector('.ccc-user-action-words'))).toBe('pip is active.');
-    expect(textOf(panelOf().querySelector('.ccc-user-disable'))).toBe('Disable');
-    await click(page, panelOf().querySelector('.ccc-user-delete'));
-    await click(page, panelOf().querySelector('.ccc-user-delete-cancel'));
-    expect(panelOf().querySelector('.ccc-user-confirm')).toBeNull();
-    await click(page, panelOf().querySelector('.ccc-user-delete'));
-    await click(page, panelOf().querySelector('.ccc-user-delete-confirm'));
-    expect(panelOpen()).toBe(false);
-    expect(writesSent(page).map((w) => JSON.stringify(w.body))).toEqual([
-      '[{"op":"patch","path":"/u-pip","value":{"disabled":false}}]',
-      '[{"op":"remove","path":"/u-pip"}]',
-    ]);
+  it('a dismissed dialog sends nothing, and a rename to the same name sends nothing', async () => {
+    const page = await pageOver(server());
+    page.transport.requests.length = 0;
+    await pick(page, 'pip', '.ccc-user-delete');
+    await cancelDialog(page);
+    expect(dialogOpen()).toBe(false);
+    await pick(page, 'pip', '.ccc-user-rename');
+    await confirmDialog(page);
+    expect(page.transport.requests).toEqual([]);
+    expect(rowsOf(page)).toHaveLength(3);
   });
 
-  it("unlink asks first, then posts the identity to the unlink method; a refusal is shown in the panel in the server's words and the page is read again", async () => {
+  it("Unlink names the method and the person; Cancel keeps it, Unlink posts the identity to the unlink method in one call, and a refusal is shown in place in the server's words with the page read again", async () => {
     const state = server();
     const page = await pageOver(state);
-    const panel = await openAccount(page, 'hollis');
-    await click(page, panel.querySelector('.ccc-user-unlink'));
-    expect(textOf(panelOf().querySelector('.ccc-user-confirm'))).toBe('Unlink Fleet directory from hollis?');
-    expect(page.transport.requests.filter((r) => r.method === 'POST')).toEqual([]);
-    await click(page, panelOf().querySelector('.ccc-user-unlink-cancel'));
-    expect(panelOf().querySelector('.ccc-user-confirm')).toBeNull();
-    await click(page, panelOf().querySelector('.ccc-user-unlink'));
     page.transport.requests.length = 0;
-    await click(page, panelOf().querySelector('.ccc-user-unlink-confirm'));
-    const first = page.transport.requests[0];
+    await pick(page, 'hollis', '.ccc-user-unlink');
+    expect(textOf(inDialog('.ccc-action-title'))).toBe('Unlink Fleet directory from hollis?');
+    expect(textOf(inDialog('.ccc-action-words'))).toBe('hollis can no longer sign in that way.');
+    await cancelDialog(page);
+    expect(page.transport.requests).toEqual([]);
+    await pick(page, 'hollis', '.ccc-user-unlink');
+    await confirmDialog(page);
+    const [first] = page.transport.requests;
     expect(`${first.method} ${first.url}`).toBe('POST /api/unlink-crew-user-identity');
     expect(first.body).toEqual({ user: 'u-hollis', identity: 'i-1' });
     expect(page.component.notice()).toBeUndefined();
-
     state.answer = (request) =>
       request.method === 'POST'
         ? { status: 409, body: { message: 'The last way to sign in stays linked' } }
         : undefined;
-    await click(page, panelOf().querySelector('.ccc-user-unlink'));
     page.transport.requests.length = 0;
-    await click(page, panelOf().querySelector('.ccc-user-unlink-confirm'));
-    expect(textOf(panelOf().querySelector('.ccc-panel-notice'))).toBe('The last way to sign in stays linked');
+    await pick(page, 'hollis', '.ccc-user-unlink');
+    await confirmDialog(page);
     expect(textOf(page.element.querySelector('.ccc-users-notice'))).toBe('The last way to sign in stays linked');
     expect(sent(page.transport).slice(1)).toContainEqual(expect.stringMatching(/^GET \/api\/crew-users\?/));
   });
 
   it('in the tenant partition every action goes under the domain segment', async () => {
-    const page = await pageOver(server(), { domain: 'sector-7' });
-    await openAccount(page, 'pip');
-    const pip = rowOf(page, 'pip');
+    const state = server();
+    state.rows = rows().map((row) =>
+      row.id === 'u-pip'
+        ? {
+            ...row,
+            [CapabilitiesProperty]: {
+              Update: ['username', 'email', 'disabled'],
+              Delete: true,
+              Execute: ['SetCrewSectorUserPassword', 'ResetCrewSectorUserFactors', 'UnlinkCrewSectorUserIdentity'],
+            },
+          }
+        : row,
+    );
+    const page = await pageOver(state, { domain: 'sector-7' });
     page.transport.requests.length = 0;
-    page.component.temporaryPassword = 'anvil-run-9';
-    await page.component.setPassword(pip);
-    page.component.rename = 'pippa';
-    await page.component.saveRename(pip);
+    await pick(page, 'pip', '.ccc-user-set-password');
+    await typeInDialog(page, 'anvil-run-9');
+    await confirmDialog(page);
+    await pick(page, 'pip', '.ccc-user-rename');
+    await typeInDialog(page, 'pippa');
+    await confirmDialog(page);
     expect(writesSent(page).map((w) => `${w.method} ${w.url}`)).toEqual([
       'POST /api/sectors/sector-7/set-crew-sector-user-password',
       'PATCH /api/sectors/sector-7/crew-sector-users',
     ]);
   });
 
-  it('a row with no account action for the caller has no menu button, and keeps its pencil', async () => {
+  it('a row with no account action for the caller keeps its menu, with the access alone, to view', async () => {
     const state = server();
     state.rows = [
       user({ id: 'u-quill', username: 'quill', [CapabilitiesProperty]: { Update: [], Delete: false, Execute: [] } }),
     ];
     state.digest = { ...grantedAll, CrewSeats: { List: 'granted' } };
     const page = await pageOver(state);
-    expect(buttons(page, '.ccc-user-manage-account')).toEqual([]);
-    expect(buttons(page, '.ccc-user-edit-access')).toHaveLength(1);
+    const menu = await openMenu(page, 'quill');
+    expect(menuItems(menu)).toEqual(['View access']);
   });
 
-  it("the address field follows the row's envelope, and is never offered where the username is the address", async () => {
+  it("the address action follows the row's envelope, and is never offered where the username is the address", async () => {
     const page = await pageOver(server());
-    const pip = await openAccount(page, 'pip');
+    const pip = await openMenu(page, 'pip');
     expect(pip.querySelector('.ccc-user-set-email')).not.toBeNull();
-    expect(page.component.address).toBe('pip@fleet.example');
-    await click(page, pip.querySelector('.ccc-panel-cancel'));
-    const nova = await openAccount(page, 'nova');
+    await closeMenu(page);
+    const nova = await openMenu(page, 'nova');
     expect(nova.querySelector('.ccc-user-set-email')).toBeNull();
+    await closeMenu(page);
     TestBed.resetTestingModule();
     const kiosk = await pageOver(
       server({
@@ -1337,8 +1437,9 @@ describe('UserManagementComponent manages an account', () => {
       }),
       { auth: 'Kiosk' },
     );
-    const kay = await openAccount(kiosk, 'kay@fleet.example');
+    const kay = await openMenu(kiosk, 'kay@fleet.example');
     expect(kay.querySelector('.ccc-user-set-email')).toBeNull();
+    expect(kay.querySelector('.ccc-user-rename')).toBeNull();
   });
 });
 

@@ -208,6 +208,8 @@ export const IDLE_TIMEOUT_REQUIRE_CONFIRMATION = new InjectionToken<boolean>('ID
  */
 export const DEFAULT_LOGIN_MESSAGES: Readonly<Record<string, string>> = {
   internal_error: 'Sign-in failed because of a problem on our side. Please try again.',
+  // The login page's own code, never sent by a server: the arrival's reads got no answer it could show.
+  unreachable: 'The server did not answer. Try again in a moment.',
   login_refused: 'Sign-in was refused for this account.',
   no_oidc_cookie: 'Sign-in could not be completed because the browser lost its sign-in cookie. Please try again.',
   invalid_state:

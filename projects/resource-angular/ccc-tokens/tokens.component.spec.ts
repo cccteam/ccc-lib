@@ -1,5 +1,6 @@
 import { ApplicationRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import {
   ApiDescriptor,
   createClient,
@@ -11,7 +12,7 @@ import {
 import { scriptedTransport, ScriptedTransport } from '@cccteam/resource/testing';
 import { provideResourceTesting } from '@cccteam/resource-angular/testing';
 
-import { noTokensSentence, TokensComponent } from './tokens.component';
+import { noTokensSentence, TokensComponent, tokenIntro } from './tokens.component';
 
 // The component configures itself from the descriptor's tokens block: it lists the
 // person's live tokens as served, each kind in its own words, issues an application token
@@ -128,7 +129,7 @@ async function pageOver(state: Partial<Server> = {}, api: ApiDescriptor = descri
     ...state,
   });
   await TestBed.configureTestingModule({
-    imports: [TokensComponent],
+    imports: [TokensComponent, NoopAnimationsModule],
     providers: [
       provideResourceTesting({ transport, client: (t) => createClient(api, { baseUrl: '/api', transport: t }) }),
     ],
@@ -172,8 +173,17 @@ describe('TokensComponent lists the tokens', () => {
     ]);
     expect(table.map((row) => cell(row, 'outlet'))).toEqual(['machines', 'machines', 'exports']);
     expect(table.map((row) => cell(row, 'last'))).toEqual(['Never', expect.not.stringMatching(/^Never$/), 'Never']);
-    expect(cell(table[2], 'created')).not.toBe('');
-    expect(cell(table[2], 'expires')).not.toBe('');
+    const toTheMinute = /^[A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d{2} [AP]M$/;
+    expect(cell(table[2], 'created')).toMatch(toTheMinute);
+    expect(cell(table[2], 'expires')).toMatch(toTheMinute);
+    expect(cell(table[1], 'last')).toMatch(toTheMinute);
+  });
+
+  it('names no heading of its own, says what a token is for over the form, and hangs nothing under the Name field', async () => {
+    const page = await pageOver();
+    expect(page.element.querySelector('h1, h2, h3')).toBeNull();
+    expect(textOf(page.element.querySelector('.ccc-tokens-intro'))).toBe(tokenIntro);
+    expect(page.element.querySelector('mat-hint')).toBeNull();
   });
 
   it('says so when there are none', async () => {
@@ -194,15 +204,18 @@ describe('TokensComponent lists the tokens', () => {
 });
 
 describe('TokensComponent issues a token', () => {
-  it('offers the outlets as a choice where there are several, and names the one where there is one', async () => {
+  it('offers the outlets as a choice where there are several, and says nothing about the one where there is one', async () => {
     const several = await pageOver();
     expect(several.element.querySelector('mat-select[name="outlet"]')).not.toBeNull();
     expect(several.component.outlet).toBe('');
+    expect(rowsOf(several).map((row) => cell(row, 'outlet'))).toEqual(['machines', 'machines', 'exports']);
     TestBed.resetTestingModule();
     const one = await pageOver({}, oneOutlet);
     expect(one.element.querySelector('mat-select[name="outlet"]')).toBeNull();
-    expect(textOf(one.element.querySelector('.ccc-tokens-outlet'))).toBe('For machines (served at /machines)');
+    expect(one.element.textContent).not.toContain('served at');
     expect(one.component.outlet).toBe('machines');
+    expect(rowsOf(one)[0].querySelector('.ccc-token-outlet')).toBeNull();
+    expect(Array.from(one.element.querySelectorAll('th')).map((th) => textOf(th))).not.toContain('Outlet');
   });
 
   it('posts the name and the outlet, shows the value once with the sentence, and reads the list again', async () => {
@@ -300,46 +313,55 @@ describe('TokensComponent issues a token', () => {
 });
 
 describe('TokensComponent revokes a token', () => {
-  it('asks first, posts the id on the second click, and reads the list again', async () => {
+  const inDialog = (selector: string): HTMLElement | null =>
+    document.querySelector<HTMLElement>(`.cdk-overlay-container ${selector}`);
+  const trashOf = (page: Page, index: number): HTMLButtonElement =>
+    rowsOf(page)[index].querySelector<HTMLButtonElement>('button.ccc-token-revoke')!;
+  /** The dialog's answer travels through a timer before the call is made; a turn of the clock lets it. */
+  const turn = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it('asks in a dialog that names the token, revokes in one call on Revoke, and reads the list again', async () => {
     const page = await pageOver();
     page.transport.requests.length = 0;
-    const [, , application] = page.component.rows();
-    await page.component.revoke(application);
+    const trash = trashOf(page, 2);
+    expect(trash.getAttribute('aria-label')).toBe('Revoke nightly export');
+    expect(textOf(trash.querySelector('mat-icon'))).toBe('delete');
+    trash.click();
     await page.settle();
     expect(sent(page.transport)).toEqual([]);
-    const row = rowsOf(page)[2];
-    expect(textOf(row.querySelector('.ccc-token-confirm'))).toBe('Revoke nightly export?');
-    expect(row.querySelector('.ccc-token-revoke-confirm')).not.toBeNull();
-    expect(row.querySelector('.ccc-token-revoke-cancel')).not.toBeNull();
-    await page.component.revoke(application);
+    expect(textOf(inDialog('.ccc-action-title'))).toBe('Revoke nightly export?');
+    expect(textOf(inDialog('.ccc-action-words'))).toBe('A device or a program using it stops working at once.');
+    expect(textOf(inDialog('.ccc-action-confirm'))).toBe('Revoke');
+    inDialog('.ccc-action-confirm')!.click();
+    await turn();
     await page.settle();
     expect(sent(page.transport)).toEqual(['POST /api/user/tokens/revoke', 'GET /api/user/tokens']);
     expect(page.transport.requests[0].body).toEqual({ id: 't-1' });
-    expect(page.component.confirmingRevoke()).toBeUndefined();
-    expect(rowsOf(page)[2].querySelector('.ccc-token-confirm')).toBeNull();
+    expect(inDialog('.ccc-action-title')).toBeNull();
   });
 
-  it('says a device grant goes as a pair, and cancels on request', async () => {
+  it('says a device grant goes as a pair, and sends nothing on Cancel', async () => {
     const page = await pageOver();
     page.transport.requests.length = 0;
-    const [refresh] = page.component.rows();
-    await page.component.revoke(refresh);
+    trashOf(page, 0).click();
     await page.settle();
-    expect(textOf(rowsOf(page)[0].querySelector('.ccc-token-confirm'))).toBe(
-      'Revoke the access of impulse on hollis-laptop? Its access and refresh tokens are revoked together.',
+    expect(textOf(inDialog('.ccc-action-title'))).toBe('Revoke impulse on hollis-laptop?');
+    expect(textOf(inDialog('.ccc-action-words'))).toBe(
+      'Its access and refresh tokens go together, and the program holding them stops working at once.',
     );
-    page.component.cancelRevoke();
+    inDialog('.ccc-action-cancel')!.click();
+    await turn();
     await page.settle();
-    expect(rowsOf(page)[0].querySelector('.ccc-token-confirm')).toBeNull();
-    expect(rowsOf(page)[0].querySelector('.ccc-token-revoke')).not.toBeNull();
+    expect(inDialog('.ccc-action-title')).toBeNull();
     expect(sent(page.transport)).toEqual([]);
   });
 
   it("renders the server's refusal in place when no live token answers to the id", async () => {
     const page = await pageOver({ revoke: { status: 404, body: { message: 'no live token' } } });
-    const [, , application] = page.component.rows();
-    await page.component.revoke(application);
-    await page.component.revoke(application);
+    trashOf(page, 2).click();
+    await page.settle();
+    inDialog('.ccc-action-confirm')!.click();
+    await turn();
     await page.settle();
     expect(alertOf(page)).toBe('no live token');
   });

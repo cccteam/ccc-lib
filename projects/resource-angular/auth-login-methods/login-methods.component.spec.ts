@@ -387,6 +387,58 @@ describe('LoginMethodsComponent renders the list', () => {
     expect(fixture.componentInstance.arriving()).toBe(true);
   });
 
+  describe('when the arrival reads fail', () => {
+    const sentence = 'The server did not answer. Try again in a moment.';
+    const retryButton = (page: Page): HTMLButtonElement | null =>
+      page.element.querySelector<HTMLButtonElement>('button.ccc-login-retry');
+    const unreachableNote = (page: Page): string | null =>
+      page.element.querySelector('.ccc-login-unreachable-note')?.textContent?.trim() ?? null;
+
+    it('says the server did not answer and offers Try again, never the raw status', async () => {
+      const page = await mount(scriptedTransport(() => ({ status: 504, body: undefined })));
+      await page.settle();
+      expect(page.component.arriving()).toBe(false);
+      expect(page.component.unreachable()).toBe(true);
+      expect(unreachableNote(page)).toBe(sentence);
+      expect(retryButton(page)?.textContent?.trim()).toBe('Try again');
+      expect(page.element.textContent).not.toContain('HTTP');
+      expect(page.element.querySelector('form')).toBeNull();
+      expect(messageOf(page)).toBeNull();
+    });
+
+    it('says the same when no answer came at all', async () => {
+      const page = await mount(scriptedTransport(() => Promise.reject(new TypeError('Failed to fetch'))));
+      await page.settle();
+      expect(unreachableNote(page)).toBe(sentence);
+      expect(page.element.textContent).not.toContain('Failed to fetch');
+    });
+
+    it('holds the URL refusal back, and Try again reads again with the card held, then renders the whole list with it', async () => {
+      const answering = transportOf(server());
+      let refusals = 1;
+      const transport = scriptedTransport((request: TransportRequest) => {
+        if (refusals > 0 && request.url.endsWith('/user/methods')) {
+          refusals--;
+          return { status: 502, body: undefined };
+        }
+        return answering(request);
+      });
+      const page = await mount(transport, { code: 'no_roles' });
+      await page.settle();
+      expect(messageOf(page)).toBeNull();
+      expect(buttonsOf(page)).toEqual([]);
+      retryButton(page)!.click();
+      expect(page.component.arriving()).toBe(true);
+      expect(page.component.unreachable()).toBe(false);
+      await page.settle();
+      expect(page.component.arriving()).toBe(false);
+      expect(retryButton(page)).toBeNull();
+      expect(buttonsOf(page)).toEqual(['Sign in with Google']);
+      expect(messageOf(page)).toBe('This account has no role in this application. Please contact your administrator.');
+      expect(sent(transport).filter((line) => line === 'GET /console/api/user/methods')).toHaveLength(2);
+    });
+  });
+
   it("takes the application's label for a method by its registration name, the server's otherwise", async () => {
     const page = await pageOver(server(), {}, { labels: { google: 'the fleet directory', password: 'Crew password' } });
     expect(buttonsOf(page)).toEqual(['Sign in with the fleet directory']);
