@@ -1,6 +1,6 @@
 {
-  "projects/resource-angular": "0.0.23",
-  "projects/resource": "0.0.16",
+  "projects/resource-angular": "0.0.24",
+  "projects/resource": "0.0.17",
   "projects/ccc-lib": "0.0.47",
-  "projects/resource-firestore": "0.0.14"
+  "projects/resource-firestore": "0.0.15"
 }
