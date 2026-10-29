@@ -45,7 +45,7 @@ describe('UiCoreService login messages', () => {
     });
   }
 
-  it('holds a sentence for every session code', () => {
+  it('holds a sentence for every session code, and for the login page\'s own', () => {
     const sessionCodes = [
       'internal_error',
       'login_refused',
@@ -79,12 +79,14 @@ describe('UiCoreService login messages', () => {
       'directory_only',
       'invitation_only',
     ];
+    // The login page's own codes, never sent by a server: the arrival's reads got no answer it could show.
+    const pageCodes = ['unreachable'];
     TestBed.configureTestingModule({});
     const ui = TestBed.inject(UiCoreService);
-    for (const code of sessionCodes) {
+    for (const code of [...sessionCodes, ...pageCodes]) {
       expect(ui.loginMessage(code), code).not.toBe('');
     }
-    expect(Object.keys(DEFAULT_LOGIN_MESSAGES).sort()).toEqual([...sessionCodes].sort());
+    expect(Object.keys(DEFAULT_LOGIN_MESSAGES).sort()).toEqual([...sessionCodes, ...pageCodes].sort());
   });
 
   // The attempt limiter's refusal names a wait in seconds; the sentence is followed by it,

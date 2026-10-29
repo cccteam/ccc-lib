@@ -2,16 +2,9 @@
   display: block;
 }
 
-.ccc-tokens-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.75rem;
-}
-
-.ccc-tokens-heading {
-  margin: 0;
+.ccc-tokens-intro {
+  margin: 0 0 16px;
+  max-width: 65ch;
 }
 
 .ccc-tokens-issue,
@@ -24,7 +17,7 @@
 
 .ccc-tokens-issue,
 .ccc-tokens-issued {
-  margin-bottom: 1rem;
+  margin-bottom: 24px;
 }
 
 .ccc-tokens-issued-note {
@@ -39,10 +32,6 @@
   flex: 1 1 24rem;
 }
 
-.ccc-tokens-outlet {
-  opacity: 0.8;
-}
-
 .ccc-tokens {
   width: 100%;
   border-collapse: collapse;
@@ -52,28 +41,25 @@
     text-align: left;
     padding: 0.5rem 0.75rem;
     border-bottom: 1px solid rgba(0, 0, 0, 0.12);
-    vertical-align: top;
+    vertical-align: middle;
+    white-space: nowrap;
   }
 
   th {
     font-weight: 500;
   }
-}
 
-.ccc-token-manage {
-  white-space: nowrap;
-}
-
-.ccc-token-confirming .ccc-token-manage {
-  white-space: normal;
-}
-
-.ccc-token-confirm {
-  margin-right: 0.5rem;
+  // The name takes the room the other columns leave, and is the one that may wrap.
+  th:first-child,
+  td.ccc-token-name {
+    white-space: normal;
+    width: 100%;
+  }
 }
 
 .ccc-tokens-note,
 .ccc-tokens-unserved {
+  margin: 0;
   opacity: 0.8;
 }
 

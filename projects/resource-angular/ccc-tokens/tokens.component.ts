@@ -2,10 +2,14 @@ import { DatePipe } from '@angular/common';
 import { Component, inject, OnInit, PendingTasks, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { IssuedToken, isTokenRefusal, MachineOutletDescriptor, TokenRow, userTokens } from '@cccteam/resource';
+import { askInDialog } from '@cccteam/resource-angular/ccc-dialogs';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 
 /** The longest name a token takes; the server refuses a longer one with its own words. */
@@ -14,6 +18,10 @@ export const tokenNameMaxLength = 200;
 /** The sentence a page shows where the descriptor carries no tokens block: the Auth issues none. */
 export const noTokensSentence = 'This application issues no tokens for the signed-in person.';
 
+/** The sentence over the issue form: what a token is, and what to name it. */
+export const tokenIntro =
+  'A token lets a device or a program of yours use this application as you. Name it for what it is for, so you know it in the list.';
+
 /**
  * The signed-in person's tokens for the application's machine outlets, for an account
  * page. The component configures itself from the descriptor's `tokens` block: the routes,
@@ -21,24 +29,38 @@ export const noTokensSentence = 'This application issues no tokens for the signe
  * the server serves them, newest first: an application token by its name, a device grant
  * (the pair a command-line client holds after the person approved its request) by the
  * client's name and the kind of each row, access or refresh, with the outlet, when it was
- * created, when it expires and when it was last used. An inline form issues an application
- * token by name for one outlet, chosen where there are several and fixed where there is
- * one; the token's value is shown once, in a field with a Copy button, and never again. A
- * revoke asks first; revoking either row of a device grant revokes the pair, and the
- * question says so. A refusal, by the server or by the network, is shown in place in the
- * server's words, and the list is read again after every write. Where the descriptor
- * carries no block, the page says in one sentence that the application issues none.
+ * created, when it expires and when it was last used; the outlet column shows only where
+ * the application has several outlets. The page that composes the component names it (a
+ * heading of its own would repeat the page's), and one sentence over the form says what a
+ * token is for. The form issues an application token by name for one outlet, chosen where
+ * there are several and fixed where there is one; the token's value is shown once, in a
+ * field with a Copy button, and never again. A row's trash can asks in a dialog that names
+ * the token and says what happens, then revokes in one call; revoking either row of a
+ * device grant revokes the pair, and the dialog says so. A refusal, by the server or by the
+ * network, is shown in place in the server's words, and the list is read again after every
+ * write. Where the descriptor carries no block, the page says in one sentence that the
+ * application issues none.
  *
  *     <ccc-tokens />
  */
 @Component({
   selector: 'ccc-tokens',
-  imports: [DatePipe, FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatSelectModule],
+  imports: [
+    DatePipe,
+    FormsModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatSelectModule,
+    MatTooltipModule,
+  ],
   templateUrl: './tokens.component.html',
   styleUrl: './tokens.component.scss',
 })
 export class TokensComponent implements OnInit {
   private client = inject(RESOURCE_CLIENT);
+  private dialog = inject(MatDialog);
   /** Every request is registered as pending work, so the application is stable only once it has answered. */
   private pendingTasks = inject(PendingTasks);
 
@@ -48,7 +70,10 @@ export class TokensComponent implements OnInit {
   readonly outlets: readonly MachineOutletDescriptor[] = this.tokens?.outlets ?? [];
   /** The sentence shown instead of the page where the application issues no tokens. */
   readonly noTokensSentence = noTokensSentence;
+  readonly intro = tokenIntro;
   readonly nameMaxLength = tokenNameMaxLength;
+  /** The dates as the table shows them, to the minute: "Oct 28, 2026, 6:34 PM". */
+  readonly dateFormat = 'MMM d, y, h:mm a';
 
   /** The person's live tokens, newest first as served. */
   rows = signal<readonly TokenRow[]>([]);
@@ -64,8 +89,6 @@ export class TokensComponent implements OnInit {
   issued = signal<IssuedToken | undefined>(undefined);
   /** The value was put on the clipboard. */
   copied = signal(false);
-  /** The id of the row whose revoke awaits confirmation. */
-  confirmingRevoke = signal<string | undefined>(undefined);
 
   /** The issue form: the name, and the outlet, preset where there is one. */
   name = '';
@@ -80,9 +103,9 @@ export class TokensComponent implements OnInit {
     return this.outlets.length > 0;
   }
 
-  /** The words for an outlet in the form: its name, and where it is served. */
-  outletLabel(outlet: MachineOutletDescriptor): string {
-    return `${outlet.name} (served at ${outlet.prefix})`;
+  /** Whether the form offers a choice of outlet and the table shows the column: there are several. */
+  severalOutlets(): boolean {
+    return this.outlets.length > 1;
   }
 
   /** The words for a row: an application token's name, a device grant's client. */
@@ -104,12 +127,12 @@ export class TokensComponent implements OnInit {
     }
   }
 
-  /** The question a revoke asks: the token by its words, and for a device grant that the pair goes together. */
-  revokeQuestion(row: TokenRow): string {
+  /** What a revoke does, under the dialog's question: for a device grant, that the pair goes together. */
+  revokeWords(row: TokenRow): string {
     if (row.kind === 'application') {
-      return `Revoke ${this.labelOf(row)}?`;
+      return 'A device or a program using it stops working at once.';
     }
-    return `Revoke the access of ${this.labelOf(row)}? Its access and refresh tokens are revoked together.`;
+    return 'Its access and refresh tokens go together, and the program holding them stops working at once.';
   }
 
   /** Issues the token the form describes; its value is shown once, and the list is read again. */
@@ -162,28 +185,27 @@ export class TokensComponent implements OnInit {
     this.copied.set(false);
   }
 
-  /** Asks before the token goes; the second click revokes. */
-  revoke(row: TokenRow): Promise<void> {
+  /** Asks in a dialog that names the token; on Revoke, revokes it in one call and reads the list again. */
+  async revoke(row: TokenRow): Promise<void> {
     const tokens = this.tokens;
-    if (!tokens) {
-      return Promise.resolve();
+    if (!tokens || this.busy()) {
+      return;
     }
-    if (this.confirmingRevoke() !== row.id) {
-      this.confirmingRevoke.set(row.id);
-      this.notice.set(undefined);
-      return Promise.resolve();
+    this.notice.set(undefined);
+    const confirmed = await askInDialog(this.dialog, {
+      title: `Revoke ${this.labelOf(row)}?`,
+      words: this.revokeWords(row),
+      confirm: 'Revoke',
+    });
+    if (confirmed !== true) {
+      return;
     }
-    return this.act(async () => {
+    await this.act(async () => {
       const result = await tokens.revoke(row.id);
       if (isTokenRefusal(result)) {
         this.notice.set(result.message);
       }
-      this.confirmingRevoke.set(undefined);
     });
-  }
-
-  cancelRevoke(): void {
-    this.confirmingRevoke.set(undefined);
   }
 
   /** The list again, on request. */
