@@ -305,45 +305,45 @@ from the same entry, for a page that shows a role elsewhere); where it reaches c
 resource's `kind` and from the partition: in an application with tenants, "Everywhere" for a global
 role, "Every tenant" for a seat held in every tenant, and the tenant's name under its own partition;
 an application without tenants says nothing, since every role then reaches the whole of it. A row
-whose seats a directory writes (`rolesSynced`) says "From the directory". Each row ends in a pencil
-("Edit access for hollis") that opens the access panel and a menu button ("Manage hollis") that
-opens the account panel; both are side panels on the right edge of the page, and only one is open
-at a time.
+whose seats a directory writes (`rolesSynced`) says "From the directory". Each row ends in a menu
+button ("Actions for hollis") that names every action the caller may take on that user: Edit
+access (View access where the caller may change nothing), Rename, Change email address, Set a
+temporary password, Forget remembered browsers, Unlink for each linked sign-in method, then, after
+a divider, Disable or Enable and Delete. An action the caller may not take is not listed.
 
-The access panel, "Edit access for hollis", lists the user's roles under "Assign roles": one row
-per role, a searchable picker holding the role's title with, under it, where the role reaches and
-the description the role file gives it, and a remove button; "Add another role" ("Add a role" while
-there are none) appends an empty row. On the global page a seat held in every tenant is a row like
-the others, since the global seats resource seated it and unseats it; in the tenant partition it is
-shown locked. The picker lists the roles the partition's roles resource serves, each option showing the
-title, where it reaches and the description, and narrows them as the person types, over the title,
-the name and the description; a role the user holds already, or another row names, is not offered
-again. Save applies the difference between the rows and the seats the user held when the panel
-opened, through the seats resource, one call per change, the unseats first and then the seats; if
-a call fails the rest are not sent, the panel says which role and what the server said ("Could not
-add the Harbormaster role to nova: Harbormaster required"), the page is read again so the table
-shows what the server lists, and the rows are rebuilt from it. Cancel discards the rows. A role the
-caller may not change is shown with the reason under it and cannot be edited or removed: "Assigned
-by the directory." where the directory writes the seats (and no role can be added), "You cannot
-change this role." where the digest withholds the unseat, and in the tenant partition "Assigned for
-every tenant. You cannot change it here." under a seat held in every tenant; the button that adds a
-role is there only where the digest grants the seat.
+Edit access opens a side panel on the right edge of the page, "Edit access for hollis", listing the
+user's roles under "Assign roles": one row per role, the role's title with, under it, where the role
+reaches and the description the role file gives it, and a trash can; "Add another role" ("Add a
+role" while there are none) appends a row whose searchable picker lists the roles the partition's
+roles resource serves, each option showing the title, where it reaches and the description, narrowed
+as the person types over the title, the name and the description; a role the user holds already, or
+another row names, is not offered again. Each row acts at once: choosing a role seats it through the
+seats resource in one call, and the trash can asks in a dialog ("Remove the Harbormaster role from
+nova?") and unseats in one call; the page is read again after each, so the table and the rows say
+what the server lists, and a refusal is shown in the panel in the server's words ("Could not add the
+Harbormaster role to nova: Harbormaster required"). Done closes the panel. On the global page a seat
+held in every tenant is a row like the others, since the global seats resource seated it and unseats
+it; in the tenant partition it is shown locked. A role the caller may not change is shown with the
+reason under it and cannot be removed: "Assigned by the directory." where the directory writes the
+seats (and no role can be added), "You cannot change this role." where the digest withholds the
+unseat, and in the tenant partition "Assigned for every tenant. You cannot change it here." under a
+seat held in every tenant; the button that adds a role is there only where the digest grants the
+seat, and where it does but the user holds every role there is, the panel says so in its place
+("hollis holds every role this application has.").
 
-The account panel, "Manage hollis", holds the rest: the username with a Save, the email address with
-a Save (an operator's entry is unconfirmed and reserves the address until the person confirms it
-themselves, through `<ccc-email-address>` and the login page's confirmation link), a temporary
-password with "Set password" where the Auth has a password method (the person changes it at their
-next sign-in, through the login component's change form), "Signs in with": the linked identities
-with an Unlink each where the Auth has a registration (the server keeps the last way in), Enable or
-Disable with a sentence saying which the user is, "Forget remembered browsers" where the caller may
-run the reset method (it forgets the browsers the person asked to be remembered at the sign-in code
-step, so their next sign-in asks for the code again; a descriptor from a generator that predates
-the second factor names no such method, and the row is not shown), and Delete. Deleting and
-unlinking ask once, in the panel, before they go. The panel stays open after a field is saved and
-follows the row as the server lists it again; a delete closes it. Where the password method
-declares the username as the address (`usernameIsEmail`), the username column is the address, the
-new-user panel asks for it as the username, and neither is edited by hand: a verified new address
-renames the person.
+Every other action is one step with one call, asked in a dialog. Rename, Change email address (an
+operator's entry is unconfirmed and reserves the address until the person confirms it themselves,
+through `<ccc-email-address>` and the login page's confirmation link) and Set a temporary password
+(where the Auth has a password method; the person changes it at their next sign-in, through the
+login component's change form) each open a dialog with its one field and its one button. Forget
+remembered browsers (where the caller may run the reset method: it forgets the browsers the person
+asked to be remembered at the sign-in code step, so their next sign-in asks for the code again; a
+descriptor from a generator that predates the second factor names no such method, and the action is
+not listed), Unlink (the server keeps the last way in), Disable or Enable and Delete ask once in a
+dialog that names the person and says what happens, and then make their call. Nothing can
+half-succeed. Where the password method declares the username as the address (`usernameIsEmail`),
+the username column is the address, the new-user panel asks for it as the username, and neither is
+edited by hand: a verified new address renames the person.
 
 "New user" opens a panel of the same shape: the username (or the address), the email address, a
 temporary password where the Auth has a password method, "The account starts disabled", then the roles rows and
@@ -365,15 +365,17 @@ Every control follows a capability. The digest decides whether users are created
 invitations sent; the row's capability envelope, asked for on every read, decides the rename, the
 address, the disable, the delete, the methods and the revoke per row, so one's own row loses its
 disable and its delete, and a user seated outside the tenant loses the account-level actions,
-without the page knowing why. A row with no account action for the caller has no menu button; the
-pencil stays, since the access panel shows the roles read-only with the reasons. A role file scopes
+without the page knowing why. A row with no account action for the caller keeps its menu, with the
+access alone, which then shows the roles read-only with the reasons. A role file scopes
 all of it with the same conditions as the application's own resources: a role granted `Create` on
 the seats resource under `new.role != 'Administrator'` seats people into every other role, and the
 refusal of the one it may not is shown in place in the server's words. The lists are read again
 after every write, so the rows say what the server says; a list that pages offers the turns the
 server names.
 
-The side panels are Material dialogs anchored to the right edge (`panelClass: 'ccc-users-panel'`);
+The action dialogs are `askInDialog` of `@cccteam/resource-angular/ccc-dialogs`, one component for a
+question with at most one field, which any page may use the same way. The side panels are Material
+dialogs anchored to the right edge (`panelClass: 'ccc-users-panel'`);
 the library's stylesheet (`@use '@cccteam/resource-angular/styles'`) squares their corners.
 
 ## Tokens
@@ -381,18 +383,22 @@ the library's stylesheet (`@use '@cccteam/resource-angular/styles'`) squares the
 `<ccc-tokens>` (`@cccteam/resource-angular/ccc-tokens`) is the signed-in person's tokens for the
 application's machine outlets, for an account page. It configures itself from the `tokens` block
 of the generated descriptor (see the tokens section of @cccteam/resource): the routes, and the
-machine outlets a token can be issued for. It lists the person's live tokens as the server serves
-them, newest first: an application token by its name, a device grant (the pair a command-line
-client holds after the person approved its request) by the client's name and the kind of each
-row, access or refresh, with the outlet, when it was created, when it expires and when it was
-last used. An inline form issues an application token by name for one outlet, chosen where the
-descriptor lists several and fixed where it lists one; the token's value is shown once, in a
-field with a Copy button (the clipboard where the browser offers one, the field's text selected
-either way), with the sentence that it is not shown again. A revoke asks first; revoking either
-row of a device grant revokes the pair, and the question says so. A refusal is shown in place in
-the server's words, and the list is read again after every write. Where the descriptor carries
-no block, the page says in one sentence that the application issues no tokens for the signed-in
-person.
+machine outlets a token can be issued for. The page that composes it names the page; the component
+carries no heading of its own. One sentence stands over the form: "A token lets a device or a
+program of yours use this application as you. Name it for what it is for, so you know it in the
+list." The form issues an application token by name for one outlet, chosen where the descriptor
+lists several and fixed, and not mentioned, where it lists one; the token's value is shown once, in
+a field with a Copy button (the clipboard where the browser offers one, the field's text selected
+either way), with the sentence that it is not shown again. The table lists the person's live tokens
+as the server serves them, newest first: an application token by its name, a device grant (the pair
+a command-line client holds after the person approved its request) by the client's name and the
+kind of each row, access or refresh, the outlet where there are several, when it was created, when
+it expires and when it was last used, each to the minute ("Oct 28, 2026, 6:34 PM"). Each row ends
+in a trash can that asks in a dialog ("Revoke nightly export?", "A device or a program using it
+stops working at once.") and revokes in one call; revoking either row of a device grant revokes the
+pair, and the dialog says so. A refusal is shown in place in the server's words, and the list is
+read again after every write. Where the descriptor carries no block, the page says in one sentence
+that the application issues no tokens for the signed-in person.
 
 `<ccc-device-approval>` (the same entry) is the page where the person answers a command-line
 client's request to act as them: the program printed a code and a link, and the person approves

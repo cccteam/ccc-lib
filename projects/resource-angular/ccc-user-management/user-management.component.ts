@@ -18,9 +18,11 @@ import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog, MatDialogRef } from '@angular/material/dialog';
+import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import {
   Capability,
@@ -37,6 +39,7 @@ import {
   userSurfaces,
   WithCapabilities,
 } from '@cccteam/resource';
+import { askInDialog } from '@cccteam/resource-angular/ccc-dialogs';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 
 import { roleTitle, RoleTitlePipe } from './role-title';
@@ -49,7 +52,7 @@ export type ManagedInvitation = WithCapabilities<InvitationRow>;
 
 /** Which side panel stands open beside the table, and whose row it is over. */
 export interface OpenPanel {
-  kind: 'access' | 'account' | 'new';
+  kind: 'access' | 'new';
   /** The row's id; none for the new-user panel. */
   user?: string;
 }
@@ -66,6 +69,8 @@ export interface RoleChoice {
   role: string;
   /** Why the row cannot be changed, when it cannot; undefined when it can. */
   locked?: string;
+  /** The row is a seat the user holds, as the server listed it: the picker is not edited, and the trash can unseats it. */
+  seated?: true;
 }
 
 /** The words under a role the directory writes: the page cannot seat or unseat the user by hand. */
@@ -126,29 +131,33 @@ const emptyNewInvitation = (): NewInvitation => ({ email: '', roles: [] });
  * `FeatureAdministrator` reading "Feature Administrator", with where it reaches beside it
  * where the application has tenants: "Everywhere" for a global role, "Every tenant" for a
  * seat held in every tenant, the tenant's name in its partition) and the last sign-in. A
- * row the directory seats says so. Each row has a pencil that opens the access panel and a
- * menu button that opens the account panel; both are side panels on the right.
+ * row the directory seats says so. Each row ends in a menu button that names every action
+ * the caller may take on that user: Edit access, Rename, Change email address, Set a
+ * temporary password, Forget remembered browsers, Unlink for each linked sign-in method,
+ * then Disable or Enable and Delete; an action the caller may not take is not listed.
  *
- * The access panel lists the user's roles, one picker per role with where it reaches and
- * its description under it, a remove button per row and a button for another role; on the
+ * Edit access opens a side panel on the right listing the user's roles, one per row with
+ * where it reaches and its description under it, a trash can per row and a button for
+ * another role. Each row acts at once: choosing a role in a new row seats it in one call,
+ * and the trash can asks in a dialog, then unseats in one call; the page is read again
+ * after each, so the rows say what the server says, and Done closes the panel. On the
  * global page a seat held in every tenant is a row like the others, seated and unseated
- * through the global seats resource, and in the tenant partition it is shown locked. Save
- * applies the difference to the user's seats, unseats first, then seats, one call per
- * change, and if a call fails it stops, says which role and what the server said, and the
- * table shows what the server says. A role the caller may not change, or a seat the
- * directory writes, is shown with the reason under it and cannot be edited. The picker is
- * a searchable list: typing narrows it by title, name and description.
+ * through the global seats resource, and in the tenant partition it is shown locked. A
+ * role the caller may not change, or a seat the directory writes, is shown with the
+ * reason under it and cannot be removed; where the caller may seat but the user holds
+ * every role there is, the panel says so where the add button would be. The picker is a
+ * searchable list: typing narrows it by title, name and description.
  *
- * The account panel holds the rest: the username, the email address (an operator's entry
- * is unverified and reserves the address), a temporary password where the Auth has a
- * password method, the linked identities with an unlink where it has a registration,
- * enable or disable, a button that forgets the browsers the person asked to be remembered
- * at the sign-in code step where the caller may run the reset method, and delete; deleting
- * and unlinking ask once. Where the password
- * method declares the username as the address, the username column is the address and
- * neither is edited by hand: a verified new address renames the person. The new-user
- * panel takes the account fields and the roles, one required in the tenant partition,
- * whose create seats the new user in the tenant.
+ * Every other action is one step with one call: Rename, Change email address (an
+ * operator's entry is unverified and reserves the address) and Set a temporary password
+ * (where the Auth has a password method) each open a dialog with its one field and its
+ * one button; Forget remembered browsers (where the caller may run the reset method),
+ * Unlink, Disable or Enable and Delete ask once in a dialog and then make their call.
+ * Nothing can half-succeed. Where the password method declares the username as the
+ * address, the username column is the address and neither is edited by hand: a verified
+ * new address renames the person. The new-user panel takes the account fields and the
+ * roles, one required in the tenant partition, whose create seats the new user in the
+ * tenant.
  *
  * Below the users stand the partition's invitations, where the descriptor names the
  * resource: an address invited to hold roles, until whoever follows the mailed link signs
@@ -172,9 +181,11 @@ const emptyNewInvitation = (): NewInvitation => ({ email: '', roles: [] });
     MatAutocompleteModule,
     MatButtonModule,
     MatCheckboxModule,
+    MatDividerModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatMenuModule,
     MatSelectModule,
     RoleTitlePipe,
   ],
@@ -186,14 +197,12 @@ export class UserManagementComponent {
   private dialog = inject(MatDialog);
   /** Every request is registered as pending work, so the application is stable only once it has answered. */
   private pendingTasks = inject(PendingTasks);
-  /** The side panel's content; the one template serves the access, account and new-user panels. */
+  /** The side panel's content; the one template serves the access and new-user panels. */
   private panelTemplate = viewChild.required<TemplateRef<unknown>>('panelTemplate');
   /** The open side panel's dialog; undefined while none is open. */
   private dialogRef: MatDialogRef<unknown> | undefined;
   /** The next roles row's key. */
   private nextKey = 0;
-  /** The roles the user held, and may be unseated from, when the access panel opened: what Save compares the rows to. */
-  private accessHeld: string[] = [];
 
   /** The Auth whose surface the page serves, by name; the descriptor's first surface when omitted. */
   auth = input<string | undefined>(undefined);
@@ -260,20 +269,14 @@ export class UserManagementComponent {
   newRoles = signal<RoleChoice[]>([]);
   /** The invitation form is shown. */
   inviting = signal(false);
-  /** The id of the row whose delete awaits confirmation. */
-  confirmingDelete = signal<string | undefined>(undefined);
-  /** The id of the identity whose unlink awaits confirmation. */
-  confirmingUnlink = signal<string | undefined>(undefined);
 
   newUser: NewUser = emptyNewUser();
   newInvitation: NewInvitation = emptyNewInvitation();
-  /** The account panel's rename, address and temporary password fields. */
-  rename = '';
-  address = '';
-  temporaryPassword = '';
 
   /** The words the picker shows for a value: the role's title. */
   readonly titleOf = (name: string | null): string => roleTitle(name ?? '');
+  /** The dates as the tables show them, to the minute: "Oct 28, 2026, 6:34 PM". */
+  readonly dateFormat = 'MMM d, y, h:mm a';
 
   constructor() {
     effect(() => {
@@ -290,15 +293,13 @@ export class UserManagementComponent {
     return domain === undefined ? `${label} users` : `${label} users of ${domain}`;
   }
 
-  /** The open panel's heading: whose access, whose account, or the new user. */
+  /** The open panel's heading: whose access, or the new user. */
   panelHeading(): string {
     const panel = this.panel();
     const username = this.panelUser()?.username ?? '';
     switch (panel?.kind) {
       case 'access':
-        return `Edit access for ${username}`;
-      case 'account':
-        return `Manage ${username}`;
+        return `${this.accessWords(this.panelUser())} for ${username}`;
       case 'new':
         return 'New user';
       default:
@@ -526,39 +527,31 @@ export class UserManagementComponent {
     return this.users()?.invitations?.rowCan(invitation, 'Delete') ?? false;
   }
 
-  /** Whether the row has an account action for the caller, so the menu button is worth showing. */
-  manageable(row: ManagedUser): boolean {
-    return (
-      this.canRename(row) ||
-      this.canSetEmail(row) ||
-      this.canDisable(row) ||
-      this.canDelete(row) ||
-      this.canSetPassword(row) ||
-      this.canUnlink(row) ||
-      this.canResetFactors(row)
-    );
-  }
-
   /** Opens the access panel over a row: one roles row per seat, locked where the caller may not change it. */
   openAccess(row: ManagedUser): void {
-    this.accessHeld = this.removable(row);
     this.accessRows.set(this.heldRows(row));
     this.show({ kind: 'access', user: row.id });
+  }
+
+  /** The menu item and the panel heading for a row's roles: Edit access where the caller may change them, View access otherwise. */
+  accessWords(row: ManagedUser | undefined): string {
+    return row === undefined || this.canSeat(row) || this.canUnseat(row) ? 'Edit access' : 'View access';
+  }
+
+  /** Where the caller may seat but the user holds every role there is: said where the add button would be. */
+  holdsEveryRole(row: ManagedUser): boolean {
+    return !row.rolesSynced && (this.users()?.canSeat() ?? false) && this.seatable(row).length === 0;
+  }
+
+  /** The sentence for a user who holds every role: every role the application has, or every role there is in the tenant. */
+  everyRoleWords(row: ManagedUser): string {
+    const where = this.partition()?.scope === 'domain' ? 'there is here' : 'this application has';
+    return `${row.username} holds every role ${where}.`;
   }
 
   /** The words for the button that adds a roles row: the first role, or another. */
   addRoleWords(rows: readonly RoleChoice[]): string {
     return rows.length === 0 ? 'Add a role' : 'Add another role';
-  }
-
-  /** Opens the account panel over a row, its fields holding what the row says. */
-  openAccount(row: ManagedUser): void {
-    this.rename = row.username;
-    this.address = row.email ?? '';
-    this.temporaryPassword = '';
-    this.confirmingDelete.set(undefined);
-    this.confirmingUnlink.set(undefined);
-    this.show({ kind: 'account', user: row.id });
   }
 
   /** Opens the new-user panel, empty, with one roles row where the panel takes roles. */
@@ -641,48 +634,68 @@ export class UserManagementComponent {
   }
 
   /**
-   * Applies the access panel: the difference between its rows and the seats the user held
-   * when it opened, unseats first, then seats, one call per change. A call that fails
-   * stops the rest; the notice says which role and what the server said, and the rows are
-   * rebuilt from the user as the server now lists them.
+   * Seats the user in the role chosen in a new row of the access panel, in one call, and
+   * reads the page again; the rows are then rebuilt from the user as the server lists
+   * them. A refusal says which role and what the server said.
    */
-  saveAccess(): Promise<void> {
+  chooseRole(row: RoleChoice, role: string): Promise<void> {
+    const partition = this.users();
+    const user = this.panelUser();
+    if (!partition || !user || this.panel()?.kind !== 'access' || row.seated || role === '') {
+      return Promise.resolve();
+    }
+    row.value = role;
+    row.role = role;
+    const { id, username } = user;
+    return this.act(async () => {
+      try {
+        await partition.seats.create({ user: id, role });
+      } catch (error) {
+        throw new Error(`Could not add the ${roleTitle(role)} role to ${username}: ${messageOf(error)}`);
+      }
+    }).then(() => this.rebuildAccessRows());
+  }
+
+  /**
+   * Takes a row off the access panel: an empty row goes at once; a seat the user holds is
+   * unseated in one call after a dialog asks, and the page is read again.
+   */
+  async dropRole(row: RoleChoice): Promise<void> {
     const partition = this.users();
     const user = this.panelUser();
     if (!partition || !user || this.panel()?.kind !== 'access') {
-      return Promise.resolve();
+      return;
     }
-    const kept = new Set(this.chosen(this.accessRows()));
-    const removals = this.accessHeld.filter((role) => !kept.has(role));
-    const additions = [...kept].filter((role) => !this.accessHeld.includes(role));
-    if (removals.length === 0 && additions.length === 0) {
-      this.closePanel();
-      return Promise.resolve();
+    if (!row.seated) {
+      this.removeRole(this.accessRows, row);
+      return;
     }
+    const role = row.role;
     const { id, username } = user;
-    return this.act(async () => {
-      for (const role of removals) {
-        try {
-          await partition.seats.remove([id, role]);
-        } catch (error) {
-          throw new Error(`Could not remove the ${roleTitle(role)} role from ${username}: ${messageOf(error)}`);
-        }
-      }
-      for (const role of additions) {
-        try {
-          await partition.seats.create({ user: id, role });
-        } catch (error) {
-          throw new Error(`Could not add the ${roleTitle(role)} role to ${username}: ${messageOf(error)}`);
-        }
-      }
-      this.closePanel();
-    }).then(() => {
-      const fresh = this.panelUser();
-      if (fresh && this.panel()?.kind === 'access') {
-        this.accessHeld = this.removable(fresh);
-        this.accessRows.set(this.heldRows(fresh));
+    const confirmed = await askInDialog(this.dialog, {
+      title: `Remove the ${roleTitle(role)} role from ${username}?`,
+      words: `${username} loses what it allows at once.`,
+      confirm: 'Remove',
+    });
+    if (confirmed !== true) {
+      return;
+    }
+    await this.act(async () => {
+      try {
+        await partition.seats.remove([id, role]);
+      } catch (error) {
+        throw new Error(`Could not remove the ${roleTitle(role)} role from ${username}: ${messageOf(error)}`);
       }
     });
+    this.rebuildAccessRows();
+  }
+
+  /** The access panel's rows again, from the user as the server now lists them, while the panel stays open over the row. */
+  private rebuildAccessRows(): void {
+    const fresh = this.panelUser();
+    if (fresh && this.panel()?.kind === 'access') {
+      this.accessRows.set(this.heldRows(fresh));
+    }
   }
 
   /** Sends the invitation the form describes: the address is mailed a link carrying the roles. */
@@ -708,95 +721,129 @@ export class UserManagementComponent {
     return this.act(() => invitations.remove([invitation.id]));
   }
 
-  /** Enters the row's address by hand, unverified: it reserves the address until the person confirms it. */
-  saveEmail(row: UserRow): Promise<void> {
-    const partition = this.users();
-    if (!partition || this.address === '' || this.address === row.email) {
-      return Promise.resolve();
-    }
-    const email = this.address;
-    return this.act(() => partition.users.patch([row.id], { email }));
-  }
-
-  /** Renames the row to what the rename field says. */
-  saveRename(row: UserRow): Promise<void> {
-    const partition = this.users();
-    if (!partition || this.rename === row.username) {
-      return Promise.resolve();
-    }
-    const username = this.rename;
-    return this.act(() => partition.users.patch([row.id], { username }));
-  }
-
-  setDisabled(row: UserRow, disabled: boolean): Promise<void> {
+  /** Asks for the new username in a dialog, then renames the row in one call. */
+  async rename(row: ManagedUser): Promise<void> {
     const partition = this.users();
     if (!partition) {
-      return Promise.resolve();
+      return;
     }
-    return this.act(() => partition.users.patch([row.id], { disabled }));
+    const username = await askInDialog(this.dialog, {
+      title: `Rename ${row.username}`,
+      field: { label: this.usernameLabel(), value: row.username },
+      confirm: 'Rename',
+    });
+    if (typeof username !== 'string' || username === row.username) {
+      return;
+    }
+    await this.act(() => partition.users.patch([row.id], { username }));
   }
 
-  /** Asks before the row goes; the second call deletes, and the panel closes with the row. */
-  remove(row: UserRow): Promise<void> {
+  /** Asks for the address in a dialog, then enters it by hand, unverified: it reserves the address until the person confirms it. */
+  async changeEmail(row: ManagedUser): Promise<void> {
     const partition = this.users();
     if (!partition) {
-      return Promise.resolve();
+      return;
     }
-    if (this.confirmingDelete() !== row.id) {
-      this.confirmingDelete.set(row.id);
-      return Promise.resolve();
+    const email = await askInDialog(this.dialog, {
+      title: `Change the email address of ${row.username}`,
+      words: 'Not confirmed until the person confirms it themselves.',
+      field: { label: 'Email address', type: 'email', value: row.email ?? '' },
+      confirm: 'Change',
+    });
+    if (typeof email !== 'string' || email === row.email) {
+      return;
     }
-    return this.act(async () => {
+    await this.act(() => partition.users.patch([row.id], { email }));
+  }
+
+  /** Asks whether to disable the row, or to enable it again, then patches the flag in one call. */
+  async setDisabled(row: ManagedUser, disabled: boolean): Promise<void> {
+    const partition = this.users();
+    if (!partition) {
+      return;
+    }
+    const confirmed = await askInDialog(
+      this.dialog,
+      disabled
+        ? { title: `Disable ${row.username}?`, words: `${row.username} cannot sign in until enabled again.`, confirm: 'Disable' }
+        : { title: `Enable ${row.username}?`, words: `${row.username} can sign in again.`, confirm: 'Enable' },
+    );
+    if (confirmed !== true) {
+      return;
+    }
+    await this.act(() => partition.users.patch([row.id], { disabled }));
+  }
+
+  /** Asks once in a dialog, then deletes the row in one call; an open panel closes with the row. */
+  async remove(row: ManagedUser): Promise<void> {
+    const partition = this.users();
+    if (!partition) {
+      return;
+    }
+    const confirmed = await askInDialog(this.dialog, {
+      title: `Delete ${row.username}?`,
+      words: 'This cannot be undone.',
+      confirm: 'Delete',
+    });
+    if (confirmed !== true) {
+      return;
+    }
+    await this.act(async () => {
       await partition.users.remove([row.id]);
-      this.confirmingDelete.set(undefined);
       this.closePanel();
     });
   }
 
-  cancelDelete(): void {
-    this.confirmingDelete.set(undefined);
-  }
-
-  /** Sets the temporary password typed for the row; the person changes it at their next sign-in. */
-  setPassword(row: UserRow): Promise<void> {
-    const partition = this.users();
-    if (!partition || this.temporaryPassword === '') {
-      return Promise.resolve();
-    }
-    const password = this.temporaryPassword;
-    return this.act(async () => {
-      await partition.setPassword(row.id, password);
-      this.temporaryPassword = '';
-    });
-  }
-
-  /** Asks before the identity goes; the second call unlinks it. */
-  unlink(row: UserRow, identity: UserIdentity): Promise<void> {
+  /** Asks for a temporary password in a dialog, then sets it in one call; the person changes it at their next sign-in. */
+  async setPassword(row: ManagedUser): Promise<void> {
     const partition = this.users();
     if (!partition) {
-      return Promise.resolve();
+      return;
     }
-    if (this.confirmingUnlink() !== identity.id) {
-      this.confirmingUnlink.set(identity.id);
-      return Promise.resolve();
-    }
-    return this.act(async () => {
-      await partition.unlinkIdentity(row.id, identity.id);
-      this.confirmingUnlink.set(undefined);
+    const password = await askInDialog(this.dialog, {
+      title: `Set a temporary password for ${row.username}`,
+      words: 'The person changes it at their next sign-in.',
+      field: { label: 'Temporary password', type: 'password', autocomplete: 'new-password' },
+      confirm: 'Set password',
     });
+    if (typeof password !== 'string') {
+      return;
+    }
+    await this.act(() => partition.setPassword(row.id, password));
   }
 
-  cancelUnlink(): void {
-    this.confirmingUnlink.set(undefined);
-  }
-
-  /** Forgets the browsers the row's person asked to be remembered: their next sign-in asks for the second factor. */
-  resetFactors(row: UserRow): Promise<void> {
+  /** Asks once in a dialog, then unlinks the identity in one call. */
+  async unlink(row: ManagedUser, identity: UserIdentity): Promise<void> {
     const partition = this.users();
     if (!partition) {
-      return Promise.resolve();
+      return;
     }
-    return this.act(() => partition.resetFactors(row.id));
+    const confirmed = await askInDialog(this.dialog, {
+      title: `Unlink ${this.registrationLabel(identity)} from ${row.username}?`,
+      words: `${row.username} can no longer sign in that way.`,
+      confirm: 'Unlink',
+    });
+    if (confirmed !== true) {
+      return;
+    }
+    await this.act(() => partition.unlinkIdentity(row.id, identity.id));
+  }
+
+  /** Asks once in a dialog, then forgets the browsers the row's person asked to be remembered: their next sign-in asks for the code again. */
+  async resetFactors(row: ManagedUser): Promise<void> {
+    const partition = this.users();
+    if (!partition) {
+      return;
+    }
+    const confirmed = await askInDialog(this.dialog, {
+      title: `Forget the browsers ${row.username} asked to be remembered?`,
+      words: 'Their next sign-in from each of them asks for the code again.',
+      confirm: 'Forget',
+    });
+    if (confirmed !== true) {
+      return;
+    }
+    await this.act(() => partition.resetFactors(row.id));
   }
 
   /** The same page again, after a write or on request. */
@@ -828,8 +875,6 @@ export class UserManagementComponent {
       this.panel.set(undefined);
       this.accessRows.set([]);
       this.newRoles.set([]);
-      this.confirmingDelete.set(undefined);
-      this.confirmingUnlink.set(undefined);
     });
   }
 
@@ -850,16 +895,8 @@ export class UserManagementComponent {
     return [...held, ...everywhere];
   }
 
-  /** The seats the caller may unseat the row from: the ones the partition's seats resource holds, when the digest grants it. */
-  private removable(row: ManagedUser): string[] {
-    if (!this.canUnseat(row)) {
-      return [];
-    }
-    return this.partition()?.scope === 'domain' ? [...row.roles] : [...row.roles, ...this.everywhereOf(row)];
-  }
-
   private choice(role: string, locked: string | undefined): RoleChoice {
-    return { key: this.nextKey++, value: role, role, ...(locked === undefined ? {} : { locked }) };
+    return { key: this.nextKey++, value: role, role, seated: true, ...(locked === undefined ? {} : { locked }) };
   }
 
   private emptyChoice(): RoleChoice {
