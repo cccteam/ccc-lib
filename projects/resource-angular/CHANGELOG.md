@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.24](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.23...resource-angular/v0.0.24) (2026-10-29)
+
+
+### Bug Fixes
+
+* **resource-angular:** the Users page names a linked identity by its provider and the organization the link carries, "Google (example)", instead of its connection ([#177](https://github.com/cccteam/ccc-lib/issues/177)) ([aa86f1d](https://github.com/cccteam/ccc-lib/commit/aa86f1de983e6824e222c27889024d3f01f461cc))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.16 to ^0.0.17
+
 ## [0.0.23](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.22...resource-angular/v0.0.23) (2026-10-29)
 
 
