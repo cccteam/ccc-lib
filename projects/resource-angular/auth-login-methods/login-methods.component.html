@@ -1,5 +1,8 @@
 @if (arriving()) {
   <!-- The arrival's reads are in flight: nothing renders until they have answered, and the page holds its card back on the same signal. -->
+} @else if (unreachable()) {
+  <p class="ccc-login-unreachable-note" role="status">{{ unreachableNote }}</p>
+  <button mat-flat-button type="button" class="ccc-login-retry" (click)="retry()">Try again</button>
 } @else if (changing()) {
   <div class="ccc-login-change">
     <p class="ccc-login-change-note">{{ changeNote() }}</p>

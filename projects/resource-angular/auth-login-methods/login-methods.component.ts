@@ -110,6 +110,9 @@ export interface AccountForm {
  * holds its card back on, so a load shows nothing and then the whole card), so the form
  * shows only to a person found signed out; one found signed in goes straight on to what
  * the link asks for, or is offered Continue and Sign out, and is never shown a form first.
+ * Reads that fail (no answer, or an answer with no words to show: a gateway's 502 or 504)
+ * render the sentence held for `unreachable` and a Try again button in the list's place,
+ * never the status; Try again runs the arrival again, the card held back meanwhile.
  *
  * A session the sign-in establishes may carry `passwordChangeRequired`: an operator set
  * the password, and the server serves nothing but the password change until the person
@@ -225,6 +228,14 @@ export class LoginMethodsComponent implements OnInit {
    * loads. True from the start, so the first render is already held.
    */
   arriving = signal(true);
+  /**
+   * The arrival's reads failed: no answer at all, or one with no words the page could
+   * show (a gateway's 502 or 504, a 500). The card offers Try again in the list's place
+   * and never renders the status; the browser's network log has it.
+   */
+  unreachable = signal(false);
+  /** The sentence shown while `unreachable`: the one held for the code `unreachable`, reworded by an application like any other. */
+  readonly unreachableNote = this.ui.loginMessage('unreachable');
   /** The confirmation link's token, posted once a session stands. */
   private verifyToken = '';
 
@@ -234,10 +245,19 @@ export class LoginMethodsComponent implements OnInit {
   });
   /** The sentence of a refusal answered on a step, or empty; it replaces the URL's once a step has run. */
   private refusal = signal<string | undefined>(undefined);
-  /** The refusal sentence on screen: a step's answer once there is one, else the sentence held for the URL's code. */
-  message = computed(() => this.refusal() ?? this.ui.loginMessage(this.code()));
+  /**
+   * The refusal sentence on screen: a step's answer once there is one, else the sentence
+   * held for the URL's code; nothing while the server is unreachable, so one message
+   * stands at a time, and the URL's sentence shows again once Try again succeeds.
+   */
+  message = computed(() => (this.unreachable() ? undefined : (this.refusal() ?? this.ui.loginMessage(this.code()))));
 
   ngOnInit(): void {
+    void this.tracked(() => this.arrive());
+  }
+
+  /** Try again: runs the arrival again, the card held back meanwhile as on a first load. */
+  retry(): void {
     void this.tracked(() => this.arrive());
   }
 
@@ -546,7 +566,8 @@ export class LoginMethodsComponent implements OnInit {
    * no invitation carried, the page asks for the session: the page ends none on arrival,
    * so one it finds standing is offered Continue or Sign out in the list's place, and one
    * that must change its password gets the change form; the form appears only once that
-   * read says no session stands.
+   * read says no session stands. A read that fails ends the arrival in `unreachable`:
+   * the card offers Try again, which runs the arrival again.
    */
   private async arrive(): Promise<void> {
     const params = this.route.snapshot.queryParamMap;
@@ -555,6 +576,8 @@ export class LoginMethodsComponent implements OnInit {
     this.verifyToken = params.get('verify') ?? '';
     const linked = params.has('pending') || invitation !== '' || signUp !== '' || this.verifyToken !== '';
     this.arriving.set(true);
+    this.unreachable.set(false);
+    this.refusal.set(undefined);
     try {
       const list = await this.client.auth.methods();
       const carried = this.carriedInvitation(list, invitation);
@@ -577,8 +600,8 @@ export class LoginMethodsComponent implements OnInit {
       } else if (!linked && !carried) {
         await this.findSession();
       }
-    } catch (error) {
-      this.refusal.set(messageOf(error));
+    } catch {
+      this.unreachable.set(true);
     } finally {
       this.arriving.set(false);
     }

@@ -152,7 +152,10 @@ to a password sign-in, is read from the pending status route and takes the list'
 confirmation, the password form of the user the sign-in matched, posting to the confirmation route,
 with a cancel that returns to the list and emits `cancelled`; a step the server names a page for
 (a pending hook's `redirectUrl`) sends the browser there. A step that has expired returns to the
-list with the sentence for `pending_expired`.
+list with the sentence for `pending_expired`. An arrival whose reads fail (no answer, or a gateway's
+502 or 504 with no words to show) renders the sentence held for `unreachable`, "The server did not
+answer. Try again in a moment.", and a Try again button that runs the arrival again, in the list's
+place; the status itself is never shown.
 
 A sign-in the policy holds for a second factor shows the sign-in code step when the policy accepts
 the mailed code: the code is mailed at once to the address the account holds, and the step says
