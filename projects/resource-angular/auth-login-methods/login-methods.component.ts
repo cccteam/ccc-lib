@@ -265,8 +265,17 @@ export class LoginMethodsComponent implements OnInit {
    * stands at a time, and the URL's sentence shows again once Try again succeeds.
    */
   message = computed(() => (this.unreachable() ? undefined : (this.refusal() ?? this.ui.loginMessage(this.code()))));
-  /** The URL carries a refusal: the redirect buttons ask the provider for its account chooser, and "Use a different account" is not offered beside them. */
+  /** The URL carries a refusal: the redirect buttons ask the provider for its account chooser by themselves, and "Use a different account" is not offered. */
   afterRefusal = computed(() => this.code() !== '');
+  /** "Use a different account" was pressed: the redirect buttons ask the provider for its account chooser, and a note stands where the link was. */
+  differentAccount = signal(false);
+  /**
+   * The redirect buttons ask the provider for its account chooser, and say so ("Choose a
+   * Google account"): after a refusal in the URL, or once "Use a different account" was
+   * pressed. Otherwise a redirect button asks nothing, so the single-account person pays
+   * no click.
+   */
+  choosing = computed(() => this.afterRefusal() || this.differentAccount());
 
   ngOnInit(): void {
     void this.tracked(() => this.arrive());
@@ -304,6 +313,24 @@ export class LoginMethodsComponent implements OnInit {
   /** The words for a method: the application's override by name, else the server's label. */
   labelOf(method: LoginMethod): string {
     return this.labels()[method.name] ?? method.label;
+  }
+
+  /** A redirect button's words: "Sign in with Google", or "Choose a Google account" while the chooser is asked for. */
+  redirectCaption(method: LoginMethod): string {
+    const label = this.labelOf(method);
+    if (!this.choosing()) {
+      return `Sign in with ${label}`;
+    }
+
+    return `Choose ${/^[aeiou]/i.test(label) ? 'an' : 'a'} ${label} account`;
+  }
+
+  /** "Use a different account": from here every redirect button asks the provider for its account chooser. */
+  useDifferentAccount(): void {
+    if (this.busy()) {
+      return;
+    }
+    this.differentAccount.set(true);
   }
 
   /** Posts the password form: the session, a pending step, or a refusal rendered in place. */
@@ -360,20 +387,16 @@ export class LoginMethodsComponent implements OnInit {
    * Sends the browser to a redirect method's path, naming the page the sign-in returns to:
    * the page the guard recorded, or this page with the confirmation link's token when one
    * waits to be posted, since the round trip through the identity provider reloads the
-   * application. The provider is asked for its account chooser after a refusal, and from
-   * "Use a different account" (`differentAccount`).
+   * application. The provider is asked for its account chooser while the card is choosing
+   * (after a refusal, or once "Use a different account" was pressed).
    */
-  signInThrough(method: LoginMethod, differentAccount = false): void {
+  signInThrough(method: LoginMethod): void {
     if (this.busy()) {
       return;
     }
     const page =
       this.verifyToken === '' ? this.landing() : `${this.loginPath}?verify=${encodeURIComponent(this.verifyToken)}`;
-    this.leaveFor(
-      this.client.auth.signInUrl(method, this.browserPath(page), {
-        selectAccount: differentAccount || this.afterRefusal(),
-      }),
-    );
+    this.leaveFor(this.client.auth.signInUrl(method, this.browserPath(page), { selectAccount: this.choosing() }));
   }
 
   /** Confirms the pending sign-in with the password of the user it matched. */
