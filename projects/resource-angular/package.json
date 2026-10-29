@@ -23,6 +23,9 @@
     "tslib": "^2.3.0"
   },
   "sideEffects": false,
+  "cccteam": {
+    "signInSteps": ["confirmation", "mfa:email-code"]
+  },
   "exports": {
     "./styles": {
       "sass": "./styles/_index.scss",

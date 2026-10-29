@@ -165,9 +165,16 @@ ran out of attempts shows the sentence for `code_expired`, and a new one is a cl
 address sent three codes within fifteen minutes is refused with `too_many_attempts` and the wait,
 the send button then standing in the form's place. With the box checked, the server remembers the
 browser, and this person's next sign-ins from it skip the code until the server forgets it, or an
-operator does from the user-management page. A second-factor step the policy satisfies by the
-application's own factors alone shows a note and the cancel, for the application's page to take
-over.
+operator does from the user-management page. A step this page does not render, a reason it does
+not know or a second-factor step without the mailed code, shows a note saying the page is older
+than the server, asking the person to reload and try again, with the cancel.
+
+The package declares the sign-in steps the component renders under `cccteam.signInSteps` in its
+package.json (`confirmation`, and `mfa:email-code` for the second factor by the mailed code), the
+same list as the component's `SIGN_IN_STEPS`. The framework's release check holds the steps a
+generated server asks the page for to that declaration, so a release never pairs a server with a
+page that cannot render what the server asks; a new step is added to the component, the list and
+the declaration together.
 
 A session the sign-in establishes may carry `passwordChangeRequired`: an operator set the password
 (the seed's first administrator, a user created or reset through the user-management surface), and
