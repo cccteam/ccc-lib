@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.25](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.24...resource-angular/v0.0.25) (2026-10-29)
+
+
+### Features
+
+* **resource-angular:** the login card offers one small "Use a different account" link under its provider buttons; pressed, every provider button reads "Choose a … account" and asks the provider for its account chooser, and after a refusal the buttons say so by themselves ([#179](https://github.com/cccteam/ccc-lib/issues/179)) ([75e4a30](https://github.com/cccteam/ccc-lib/commit/75e4a308d0a7d1e0a2a8d70f14d01868209c292f))
+
 ## [0.0.24](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.23...resource-angular/v0.0.24) (2026-10-29)
 
 
