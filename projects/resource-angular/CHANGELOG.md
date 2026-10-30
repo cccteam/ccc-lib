@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.27](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.26...resource-angular/v0.0.27) (2026-10-30)
+
+
+### Features
+
+* the login card offers "Accept as &lt;signed-in user&gt;" only when that account holds the invited address or none; signed in as another account it says whose the invitation is and how to accept it, and a 403 refusal of the acceptance keeps the invitation standing (@cccteam/resource-angular) ([#184](https://github.com/cccteam/ccc-lib/issues/184)) ([629546a](https://github.com/cccteam/ccc-lib/commit/629546a300918f6e4b6fb1ee59ccc1a7510aa5c7))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.18 to ^0.0.19
+
 ## [0.0.26](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.25...resource-angular/v0.0.26) (2026-10-29)
 
 
