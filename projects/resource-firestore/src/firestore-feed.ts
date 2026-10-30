@@ -1,6 +1,6 @@
 import { ChangeEvent, ChangeFeed, LiveIdentity, liveChangeTtl, PageEvents } from '@cccteam/resource';
 import { deleteApp, FirebaseApp, initializeApp } from 'firebase/app';
-import { getAuth, signInWithCustomToken } from 'firebase/auth';
+import { Auth, inMemoryPersistence, initializeAuth, signInWithCustomToken, signOut } from 'firebase/auth';
 import {
   collection,
   connectFirestoreEmulator,
@@ -60,8 +60,8 @@ let instances = 0;
  * `users/{uid}/changes`, ordered by `at` and bounded below by the last change seen. It
  * connects with the identity the server minted (`GET <prefix>/live/token`): the project,
  * the database, and either the emulator with a mock user token for the uid, or a custom
- * token signed in through Firebase Auth. Each document becomes one ChangeEvent with `at`
- * as unix microseconds.
+ * token signed in through Firebase Auth on an auth held in memory only, signed out at
+ * stop. Each document becomes one ChangeEvent with `at` as unix microseconds.
  *
  * The first snapshot of a listener primes the last change seen and emits nothing: at
  * start the backlog predates the page's own first fetch, and after an error the
@@ -84,6 +84,7 @@ export class FirestoreChangeFeed implements ChangeFeed {
   private readonly changeListeners = new Set<(event: ChangeEvent) => void>();
   private readonly resyncListeners = new Set<() => void>();
   private app: FirebaseApp | undefined;
+  private auth: Auth | undefined;
   private db: Firestore | undefined;
   private uid = '';
   private unsubscribe: Unsubscribe | undefined;
@@ -136,13 +137,19 @@ export class FirestoreChangeFeed implements ChangeFeed {
       `cccteam-resource-live-${++instances}`,
     );
     const db = identity.database ? getFirestore(app, identity.database) : getFirestore(app);
+    let auth: Auth | undefined;
     if (identity.emulator) {
       const { host, port } = hostAndPort(identity.emulator);
       connectFirestoreEmulator(db, host, port, { mockUserToken: { sub: identity.uid, user_id: identity.uid } });
     } else {
-      await signInWithCustomToken(getAuth(app), identity.token);
+      // The identity is minted for this session and revoked at stop, so the signed-in user
+      // lives in memory only: nothing of it is written to the browser's storage, and a page
+      // load starts with no user to reload.
+      auth = initializeAuth(app, { persistence: inMemoryPersistence });
+      await signInWithCustomToken(auth, identity.token);
     }
     this.app = app;
+    this.auth = auth;
     this.db = db;
     this.uid = identity.uid;
     this.lastSeen = undefined;
@@ -167,11 +174,20 @@ export class FirestoreChangeFeed implements ChangeFeed {
     this.unsubscribe?.();
     this.unsubscribe = undefined;
     const app = this.app;
+    const auth = this.auth;
     this.app = undefined;
+    this.auth = undefined;
     this.db = undefined;
     this.uid = '';
     this.lastSeen = undefined;
     this.seenAtLastSeen = new Set();
+    if (auth) {
+      try {
+        await signOut(auth);
+      } catch {
+        // The server revoked the identity before this; the app goes next either way.
+      }
+    }
     if (app) {
       try {
         await deleteApp(app);

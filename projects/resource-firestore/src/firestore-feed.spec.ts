@@ -6,8 +6,8 @@ import { ChangeEvent, LiveIdentity, PageEvents } from '@cccteam/resource';
 // `at` and bounded by the last change seen, primes on the first snapshot and emits each
 // later document as one event with `at` in microseconds, restarts a failed listener and
 // emits resync when it recovers, emits resync when the page becomes visible after being
-// hidden longer than the change documents live and on no other occasion, and tears the
-// app down on stop.
+// hidden longer than the change documents live and on no other occasion, and signs its
+// identity out and tears the app down on stop.
 
 interface FakeTimestamp {
   seconds: number;
@@ -42,8 +42,10 @@ const sdk = {
   deleted: [] as string[],
   firestores: [] as { app: string; database: string | undefined }[],
   emulators: [] as { host: string; port: number; options: unknown }[],
-  auths: [] as string[],
+  auths: [] as { app: string; persistence: unknown }[],
   signIns: [] as string[],
+  /** Sign-outs and app deletions in the order they happened, as `signOut name` and `delete name`. */
+  teardown: [] as string[],
   collections: [] as string[],
   queries: [] as unknown[][],
   listeners: [] as Listener[],
@@ -57,6 +59,7 @@ function reset(): void {
   sdk.emulators.length = 0;
   sdk.auths.length = 0;
   sdk.signIns.length = 0;
+  sdk.teardown.length = 0;
   sdk.collections.length = 0;
   sdk.queries.length = 0;
   sdk.listeners.length = 0;
@@ -71,13 +74,18 @@ mock.module('firebase/app', () => ({
   },
   deleteApp: async (app: { name: string }) => {
     sdk.deleted.push(app.name);
+    sdk.teardown.push(`delete ${app.name}`);
   },
 }));
 
 mock.module('firebase/auth', () => ({
-  getAuth: (app: { name: string }) => {
-    sdk.auths.push(app.name);
+  inMemoryPersistence: 'in-memory',
+  initializeAuth: (app: { name: string }, deps?: { persistence?: unknown }) => {
+    sdk.auths.push({ app: app.name, persistence: deps?.persistence });
     return { app };
+  },
+  signOut: async (auth: { app: { name: string } }) => {
+    sdk.teardown.push(`signOut ${auth.app.name}`);
   },
   signInWithCustomToken: async (_auth: unknown, token: string) => {
     if (sdk.signInFails) {
@@ -294,16 +302,17 @@ describe('start', () => {
     await feed.stop();
   });
 
-  it('in production: the web API key, the default database, a custom token signed in', async () => {
+  it('in production: the web API key, the default database, a custom token signed in on an auth held in memory only; stop signs it out before the app goes', async () => {
     const { feed } = harness();
     await feed.start(production);
     expect(sdk.apps.map((a) => a.options)).toEqual([{ projectId: 'prod', apiKey: 'web-key' }]);
     expect(sdk.firestores).toEqual([{ app: sdk.apps[0].name, database: '(default)' }]);
     expect(sdk.emulators).toEqual([]);
-    expect(sdk.auths).toEqual([sdk.apps[0].name]);
+    expect(sdk.auths).toEqual([{ app: sdk.apps[0].name, persistence: 'in-memory' }]);
     expect(sdk.signIns).toEqual(['custom.jwt']);
     expect(sdk.listeners).toHaveLength(1);
     await feed.stop();
+    expect(sdk.teardown).toEqual([`signOut ${sdk.apps[0].name}`, `delete ${sdk.apps[0].name}`]);
   });
 
   it('an empty database id asks for the project default', async () => {
@@ -656,6 +665,8 @@ describe('stop', () => {
     await feed.stop();
     expect(l.unsubscribed).toBe(1);
     expect(sdk.deleted).toEqual([sdk.apps[0].name]);
+    // Against the emulator no identity was signed in, so none is signed out.
+    expect(sdk.teardown).toEqual([`delete ${sdk.apps[0].name}`]);
     expect(feed.started).toBe(false);
 
     // Started again, the listener is unbounded: nothing is remembered across a stop.
