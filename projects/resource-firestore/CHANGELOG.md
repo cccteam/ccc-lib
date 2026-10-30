@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.18](https://github.com/cccteam/ccc-lib/compare/resource-firestore/v0.0.17...resource-firestore/v0.0.18) (2026-10-30)
+
+
+### Bug Fixes
+
+* the live feed holds its Firebase identity in memory only and signs it out before the app is deleted, so a sign-out leaves no user in the browser and the next sign-in reloads nothing stale (@cccteam/resource-firestore) ([#187](https://github.com/cccteam/ccc-lib/issues/187)) ([eaed731](https://github.com/cccteam/ccc-lib/commit/eaed7319a29923671806bb5a5617466a4a28cdc5))
+
 ## [0.0.17](https://github.com/cccteam/ccc-lib/compare/resource-firestore/v0.0.16...resource-firestore/v0.0.17) (2026-10-30)
 
 
