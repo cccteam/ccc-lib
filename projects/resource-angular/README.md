@@ -24,15 +24,15 @@ Then import the library's stylesheet once, from the application's global styles 
 @use '@cccteam/resource-angular/styles';
 ```
 
-The form and list components request its classes by name — the twelve-column field grid, the read-only and edit-mode treatments, the sticky list header — and it declares the colour tokens the components draw with, which the application's theme sets (see Theming below). Without the import, fields lose their grid and section labels lose their styling.
+The form and list components request its classes by name — the twelve-column field grid, the read-only and edit-mode treatments, the sticky list header — and it declares the color tokens the components draw with, which the application's theme sets (see Theming below). Without the import, fields lose their grid and section labels lose their styling.
 
 The stylesheet also brings the fonts the components render in, served by the application itself: Roboto in the three weights the Material typography uses (300, 400, 500; the latin and latin-ext subsets) and the filled Material Icons, as files of this package the application's build carries into its bundle as same-origin assets. The application's `index.html` carries no Google Fonts link and its content security policy no font host (`style-src` and `font-src` stay at `'self'`): a progressive web app's service worker fetches the page's requests under the policy delivered with its own script, whose `connect-src` names no font host, so a third-party font fails on every worker-controlled load, while a same-origin font is fetched under `connect-src 'self'` and cached by the worker's asset group, so the application renders offline and during an outage. The Material typography tokens, which the prebuilt themes set to `Roboto` alone, get a fallback chain (`Roboto, 'Helvetica Neue', Arial, sans-serif`), so a font that fails to load never leaves a component in the browser's serif default. An application that wants the fonts alone imports `@cccteam/resource-angular/styles/fonts`. The outlined icon set is not shipped; a component that needs it adds it here.
 
 ## Theming
 
-The look of the components is the application's Material theme plus a small set of colour tokens the library reads. An application themes the library in two steps: it defines a Material theme, and it hands the library's frame to that theme. A root that does neither keeps the look the library has always had.
+The look of the components is the application's Material theme plus a small set of color tokens the library reads. An application themes the library in two steps: it defines a Material theme, and it hands the library's frame to that theme. A root that does neither keeps the look the library has always had.
 
-**The Material theme** colours every Material control the components compose: the buttons, fields, tables, menus and dialogs. The skeletons define it in `theme.scss` with Angular Material's `mat.theme`, from a palette, a type face and a density, and name that file in `angular.json` in place of a prebuilt stylesheet (a prebuilt one, `@angular/material/prebuilt-themes/azure-blue.css`, is the same thing with a fixed palette):
+**The Material theme** colors every Material control the components compose: the buttons, fields, tables, menus and dialogs. The skeletons define it in `theme.scss` with Angular Material's `mat.theme`, from a palette, a type face and a density, and name that file in `angular.json` in place of a prebuilt stylesheet (a prebuilt one, `@angular/material/prebuilt-themes/azure-blue.css`, is the same thing with a fixed palette):
 
 ```scss
 @use '@angular/material' as mat;
@@ -53,9 +53,9 @@ html {
 }
 ```
 
-**The library's frame** is what the components draw themselves: the navigation's links, headers and active bar, a section's border and label, a notice's border and background, a dialog's row separators, the unsaved-changes word. Each of those colours is a CSS variable the component reads, declared in the `styles` sheet with the library's own colour as its default, inside a cascade layer (`ccc-defaults`) so that any declaration outside it wins. The `theme` sheet, the second `@use` above, sets every one of them from the Material system tokens the theme emits, so the frame follows the theme's roles: primary for what invites a click, error for what warns, the surface and outline roles for the rest. Change the palette and every surface follows; set a token after the theme sheet to override one place. The tokens, with their defaults and what the theme sheet sets them to:
+**The library's frame** is what the components draw themselves: the navigation's links, headers and active bar, a section's border and label, a notice's border and background, a dialog's row separators, the unsaved-changes word. Each of those colors is a CSS variable the component reads, declared in the `styles` sheet with the library's own color as its default, inside a cascade layer (`ccc-defaults`) so that any declaration outside it wins. The `theme` sheet, the second `@use` above, sets every one of them from the Material system tokens the theme emits, so the frame follows the theme's roles: primary for what invites a click, error for what warns, the surface and outline roles for the rest. Change the palette and every surface follows; set a token after the theme sheet to override one place. The tokens, with their defaults and what the theme sheet sets them to:
 
-| Token                               | What it colours                                              | Default               | From the theme                              |
+| Token                               | What it colors                                               | Default               | From the theme                              |
 | ----------------------------------- | ------------------------------------------------------------ | --------------------- | ------------------------------------------- |
 | `--ccc-accent`                      | navigation links and headers, the active bar, the edit links | `#003b49`             | `--mat-sys-primary`                         |
 | `--ccc-surface`                     | the surface a section label and a list sit on                | `#ffffff`             | `--mat-sys-surface`                         |
@@ -75,7 +75,44 @@ html {
 | `--ccc-alert-accent-border`, `-bg`  | an information or idle notice                                | `#dfb51d`, `#fff8e0`  | `--mat-sys-tertiary`, `-tertiary-container` |
 | `--ccc-alert-success-border`, `-bg` | a success notice                                             | `#4caf50`, `#f0fff0`  | `--mat-sys-primary`, `-primary-container`   |
 
-The variables the sheet exposed before the tokens stay: `--default-blue` (a form in edit mode) and `--app-background-color` (a container's background) are set by the theme sheet too, from `--mat-sys-primary` and `--mat-sys-surface`; `--layout-label-background-color` and its presets, `--form-edit-mode-bg`, `--underline-fields` and `--sticky-headers` are switches the application flips, not colours the theme decides. The components also read Material's own tokens directly where one fits (`--mat-sys-outline-variant` for a grid line, `--mat-sys-error` for a refusal), each with a literal fallback that applies only on a page with no Material theme at all. A spec in the library holds this contract: every token a component reads is declared with a default, the theme sheet sets every one of them, and no component stylesheet carries a literal colour of its own.
+The variables the sheet exposed before the tokens stay: `--default-blue` (a form in edit mode) and `--app-background-color` (a container's background) are set by the theme sheet too, from `--mat-sys-primary` and `--mat-sys-surface`; `--layout-label-background-color` and its presets, `--form-edit-mode-bg`, `--underline-fields` and `--sticky-headers` are switches the application flips, not colors the theme decides. The components also read Material's own tokens directly where one fits (`--mat-sys-outline-variant` for a grid line, `--mat-sys-error` for a refusal), each with a literal fallback that applies only on a page with no Material theme at all. A spec in the library holds this contract: every token a component reads is declared with a default, the theme sheet sets every one of them, and no component stylesheet carries a literal color of its own.
+
+**A choice for the person.** An application that offers a choice of looks keeps the Material theme as above and lets the person pick light or dark, and one of the palettes it offers, from `<ccc-theme-picker>` (`@cccteam/resource-angular/ui-theme`) on whichever page keeps their own settings. `ThemeService` applies the choice to the root element, `color-scheme` as an inline style (the theme emits both values of every token, so the one property flips the page) and `data-palette`, and remembers it in the browser's local storage (`ccc-theme`), so the login page honors it before sign-in and the next visit starts with it. The application names its palettes twice, by the same ids: to `provideTheme` in its providers, and to the theme sheet's `palettes` mixin in `theme.scss`, which emits the first palette's theme on `html` (the look where no choice was made) and every palette's color tokens under `html[data-palette='<id>']`, with its primary color on `[data-ccc-swatch='<id>']` for the picker's swatch. The `palettes` sheet carries a Workspace palette ready-made, generated from Google's blue and green with Material's theme-color schematic; Angular Material's own (`mat.$azure-palette`, `mat.$violet-palette`, ...) are the rest of the choice. An application that offers one palette, or none, hands `provideTheme` no palettes and the picker offers light and dark alone. An application's own stylesheets follow the choice as far as they read the Material tokens (`var(--mat-sys-surface)` for a page background, `var(--mat-sys-outline-variant)` for a hairline); a literal color stays what it is in dark.
+
+```ts
+provideTheme({
+  palettes: [
+    { id: 'blue', label: 'Blue' },
+    { id: 'workspace', label: 'Workspace' },
+  ],
+}),
+```
+
+```scss
+@use '@angular/material' as mat;
+@use '@cccteam/resource-angular/theme';
+@use '@cccteam/resource-angular/palettes';
+
+html {
+  color-scheme: light;
+}
+@include theme.palettes(
+  (
+    'blue': (
+      primary: mat.$azure-palette,
+      tertiary: mat.$blue-palette,
+    ),
+    'workspace': (
+      primary: palettes.$workspace-primary,
+      tertiary: palettes.$workspace-tertiary,
+    ),
+  )
+);
+```
+
+```html
+<ccc-theme-picker />
+```
 
 ## Core Concepts
 
@@ -503,7 +540,7 @@ page, code and all, once signed in.
 - **`ccc-user-management`**: The user-management page over an Auth's surface, configured from the generated descriptor.
 - **`ccc-tokens`**: The signed-in person's token page and the device approval page, configured from the generated descriptor's tokens block.
 - **`auth`**: This module provides authentication and authorization, including the login methods component, the email address component, route guards, and permission directives.
-- **`ui`**: This module contains UI components and services, such as alerts, notifications, and sidenav components.
+- **`ui`**: This module contains UI components and services, such as alerts, notifications, the sidenav, the update and maintenance notices, and the theme picker with its service.
 - **`utils`**: A collection of utility pipes and functions for various purposes.
 
 ## Development

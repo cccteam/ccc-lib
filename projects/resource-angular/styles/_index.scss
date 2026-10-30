@@ -19,8 +19,8 @@
     --default-blue: rgb(8, 84, 111);
     --light-mode-background-color: #ffffff; // Light mode - white background color
 
-    // The colours the components draw with, each a token an application may set, with the
-    // library's own colour as the default. The theme sheet (@cccteam/resource-angular/theme)
+    // The colors the components draw with, each a token an application may set, with the
+    // library's own color as the default. The theme sheet (@cccteam/resource-angular/theme)
     // sets every one of them from the Material system tokens; the README's Theming section
     // is the contract. These defaults are the look the library has always had.
     --ccc-accent: #003b49; // navigation links and headers, the active bar, the edit links
