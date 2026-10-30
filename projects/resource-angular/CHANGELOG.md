@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.28](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.27...resource-angular/v0.0.28) (2026-10-30)
+
+
+### Features
+
+* **resource-angular:** the theme reaches every component: every colour the components draw with is a `--ccc-*` token with the library's own colour as its default, and the new `@cccteam/resource-angular/theme` sheet sets them all from the Material system tokens, so a root that defines its theme with `mat.theme` and includes the sheet hands the navigation, the resource pages, the notices and the dialogs to it; the README's Theming section is the contract and a Bun test holds it ([#189](https://github.com/cccteam/ccc-lib/issues/189)) ([7fd96ff](https://github.com/cccteam/ccc-lib/commit/7fd96ff061a500de2b56fb54ef652f78765c06ad))
+
 ## [0.0.27](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.26...resource-angular/v0.0.27) (2026-10-30)
 
 
