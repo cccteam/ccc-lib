@@ -713,7 +713,9 @@ export class AuthClient {
    * Accepts the invitation the browser carries for the signed-in person: reads the methods
    * list again, then posts to the accept route. The roles the invitation carried are
    * granted, and the address it was sent to is the person's when they hold no verified one.
-   * A browser that carries no live invitation resolves `refused` with 404.
+   * A browser that carries no live invitation resolves `refused` with 404; an account that
+   * holds another address than the invited one resolves `refused` with 403 and the server's
+   * sentence, the invitation still standing.
    */
   async acceptInvitation(): Promise<InvitationAcceptResult> {
     const routes = await this.invitationRoutes();

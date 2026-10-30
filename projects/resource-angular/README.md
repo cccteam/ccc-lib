@@ -220,7 +220,9 @@ password twice, which creates the account, signs the person in and accepts the i
 where no directory could admit the address, since the invited person has that account already. The
 "Use a different account" link is not offered while an invitation stands: the invitation names the
 account. A person the page finds already signed in may accept it as they are with one click, from a
-button under the heading. Under an older server that does not say whether an account holds the
+button under the heading, when their account holds the invited address or no address at all; signed
+in as an account that holds another address, they are told whose the invitation is and how to accept
+it, and the server refuses that acceptance too. Under an older server that does not say whether an account holds the
 address, every path is offered as before, the account form behind a "Create an account with a
 password" button last. The browser keeps carrying the invitation when a redirect method refuses the
 sign-in and returns to the login page with `?code=` and no token; the methods list then names it

@@ -141,6 +141,8 @@ interface Server {
   passwordChangeRequired: boolean;
   /** The browser arrives signed in: the session read answers authenticated before any sign-in. */
   arrivesSignedIn: boolean;
+  /** The address the signed-in account holds, as the session read answers it; none by default. */
+  sessionEmail?: string;
 }
 
 function server(overrides: Partial<Server> = {}): Server {
@@ -221,6 +223,7 @@ function transportOf(state: Server): ScriptedTransport {
             authenticated: state.authenticated && signedIn,
             username: 'overseer',
             passwordChangeRequired: state.passwordChangeRequired,
+            ...(state.sessionEmail === undefined ? {} : { email: state.sessionEmail }),
           },
         };
       case 'DELETE /console/api/user/session':
@@ -1452,6 +1455,55 @@ describe('LoginMethodsComponent opens an invitation', () => {
     await page.settle();
     expect(messageOf(page)).toBe('the browser carries no live invitation');
     expect(page.component.invitation()).toBeUndefined();
+    expect(page.signedIn).toEqual([]);
+  });
+
+  it('offers the acceptance to a signed-in account that holds the invited address, in any letter case, or no address', async () => {
+    const holder = await pageOver(
+      server({ methods: mailingList, arrivesSignedIn: true, sessionEmail: 'Ensign@Fleet.example' }),
+      { invitation: 'tok-1' },
+    );
+    expect(holder.component.acceptOffered()).toBe(true);
+    expect(holder.element.querySelector('.ccc-login-accept')?.textContent?.trim()).toBe('Accept as overseer');
+    expect(holder.element.querySelector('.ccc-login-signed-in-other')).toBeNull();
+    TestBed.resetTestingModule();
+    const addressless = await pageOver(server({ methods: mailingList, arrivesSignedIn: true }), { invitation: 'tok-1' });
+    expect(addressless.component.acceptOffered()).toBe(true);
+    expect(addressless.element.querySelector('.ccc-login-accept')).not.toBeNull();
+  });
+
+  it('tells a signed-in account that holds another address whose the invitation is, offering the ways to sign in as it and no acceptance', async () => {
+    const page = await pageOver(
+      server({ methods: mailingList, arrivesSignedIn: true, sessionEmail: 'overseer@fleet.example' }),
+      { invitation: 'tok-1' },
+    );
+    expect(page.component.acceptOffered()).toBe(false);
+    expect(page.element.querySelector('.ccc-login-accept')).toBeNull();
+    expect(page.element.querySelector('.ccc-login-signed-in-other')?.textContent?.trim()).toBe(
+      'You are signed in as overseer. To accept this invitation, sign in as ensign@fleet.example.',
+    );
+    expect(buttonsOf(page)).toEqual(['Continue with Google as ensign@fleet.example']);
+    page.transport.requests.length = 0;
+    await page.component.accept();
+    expect(page.transport.requests).toEqual([]);
+  });
+
+  it('an acceptance the server refuses for another address shows its sentence and keeps the invitation standing', async () => {
+    const page = await pageOver(
+      server({
+        methods: mailingList,
+        arrivesSignedIn: true,
+        invitationAccept: {
+          status: 403,
+          body: { message: 'This invitation is for ensign@fleet.example. Sign in with that account.' },
+        },
+      }),
+      { invitation: 'tok-1' },
+    );
+    await page.component.accept();
+    await page.settle();
+    expect(messageOf(page)).toBe('This invitation is for ensign@fleet.example. Sign in with that account.');
+    expect(page.component.invitation()).toEqual(invited);
     expect(page.signedIn).toEqual([]);
   });
 
