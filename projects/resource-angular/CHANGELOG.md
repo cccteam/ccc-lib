@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.29](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.28...resource-angular/v0.0.29) (2026-10-30)
+
+
+### Features
+
+* **resource-angular:** a person picks light or dark and one of the palettes the application offers: ThemeService applies the choice to the root element and remembers it in the browser so the login page honors it, provideTheme starts it and names the palettes, the theme picker is the control, the theme sheet's palettes mixin emits every palette under html[data-palette], and the palettes sheet carries a Workspace palette generated from Google's blue and green ([#191](https://github.com/cccteam/ccc-lib/issues/191)) ([4b205bf](https://github.com/cccteam/ccc-lib/commit/4b205bfcdbf1bcdfcb98c9b32a3090bb149814ae))
+
 ## [0.0.28](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.27...resource-angular/v0.0.28) (2026-10-30)
 
 
