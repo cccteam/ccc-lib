@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.18](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.17...resource/v0.0.18) (2026-10-29)
+
+
+### Features
+
+* `StandingInvitation` and `OpenedInvitation` carry `accountExists` and `hasPassword`, `signInUrl` takes `loginHint`, and `invitationAddressCode` is exported (@cccteam/resource) ([#181](https://github.com/cccteam/ccc-lib/issues/181)) ([ff038e2](https://github.com/cccteam/ccc-lib/commit/ff038e25d860430228cc415066a2e48702bdfe77))
+* the login card's invitation screen offers every way that can accept the invitation for the invited address and none that cannot: "Continue with &lt;label&gt; as &lt;address&gt;" with the provider's login hint, the password form when an account with a password holds the address, the account form by itself when none does and no directory admits it; no "Use a different account" while an invitation stands; the `invitation_address` refusal names the address (@cccteam/resource-angular) ([#181](https://github.com/cccteam/ccc-lib/issues/181)) ([ff038e2](https://github.com/cccteam/ccc-lib/commit/ff038e25d860430228cc415066a2e48702bdfe77))
+
+
+### Bug Fixes
+
+* `resourceRoutes` lists a page whose config names no navigation group at the top level of the menu; before, only grouped pages were listed (@cccteam/resource-angular) ([#181](https://github.com/cccteam/ccc-lib/issues/181)) ([ff038e2](https://github.com/cccteam/ccc-lib/commit/ff038e25d860430228cc415066a2e48702bdfe77))
+
 ## [0.0.17](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.16...resource/v0.0.17) (2026-10-29)
 
 
