@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.19](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.18...resource/v0.0.19) (2026-10-30)
+
+
+### Features
+
+* the login card offers "Accept as &lt;signed-in user&gt;" only when that account holds the invited address or none; signed in as another account it says whose the invitation is and how to accept it, and a 403 refusal of the acceptance keeps the invitation standing (@cccteam/resource-angular) ([#184](https://github.com/cccteam/ccc-lib/issues/184)) ([629546a](https://github.com/cccteam/ccc-lib/commit/629546a300918f6e4b6fb1ee59ccc1a7510aa5c7))
+
 ## [0.0.18](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.17...resource/v0.0.18) (2026-10-29)
 
 
