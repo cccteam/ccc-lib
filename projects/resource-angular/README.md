@@ -24,9 +24,58 @@ Then import the library's stylesheet once, from the application's global styles 
 @use '@cccteam/resource-angular/styles';
 ```
 
-The form and list components request its classes by name — the twelve-column field grid, the read-only and edit-mode treatments, the sticky list header — and expose CSS variables (`--layout-label-background-color`, `--default-blue`, …) the application overrides to theme them. Without the import, fields lose their grid and section labels lose their styling.
+The form and list components request its classes by name — the twelve-column field grid, the read-only and edit-mode treatments, the sticky list header — and it declares the colour tokens the components draw with, which the application's theme sets (see Theming below). Without the import, fields lose their grid and section labels lose their styling.
 
 The stylesheet also brings the fonts the components render in, served by the application itself: Roboto in the three weights the Material typography uses (300, 400, 500; the latin and latin-ext subsets) and the filled Material Icons, as files of this package the application's build carries into its bundle as same-origin assets. The application's `index.html` carries no Google Fonts link and its content security policy no font host (`style-src` and `font-src` stay at `'self'`): a progressive web app's service worker fetches the page's requests under the policy delivered with its own script, whose `connect-src` names no font host, so a third-party font fails on every worker-controlled load, while a same-origin font is fetched under `connect-src 'self'` and cached by the worker's asset group, so the application renders offline and during an outage. The Material typography tokens, which the prebuilt themes set to `Roboto` alone, get a fallback chain (`Roboto, 'Helvetica Neue', Arial, sans-serif`), so a font that fails to load never leaves a component in the browser's serif default. An application that wants the fonts alone imports `@cccteam/resource-angular/styles/fonts`. The outlined icon set is not shipped; a component that needs it adds it here.
+
+## Theming
+
+The look of the components is the application's Material theme plus a small set of colour tokens the library reads. An application themes the library in two steps: it defines a Material theme, and it hands the library's frame to that theme. A root that does neither keeps the look the library has always had.
+
+**The Material theme** colours every Material control the components compose: the buttons, fields, tables, menus and dialogs. The skeletons define it in `theme.scss` with Angular Material's `mat.theme`, from a palette, a type face and a density, and name that file in `angular.json` in place of a prebuilt stylesheet (a prebuilt one, `@angular/material/prebuilt-themes/azure-blue.css`, is the same thing with a fixed palette):
+
+```scss
+@use '@angular/material' as mat;
+@use '@cccteam/resource-angular/theme';
+
+html {
+  color-scheme: light;
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: Roboto,
+      density: 0,
+    )
+  );
+}
+```
+
+**The library's frame** is what the components draw themselves: the navigation's links, headers and active bar, a section's border and label, a notice's border and background, a dialog's row separators, the unsaved-changes word. Each of those colours is a CSS variable the component reads, declared in the `styles` sheet with the library's own colour as its default. The `theme` sheet, the second `@use` above, sets every one of them from the Material system tokens the theme emits, so the frame follows the theme's roles: primary for what invites a click, error for what warns, the surface and outline roles for the rest. Change the palette and every surface follows; set a token after the theme sheet to override one place. The tokens, with their defaults and what the theme sheet sets them to:
+
+| Token                               | What it colours                                              | Default               | From the theme                              |
+| ----------------------------------- | ------------------------------------------------------------ | --------------------- | ------------------------------------------- |
+| `--ccc-accent`                      | navigation links and headers, the active bar, the edit links | `#003b49`             | `--mat-sys-primary`                         |
+| `--ccc-surface`                     | the surface a section label and a list sit on                | `#ffffff`             | `--mat-sys-surface`                         |
+| `--ccc-outline`                     | a section's border                                           | `#8e8e8e`             | `--mat-sys-outline`                         |
+| `--ccc-divider`                     | a section heading's rule, a dotted outline                   | `#ccc`                | `--mat-sys-outline-variant`                 |
+| `--ccc-outline-variant`             | a read-only field's focus underline and checkbox border      | `#e0e0e0`             | `--mat-sys-outline-variant`                 |
+| `--ccc-hairline`                    | a row separator in a table or dialog                         | `rgba(0, 0, 0, 0.12)` | `--mat-sys-outline-variant`                 |
+| `--ccc-shaded`                      | a shaded block                                               | `#e9e9e9`             | `--mat-sys-surface-container`               |
+| `--ccc-dirty`                       | a field changed and not yet saved                            | `#00617f26`           | primary at 15%                              |
+| `--ccc-muted`                       | a field's prefix and suffix                                  | `gray`                | `--mat-sys-on-surface-variant`              |
+| `--ccc-hover`                       | a navigation item under the pointer, an open row             | `rgba(0, 0, 0, 0.04)` | on-surface at 8%                            |
+| `--ccc-pressed`                     | a navigation item pressed                                    | `rgba(0, 0, 0, 0.1)`  | on-surface at 12%                           |
+| `--ccc-warn`                        | the unsaved-changes word                                     | `#f44336`             | `--mat-sys-error`                           |
+| `--ccc-edit-shadow`                 | a form in edit mode                                          | two soft shadows      | `--mat-sys-level2`                          |
+| `--ccc-alert-bg`                    | a notice of no kind                                          | `lightgray`           | `--mat-sys-surface-container-high`          |
+| `--ccc-alert-warn-border`, `-bg`    | an error notice                                              | `red`, `#fff5f4`      | `--mat-sys-error`, `-error-container`       |
+| `--ccc-alert-accent-border`, `-bg`  | an information or idle notice                                | `#dfb51d`, `#fff8e0`  | `--mat-sys-tertiary`, `-tertiary-container` |
+| `--ccc-alert-success-border`, `-bg` | a success notice                                             | `#4caf50`, `#f0fff0`  | `--mat-sys-primary`, `-primary-container`   |
+
+The variables the sheet exposed before the tokens stay: `--default-blue` (a form in edit mode) and `--app-background-color` (a container's background) are set by the theme sheet too, from `--mat-sys-primary` and `--mat-sys-surface`; `--layout-label-background-color` and its presets, `--form-edit-mode-bg`, `--underline-fields` and `--sticky-headers` are switches the application flips, not colours the theme decides. The components also read Material's own tokens directly where one fits (`--mat-sys-outline-variant` for a grid line, `--mat-sys-error` for a refusal), each with a literal fallback that applies only on a page with no Material theme at all. A spec in the library holds this contract: every token a component reads is declared with a default, the theme sheet sets every one of them, and no component stylesheet carries a literal colour of its own.
 
 ## Core Concepts
 

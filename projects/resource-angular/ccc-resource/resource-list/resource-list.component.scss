@@ -31,7 +31,7 @@
   align-items: center;
 
   .edit {
-    color: #003b49;
+    color: var(--ccc-accent);
   }
 
   .mat-icon {
@@ -54,7 +54,7 @@
 }
 
 .show-background {
-  background-color: #ffffff;
+  background-color: var(--ccc-surface);
   padding-bottom: 20px;
 }
 

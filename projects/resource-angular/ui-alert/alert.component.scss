@@ -3,7 +3,7 @@
   border: 1px solid;
   max-width: 450px;
   border-radius: 5px;
-  background-color: lightgray;
+  background-color: var(--ccc-alert-bg);
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -33,16 +33,17 @@
 }
 
 .warn {
-  border-color: red;
-  background-color: #fff5f4;
+  border-color: var(--ccc-alert-warn-border);
+  background-color: var(--ccc-alert-warn-bg);
 }
 
-.accent, .idle {
-  border-color: #dfb51d;
-  background-color: #fff8e0;
+.accent,
+.idle {
+  border-color: var(--ccc-alert-accent-border);
+  background-color: var(--ccc-alert-accent-bg);
 }
 
 .success {
-  border-color: #4caf50;
-  background-color: #f0fff0;
+  border-color: var(--ccc-alert-success-border);
+  background-color: var(--ccc-alert-success-bg);
 }

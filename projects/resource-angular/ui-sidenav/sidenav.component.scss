@@ -15,23 +15,23 @@ nav {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  color: #003b49;
+  color: var(--ccc-accent);
   padding: 0px 15px;
   position: relative;
 }
 
 .nav-item:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--ccc-hover);
   transition: background-color 0.1s ease;
 }
 
 .nav-item:active {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: var(--ccc-pressed);
   transition: background-color 0.1s ease;
 }
 
 .link-header {
-  color: #003b49;
+  color: var(--ccc-accent);
   text-transform: uppercase;
   font-weight: bold;
   font-size: 12px;
@@ -69,15 +69,15 @@ nav {
 }
 
 a:active {
-  color: #003b49 !important;
+  color: var(--ccc-accent) !important;
 }
 
 a:link {
-  color: #003b49 !important;
+  color: var(--ccc-accent) !important;
 }
 
 a:visited {
-  color: #003b49 !important;
+  color: var(--ccc-accent) !important;
 }
 
 a {
@@ -90,10 +90,10 @@ a {
   left: 3px;
   width: 5px;
   height: 38px;
-  background-color: #003b49;
+  background-color: var(--ccc-accent);
 }
 
 .active-link {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: var(--ccc-hover);
   position: relative;
 }
