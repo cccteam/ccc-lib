@@ -8,9 +8,10 @@
 // defaults in `styles`) from the Material system tokens the theme emits, so the navigation,
 // the resource pages, the notices and the dialogs follow the theme's roles: primary for
 // what invites a click, error for what warns, the surface and outline roles for the frame.
-// A root without this sheet keeps the library's own colours. The README's Theming section
-// is the contract.
-html {
+// A root without this sheet keeps the library's own colours: the defaults sit in the
+// `ccc-defaults` cascade layer, so this sheet wins wherever it is included. The README's
+// Theming section is the contract.
+:root {
   --default-blue: var(--mat-sys-primary);
   --app-background-color: var(--mat-sys-surface);
   --ccc-accent: var(--mat-sys-primary);
