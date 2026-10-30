@@ -49,8 +49,10 @@ or a custom token. It initializes a Firebase app of its own for the project (and
 key, in production), opens the database, and connects as the user: against the emulator,
 with the SDK's mock user token for the uid (`connectFirestoreEmulator(db, host, port,
 { mockUserToken: { sub: uid, user_id: uid } })`); in production, by signing the custom token
-in through Firebase Auth. Then it listens to `users/{uid}/changes`, ordered by `at` and, once
-a change has been seen, bounded to the ones after it.
+in through Firebase Auth on an auth held in memory only: the identity is minted for the
+session and revoked at stop, so nothing of it is written to the browser's storage, and a
+page load starts with no user to reload. Then it listens to `users/{uid}/changes`, ordered
+by `at` and, once a change has been seen, bounded to the ones after it.
 
 The first snapshot of a listener primes the last change seen and emits nothing. At start, the
 documents already there predate the page's own first fetch; after an error, the resync the
@@ -73,8 +75,8 @@ since browsers throttle or drop a background page's connection, the feed emits a
 live session refetches every live row and list by a fresh seed either way, and does the same
 itself when it starts.
 
-`stop()` releases the listener and deletes the app it initialized. Nothing is remembered
-across a stop: a later start listens from the beginning again.
+`stop()` releases the listener, signs the identity out, and deletes the app it initialized.
+Nothing is remembered across a stop: a later start listens from the beginning again.
 
 The security rules the server leg ships let a user read their own change set and nothing
 else, and let no client write; the feed never writes.
