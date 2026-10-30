@@ -411,11 +411,13 @@ address, absent when the server did not say; and `accountExists` and `hasPasswor
 an account already holds the address and signs in with a password, absent when the server did
 not say), and the browser now carries it, so the sign-in that follows accepts it and the
 server's hook seats the person: a password sign-in or sign-up by whoever holds the link, a
-directory sign-in only as the invited address (another address is refused with
-`invitation_address`, the invitation still standing). `signInUrl(method, returnUrl, {
+directory sign-in, or a password sign-in by an account that holds an address, only as the
+invited address (another address is refused with `invitation_address`, the invitation still
+standing; an account with no address accepts by the link). `signInUrl(method, returnUrl, {
 loginHint })` names the account the provider should take, which a login page sets to the
-invited address. `acceptInvitation()` accepts it for a person already signed
-in. `signUpFromInvitation({ password, username? })` creates the invited person's account with
+invited address. `acceptInvitation()` accepts it for a person already signed in, under the
+same rule: an account that holds another address resolves `refused` with 403 and the
+server's sentence, the invitation still standing. `signUpFromInvitation({ password, username? })` creates the invited person's account with
 a password, the address verified, and signs them in, answering as a sign-in step does. A link
 that has expired or was already used resolves `refused` with 404 and the server's words; a
 taken username or address 409.

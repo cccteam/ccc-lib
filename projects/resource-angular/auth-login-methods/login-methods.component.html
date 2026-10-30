@@ -192,9 +192,13 @@
       <h2 class="ccc-login-invitation-title">{{ invitationTitle(invited) }}</h2>
       <p class="ccc-login-invitation-note">{{ invitationNote(invited) }}</p>
       @if (signedInAs(); as name) {
-        <button mat-flat-button type="button" class="ccc-login-accept" [disabled]="busy()" (click)="accept()">
-          Accept as {{ name }}
-        </button>
+        @if (acceptOffered()) {
+          <button mat-flat-button type="button" class="ccc-login-accept" [disabled]="busy()" (click)="accept()">
+            Accept as {{ name }}
+          </button>
+        } @else {
+          <p class="ccc-login-signed-in-other">{{ signedInOtherNote(name, invited) }}</p>
+        }
       }
     </div>
   }

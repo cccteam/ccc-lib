@@ -113,7 +113,10 @@ export interface AccountForm {
  * where no directory could admit the address, since the invited person has that account
  * already. "Use a different account" is not offered while an invitation stands: the
  * invitation names the account. A person the page finds already signed in accepts it with
- * one click, from a button under the heading. Under an older server that does not say what
+ * one click, from a button under the heading, when their account holds the invited address
+ * or none; signed in as an account that holds another address, they are told whose the
+ * invitation is and how to accept it, since the server refuses that acceptance too
+ * (`acceptOffered`). Under an older server that does not say what
  * holds the address every path is offered, the account form behind a "Create an account
  * with a password" button that comes last, under the password form and the redirect
  * buttons, where the open "Create an account" step stands when no invitation does. The
@@ -256,6 +259,22 @@ export class LoginMethodsComponent implements OnInit {
   invitation = signal<OpenedInvitation | undefined>(undefined);
   /** The username of the session the page found standing on arrival: with an invitation, who may accept it as they are; alone, who may continue or sign out. */
   signedInAs = signal<string | undefined>(undefined);
+  /** The address the signed-in person's account holds, if any: with an invitation, whether they may accept it as they are. */
+  signedInEmail = signal<string | undefined>(undefined);
+  /**
+   * The person found signed in may accept the invitation as they are: their account holds
+   * the invited address, or no address at all (it takes the invited one by accepting). An
+   * account that holds another address may not, and the server refuses it too: the screen
+   * says so and offers the ways to sign in as the invited account instead.
+   */
+  acceptOffered = computed(() => {
+    const invited = this.invitation();
+    if (!this.signedInAs() || !invited) {
+      return false;
+    }
+    const email = this.signedInEmail();
+    return email === undefined || email === '' || sameAddress(email, invited.email);
+  });
   /** The username of a session found standing with nothing in the URL to act on: Continue and Sign out take the list's place. */
   signedInAlone = computed(() => (this.invitation() ? undefined : this.signedInAs()));
   /** The account form, taking the list's place: an account with a password, from the invitation or a sign-up link. */
@@ -498,19 +517,33 @@ export class LoginMethodsComponent implements OnInit {
     });
   }
 
-  /** Accepts the opened invitation as the person the page found signed in, then checks the session and hands the page on. */
+  /**
+   * Accepts the opened invitation as the person the page found signed in, then checks the
+   * session and hands the page on. A refusal for another address (403) keeps the
+   * invitation standing and shows the server's sentence; any other refusal means the
+   * invitation is gone.
+   */
   accept(): Promise<void> {
-    if (this.busy() || !this.invitation() || !this.signedInAs()) {
+    if (this.busy() || !this.acceptOffered()) {
       return Promise.resolve();
     }
     return this.step(async () => {
       const result = await this.client.auth.acceptInvitation();
       if (result.outcome === 'refused') {
+        if (result.status === 403) {
+          this.refusal.set(this.sentenceOf(result));
+          return;
+        }
         this.leaveInvitation(result);
         return;
       }
       await this.complete(this.landing());
     });
+  }
+
+  /** The sentence for a person signed in as an account that may not accept the invitation: whose it is, and how to accept it. */
+  signedInOtherNote(name: string, invitation: OpenedInvitation): string {
+    return `You are signed in as ${name}. To accept this invitation, sign in as ${invitation.email}.`;
   }
 
   /**
@@ -631,6 +664,7 @@ export class LoginMethodsComponent implements OnInit {
     return this.step(async () => {
       await firstValueFrom(this.auth.logout());
       this.signedInAs.set(undefined);
+      this.signedInEmail.set(undefined);
     });
   }
 
@@ -817,6 +851,7 @@ export class LoginMethodsComponent implements OnInit {
     this.invitation.set(invitation);
     const session = await this.sessionStanding();
     this.signedInAs.set(session?.username);
+    this.signedInEmail.set(session?.email ?? undefined);
     const paths = this.invitationPaths();
     if (!session?.username && paths?.known && paths.create) {
       this.openAccountForm(true);
@@ -849,6 +884,7 @@ export class LoginMethodsComponent implements OnInit {
       return;
     }
     this.signedInAs.set(session.username);
+    this.signedInEmail.set(session.email ?? undefined);
   }
 
   /** The session the browser arrived with, when one stands and may act; undefined otherwise. */
@@ -964,6 +1000,7 @@ export class LoginMethodsComponent implements OnInit {
   private leaveInvitation(refusal: SignInRefusal): void {
     this.invitation.set(undefined);
     this.signedInAs.set(undefined);
+    this.signedInEmail.set(undefined);
     this.refusal.set(this.sentenceOf(refusal));
   }
 
@@ -993,6 +1030,7 @@ export class LoginMethodsComponent implements OnInit {
     this.pending.set(undefined);
     this.invitation.set(undefined);
     this.signedInAs.set(undefined);
+    this.signedInEmail.set(undefined);
     this.clearAccountForm();
     this.refusal.set(undefined);
     if (session.passwordChangeRequired) {
@@ -1106,4 +1144,9 @@ export const PAGE_OLDER_THAN_SERVER =
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/** Whether two addresses are one, without regard to case and surrounding space. */
+function sameAddress(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
 }
