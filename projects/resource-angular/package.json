@@ -40,6 +40,11 @@
       "style": "./styles/_theme.scss",
       "default": "./styles/_theme.scss"
     },
+    "./palettes": {
+      "sass": "./styles/_palettes.scss",
+      "style": "./styles/_palettes.scss",
+      "default": "./styles/_palettes.scss"
+    },
     "./styles/fonts": {
       "sass": "./styles/_fonts.scss",
       "style": "./styles/_fonts.scss",

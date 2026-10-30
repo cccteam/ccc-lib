@@ -1,0 +1,33 @@
+.ccc-theme-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--ccc-muted);
+}
+
+.palettes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+
+// The swatch's color is set by the theme sheet's palettes mixin, per palette id.
+.swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--ccc-outline-variant);
+  vertical-align: -2px;
+}

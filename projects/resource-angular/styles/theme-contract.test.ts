@@ -4,9 +4,9 @@ import { describe, expect, it } from 'bun:test';
 
 // The theming contract the README states, held from the stylesheets themselves (run by
 // `bun test`, which has the node modules the Angular spec builder lacks): every
-// colour a component draws with is a token the styles sheet declares with a default, the
+// color a component draws with is a token the styles sheet declares with a default, the
 // theme sheet sets every one of those tokens from the Material system tokens, and no
-// component stylesheet carries a literal colour of its own (a literal is allowed only as
+// component stylesheet carries a literal color of its own (a literal is allowed only as
 // the fallback of a Material token, for a page with no theme at all).
 const root = join(process.cwd(), 'projects', 'resource-angular');
 const sheets = (dir: string): string[] =>
@@ -45,11 +45,12 @@ describe('the theming contract', () => {
       expect(line).toMatch(/var\(--mat-sys-[a-z0-9-]+\)/);
   });
 
-  it('leaves no literal colour in a component stylesheet', () => {
+  it('leaves no literal color in a component stylesheet', () => {
     const literal = /#[0-9a-f]{3,8}\b|rgba?\(|:\s*(?:lightgray|lightgrey|gray|grey|red|green|blue|white|black)\s*[;!]/i;
     const offenders: string[] = [];
     for (const sheet of sheets(root)) {
-      if (sheet.endsWith(join('styles', '_index.scss'))) continue;
+      // The styles sheet declares the defaults, and the palettes sheet is palettes: literal by nature.
+      if (sheet.endsWith(join('styles', '_index.scss')) || sheet.endsWith(join('styles', '_palettes.scss'))) continue;
       // A fallback inside var(--mat-…) may run over several lines; the depth of its
       // parentheses says which lines belong to it.
       let depth = 0;
