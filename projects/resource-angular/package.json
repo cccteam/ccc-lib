@@ -35,6 +35,11 @@
       "style": "./styles/_index.scss",
       "default": "./styles/_index.scss"
     },
+    "./theme": {
+      "sass": "./styles/_theme.scss",
+      "style": "./styles/_theme.scss",
+      "default": "./styles/_theme.scss"
+    },
     "./styles/fonts": {
       "sass": "./styles/_fonts.scss",
       "style": "./styles/_fonts.scss",

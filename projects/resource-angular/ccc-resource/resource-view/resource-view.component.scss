@@ -1,5 +1,5 @@
 .container {
-  border: 1px solid #8e8e8e;
+  border: 1px solid var(--ccc-outline);
   border-radius: 5px;
   position: relative;
   margin-bottom: 20px;
@@ -11,7 +11,7 @@
   top: -15px;
   left: 20px;
   height: 20px;
-  background-color: #ffffff;
+  background-color: var(--ccc-surface);
   margin: 0px 10px 0px 10px;
   padding: 0px 10px 0px 10px;
   text-align: center;
@@ -81,7 +81,7 @@
 
 .section h2 {
   font-size: 1.5em;
-  border-bottom: 2px solid #ccc;
+  border-bottom: 2px solid var(--ccc-divider);
   padding-bottom: 8px;
 
   margin-bottom: 100px;
@@ -104,7 +104,7 @@
 }
 
 .unsaved {
-  color: #f44336;
+  color: var(--ccc-warn);
 }
 
 .edit-button {
@@ -119,7 +119,7 @@
   align-items: center;
 
   .edit {
-    color: #003b49;
+    color: var(--ccc-accent);
   }
 
   .mat-icon {
@@ -128,7 +128,7 @@
 }
 
 .shaded {
-  background-color: #e9e9e9;
+  background-color: var(--ccc-shaded);
 }
 
 .rounded {
@@ -136,7 +136,7 @@
 }
 
 .dotted-outline {
-  border: 1px dotted #ccc;
+  border: 1px dotted var(--ccc-divider);
   padding: 8px;
 }
 

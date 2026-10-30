@@ -1,0 +1,37 @@
+// The library's frame handed to the application's Material theme. An application that
+// defines its theme with Angular Material's `mat.theme` (the skeletons' `theme.scss`)
+// includes this sheet once, after the theme, from its global styles:
+//
+//     @use '@cccteam/resource-angular/theme';
+//
+// It sets every colour token the components draw with (declared with the library's own
+// defaults in `styles`) from the Material system tokens the theme emits, so the navigation,
+// the resource pages, the notices and the dialogs follow the theme's roles: primary for
+// what invites a click, error for what warns, the surface and outline roles for the frame.
+// A root without this sheet keeps the library's own colours: the defaults sit in the
+// `ccc-defaults` cascade layer, so this sheet wins wherever it is included. The README's
+// Theming section is the contract.
+:root {
+  --default-blue: var(--mat-sys-primary);
+  --app-background-color: var(--mat-sys-surface);
+  --ccc-accent: var(--mat-sys-primary);
+  --ccc-surface: var(--mat-sys-surface);
+  --ccc-outline: var(--mat-sys-outline);
+  --ccc-divider: var(--mat-sys-outline-variant);
+  --ccc-outline-variant: var(--mat-sys-outline-variant);
+  --ccc-hairline: var(--mat-sys-outline-variant);
+  --ccc-shaded: var(--mat-sys-surface-container);
+  --ccc-dirty: color-mix(in srgb, var(--mat-sys-primary) 15%, transparent);
+  --ccc-muted: var(--mat-sys-on-surface-variant);
+  --ccc-hover: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent);
+  --ccc-pressed: color-mix(in srgb, var(--mat-sys-on-surface) 12%, transparent);
+  --ccc-warn: var(--mat-sys-error);
+  --ccc-edit-shadow: var(--mat-sys-level2);
+  --ccc-alert-bg: var(--mat-sys-surface-container-high);
+  --ccc-alert-warn-border: var(--mat-sys-error);
+  --ccc-alert-warn-bg: var(--mat-sys-error-container);
+  --ccc-alert-accent-border: var(--mat-sys-tertiary);
+  --ccc-alert-accent-bg: var(--mat-sys-tertiary-container);
+  --ccc-alert-success-border: var(--mat-sys-primary);
+  --ccc-alert-success-bg: var(--mat-sys-primary-container);
+}
