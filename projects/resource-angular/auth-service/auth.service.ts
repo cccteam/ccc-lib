@@ -156,6 +156,16 @@ export class AuthService {
   }
 
   /**
+   * Whether the digest that answers for the scope has loaded: the selected tenant's for a
+   * domain-scoped target, the global one otherwise. Until it has, a false hasPermission
+   * and an empty fieldPermissionStates mean nothing is known, not that the target is
+   * denied.
+   */
+  hasDigestFor(scope: PermissionScope): boolean {
+    return this.hasDigest(this.scoped(scope).domain);
+  }
+
+  /**
    * Whether a feature flag is on: true when the enabled set holds the name. False before
    * the set has loaded and for every name it does not hold, so consumers fail closed.
    * Synchronous and signal-backed, so effects and computeds that call it re-evaluate when

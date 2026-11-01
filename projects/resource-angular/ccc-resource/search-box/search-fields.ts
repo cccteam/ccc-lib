@@ -1,4 +1,5 @@
-import { Resource, ResourceMeta, SearchBranchMeta } from '@cccteam/resource';
+import { ListPermission, Resource, ResourceMeta, SearchBranchMeta } from '@cccteam/resource';
+import { AuthService } from '@cccteam/resource-angular/auth-service';
 import { filterFields } from '@cccteam/resource-angular/ccc-grid';
 import { CamelCaseToTitlePipe } from '@cccteam/resource-angular/ccc-camel-case-to-title';
 
@@ -17,6 +18,25 @@ const title = new CamelCaseToTitlePipe();
 export type ListableFields = (resource: Resource) => ReadonlySet<string> | undefined;
 
 const nothingKnown: ListableFields = () => undefined;
+
+/**
+ * The digest's List field set for any resource, read through the auth service: the
+ * fields a loaded digest lists; the empty set when it holds no List on the resource at
+ * all, so every search field over it drops; undefined when nothing is known, because the
+ * digest has not loaded or grants List with no field entries (a keys-only resource),
+ * which narrows nothing. Signal-backed through the service, so a computed calling it
+ * re-evaluates when a digest lands.
+ */
+export function listableFieldsOf(auth: AuthService): ListableFields {
+  return (resource) => {
+    const scope = { resource, permission: ListPermission };
+    const fields = Object.keys(auth.fieldPermissionStates(scope));
+    if (fields.length > 0) {
+      return new Set(fields);
+    }
+    return auth.hasDigestFor(scope) && !auth.hasPermission(scope) ? new Set<string>() : undefined;
+  };
+}
 
 /** The branch a dotted search field names, when the metadata describes it. */
 function branchOf(meta: ResourceMeta | undefined, field: string): SearchBranchMeta | undefined {
