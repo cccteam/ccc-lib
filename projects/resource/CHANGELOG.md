@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.20](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.19...resource/v0.0.20) (2026-11-01)
+
+
+### Features
+
+* **resource-angular:** the search box on the list page and inside a paged picker, the three text matches in the grid's column menu, prefix narrowing of a paged picker, the shared matcher for a picker over a whole source, a startup error for a searchable picker nothing narrows, and requests posted on their own when a filter, a match or the box reaches a PII field ([#193](https://github.com/cccteam/ccc-lib/issues/193)) ([8f27ee0](https://github.com/cccteam/ccc-lib/commit/8f27ee052591fbc1a4f527c5a17f507b505fd5f3))
+* **resource:** the filter grammar gains startswith, endswith and contains, the search box as a typed expression, and quoted values; FieldMeta.search, FieldMeta.pii, ResourceMeta.searchFields and ResourceMeta.searchBranches carry where the server answers them and what travels in the body ([#193](https://github.com/cccteam/ccc-lib/issues/193)) ([8f27ee0](https://github.com/cccteam/ccc-lib/commit/8f27ee052591fbc1a4f527c5a17f507b505fd5f3))
+
 ## [0.0.19](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.18...resource/v0.0.19) (2026-10-30)
 
 
