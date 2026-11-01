@@ -74,7 +74,13 @@ import {
   searchPlaceholder,
   searchReachesPII,
 } from '../search-box/search-fields';
-import { filterEligibility, listEmptyMessage, refuseKeylessConfig, refuseWriteOnlyColumns, searchEligibility } from './list-request';
+import {
+  filterEligibility,
+  listEmptyMessage,
+  refuseKeylessConfig,
+  refuseWriteOnlyColumns,
+  searchEligibility,
+} from './list-request';
 import { listableColumns, sameColumns } from './listable-columns';
 
 @Component({
@@ -212,7 +218,9 @@ export class ResourceListComponent implements OnInit {
    * single key; undefined when a compound key has no rowRoute. A rowRoute naming a
    * field with no target in the metadata throws here, naming the field.
    */
-  rowTarget = computed(() => rowRouteTarget(this.config().primaryResource, this.config().rowRoute, this.resourceMeta, resourcePageRoute));
+  rowTarget = computed(() =>
+    rowRouteTarget(this.config().primaryResource, this.config().rowRoute, this.resourceMeta, resourcePageRoute),
+  );
   /** Puts the page's tenant into a registered route a row link is built from, where the route names the tenant parameter. */
   private readonly resolvePageRoute = pageRouteResolver();
   /**
@@ -346,7 +354,9 @@ export class ResourceListComponent implements OnInit {
   /** Whether the digest left this page no column to ask for. */
   noListableColumns = computed(
     () =>
-      this.listableFields() !== undefined && (this.config().listColumns || []).length > 0 && this.listColumns().length === 0,
+      this.listableFields() !== undefined &&
+      (this.config().listColumns || []).length > 0 &&
+      this.listColumns().length === 0,
   );
 
   /**
@@ -421,7 +431,13 @@ export class ResourceListComponent implements OnInit {
    */
   onFilterChange(filters: ColumnFilter[]): void {
     this.store.columnFilters.set(
-      withoutOrphanedCompanions(filters, this.filterability(), this.configFilterFields(), this.searches(), this.boxActive()),
+      withoutOrphanedCompanions(
+        filters,
+        this.filterability(),
+        this.configFilterFields(),
+        this.searches(),
+        this.boxActive(),
+      ),
     );
   }
 

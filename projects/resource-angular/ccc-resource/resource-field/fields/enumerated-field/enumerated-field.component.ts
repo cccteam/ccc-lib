@@ -324,7 +324,9 @@ export class EnumeratedFieldComponent extends BaseInputComponent implements OnIn
 
   /** The open page's rows on a paged source, in the mode's display. */
   private pageOptions = computed((): PickerOption[] =>
-    (this.pager()?.rows() ?? []).map((record) => this.toEnumerated(record as Record<string, string>, this.fieldConfig())),
+    (this.pager()?.rows() ?? []).map((record) =>
+      this.toEnumerated(record as Record<string, string>, this.fieldConfig()),
+    ),
   );
 
   singleEnumDisplayText = computed(() => {
