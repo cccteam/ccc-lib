@@ -20,4 +20,6 @@ export * from './resource-resolver/resource-resolver.component';
 export * from './resource-store.service';
 export * from './row-store.directive';
 export * from './resource-view/resource-view.component';
+export * from './search-box/search-box.component';
+export * from './search-box/search-fields';
 export * from './resources-helpers';

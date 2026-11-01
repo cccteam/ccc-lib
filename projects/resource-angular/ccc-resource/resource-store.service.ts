@@ -84,6 +84,13 @@ export class ResourceStore {
   pageSize = signal<number | undefined>(undefined);
   /** The grid's column filters, composed into the request filter beside `filter`. */
   columnFilters = signal<ColumnFilter[]>([]);
+  /**
+   * The search box's text, composed into the request filter as its `*:search:"…"`
+   * conjunct. A request carrying the box travels in the body: a search field may be PII,
+   * which the server refuses in a URL, and typed text is never served from the browser's
+   * cache anyway.
+   */
+  searchText = signal<string>('');
   /** Set while the page has nothing to ask for (the digest grants none of its columns): no request is made. */
   listSuspended = signal(false);
   /**
@@ -155,9 +162,9 @@ export class ResourceStore {
 
   /**
    * The first-page request as the store's signals describe it: the route and the
-   * request filter (the page's filter and the column filters composed), the columns
-   * with every key field, the sorts, and the page size; undefined while the list has
-   * nothing to ask for.
+   * request filter (the page's filter, the column filters and the search box composed),
+   * the columns with every key field, the sorts, and the page size; undefined while the
+   * list has nothing to ask for.
    */
   private readonly pageQuery = computed(() => {
     const route = this.route();
@@ -166,8 +173,8 @@ export class ResourceStore {
     }
     return {
       route,
-      filter: composeFilter(this.filter(), this.columnFilters()),
-      sensitive: this.disableCacheForFilterPii(),
+      filter: composeFilter(this.filter(), this.columnFilters(), this.searchText()),
+      sensitive: this.disableCacheForFilterPii() || this.searchText().trim() !== '',
       columns: requestedColumns(
         this.listColumns().map((col) => col.id),
         this.resourceMeta(),

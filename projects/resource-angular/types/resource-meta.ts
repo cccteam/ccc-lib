@@ -11,6 +11,7 @@ export type {
   ResourceMap,
   ResourceMeta,
   RPCFieldMeta,
+  SearchMatch,
   ValidDisplayTypes,
   ValidRPCTypes,
 } from '@cccteam/resource';

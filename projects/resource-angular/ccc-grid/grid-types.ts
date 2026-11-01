@@ -1,7 +1,7 @@
-import { FilterEligibility, FilterOperator } from '@cccteam/resource';
+import { FilterEligibility, FilterOperator, SearchMatch } from '@cccteam/resource';
 import { RecordData } from '@cccteam/resource-angular/types';
 
-export type { FilterEligibility, FilterOperator } from '@cccteam/resource';
+export type { FilterEligibility, FilterOperator, SearchMatch } from '@cccteam/resource';
 
 /**
  * A row's identity in the grid: what the row track expression, the selection, and the
@@ -23,7 +23,8 @@ export interface FilterOperatorOption {
 
 /**
  * The server's filter grammar, and nothing else: a filter the grid offers is one the
- * server answers. A substring match is not in the grammar, so none is offered.
+ * server answers. These are the ten comparisons every filterable column answers; the
+ * text matches are MATCH_OPERATORS, offered where a column's field lists them.
  */
 export const FILTER_OPERATORS: readonly FilterOperatorOption[] = [
   { value: 'eq', label: 'Equals', takesValue: true, takesList: false },
@@ -36,6 +37,23 @@ export const FILTER_OPERATORS: readonly FilterOperatorOption[] = [
   { value: 'notin', label: 'None of', takesValue: true, takesList: true },
   { value: 'isnull', label: 'Is empty', takesValue: false, takesList: false },
   { value: 'isnotnull', label: 'Is not empty', takesValue: false, takesList: false },
+];
+
+/** A text match as the column filter menu offers it. */
+export interface MatchOperatorOption extends FilterOperatorOption {
+  value: SearchMatch;
+}
+
+/**
+ * The three text matches, offered on a column whose field's `search` metadata lists
+ * them: the server answers each from the schema's search fact, and a match stands alone
+ * in a filter, so a companion-only column that lists one filters without an indexed
+ * filter beside it. The value travels quoted where it needs to.
+ */
+export const MATCH_OPERATORS: readonly MatchOperatorOption[] = [
+  { value: 'startswith', label: 'Starts with', takesValue: true, takesList: false },
+  { value: 'endswith', label: 'Ends with', takesValue: true, takesList: false },
+  { value: 'contains', label: 'Contains', takesValue: true, takesList: false },
 ];
 
 /** One column's filter as the grid holds it: the field, the operator, and the typed value (a comma list for `in`/`notin`, empty for the null tests). */
@@ -57,6 +75,12 @@ export interface SortRule {
  * control.
  */
 export type ColumnFilterability = Readonly<Record<string, FilterEligibility | undefined>>;
+
+/**
+ * Which text matches each column's field answers, by column id: the generated field
+ * metadata's `search` for the field the column shows. A column absent here offers none.
+ */
+export type ColumnSearches = Readonly<Record<string, readonly SearchMatch[] | undefined>>;
 
 /**
  * The control a column header draws: none where the server would refuse a filter,

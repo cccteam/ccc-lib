@@ -1,5 +1,5 @@
 import { ApiError, Resource, ResourceMeta } from '@cccteam/resource';
-import { ColumnFilterability, PageTurn } from '@cccteam/resource-angular/ccc-grid';
+import { ColumnFilterability, ColumnSearches, PageTurn } from '@cccteam/resource-angular/ccc-grid';
 import { ColumnConfig, keyFields, ListViewConfig } from '@cccteam/resource-angular/types';
 
 // The list page's pure parts around the server's page: which columns the server filters,
@@ -80,6 +80,23 @@ export function filterEligibility(meta: ResourceMeta | undefined, columns: reado
     }
   }
   return eligibility;
+}
+
+/**
+ * Which text matches each of the table's columns answers: the generated metadata's
+ * `search` for the field each column shows, keyed by column id. A column whose field
+ * lists none, or whose id is not a field of the listed resource, is absent.
+ */
+export function searchEligibility(meta: ResourceMeta | undefined, columns: readonly { id: string }[]): ColumnSearches {
+  const byField = new Map((meta?.fields ?? []).map((field) => [field.fieldName, field.search]));
+  const searches: Record<string, ColumnSearches[string]> = {};
+  for (const column of columns) {
+    const search = byField.get(column.id);
+    if (search !== undefined && search.length > 0) {
+      searches[column.id] = search;
+    }
+  }
+  return searches;
 }
 
 /** Where a page sits: the rows before it, and the total the first page answered. */

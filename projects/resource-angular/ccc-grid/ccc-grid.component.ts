@@ -21,13 +21,14 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterModule } from '@angular/router';
 import { CamelCaseToTitlePipe } from '@cccteam/resource-angular/ccc-camel-case-to-title';
 import { ColumnConfig, iconCellKey, RecordData } from '@cccteam/resource-angular/types';
-import { filterControlFor, indexedFilterActive, isComplete, operatorOption } from './grid-filter.util';
+import { filterControlFor, indexedFilterActive, isComplete, operatorOption, operatorsFor } from './grid-filter.util';
 import {
   ColumnFilter,
   ColumnFilterability,
-  FILTER_OPERATORS,
+  ColumnSearches,
   FilterControl,
   FilterOperator,
+  FilterOperatorOption,
   GridPageState,
   PageTurn,
   RowKey,
@@ -51,7 +52,9 @@ export const COMPANION_FILTER_HINT =
  * page. Nothing here filters, sorts, or slices rows in the browser: one paging model, the
  * server's. A filter control is drawn only on a column the generated metadata says the
  * server filters (`filterability`), with a companion-only column waiting until an indexed
- * filter is in the request. A row is identified by `rowKey`, the caller's function from a
+ * filter is in the request, and its menu offers the text matches the column's field
+ * answers (`searches`), which stand alone; the page's search box (`boxActive`) counts as
+ * the indexed filter. A row is identified by `rowKey`, the caller's function from a
  * row to its identity (a list page passes the row's key fields joined), or by its position
  * in the page when the caller passes none: the track expression, the selection, and the
  * expansion are keyed by it, and nothing here assumes a field called `id`. Selection is
@@ -100,6 +103,10 @@ export class AppGridComponent {
   filterability = input<ColumnFilterability>({});
   /** The fields the page's own filter names outside the grid, so a companion-only column knows an indexed filter is already in the request. */
   externalFilterFields = input<string[]>([]);
+  /** Which text matches each column's field answers, by column id, from the generated field metadata's `search`. A column absent here offers none. */
+  searches = input<ColumnSearches>({});
+  /** Whether the page's search box is in the request: it counts as the indexed filter a companion-only column waits for. */
+  boxActive = input<boolean>(false);
   /** Where the rows sit in the server's list. The pager is drawn only when given. */
   page = input<GridPageState | undefined>(undefined);
   /**
@@ -119,7 +126,6 @@ export class AppGridComponent {
   /** The page to show next. */
   pageTurn = output<PageTurn>();
 
-  readonly filterOperators = FILTER_OPERATORS;
   readonly companionHint = COMPANION_FILTER_HINT;
 
   /** The selected rows by their identity, so a selection survives the page's rows being replaced. */
@@ -139,7 +145,9 @@ export class AppGridComponent {
   );
 
   /** Whether the request already carries a filter the server indexes, so companion columns may join. */
-  indexedFilterActive = computed(() => indexedFilterActive(this.filters(), this.filterability(), this.externalFilterFields()));
+  indexedFilterActive = computed(() =>
+    indexedFilterActive(this.filters(), this.filterability(), this.externalFilterFields(), this.searches(), this.boxActive()),
+  );
 
   private readonly scrollContainer = viewChild<ElementRef<HTMLDivElement>>('scrollContainer');
   private readonly tableBody = viewChild<ElementRef<HTMLTableSectionElement>>('tableBody');
@@ -349,16 +357,24 @@ export class AppGridComponent {
   // Filtering: the menu edits a draft and emits the next filters when it commits.
 
   filterControl(col: ColumnConfig): FilterControl {
-    return filterControlFor(col, this.filterability(), this.indexedFilterActive());
+    return filterControlFor(col, this.filterability(), this.indexedFilterActive(), this.searches());
+  }
+
+  /** The operators the column's menu offers: the comparisons the server filters it with now, and the matches its field lists. */
+  operatorsFor(col: ColumnConfig): FilterOperatorOption[] {
+    return operatorsFor(col.id, this.filterability(), this.indexedFilterActive(), this.searches());
   }
 
   private committedFilter(col: ColumnConfig): ColumnFilter | undefined {
     return this.filters().find((filter) => filter.field === col.id);
   }
 
-  /** The filter the column's menu shows: the draft being edited, else the committed filter, else an empty equals. */
+  /** The filter the column's menu shows: the draft being edited, else the committed filter, else an empty one on the first operator offered. */
   draftFor(col: ColumnConfig): ColumnFilter {
-    return this.drafts()[col.id] ?? this.committedFilter(col) ?? { field: col.id, operator: 'eq', value: '' };
+    return (
+      this.drafts()[col.id] ??
+      this.committedFilter(col) ?? { field: col.id, operator: this.operatorsFor(col)[0]?.value ?? 'eq', value: '' }
+    );
   }
 
   hasFilter(col: ColumnConfig): boolean {

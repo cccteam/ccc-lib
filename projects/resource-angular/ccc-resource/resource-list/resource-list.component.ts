@@ -65,7 +65,9 @@ import { applyFormatting, formatByDisplayType, formatDateString } from '../forma
 import { iconTemplateFields, resolveIconCell } from './icon-cell';
 import { DeleteResourceConfirmationModalComponent } from '../delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
 import { ResourceStore } from '../resource-store.service';
-import { filterEligibility, listEmptyMessage, refuseKeylessConfig, refuseWriteOnlyColumns } from './list-request';
+import { SearchBoxComponent } from '../search-box/search-box.component';
+import { deniedSearchFields, searchDeniedHint, searchedFields, searchFieldLabel, searchPlaceholder } from '../search-box/search-fields';
+import { filterEligibility, listEmptyMessage, refuseKeylessConfig, refuseWriteOnlyColumns, searchEligibility } from './list-request';
 import { listableColumns, sameColumns } from './listable-columns';
 
 @Component({
@@ -80,6 +82,7 @@ import { listableColumns, sameColumns } from './listable-columns';
     ReactiveFormsModule,
     ActionAccessControlWrapperComponent,
     NgComponentOutlet,
+    SearchBoxComponent,
   ],
   selector: 'ccc-resource-list',
   templateUrl: './resource-list.component.html',
@@ -355,6 +358,44 @@ export class ResourceListComponent implements OnInit {
   /** The fields the page's own filter names, so the grid knows when an indexed filter is already in the request. */
   configFilterFields = computed(() => filterFields(this.filters()));
 
+  /** Which text matches each column's field answers, from the listed resource's metadata: the grid's menu offers these. */
+  searches = computed(() => searchEligibility(this.meta(), this.columns()));
+
+  /**
+   * The fields the search box searches for this caller: the listed resource's search
+   * fields less those the digest denies for List. The resource decides the set, never
+   * the page; a page that should search fewer fields lists a view projecting fewer.
+   */
+  searchFields = computed(() => searchedFields(this.meta(), this.listableFields()));
+
+  /** Whether the page draws the box: the resource has search fields for this caller and the config does not hide it. */
+  showSearchBox = computed(() => this.config().showSearchBox !== false && this.searchFields().length > 0);
+
+  /** The headers the page configured, by field, so the box names a field as its column does. */
+  private columnHeaders = computed(
+    () =>
+      new Map(
+        (this.config().listColumns ?? [])
+          .filter((col) => col.header)
+          .map((col): [string, string] => [col.id as string, col.header as string]),
+      ),
+  );
+
+  /** What the empty box says: the fields it searches, by their labels. */
+  searchPlaceholder = computed(() =>
+    searchPlaceholder(this.searchFields().map((field) => searchFieldLabel(field, this.columnHeaders()))),
+  );
+
+  /** What the box says under itself: the search fields the caller's role leaves out, if any. */
+  searchHint = computed(() =>
+    searchDeniedHint(
+      deniedSearchFields(this.meta(), this.listableFields()).map((field) => searchFieldLabel(field, this.columnHeaders())),
+    ),
+  );
+
+  /** Whether the box is in the request: it counts as the indexed touch a companion-only column waits for. */
+  boxActive = computed(() => this.store.searchText().trim() !== '');
+
   /** A header click: the sorts to request next; the store drops the cursor and asks for a first page. */
   onSortChange(sorts: SortRule[]): void {
     this.store.sorts.set(sorts as FieldSort[]);
@@ -366,7 +407,27 @@ export class ResourceListComponent implements OnInit {
    * refuse them alone.
    */
   onFilterChange(filters: ColumnFilter[]): void {
-    this.store.columnFilters.set(withoutOrphanedCompanions(filters, this.filterability(), this.configFilterFields()));
+    this.store.columnFilters.set(
+      withoutOrphanedCompanions(filters, this.filterability(), this.configFilterFields(), this.searches(), this.boxActive()),
+    );
+  }
+
+  /**
+   * The box's text committed: the request filter gains or loses its search conjunct, the
+   * store drops the cursor and asks for a first page, and a cleared box takes the
+   * companion-only filters it alone was carrying with it.
+   */
+  onSearchChange(text: string): void {
+    this.store.searchText.set(text);
+    this.store.columnFilters.set(
+      withoutOrphanedCompanions(
+        this.store.columnFilters(),
+        this.filterability(),
+        this.configFilterFields(),
+        this.searches(),
+        text.trim() !== '',
+      ),
+    );
   }
 
   /** A pager click: the store follows the server's relation. */

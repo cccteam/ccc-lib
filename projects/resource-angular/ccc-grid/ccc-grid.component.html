@@ -74,7 +74,7 @@
                     (click)="$event.stopPropagation()"
                     (keydown)="keepTyping($event)"
                     aria-label="Filter operator">
-                    @for (op of filterOperators; track op.value) {
+                    @for (op of operatorsFor(col); track op.value) {
                       <option [value]="op.value">{{ op.label }}</option>
                     }
                   </select>

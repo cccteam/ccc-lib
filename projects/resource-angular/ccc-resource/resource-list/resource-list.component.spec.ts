@@ -30,6 +30,7 @@ const field = (fieldName: string, extra: Partial<FieldMeta> = {}): FieldMeta =>
 const orders = 'StandingOrders' as Resource;
 const ships = 'Ships' as Resource;
 const calls = 'DistressCalls' as Resource;
+const clients = 'Clients' as Resource;
 
 /** The base64 of 32 zero bytes: a SHA-256 digest. */
 const digest32 = btoa(String.fromCharCode(...new Array<number>(32).fill(0)));
@@ -60,6 +61,18 @@ const metas: Record<string, ResourceMeta> = {
     route: 'distress-calls',
     fields: [field('id', { primaryKey: { ordinalPosition: 0 } }), field('summary'), field('transcript', { writeOnly: true })],
   } as ResourceMeta,
+  // A resource with a search box: its token columns answer the matches, and a contact's
+  // name reaches the box through @searchAlso under its dotted name.
+  [clients]: {
+    route: 'clients',
+    fields: [
+      field('id', { primaryKey: { ordinalPosition: 0 }, isIndex: true, filterable: 'always' }),
+      field('name', { isIndex: true, filterable: 'always', search: ['contains', 'startswith', 'endswith'] }),
+      field('contactEmail', { filterable: 'withIndexed', search: ['contains'] }),
+      field('notes'),
+    ],
+    searchFields: ['name', 'contactEmail', 'clientContact.displayName'],
+  } as ResourceMeta,
 };
 
 /** The generated descriptor as the console's would read: the key-less list over an empty key tuple, the ships keyed. */
@@ -71,6 +84,7 @@ const descriptor: ApiDescriptor = {
     [orders]: { resource: orders, property: 'standingOrders', route: 'standing-orders', scope: 'global', consolidated: false, keys: [], operations: ['list'], page: { default: 50 } },
     [ships]: { resource: ships, property: 'ships', route: 'ships', scope: 'global', consolidated: false, keys: ['id'], operations: ['list', 'read'], page: { default: 25, max: 200 } },
     [calls]: { resource: calls, property: 'distressCalls', route: 'distress-calls', scope: 'global', consolidated: false, keys: ['id'], operations: ['list', 'read'], page: { default: 10, max: 100 } },
+    [clients]: { resource: clients, property: 'clients', route: 'clients', scope: 'global', consolidated: false, keys: ['id'], operations: ['list', 'read'], page: { default: 25, max: 200 } },
   },
   methods: {},
 };
@@ -238,6 +252,60 @@ describe('ResourceListComponent', () => {
       );
       // the sentences' fields ride the request and the row, not the table
       expect(Array.from(element.querySelectorAll('th .col-header')).map((h) => h.textContent?.trim())).toEqual(['Name', 'Limit']);
+    });
+  });
+
+  describe('draws the search box over a resource with search fields', () => {
+    const box = (): HTMLInputElement | null => (fixture.nativeElement as HTMLElement).querySelector('ccc-search-box input');
+    const listRequests = (): string[] => transport.requests.map((request) => `${request.method} ${request.url}`);
+
+    it('names the fields it searches, posts the box with the request, and clears back to the plain page', async () => {
+      await create({ primaryResource: clients, listColumns: [{ id: 'name' as FieldName }, { id: 'contactEmail' as FieldName, header: 'Email' }] });
+      fixture.detectChanges();
+      await settle();
+      const component = fixture.componentInstance;
+      expect(box()?.placeholder).toBe('Search Name, Email, Client Contact Display Name');
+      expect(component.searches()).toEqual({ name: ['contains', 'startswith', 'endswith'], contactEmail: ['contains'] });
+      expect(listRequests()).toEqual(['GET /api/clients?columns=name%2CcontactEmail%2Cid&count=true']);
+
+      component.onSearchChange('nguyen 1987');
+      await settle();
+      expect(listRequests().at(-1)).toBe('POST /api/clients?columns=name%2CcontactEmail%2Cid&count=true');
+      expect(transport.requests.at(-1)?.body).toEqual({ filter: '*:search:"nguyen 1987"' });
+      expect(component.boxActive()).toBe(true);
+
+      // A companion filter rides beside the box, and goes when the box is cleared.
+      component.onFilterChange([{ field: 'contactEmail', operator: 'eq', value: 'x@example.test' }]);
+      await settle();
+      expect(transport.requests.at(-1)?.body).toEqual({ filter: '(contactEmail:eq:x@example.test),*:search:"nguyen 1987"' });
+      component.onSearchChange('');
+      await settle();
+      expect(component.store.columnFilters()).toEqual([]);
+      expect(listRequests().at(-1)).toBe('GET /api/clients?columns=name%2CcontactEmail%2Cid&count=true');
+    });
+
+    it('a listed match on a companion column stands alone, quoted where it needs to be', async () => {
+      await create({ primaryResource: clients, listColumns: [{ id: 'name' as FieldName }, { id: 'contactEmail' as FieldName }] });
+      fixture.detectChanges();
+      await settle();
+      fixture.componentInstance.onFilterChange([{ field: 'contactEmail', operator: 'contains', value: 'survey, office' }]);
+      await settle();
+      expect(fixture.componentInstance.store.columnFilters().map((f) => f.field)).toEqual(['contactEmail']);
+      expect(listRequests().at(-1)).toBe('GET /api/clients?filter=contactEmail%3Acontains%3A%22survey%2C+office%22&columns=name%2CcontactEmail%2Cid&count=true');
+    });
+
+    it('draws no box over a resource without search fields', async () => {
+      await create({ primaryResource: ships, listColumns: [{ id: 'name' as FieldName }] });
+      fixture.detectChanges();
+      await settle();
+      expect(box()).toBeNull();
+    });
+
+    it('draws no box when the page hides it', async () => {
+      await create({ primaryResource: clients, listColumns: [{ id: 'name' as FieldName }], showSearchBox: false });
+      fixture.detectChanges();
+      await settle();
+      expect(box()).toBeNull();
     });
   });
 

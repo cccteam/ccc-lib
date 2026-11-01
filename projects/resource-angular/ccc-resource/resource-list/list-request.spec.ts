@@ -9,6 +9,7 @@ import {
   positionAfter,
   refuseKeylessConfig,
   refuseWriteOnlyColumns,
+  searchEligibility,
 } from './list-request';
 
 // The list component's pure parts: which columns the server filters, where the page
@@ -22,9 +23,10 @@ const boards: ResourceMeta = {
   route: 'sectors/{sectorID}/mission-boards',
   fields: [
     field('id', { primaryKey: { ordinalPosition: 0 }, isIndex: true, filterable: 'always' }),
-    field('title', { isIndex: true, filterable: 'always' }),
+    field('title', { isIndex: true, filterable: 'always', search: ['contains', 'startswith'] }),
     field('fee', { filterable: 'withIndexed' }),
     field('daysLeft'),
+    field('note', { filterable: 'withIndexed', search: ['contains'] }),
   ],
 };
 
@@ -43,6 +45,20 @@ describe('filterEligibility', () => {
   for (const tt of cases) {
     it(tt.name, () => {
       expect(filterEligibility(tt.meta, tt.columns.map((id) => ({ id })))).toEqual(tt.want as never);
+    });
+  }
+});
+
+describe('searchEligibility', () => {
+  const cases: { name: string; meta: ResourceMeta | undefined; columns: string[]; want: Record<string, string[]> }[] = [
+    { name: 'each column takes its field\'s matches', meta: boards, columns: ['title', 'note', 'fee', 'daysLeft'], want: { title: ['contains', 'startswith'], note: ['contains'] } },
+    { name: 'an action column and a renamed duplicate are absent', meta: boards, columns: ['view', 'title_1'], want: {} },
+    { name: 'no metadata, no matches', meta: undefined, columns: ['title'], want: {} },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, () => {
+      expect(searchEligibility(tt.meta, tt.columns.map((id) => ({ id })))).toEqual(tt.want as never);
     });
   }
 });
