@@ -217,7 +217,11 @@ describe('EnumeratedFieldComponent narrowing a paged source', () => {
     [missions]: { route: 'missions', fields: [] },
     [clients]: {
       route: 'clients',
-      fields: [id, { fieldName: 'name', displayType: 'string', required: true, isIndex: true, search: ['contains'] }],
+      fields: [
+        id,
+        { fieldName: 'name', displayType: 'string', required: true, isIndex: true, search: ['contains'] },
+        { fieldName: 'contactEmail', displayType: 'string', required: true, isIndex: false, search: ['contains'], pii: true },
+      ],
       searchFields: ['name', 'contactEmail'],
     },
     [hangars]: {
@@ -267,7 +271,7 @@ describe('EnumeratedFieldComponent narrowing a paged source', () => {
 
   const requests = (): string[] => transport.requests.map((request) => `${request.method} ${request.url}`);
 
-  it('a source with search fields: the box, posted with the page', async () => {
+  it('a source with search fields: the box, posted with the page since it reaches a PII field', async () => {
     await create(clients, 'clientId');
     fixture.detectChanges();
     await settle();

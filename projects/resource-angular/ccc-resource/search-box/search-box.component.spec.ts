@@ -10,7 +10,8 @@ describe('SearchBoxComponent', () => {
   let fixture: ComponentFixture<SearchBoxComponent>;
   let committed: string[];
 
-  const input = (): HTMLInputElement => (fixture.nativeElement as HTMLElement).querySelector('input') as HTMLInputElement;
+  const input = (): HTMLInputElement =>
+    (fixture.nativeElement as HTMLElement).querySelector('input') as HTMLInputElement;
   const typeText = (text: string): void => {
     input().value = text;
     input().dispatchEvent(new Event('input'));
@@ -57,7 +58,9 @@ describe('SearchBoxComponent', () => {
     fixture.componentRef.setInput('value', 'nguyen');
     fixture.detectChanges();
     expect(input().value).toBe('nguyen');
-    ((fixture.nativeElement as HTMLElement).querySelector('button[aria-label="Clear the search"]') as HTMLButtonElement).click();
+    (
+      (fixture.nativeElement as HTMLElement).querySelector('button[aria-label="Clear the search"]') as HTMLButtonElement
+    ).click();
     fixture.detectChanges();
     expect(committed).toEqual(['']);
     expect(input().value).toBe('');
@@ -73,7 +76,7 @@ describe('SearchBoxComponent', () => {
     expect(committed).toEqual(['']);
   });
 
-  it('reads the total as the matches while text is committed, then the host\'s hint', () => {
+  it("reads the total as the matches while text is committed, then the host's hint", () => {
     fixture.componentRef.setInput('hint', 'Not searched for your role: Contact Email');
     fixture.componentRef.setInput('total', 12);
     fixture.detectChanges();

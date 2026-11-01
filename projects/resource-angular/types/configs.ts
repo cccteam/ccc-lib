@@ -275,8 +275,10 @@ export interface EnumeratedConfigOptions {
   /* eslint-disable  @typescript-eslint/no-explicit-any */
   filter?: (resource: any) => string;
   /**
-   * Set disableCacheForFilterPii to `true` to promote the GET to a POST when PII is used in the filter
-   * POST requests cannot be cached
+   * Force the picker's list request into a POST, which the browser never caches. The
+   * picker posts on its own when the configured filter, the search box or the prefix match
+   * reaches a field the metadata marks `pii`; set this for a filter the metadata cannot
+   * read, a hand-registered resource, say.
    */
   disableCacheForFilterPii?: boolean;
   /**
@@ -851,6 +853,11 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
   actionType?: ActionType;
   /* eslint-disable  @typescript-eslint/no-explicit-any */
   filter?: (parentResource: any) => string;
+  /**
+   * Force the list request into a POST, which the browser never caches. The list posts
+   * on its own when its filter, a column filter or the search box reaches a field the
+   * metadata marks `pii`; set this for a filter the metadata cannot read.
+   */
   disableCacheForFilterPii?: boolean;
   rpcConfigs?: RPCConfig[];
   /** The sorts the list is requested in until a header is clicked; none, and the resource's declared order applies. */

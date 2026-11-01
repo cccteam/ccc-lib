@@ -132,6 +132,13 @@ export interface FieldMeta {
    */
   search?: SearchMatch[];
   /**
+   * Set when the field is declared `pii` on the server: a filter naming it, a text match
+   * on it, or a search box that reaches it must travel in the request body, never in a
+   * URL, which the server refuses with a 400. The store posts such a request on its own.
+   * Absent on every other field. Emitted by the ccc TypeScript generator.
+   */
+  pii?: true;
+  /**
    * Set when the field is declared masking:"positional" on the server: a masked cell
    * still arrives hidden (absent from the row), but the server sorts, filters, and pages
    * on the real column, so a reader who sees some values can tell where the hidden ones
@@ -172,6 +179,18 @@ export interface FieldMeta {
   feature?: string;
 }
 
+/** One @searchAlso branch of a resource's search box, as the metadata describes it. */
+export interface SearchBranchMeta {
+  /** The dotted name the box lists the branch under, `clientContact.displayName`. */
+  field: string;
+  /** The child resource whose List grant on `fieldName` governs the branch. */
+  resource: Resource;
+  /** The child field's JSON name. */
+  fieldName: string;
+  /** Set when the child field is declared `pii`: a box reaching it travels in the body. */
+  pii?: true;
+}
+
 export interface ResourceMeta {
   route: string;
   consolidatedRoute?: string;
@@ -199,6 +218,14 @@ export interface ResourceMeta {
    * digest. Absent on a resource with no search box: a filter carrying one is refused.
    */
   searchFields?: string[];
+  /**
+   * The @searchAlso branches among searchFields: for each dotted name, the child
+   * resource and the field whose List grant on the child governs the branch, and whether
+   * that field is PII. The browser leaves a denied branch out of what the box says it
+   * searches, as the server leaves it out of the search, and posts a box that reaches a
+   * PII child field. Absent on a resource with no branches.
+   */
+  searchBranches?: SearchBranchMeta[];
   /**
    * The feature flag that gates the resource, by name; absent on an ungated resource.
    * The generated routes read it to skip the page while the flag is off. See

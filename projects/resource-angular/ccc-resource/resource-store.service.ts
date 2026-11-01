@@ -27,7 +27,7 @@ import {
   rowCapabilities,
   RPCConfig,
 } from '@cccteam/resource-angular/types';
-import { ColumnFilter, composeFilter, PageTurn } from '@cccteam/resource-angular/ccc-grid';
+import { ColumnFilter, composeFilter, filterFields, isComplete, PageTurn } from '@cccteam/resource-angular/ccc-grid';
 import { RESOURCE_CLIENT } from '@cccteam/resource-angular/resource-client';
 import { NotificationService } from '@cccteam/resource-angular/ui-notification-service';
 import {
@@ -84,13 +84,14 @@ export class ResourceStore {
   pageSize = signal<number | undefined>(undefined);
   /** The grid's column filters, composed into the request filter beside `filter`. */
   columnFilters = signal<ColumnFilter[]>([]);
-  /**
-   * The search box's text, composed into the request filter as its `*:search:"…"`
-   * conjunct. A request carrying the box travels in the body: a search field may be PII,
-   * which the server refuses in a URL, and typed text is never served from the browser's
-   * cache anyway.
-   */
+  /** The search box's text, composed into the request filter as its `*:search:"…"` conjunct. */
   searchText = signal<string>('');
+  /**
+   * Whether the box reaches a field the metadata marks PII, its own or a branch's, under
+   * the caller's grants: the list page sets it, and a request carrying the box then
+   * travels in the body, as the server requires.
+   */
+  searchPII = signal(false);
   /** Set while the page has nothing to ask for (the digest grants none of its columns): no request is made. */
   listSuspended = signal(false);
   /**
@@ -161,6 +162,23 @@ export class ResourceStore {
   });
 
   /**
+   * Whether the request must travel in the body: the page asked for it
+   * (disableCacheForFilterPii), the page's filter or a column filter names a field the
+   * metadata marks PII, or the search box reaches one. The server refuses a PII field in
+   * a URL with a 400, so the store posts on its own wherever the metadata lets it tell.
+   */
+  private readonly sensitive = computed(() => {
+    if (this.disableCacheForFilterPii()) {
+      return true;
+    }
+    const pii = new Set((this.resourceMeta().fields ?? []).filter((field) => field.pii).map((field) => field.fieldName));
+    if (pii.size > 0 && (filterFields(this.filter()).some((f) => pii.has(f)) || this.columnFilters().some((f) => isComplete(f) && pii.has(f.field)))) {
+      return true;
+    }
+    return this.searchText().trim() !== '' && this.searchPII();
+  });
+
+  /**
    * The first-page request as the store's signals describe it: the route and the
    * request filter (the page's filter, the column filters and the search box composed),
    * the columns with every key field, the sorts, and the page size; undefined while the
@@ -174,7 +192,7 @@ export class ResourceStore {
     return {
       route,
       filter: composeFilter(this.filter(), this.columnFilters(), this.searchText()),
-      sensitive: this.disableCacheForFilterPii() || this.searchText().trim() !== '',
+      sensitive: this.sensitive(),
       columns: requestedColumns(
         this.listColumns().map((col) => col.id),
         this.resourceMeta(),

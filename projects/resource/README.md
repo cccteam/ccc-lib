@@ -147,8 +147,10 @@ field under its dotted name, `clientContact.displayName`), a denied field drops 
 silently, and a conditional one is searched only where its condition holds. The box is
 one conjunct of the filter's top-level AND, never inside an OR, at most one per filter,
 and at most eight words of 64 characters, 200 in all (`searchLimits`). A field match on a
-PII field keeps the URL rule above; a box over a resource whose search fields include a
-PII field travels in the body, so send it with `sensitiveFilter: true`. The serializer
+PII field keeps the URL rule above; a box that reaches a PII field travels in the body, so
+send it with `sensitiveFilter: true`. The metadata says which: `FieldMeta.pii` marks a PII
+field, and `ResourceMeta.searchBranches` describes each dotted search field (the child
+resource and field whose List grant governs it, `pii` when that field is PII). The serializer
 quotes a value where the grammar would otherwise read part of it (a comma, a pipe, a
 parenthesis, a quote, a backslash, a leading or trailing space, the empty value) and
 always quotes the box's text; `quoteFilterValue` is the rule. `matchesSearch` is the

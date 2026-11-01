@@ -11,6 +11,7 @@ export type {
   ResourceMap,
   ResourceMeta,
   RPCFieldMeta,
+  SearchBranchMeta,
   SearchMatch,
   ValidDisplayTypes,
   ValidRPCTypes,

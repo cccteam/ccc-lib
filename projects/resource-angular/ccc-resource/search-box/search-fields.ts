@@ -1,31 +1,95 @@
-import { ResourceMeta } from '@cccteam/resource';
+import { Resource, ResourceMeta, SearchBranchMeta } from '@cccteam/resource';
+import { filterFields } from '@cccteam/resource-angular/ccc-grid';
 import { CamelCaseToTitlePipe } from '@cccteam/resource-angular/ccc-camel-case-to-title';
 
-// What a search box over a resource searches for this caller, and how it says so. The
-// set is the resource's (its metadata's searchFields) narrowed by the caller's grants,
-// never the page's: a picker's box names the same fields as the list page of the same
-// resource, and a page that should search fewer fields lists a view projecting fewer.
+// What a search box over a resource searches for this caller, how it says so, and when
+// its request must travel in the body. The set is the resource's (its metadata's
+// searchFields) narrowed by the caller's grants, never the page's: a picker's box names
+// the same fields as the list page of the same resource, and a page that should search
+// fewer fields lists a view projecting fewer.
 
 const title = new CamelCaseToTitlePipe();
 
 /**
- * The search fields the box reads for this caller: the metadata's searchFields less the
- * fields the digest denies for List. `listable` is the digest's field set for the resource,
- * undefined when the digest carries no field information, which narrows nothing. A
- * child's field, under its dotted name, stays: its permission is the child resource's,
- * which the server applies when it drops the branch, and the metadata does not name the
- * child resource for the browser to ask.
+ * The digest's List field set for a resource: the fields the caller may list, or
+ * undefined when the digest carries no field information for it, which narrows nothing.
  */
-export function searchedFields(meta: ResourceMeta | undefined, listable: ReadonlySet<string> | undefined): string[] {
-  return (meta?.searchFields ?? []).filter((field) => field.includes('.') || listable === undefined || listable.has(field));
+export type ListableFields = (resource: Resource) => ReadonlySet<string> | undefined;
+
+const nothingKnown: ListableFields = () => undefined;
+
+/** The branch a dotted search field names, when the metadata describes it. */
+function branchOf(meta: ResourceMeta | undefined, field: string): SearchBranchMeta | undefined {
+  return meta?.searchBranches?.find((branch) => branch.field === field);
+}
+
+/**
+ * Whether the caller searches a field of the box: a field of the resource when the
+ * digest lists it for List, a branch when the digest lists the child field on the child
+ * resource. A dotted field the metadata does not describe (metadata from before the
+ * branches were described) stays.
+ */
+function searched(
+  meta: ResourceMeta | undefined,
+  field: string,
+  listable: ReadonlySet<string> | undefined,
+  listableOf: ListableFields,
+): boolean {
+  const branch = branchOf(meta, field);
+  if (branch) {
+    const fields = listableOf(branch.resource);
+    return fields === undefined || fields.has(branch.fieldName);
+  }
+  if (field.includes('.')) {
+    return true;
+  }
+  return listable === undefined || listable.has(field);
+}
+
+/**
+ * The search fields the box reads for this caller: the metadata's searchFields less the
+ * fields the digest denies for List, a branch judged by the child field's grant on the
+ * child resource. `listable` is the digest's field set for the resource itself and
+ * `listableOf` answers it for a child; undefined narrows nothing.
+ */
+export function searchedFields(
+  meta: ResourceMeta | undefined,
+  listable: ReadonlySet<string> | undefined,
+  listableOf: ListableFields = nothingKnown,
+): string[] {
+  return (meta?.searchFields ?? []).filter((field) => searched(meta, field, listable, listableOf));
 }
 
 /** The resource's search fields the digest denies this caller, so the box can say what it does not search. */
-export function deniedSearchFields(meta: ResourceMeta | undefined, listable: ReadonlySet<string> | undefined): string[] {
-  if (listable === undefined) {
-    return [];
+export function deniedSearchFields(
+  meta: ResourceMeta | undefined,
+  listable: ReadonlySet<string> | undefined,
+  listableOf: ListableFields = nothingKnown,
+): string[] {
+  return (meta?.searchFields ?? []).filter((field) => !searched(meta, field, listable, listableOf));
+}
+
+/**
+ * Whether a box over these fields reaches a field the metadata marks PII, its own or a
+ * branch's: the request then travels in the body, as the server requires.
+ */
+export function searchReachesPII(meta: ResourceMeta | undefined, fields: readonly string[]): boolean {
+  return fields.some((field) => {
+    const branch = branchOf(meta, field);
+    if (branch) {
+      return branch.pii === true;
+    }
+    return meta?.fields.some((candidate) => candidate.fieldName === field && candidate.pii === true) ?? false;
+  });
+}
+
+/** Whether a filter in the server grammar names a field the metadata marks PII: the request then travels in the body. */
+export function filterReachesPII(filter: string, meta: ResourceMeta | undefined): boolean {
+  if (filter.trim() === '') {
+    return false;
   }
-  return (meta?.searchFields ?? []).filter((field) => !field.includes('.') && !listable.has(field));
+  const pii = new Set((meta?.fields ?? []).filter((field) => field.pii).map((field) => field.fieldName));
+  return pii.size > 0 && filterFields(filter).some((field) => pii.has(field));
 }
 
 /**

@@ -25,7 +25,13 @@ import { concatFunctions, hyphenConcat } from '../../../concat-fns';
 import { PagedListRequest } from '../../../paged-list';
 import { pageLabel } from '../../../resource-list/list-request';
 import { SearchBoxComponent } from '../../../search-box/search-box.component';
-import { searchedFields, searchFieldLabel, searchPlaceholder } from '../../../search-box/search-fields';
+import {
+  filterReachesPII,
+  searchedFields,
+  searchFieldLabel,
+  searchPlaceholder,
+  searchReachesPII,
+} from '../../../search-box/search-fields';
 import { BaseInputComponent } from '../../base-field.directive';
 import {
   displayFromOptions,
@@ -143,18 +149,42 @@ export class EnumeratedFieldComponent extends BaseInputComponent implements OnIn
     return resource ? this.resourceMeta(resource) : undefined;
   });
 
-  /** The digest's field set for List on the source, undefined when it carries none; a denied search field drops out of the box. */
-  private sourceListable = computed<ReadonlySet<string> | undefined>(() => {
-    const resource = this.resource();
-    if (!resource) {
-      return undefined;
-    }
+  /** The digest's List field set for a resource, undefined when it carries none; a denied search field drops out of the box. */
+  private listableOf(resource: Resource): ReadonlySet<string> | undefined {
     const fields = Object.keys(this.auth.fieldPermissionStates({ resource, permission: ListPermission }));
     return fields.length > 0 ? new Set(fields) : undefined;
+  }
+
+  /** The digest's List field set for the source itself. */
+  private sourceListable = computed<ReadonlySet<string> | undefined>(() => {
+    const resource = this.resource();
+    return resource ? this.listableOf(resource) : undefined;
   });
 
-  /** The fields the box over the source searches for this caller: the source's, less the denied. */
-  sourceSearchFields = computed(() => searchedFields(this.sourceMeta(), this.sourceListable()));
+  /** The fields the box over the source searches for this caller: the source's, less the denied, a branch judged on its child. */
+  sourceSearchFields = computed(() =>
+    searchedFields(this.sourceMeta(), this.sourceListable(), (resource) => this.listableOf(resource)),
+  );
+
+  /**
+   * Whether the source's request must travel in the body: the config asked for it, the
+   * configured filter names a PII field, the box reaches one, or the prefix match runs on
+   * a PII display field. The server refuses a PII field in a URL with a 400.
+   */
+  private sensitive = computed(() => {
+    const config = this.fieldConfig().enumeratedConfig;
+    if (config.disableCacheForFilterPii || filterReachesPII(this.optionFilter(), this.sourceMeta())) {
+      return true;
+    }
+    if (this.query().trim() === '') {
+      return false;
+    }
+    const narrowing = this.narrowing();
+    if (narrowing === 'box') {
+      return searchReachesPII(this.sourceMeta(), this.sourceSearchFields());
+    }
+    return narrowing === 'prefix' && searchReachesPII(this.sourceMeta(), [this.displayColumn() ?? '']);
+  });
 
   /** The source's own search fields (not a child's), the columns a whole source's matcher reads. */
   private ownSearchFields = computed(() => this.sourceSearchFields().filter((field) => !field.includes('.')));
@@ -262,7 +292,7 @@ export class EnumeratedFieldComponent extends BaseInputComponent implements OnIn
       signal(enumeratedMeta.route),
       signal(this.optionFilter()),
       this.columns,
-      signal(config.disableCacheForFilterPii),
+      signal(config.disableCacheForFilterPii || filterReachesPII(this.optionFilter(), this.sourceMeta())),
       this.sorts,
     );
   });
@@ -278,13 +308,10 @@ export class EnumeratedFieldComponent extends BaseInputComponent implements OnIn
     }
     const config = this.fieldConfig().enumeratedConfig;
     const configured = config.sorts.map((sort) => ({ field: sort.field as string, direction: sort.direction }));
-    const narrowing = this.narrowing();
     return {
       route: this.resourceMeta(this.resource() as Resource).route,
-      filter: narrowedFilter(this.optionFilter(), narrowing, this.displayColumn(), this.query()),
-      // A box request travels in the body: a search field may be PII, which the server
-      // refuses in a URL. A prefix match keeps the URL rule, as every field filter does.
-      sensitive: config.disableCacheForFilterPii || (narrowing === 'box' && this.query().trim() !== ''),
+      filter: narrowedFilter(this.optionFilter(), this.narrowing(), this.displayColumn(), this.query()),
+      sensitive: this.sensitive(),
       columns: this.columns(),
       sorts: pickerSort<Record<string, unknown>>(descriptor, configured, this.displayColumn()),
     };
