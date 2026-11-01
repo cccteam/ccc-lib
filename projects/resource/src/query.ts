@@ -1,7 +1,24 @@
 import { Capability, CapabilitiesQueryParam } from './digest';
 
-/** The operators the server's filter grammar accepts. */
-export type FilterOperator = 'eq' | 'ne' | 'gt' | 'lt' | 'gte' | 'lte' | 'in' | 'notin' | 'isnull' | 'isnotnull';
+/**
+ * The operators the server's filter grammar accepts: the ten comparisons every
+ * filterable field answers, and the three text matches a field answers where its
+ * metadata lists them (FieldMeta.search).
+ */
+export type FilterOperator =
+  | 'eq'
+  | 'ne'
+  | 'gt'
+  | 'lt'
+  | 'gte'
+  | 'lte'
+  | 'in'
+  | 'notin'
+  | 'isnull'
+  | 'isnotnull'
+  | 'startswith'
+  | 'endswith'
+  | 'contains';
 
 export type FilterValue = string | number | boolean | Date;
 
@@ -20,7 +37,21 @@ export interface OrGroup<Row> {
   or: FilterExpression<Row>[];
 }
 
-export type FilterExpression<Row> = Condition<Row> | AndGroup<Row> | OrGroup<Row>;
+/**
+ * The search box, `*:search:"text"`: every term of the text (split at spaces) must be
+ * found in one of the resource's search fields (ResourceMeta.searchFields) the caller
+ * may list. At most eight terms of 64 characters, 200 characters in all (searchLimits);
+ * one box per filter, as a conjunct of its top-level AND, never inside an OR. A box over
+ * a resource whose search fields include a PII field travels in the body (sensitiveFilter).
+ */
+export interface SearchBox {
+  search: string;
+}
+
+export type FilterExpression<Row> = Condition<Row> | AndGroup<Row> | OrGroup<Row> | SearchBox;
+
+/** The field name the search box is written under in the grammar. */
+export const SearchBoxField = '*';
 
 /** A filter: the server's grammar as a string, or a typed expression the client serializes. */
 export type Filter<Row> = string | FilterExpression<Row>;
@@ -41,10 +72,16 @@ export function or<Row>(...expressions: FilterExpression<Row>[]): OrGroup<Row> {
   return { or: expressions };
 }
 
+/** The search box over the typed text; see SearchBox. */
+export function searchBox(text: string): SearchBox {
+  return { search: text };
+}
+
 /**
  * Renders a filter in the server grammar: conditions are `field:op:value`, lists are
- * parenthesized and comma-separated, `,` joins with AND, `|` with OR, and nested
- * groups are parenthesized.
+ * parenthesized and comma-separated, `,` joins with AND, `|` with OR, nested groups are
+ * parenthesized, the search box is `*:search:"text"`, and a value is quoted where the
+ * grammar would otherwise read part of it (quoteFilterValue).
  */
 export function serializeFilter<Row>(filter: Filter<Row>): string {
   if (typeof filter === 'string') {
@@ -55,6 +92,10 @@ export function serializeFilter<Row>(filter: Filter<Row>): string {
   }
   if ('or' in filter) {
     return filter.or.map(serializeGroupMember).join('|');
+  }
+  if ('search' in filter) {
+    // The box's text is always quoted: it is read as words, and a space is its separator.
+    return `${SearchBoxField}:search:${quoted(filter.search)}`;
   }
   return serializeCondition(filter);
 }
@@ -76,7 +117,25 @@ function serializeCondition<Row>(condition: Condition<Row>): string {
 }
 
 function serializeValue(value: FilterValue): string {
-  return value instanceof Date ? value.toISOString() : String(value);
+  return value instanceof Date ? value.toISOString() : quoteFilterValue(String(value));
+}
+
+/**
+ * A value as the grammar carries it: bare when nothing in it would be read as grammar,
+ * else in double quotes with a backslash before a quote or a backslash. A comma, a pipe,
+ * a parenthesis, a quote, a backslash, a leading or trailing space, and the empty value
+ * need the quotes; a colon does not, since a condition splits at its first two. The
+ * server reads a quoted value back exactly, so a typed value reaches it as typed.
+ */
+export function quoteFilterValue(value: string): string {
+  if (value !== '' && value.trim() === value && !/[,|()"\\]/.test(value)) {
+    return value;
+  }
+  return quoted(value);
+}
+
+function quoted(value: string): string {
+  return `"${value.replace(/[\\"]/g, '\\$&')}"`;
 }
 
 export type SortDirection = 'asc' | 'desc';

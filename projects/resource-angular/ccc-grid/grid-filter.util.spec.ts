@@ -5,12 +5,15 @@ import {
   filterFields,
   indexedFilterActive,
   isComplete,
+  isListedMatch,
+  operatorsFor,
   withoutOrphanedCompanions,
 } from './grid-filter.util';
-import { ColumnFilter, ColumnFilterability, FilterControl } from './grid-types';
+import { ColumnFilter, ColumnFilterability, ColumnSearches, FilterControl } from './grid-types';
 
 // The grid's filters as the server sees them: which fields a grammar string names, when
-// a companion column may join, and how the column filters become one request filter.
+// a companion column may join, which operators a column's menu offers, and how the
+// column filters and the search box become one request filter.
 
 const filterability: ColumnFilterability = {
   title: 'always',
@@ -18,6 +21,12 @@ const filterability: ColumnFilterability = {
   fee: 'withIndexed',
   notes: 'withIndexed',
   daysLeft: undefined,
+};
+
+/** The matches the fields answer: the title through its token column, the notes in memory, the rest none. */
+const searches: ColumnSearches = {
+  title: ['contains', 'startswith'],
+  notes: ['contains'],
 };
 
 const filter = (field: string, operator: ColumnFilter['operator'], value = ''): ColumnFilter => ({ field, operator, value });
@@ -31,6 +40,9 @@ describe('filterFields', () => {
     { name: 'a timestamp value with colons is not a field', filter: 'deadline:gt:2026-09-14T10:00:00Z', want: ['deadline'] },
     { name: 'a timestamp inside a list is not a field either', filter: 'deadline:in:(2026-01-01T00:00:00Z,2026-02-01T00:00:00Z)', want: ['deadline'] },
     { name: 'a null test', filter: 'squadronName:isnull', want: ['squadronName'] },
+    { name: 'a quoted value holding the grammar\'s characters is not read', filter: 'title:contains:"a,b|(c):d",fee:gt:1', want: ['title', 'fee'] },
+    { name: 'an escaped quote stays inside the value', filter: 'title:eq:"the \\"Anvil\\", run",statusId:eq:open', want: ['title', 'statusId'] },
+    { name: 'the search box names no field', filter: 'statusId:eq:open,*:search:"nguyen 1987"', want: ['statusId'] },
     { name: 'nothing', filter: '', want: [] },
   ];
 
@@ -70,6 +82,30 @@ describe('indexedFilterActive', () => {
       expect(indexedFilterActive(tt.filters, filterability, tt.external)).toBe(tt.want);
     });
   }
+
+  describe('with the matches and the box', () => {
+    const cases: { name: string; filters: ColumnFilter[]; box: boolean; want: boolean }[] = [
+      { name: 'a listed match on a companion column counts', filters: [filter('notes', 'contains', 'late')], box: false, want: true },
+      { name: 'a match the column does not list counts for nothing', filters: [filter('fee', 'contains', '1')], box: false, want: false },
+      { name: 'an incomplete match counts for nothing', filters: [filter('notes', 'contains', ' ')], box: false, want: false },
+      { name: 'the box counts', filters: [], box: true, want: true },
+    ];
+
+    for (const tt of cases) {
+      it(tt.name, () => {
+        expect(indexedFilterActive(tt.filters, filterability, [], searches, tt.box)).toBe(tt.want);
+      });
+    }
+  });
+});
+
+describe('isListedMatch', () => {
+  it('is a match the column\'s field lists, and nothing else', () => {
+    expect(isListedMatch(filter('title', 'contains'), searches)).toBe(true);
+    expect(isListedMatch(filter('title', 'endswith'), searches)).toBe(false);
+    expect(isListedMatch(filter('title', 'eq'), searches)).toBe(false);
+    expect(isListedMatch(filter('fee', 'contains'), searches)).toBe(false);
+  });
 });
 
 describe('filterControlFor', () => {
@@ -87,6 +123,36 @@ describe('filterControlFor', () => {
       expect(filterControlFor(tt.column, filterability, tt.indexedActive)).toBe(tt.want);
     });
   }
+
+  it('a companion column whose field lists a match never waits: the match stands alone', () => {
+    expect(filterControlFor({ id: 'notes' }, filterability, false, searches)).toBe('enabled');
+    expect(filterControlFor({ id: 'fee' }, filterability, false, searches)).toBe('needsIndexed');
+  });
+});
+
+describe('operatorsFor', () => {
+  const values = (columnId: string, indexedActive: boolean): string[] =>
+    operatorsFor(columnId, filterability, indexedActive, searches).map((option) => option.value);
+  const comparisons = ['eq', 'ne', 'gt', 'gte', 'lt', 'lte', 'in', 'notin', 'isnull', 'isnotnull'];
+
+  const cases: { name: string; column: string; indexedActive: boolean; want: string[] }[] = [
+    { name: 'an always column: the comparisons, then the matches its field lists', column: 'title', indexedActive: false, want: [...comparisons, 'startswith', 'contains'] },
+    { name: 'an always column with no matches: the comparisons alone', column: 'statusId', indexedActive: false, want: comparisons },
+    { name: 'a companion column with no indexed filter: its matches alone', column: 'notes', indexedActive: false, want: ['contains'] },
+    { name: 'a companion column beside an indexed filter: everything it answers', column: 'notes', indexedActive: true, want: [...comparisons, 'contains'] },
+    { name: 'a companion column with no matches and no indexed filter: nothing', column: 'fee', indexedActive: false, want: [] },
+    { name: 'a column the server does not filter: nothing', column: 'daysLeft', indexedActive: true, want: [] },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, () => {
+      expect(values(tt.column, tt.indexedActive)).toEqual(tt.want);
+    });
+  }
+
+  it('labels the matches in plain words', () => {
+    expect(operatorsFor('title', filterability, false, searches).slice(-2).map((option) => option.label)).toEqual(['Starts with', 'Contains']);
+  });
 });
 
 describe('withoutOrphanedCompanions', () => {
@@ -102,6 +168,16 @@ describe('withoutOrphanedCompanions', () => {
       expect(withoutOrphanedCompanions(tt.filters, filterability, tt.external).map((f) => f.field)).toEqual(tt.want);
     });
   }
+
+  it('companions stay while the box is in the request, and go when it is cleared', () => {
+    const filters = [filter('fee', 'gt', '100')];
+    expect(withoutOrphanedCompanions(filters, filterability, [], searches, true).map((f) => f.field)).toEqual(['fee']);
+    expect(withoutOrphanedCompanions(filters, filterability, [], searches, false)).toEqual([]);
+  });
+
+  it('a listed match on a companion column stands on its own', () => {
+    expect(withoutOrphanedCompanions([filter('notes', 'contains', 'late')], filterability, [], searches).map((f) => f.field)).toEqual(['notes']);
+  });
 });
 
 describe('conditionOf', () => {
@@ -126,6 +202,7 @@ describe('composeFilter', () => {
     { name: 'both, as parenthesized groups', page: 'sectorId:eq:anvil', filters: [filter('statusId', 'eq', 'open')], want: '(sectorId:eq:anvil),(statusId:eq:open)' },
     { name: 'an incomplete column filter is left out', page: '', filters: [filter('statusId', 'eq', ''), filter('title', 'eq', 'Convoy')], want: 'title:eq:Convoy' },
     { name: 'a list and a null test in the grammar', page: '', filters: [filter('kindId', 'in', 'rescue,salvage'), filter('notes', 'isnull')], want: 'kindId:in:(rescue,salvage),notes:isnull' },
+    { name: 'a match whose value needs the quotes', page: '', filters: [filter('title', 'contains', 'Survey, Office')], want: 'title:contains:"Survey, Office"' },
   ];
 
   for (const tt of cases) {
@@ -133,4 +210,20 @@ describe('composeFilter', () => {
       expect(composeFilter(tt.page, tt.filters)).toBe(tt.want);
     });
   }
+
+  describe('with the search box', () => {
+    const cases: { name: string; page: string; filters: ColumnFilter[]; text: string; want: string }[] = [
+      { name: 'the box alone', page: '', filters: [], text: 'nguyen 1987', want: '*:search:"nguyen 1987"' },
+      { name: 'blank text is no box', page: 'sectorId:eq:anvil', filters: [], text: '   ', want: 'sectorId:eq:anvil' },
+      { name: "beside the page's filter, a bare conjunct", page: 'sectorId:eq:anvil', filters: [], text: 'nguyen', want: '(sectorId:eq:anvil),*:search:"nguyen"' },
+      { name: 'beside both', page: 'sectorId:eq:anvil', filters: [filter('statusId', 'eq', 'open')], text: 'nguyen', want: '(sectorId:eq:anvil),(statusId:eq:open),*:search:"nguyen"' },
+      { name: 'the text is trimmed and quoted', page: '', filters: [filter('statusId', 'eq', 'open')], text: ' pat "the anvil" ', want: '(statusId:eq:open),*:search:"pat \\"the anvil\\""' },
+    ];
+
+    for (const tt of cases) {
+      it(tt.name, () => {
+        expect(composeFilter(tt.page, tt.filters, tt.text)).toBe(tt.want);
+      });
+    }
+  });
 });

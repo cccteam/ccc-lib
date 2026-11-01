@@ -11,6 +11,7 @@ export * from './src/operations';
 export * from './src/permissions';
 export * from './src/query';
 export * from './src/reading';
+export * from './src/search';
 export * from './src/store';
 export * from './src/tokens';
 export * from './src/transport';

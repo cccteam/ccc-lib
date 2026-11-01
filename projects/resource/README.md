@@ -134,6 +134,29 @@ field — accepted only when the same filter also names an `'always'` field, sin
 are scarce and one is enough to narrow the rows — and absent on a field a filter may not
 name. A table draws a filter control from it, so what it offers is what the server answers.
 
+A text field answers `startswith`, `endswith` and `contains` where the schema states a
+fact for it, and `FieldMeta.search` lists the matches it answers: a stored `LOWER(col)`
+column leading an index answers `startswith`; a token column under the table's search
+index answers `contains` and the anchors its tokenizer declares; a computed resource's
+`allow_filter` text field answers all three in memory. A match stands alone whatever
+`filterable` says, and counts as the indexed touch a `'withIndexed'` companion needs. A
+resource whose table carries a search index answers the search box, `searchBox('nguyen
+1987 4321')`, rendered `*:search:"nguyen 1987 4321"`: every word must be found in one of
+the resource's search fields the caller may list (`ResourceMeta.searchFields`, a child's
+field under its dotted name, `clientContact.displayName`), a denied field drops out
+silently, and a conditional one is searched only where its condition holds. The box is
+one conjunct of the filter's top-level AND, never inside an OR, at most one per filter,
+and at most eight words of 64 characters, 200 in all (`searchLimits`). A field match on a
+PII field keeps the URL rule above; a box that reaches a PII field travels in the body, so
+send it with `sensitiveFilter: true`. The metadata says which: `FieldMeta.pii` marks a PII
+field, and `ResourceMeta.searchBranches` describes each dotted search field (the child
+resource and field whose List grant governs it, `pii` when that field is PII). The serializer
+quotes a value where the grammar would otherwise read part of it (a comma, a pipe, a
+parenthesis, a quote, a backslash, a leading or trailing space, the empty value) and
+always quotes the box's text; `quoteFilterValue` is the rule. `matchesSearch` is the
+browser's copy of the rule the server applies in memory, every word found, folded, in one
+of the values, for a picker narrowing a list it holds whole.
+
 ## Permissions
 
 `api.permissions` is the session user's digest cache: one digest per scope (global,

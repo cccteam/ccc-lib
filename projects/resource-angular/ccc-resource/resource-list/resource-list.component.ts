@@ -65,7 +65,16 @@ import { applyFormatting, formatByDisplayType, formatDateString } from '../forma
 import { iconTemplateFields, resolveIconCell } from './icon-cell';
 import { DeleteResourceConfirmationModalComponent } from '../delete-resource-confirmation-modal/delete-resource-confirmation-modal.component';
 import { ResourceStore } from '../resource-store.service';
-import { filterEligibility, listEmptyMessage, refuseKeylessConfig, refuseWriteOnlyColumns } from './list-request';
+import { SearchBoxComponent } from '../search-box/search-box.component';
+import {
+  deniedSearchFields,
+  searchDeniedHint,
+  searchedFields,
+  searchFieldLabel,
+  searchPlaceholder,
+  searchReachesPII,
+} from '../search-box/search-fields';
+import { filterEligibility, listEmptyMessage, refuseKeylessConfig, refuseWriteOnlyColumns, searchEligibility } from './list-request';
 import { listableColumns, sameColumns } from './listable-columns';
 
 @Component({
@@ -80,6 +89,7 @@ import { listableColumns, sameColumns } from './listable-columns';
     ReactiveFormsModule,
     ActionAccessControlWrapperComponent,
     NgComponentOutlet,
+    SearchBoxComponent,
   ],
   selector: 'ccc-resource-list',
   templateUrl: './resource-list.component.html',
@@ -253,12 +263,14 @@ export class ResourceListComponent implements OnInit {
    */
   listableFields = computed<ReadonlySet<string> | undefined>(() => {
     const resource = this.config().primaryResource;
-    if (!resource) {
-      return undefined;
-    }
+    return resource ? this.listableOf(resource) : undefined;
+  });
+
+  /** The digest's List field set for any resource, as listableFields reads it for the page's own; a search branch's child is asked here. */
+  private listableOf(resource: Resource): ReadonlySet<string> | undefined {
     const fields = Object.keys(this.auth.fieldPermissionStates({ resource, permission: ListPermission }));
     return fields.length > 0 ? new Set(fields) : undefined;
-  });
+  }
 
   /**
    * The configured columns the caller may list: every column when nothing narrows,
@@ -355,6 +367,50 @@ export class ResourceListComponent implements OnInit {
   /** The fields the page's own filter names, so the grid knows when an indexed filter is already in the request. */
   configFilterFields = computed(() => filterFields(this.filters()));
 
+  /** Which text matches each column's field answers, from the listed resource's metadata: the grid's menu offers these. */
+  searches = computed(() => searchEligibility(this.meta(), this.columns()));
+
+  /**
+   * The fields the search box searches for this caller: the listed resource's search
+   * fields less those the digest denies for List, a branch judged by the child field's
+   * grant on the child resource. The resource decides the set, never the page; a page
+   * that should search fewer fields lists a view projecting fewer.
+   */
+  searchFields = computed(() => searchedFields(this.meta(), this.listableFields(), (resource) => this.listableOf(resource)));
+
+  /** Whether the box reaches a PII field, its own or a branch's: the request then travels in the body. */
+  searchPII = computed(() => searchReachesPII(this.meta(), this.searchFields()));
+
+  /** Whether the page draws the box: the resource has search fields for this caller and the config does not hide it. */
+  showSearchBox = computed(() => this.config().showSearchBox !== false && this.searchFields().length > 0);
+
+  /** The headers the page configured, by field, so the box names a field as its column does. */
+  private columnHeaders = computed(
+    () =>
+      new Map(
+        (this.config().listColumns ?? [])
+          .filter((col) => col.header)
+          .map((col): [string, string] => [col.id as string, col.header as string]),
+      ),
+  );
+
+  /** What the empty box says: the fields it searches, by their labels. */
+  searchPlaceholder = computed(() =>
+    searchPlaceholder(this.searchFields().map((field) => searchFieldLabel(field, this.columnHeaders()))),
+  );
+
+  /** What the box says under itself: the search fields the caller's role leaves out, if any. */
+  searchHint = computed(() =>
+    searchDeniedHint(
+      deniedSearchFields(this.meta(), this.listableFields(), (resource) => this.listableOf(resource)).map((field) =>
+        searchFieldLabel(field, this.columnHeaders()),
+      ),
+    ),
+  );
+
+  /** Whether the box is in the request: it counts as the indexed touch a companion-only column waits for. */
+  boxActive = computed(() => this.store.searchText().trim() !== '');
+
   /** A header click: the sorts to request next; the store drops the cursor and asks for a first page. */
   onSortChange(sorts: SortRule[]): void {
     this.store.sorts.set(sorts as FieldSort[]);
@@ -366,7 +422,27 @@ export class ResourceListComponent implements OnInit {
    * refuse them alone.
    */
   onFilterChange(filters: ColumnFilter[]): void {
-    this.store.columnFilters.set(withoutOrphanedCompanions(filters, this.filterability(), this.configFilterFields()));
+    this.store.columnFilters.set(
+      withoutOrphanedCompanions(filters, this.filterability(), this.configFilterFields(), this.searches(), this.boxActive()),
+    );
+  }
+
+  /**
+   * The box's text committed: the request filter gains or loses its search conjunct, the
+   * store drops the cursor and asks for a first page, and a cleared box takes the
+   * companion-only filters it alone was carrying with it.
+   */
+  onSearchChange(text: string): void {
+    this.store.searchText.set(text);
+    this.store.columnFilters.set(
+      withoutOrphanedCompanions(
+        this.store.columnFilters(),
+        this.filterability(),
+        this.configFilterFields(),
+        this.searches(),
+        text.trim() !== '',
+      ),
+    );
   }
 
   /** A pager click: the store follows the server's relation. */
@@ -734,6 +810,7 @@ export class ResourceListComponent implements OnInit {
         const columns = this.listColumns();
         this.store.filter.set(this.filters());
         this.store.disableCacheForFilterPii.set(this.config().disableCacheForFilterPii);
+        this.store.searchPII.set(this.searchPII());
         this.store.live.set(this.config().live === true);
         this.store.listColumns.set(columns);
         // Nothing the digest grants is on this page: there is nothing to ask for, and

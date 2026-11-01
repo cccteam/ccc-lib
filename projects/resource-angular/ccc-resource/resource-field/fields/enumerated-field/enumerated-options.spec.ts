@@ -1,7 +1,18 @@
 import { FieldName } from '@cccteam/resource-angular/types';
-import { ApiError } from '@cccteam/resource';
+import { ApiError, ResourceMeta } from '@cccteam/resource';
 
-import { displayFromOptions, matchOptions, optionColumns, PickerOption, pickerRefusal, withChosen } from './enumerated-options';
+import {
+  displayFromOptions,
+  matchOptions,
+  narrowedFilter,
+  optionColumns,
+  PickerNarrowing,
+  pickerNarrowing,
+  PickerOption,
+  pickerRefusal,
+  refuseUnsearchablePicker,
+  withChosen,
+} from './enumerated-options';
 
 describe('optionColumns', () => {
   const cases: {
@@ -35,6 +46,10 @@ describe('optionColumns', () => {
       expect(optionColumns({ listDisplay: tt.listDisplay, viewDisplay: tt.viewDisplay })).toEqual(tt.want);
     });
   }
+
+  it('asks for the search fields a whole source is narrowed by, once each', () => {
+    expect(optionColumns({ listDisplay: ['name' as FieldName], viewDisplay: [] }, ['name', 'contactEmail'])).toEqual(['id', 'name', 'contactEmail']);
+  });
 });
 
 describe('matchOptions', () => {
@@ -49,6 +64,8 @@ describe('matchOptions', () => {
     { name: 'the display matches as a substring regardless of case', query: 'SURVEY', want: [meridian] },
     { name: 'the id matches as a substring, so one can be pasted', query: '8000-000000000001', want: [halvard] },
     { name: 'a query matching nothing empties the list', query: 'zephyr', want: [] },
+    { name: 'every word must be found somewhere: two words of one display', query: 'survey office', want: [meridian] },
+    { name: 'every word must be found somewhere: one word of each is nothing', query: 'survey freight', want: [] },
   ];
 
   for (const tt of cases) {
@@ -56,6 +73,63 @@ describe('matchOptions', () => {
       expect(ids(matchOptions(options, tt.query))).toEqual(ids(tt.want));
     });
   }
+
+  it("reads the row's search fields too, folded the way the server folds them", () => {
+    const obrien: PickerOption = { id: 'c-1', display: 'Meridian Survey Office', text: ["Pat O'Brien", 'pat.obrien@example.test'] };
+    const withText = [halvard, obrien];
+    expect(ids(matchOptions(withText, 'obrien'))).toEqual(['c-1']);
+    expect(ids(matchOptions(withText, 'meridian obrien@example'))).toEqual(['c-1']);
+    expect(ids(matchOptions(withText, 'halvard obrien'))).toEqual([]);
+  });
+});
+
+describe('pickerNarrowing', () => {
+  const rosters: ResourceMeta = {
+    route: 'client-rosters',
+    fields: [
+      { fieldName: 'id', displayType: 'uuid', required: false, isIndex: true },
+      { fieldName: 'name', displayType: 'string', required: true, isIndex: true, search: ['contains', 'startswith'] },
+      { fieldName: 'code', displayType: 'string', required: true, isIndex: false },
+    ],
+  };
+
+  const cases: { name: string; display: string | undefined; searchFields: string[]; want: PickerNarrowing | undefined }[] = [
+    { name: 'the box when the source has search fields the caller may list', display: 'code', searchFields: ['name'], want: 'box' },
+    { name: 'a prefix when the display field answers startswith and there is no box', display: 'name', searchFields: [], want: 'prefix' },
+    { name: 'nothing when the display field answers no startswith', display: 'code', searchFields: [], want: undefined },
+    { name: 'nothing with no display field', display: undefined, searchFields: [], want: undefined },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, () => {
+      expect(pickerNarrowing(rosters, tt.display, tt.searchFields)).toBe(tt.want);
+    });
+  }
+});
+
+describe('narrowedFilter', () => {
+  const cases: { name: string; filter: string; narrowing: PickerNarrowing | undefined; text: string; want: string }[] = [
+    { name: 'blank text: the configured filter alone', filter: 'sectorId:eq:anvil', narrowing: 'box', text: '  ', want: 'sectorId:eq:anvil' },
+    { name: 'the box alone', filter: '', narrowing: 'box', text: 'merid', want: '*:search:"merid"' },
+    { name: 'the box beside the configured filter', filter: 'sectorId:eq:anvil', narrowing: 'box', text: 'merid', want: '(sectorId:eq:anvil),*:search:"merid"' },
+    { name: 'a prefix on the display field, quoted where it needs to be', filter: '', narrowing: 'prefix', text: 'O(B', want: 'name:startswith:"O(B"' },
+    { name: 'a prefix beside the configured filter', filter: 'trusted:eq:true', narrowing: 'prefix', text: 'anv', want: '(trusted:eq:true),name:startswith:anv' },
+    { name: 'nothing narrows: the configured filter alone', filter: 'trusted:eq:true', narrowing: undefined, text: 'anv', want: 'trusted:eq:true' },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, () => {
+      expect(narrowedFilter(tt.filter, tt.narrowing, 'name', tt.text)).toBe(tt.want);
+    });
+  }
+});
+
+describe('refuseUnsearchablePicker', () => {
+  it('names the resource, the display field and the DDL way out', () => {
+    expect(() => refuseUnsearchablePicker('Berths', 'code')).toThrow(
+      /^Berths: searchable is set, but the resource is paged, its display field code answers no startswith, and it has no search fields, .* stored LOWER copy .* token column under the table's search index/,
+    );
+  });
 });
 
 describe('displayFromOptions', () => {

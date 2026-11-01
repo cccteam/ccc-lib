@@ -275,8 +275,10 @@ export interface EnumeratedConfigOptions {
   /* eslint-disable  @typescript-eslint/no-explicit-any */
   filter?: (resource: any) => string;
   /**
-   * Set disableCacheForFilterPii to `true` to promote the GET to a POST when PII is used in the filter
-   * POST requests cannot be cached
+   * Force the picker's list request into a POST, which the browser never caches. The
+   * picker posts on its own when the configured filter, the search box or the prefix match
+   * reaches a field the metadata marks `pii`; set this for a filter the metadata cannot
+   * read, a hand-registered resource, say.
    */
   disableCacheForFilterPii?: boolean;
   /**
@@ -298,9 +300,13 @@ export interface EnumeratedConfigOptions {
   listConcatFn?: ConcatFn;
   viewDetails?: boolean;
   /**
-   * Narrow the loaded options by typing, on a source read whole (no maximum page size).
-   * A source with a maximum renders the paged panel instead: narrowing one page would
-   * hide the rest, and a server-side search is not built yet (cccteam/backlog#101).
+   * Narrow the options by typing. A source read whole (no maximum page size) is narrowed
+   * in the browser: every typed word must be found in the option's display, its id, or one
+   * of the source's search fields. A paged source is narrowed on the server, one page at a
+   * time: by the search box when the source has search fields the caller may list, else by
+   * a prefix match on the display field when it answers `startswith`; a paged source with
+   * neither is a configuration error at startup, naming the resource and the DDL way out.
+   * Which fields the box searches is the source resource's, never the picker's.
    */
   searchable?: boolean;
 }
@@ -847,6 +853,11 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
   actionType?: ActionType;
   /* eslint-disable  @typescript-eslint/no-explicit-any */
   filter?: (parentResource: any) => string;
+  /**
+   * Force the list request into a POST, which the browser never caches. The list posts
+   * on its own when its filter, a column filter or the search box reaches a field the
+   * metadata marks `pii`; set this for a filter the metadata cannot read.
+   */
   disableCacheForFilterPii?: boolean;
   rpcConfigs?: RPCConfig[];
   /** The sorts the list is requested in until a header is clicked; none, and the resource's declared order applies. */
@@ -854,6 +865,13 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
   shouldRenderActions?: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
   /** Show the server's total row count in the title. */
   showRowCount?: boolean;
+  /**
+   * Whether the page draws the search box over the resource's search fields
+   * (`ResourceMeta.searchFields`): drawn above the table when the metadata lists any,
+   * unless false. Which fields it searches is the resource's, narrowed by the caller's
+   * grants, never the page's; the box's request travels in the body. Default true.
+   */
+  showSearchBox?: boolean;
   /**
    * The server page size: rows per page, up to the resource's declared maximum (`@page`).
    * Omitted, the resource's declared default applies, so the descriptor decides. A size
@@ -895,6 +913,8 @@ export interface ListViewConfig extends BaseConfig {
   sorts: FieldSort[];
   shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
   showRowCount: boolean;
+  /** Whether the page draws the search box; see ListViewConfigOptions.showSearchBox. */
+  showSearchBox: boolean;
   /** The server page size; see ListViewConfigOptions.pageSize. */
   pageSize?: number;
   /** Whether the list page and its row page are live; see ListViewConfigOptions.live. */
@@ -942,6 +962,7 @@ export const listViewConfigDefaults = {
     delete: (): boolean => true,
   },
   showRowCount: true,
+  showSearchBox: true,
   live: false,
 } satisfies ListViewConfig;
 

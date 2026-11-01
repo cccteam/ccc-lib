@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit, signal, viewChild } from '@angular/core';
 import { ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,11 +10,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { AuthService } from '@cccteam/resource-angular/auth-service';
 import {
   defaultEmptyFieldValue,
   EnumeratedConfig,
   EnumerationOption,
   FieldElement,
+  ListPermission,
   Resource,
   RootConfig,
 } from '@cccteam/resource-angular/types';
@@ -22,8 +24,26 @@ import { pickerSort, readMode } from '@cccteam/resource';
 import { concatFunctions, hyphenConcat } from '../../../concat-fns';
 import { PagedListRequest } from '../../../paged-list';
 import { pageLabel } from '../../../resource-list/list-request';
+import { SearchBoxComponent } from '../../../search-box/search-box.component';
+import {
+  filterReachesPII,
+  searchedFields,
+  searchFieldLabel,
+  searchPlaceholder,
+  searchReachesPII,
+} from '../../../search-box/search-fields';
 import { BaseInputComponent } from '../../base-field.directive';
-import { displayFromOptions, matchOptions, optionColumns, PickerOption, pickerRefusal, withChosen } from './enumerated-options';
+import {
+  displayFromOptions,
+  matchOptions,
+  narrowedFilter,
+  optionColumns,
+  PickerOption,
+  pickerNarrowing,
+  pickerRefusal,
+  refuseUnsearchablePicker,
+  withChosen,
+} from './enumerated-options';
 
 /**
  * The picker for a field that holds another resource's identifier. Which resource it
@@ -41,9 +61,13 @@ import { displayFromOptions, matchOptions, optionColumns, PickerOption, pickerRe
  * configured sorts, else the source's @order, else the display column, and the chosen
  * value is read by key and shown ahead of the page's options, so the control shows what
  * is stored whichever page is open. `searchable` narrows a whole source's options in the
- * browser; a paged source renders the paged panel, since narrowing one page would hide
- * the rest (a server-side search is cccteam/backlog#101). A request the server refuses
- * shows the refusal in its words under the field, never an empty list.
+ * browser, every typed word found in the display, the id, or a search field of the row;
+ * on a paged source it narrows on the server, one page at a time, by the search box when
+ * the source has search fields the caller may list, else by a prefix match on the display
+ * field when it answers startswith, and a paged source with neither is refused when the
+ * field is built. Which fields the box searches is the source resource's, never the
+ * picker's. A request the server refuses shows the refusal in its words under the field,
+ * never an empty list.
  */
 @Component({
   selector: 'ccc-enumerated-field',
@@ -59,17 +83,22 @@ import { displayFromOptions, matchOptions, optionColumns, PickerOption, pickerRe
     MatTooltipModule,
     RouterModule,
     MatAutocompleteModule,
+    SearchBoxComponent,
   ],
   templateUrl: './enumerated-field.component.html',
   styleUrl: './enumerated-field.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class EnumeratedFieldComponent extends BaseInputComponent {
+export class EnumeratedFieldComponent extends BaseInputComponent implements OnInit {
   activatedRoute = inject(ActivatedRoute);
   router = inject(Router);
+  auth = inject(AuthService);
   reloadSignal = signal(false);
 
+  /** The typed text: a whole source's options are narrowed by it in the browser, a paged source's page on the server. */
   query = signal('');
+
+  private readonly searchBox = viewChild(SearchBoxComponent);
 
   /**
    * The fixed value set the metadata carries for a field naming an @enumerate table.
@@ -114,6 +143,68 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     return descriptor !== undefined && readMode(descriptor) === 'paged';
   });
 
+  /** The listed resource's metadata; none for a fixed enumeration. */
+  private sourceMeta = computed(() => {
+    const resource = this.resource();
+    return resource ? this.resourceMeta(resource) : undefined;
+  });
+
+  /** The digest's List field set for a resource, undefined when it carries none; a denied search field drops out of the box. */
+  private listableOf(resource: Resource): ReadonlySet<string> | undefined {
+    const fields = Object.keys(this.auth.fieldPermissionStates({ resource, permission: ListPermission }));
+    return fields.length > 0 ? new Set(fields) : undefined;
+  }
+
+  /** The digest's List field set for the source itself. */
+  private sourceListable = computed<ReadonlySet<string> | undefined>(() => {
+    const resource = this.resource();
+    return resource ? this.listableOf(resource) : undefined;
+  });
+
+  /** The fields the box over the source searches for this caller: the source's, less the denied, a branch judged on its child. */
+  sourceSearchFields = computed(() =>
+    searchedFields(this.sourceMeta(), this.sourceListable(), (resource) => this.listableOf(resource)),
+  );
+
+  /**
+   * Whether the source's request must travel in the body: the config asked for it, the
+   * configured filter names a PII field, the box reaches one, or the prefix match runs on
+   * a PII display field. The server refuses a PII field in a URL with a 400.
+   */
+  private sensitive = computed(() => {
+    const config = this.fieldConfig().enumeratedConfig;
+    if (config.disableCacheForFilterPii || filterReachesPII(this.optionFilter(), this.sourceMeta())) {
+      return true;
+    }
+    if (this.query().trim() === '') {
+      return false;
+    }
+    const narrowing = this.narrowing();
+    if (narrowing === 'box') {
+      return searchReachesPII(this.sourceMeta(), this.sourceSearchFields());
+    }
+    return narrowing === 'prefix' && searchReachesPII(this.sourceMeta(), [this.displayColumn() ?? '']);
+  });
+
+  /** The source's own search fields (not a child's), the columns a whole source's matcher reads. */
+  private ownSearchFields = computed(() => this.sourceSearchFields().filter((field) => !field.includes('.')));
+
+  /** How a searchable paged source narrows as the user types: the box, a prefix on the display field, or nothing. */
+  narrowing = computed(() => {
+    if (!this.paged() || !this.fieldConfig().enumeratedConfig.searchable) {
+      return undefined;
+    }
+    return pickerNarrowing(this.sourceMeta(), this.displayColumn(), this.sourceSearchFields());
+  });
+
+  /** What the panel's box says: the fields it searches, or the display field a prefix narrows. */
+  searchPlaceholder = computed(() => {
+    if (this.narrowing() === 'prefix') {
+      return `Starts with ${searchFieldLabel(this.displayColumn() ?? 'id')}`;
+    }
+    return searchPlaceholder(this.sourceSearchFields().map((field) => searchFieldLabel(field)));
+  });
+
   viewDetails = computed(() => {
     return this.editMode() === 'view' && this.fieldConfig().enumeratedConfig.viewDetails === true;
   });
@@ -122,8 +213,14 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     return this.fieldConfig().enumeratedConfig.sorts;
   });
 
-  /** The columns the option list asks for: the id plus whatever the display concatenates. */
-  private columns = computed(() => optionColumns(this.fieldConfig().enumeratedConfig));
+  /**
+   * The columns the option list asks for: the id plus whatever the display concatenates,
+   * and on a searchable whole source its search fields, which the browser's matcher reads.
+   */
+  private columns = computed(() => {
+    const config = this.fieldConfig().enumeratedConfig;
+    return optionColumns(config, config.searchable && !this.paged() ? this.ownSearchFields() : []);
+  });
 
   /** The display column shown first: the sort a paged source with no @order pages by. */
   private displayColumn = computed((): string | undefined => {
@@ -195,7 +292,7 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
       signal(enumeratedMeta.route),
       signal(this.optionFilter()),
       this.columns,
-      signal(config.disableCacheForFilterPii),
+      signal(config.disableCacheForFilterPii || filterReachesPII(this.optionFilter(), this.sourceMeta())),
       this.sorts,
     );
   });
@@ -213,8 +310,8 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     const configured = config.sorts.map((sort) => ({ field: sort.field as string, direction: sort.direction }));
     return {
       route: this.resourceMeta(this.resource() as Resource).route,
-      filter: this.optionFilter(),
-      sensitive: config.disableCacheForFilterPii,
+      filter: narrowedFilter(this.optionFilter(), this.narrowing(), this.displayColumn(), this.query()),
+      sensitive: this.sensitive(),
       columns: this.columns(),
       sorts: pickerSort<Record<string, unknown>>(descriptor, configured, this.displayColumn()),
     };
@@ -317,9 +414,10 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
     return options;
   });
 
-  // The searchable autocomplete narrows a whole source's loaded options client-side, by
-  // display text or by id (so an identifier can be pasted); the server has no substring
-  // search. A paged source renders the paged panel and never narrows here.
+  // The searchable autocomplete narrows a whole source's loaded options in the browser,
+  // every typed word found in the display, the id (so an identifier can be pasted), or
+  // a search field of the row. A paged source renders the paged panel, narrowed by the
+  // server, and never narrows here.
   availableEnumOptions = computed(() => {
     const editMode = this.editMode() === 'edit';
     const loaded = editMode ? this.listEnumValues() : this.singleEnumValue();
@@ -365,10 +463,14 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
 
     const concatFunction = concatFunctions[concat] || hyphenConcat;
 
-    return {
+    const option: PickerOption = {
       id: resource['id'] ?? '',
       display: concatFunction(resource, ...displayFields),
     };
+    if (enumeratedConfig.searchable && !this.paged()) {
+      option.text = this.ownSearchFields().map((field) => String(resource[field] ?? ''));
+    }
+    return option;
   }
 
   getDisplayText = (value: string | Record<string, string> | null): string => {
@@ -389,6 +491,22 @@ export class EnumeratedFieldComponent extends BaseInputComponent {
 
   search(value: string): void {
     this.query.set(value);
+  }
+
+  /** The paged panel opened: the box takes the focus, so typing narrows at once. */
+  panelOpened(opened: boolean): void {
+    if (opened && this.narrowing()) {
+      setTimeout(() => this.searchBox()?.focus());
+    }
+  }
+
+  ngOnInit(): void {
+    // A searchable picker over a paged source nothing narrows is a configuration error,
+    // raised here naming the resource and the DDL way out, before anything is requested.
+    const resource = this.resource();
+    if (resource && this.fieldConfig().enumeratedConfig.searchable && this.paged() && this.narrowing() === undefined) {
+      refuseUnsearchablePicker(resource, this.displayColumn());
+    }
   }
 
   select(value: string): void {

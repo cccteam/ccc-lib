@@ -79,6 +79,9 @@ export interface MethodMeta {
 /** When the server accepts a filter on a field: on its own, or only beside an indexed field. */
 export type FilterEligibility = 'always' | 'withIndexed';
 
+/** A text match the server answers on a field: the start of the value, its end, or anywhere in it. */
+export type SearchMatch = 'startswith' | 'endswith' | 'contains';
+
 /**
  * How a field's masked cells meet a sort or a filter. Only the non-default behavior is
  * named: a field without it conceals.
@@ -112,9 +115,29 @@ export interface FieldMeta {
    * `withIndexed`: a table or view `allow_filter` field, accepted only when the same
    * filter also touches an `always` field — once one index has narrowed the rows a
    * second is rarely used, and indexes are a scarce commodity on Spanner, so
-   * `allow_filter` conserves them. Absent, a filter naming the field is refused.
+   * `allow_filter` conserves them — and a field the server filters through its search
+   * fact alone, whose `search` list names the matches that stand alone; a match on such
+   * a field, and the search box, count as the indexed touch a companion needs. Absent,
+   * a filter naming the field is refused.
    */
   filterable?: FilterEligibility;
+  /**
+   * The text matches the server answers on this field, derived from the schema: a stored
+   * LOWER(col) column leading an index answers `startswith`; a token column under the
+   * table's search index answers `contains`, and the anchors its tokenizer declares; a
+   * computed resource's `allow_filter` text field answers all three in memory. A match
+   * stands alone in a filter whatever `filterable` says, its value travels quoted (see
+   * serializeFilter), and a match on a PII field keeps the URL rule (sensitiveFilter).
+   * Absent on a field that answers no match: a filter naming one on it is refused.
+   */
+  search?: SearchMatch[];
+  /**
+   * Set when the field is declared `pii` on the server: a filter naming it, a text match
+   * on it, or a search box that reaches it must travel in the request body, never in a
+   * URL, which the server refuses with a 400. The store posts such a request on its own.
+   * Absent on every other field. Emitted by the ccc TypeScript generator.
+   */
+  pii?: true;
   /**
    * Set when the field is declared masking:"positional" on the server: a masked cell
    * still arrives hidden (absent from the row), but the server sorts, filters, and pages
@@ -156,6 +179,18 @@ export interface FieldMeta {
   feature?: string;
 }
 
+/** One @searchAlso branch of a resource's search box, as the metadata describes it. */
+export interface SearchBranchMeta {
+  /** The dotted name the box lists the branch under, `clientContact.displayName`. */
+  field: string;
+  /** The child resource whose List grant on `fieldName` governs the branch. */
+  resource: Resource;
+  /** The child field's JSON name. */
+  fieldName: string;
+  /** Set when the child field is declared `pii`: a box reaching it travels in the body. */
+  pii?: true;
+}
+
 export interface ResourceMeta {
   route: string;
   consolidatedRoute?: string;
@@ -174,6 +209,23 @@ export interface ResourceMeta {
   updateDisabled?: boolean;
   deleteDisabled?: boolean;
   fields: FieldMeta[];
+  /**
+   * The fields the search box `*:search:"…"` reads, by JSON name: every field of the
+   * resource with a token column under its table's search index, and a child's field the
+   * resource declares through @searchAlso, under its dotted name
+   * (`clientContact.displayName`). The server searches those the caller may list and
+   * drops a denied one silently, so the browser names the set from this list and the
+   * digest. Absent on a resource with no search box: a filter carrying one is refused.
+   */
+  searchFields?: string[];
+  /**
+   * The @searchAlso branches among searchFields: for each dotted name, the child
+   * resource and the field whose List grant on the child governs the branch, and whether
+   * that field is PII. The browser leaves a denied branch out of what the box says it
+   * searches, as the server leaves it out of the search, and posts a box that reaches a
+   * PII child field. Absent on a resource with no branches.
+   */
+  searchBranches?: SearchBranchMeta[];
   /**
    * The feature flag that gates the resource, by name; absent on an ungated resource.
    * The generated routes read it to skip the page while the flag is off. See

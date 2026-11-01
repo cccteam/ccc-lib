@@ -12,6 +12,16 @@
       </div>
     </action-access-control-wrapper>
   </div>
+  @if (showSearchBox()) {
+    <div class="search-container" [class.indent]="indentTitle()">
+      <ccc-search-box
+        [placeholder]="searchPlaceholder()"
+        [hint]="searchHint()"
+        [value]="store.searchText()"
+        [total]="store.page().total"
+        (textChange)="onSearchChange($event)" />
+    </div>
+  }
   <div class="resource-container">
     <ccc-grid
       [rowData]="processedRowData()"
@@ -26,6 +36,8 @@
       [filters]="store.columnFilters()"
       [filterability]="filterability()"
       [externalFilterFields]="configFilterFields()"
+      [searches]="searches()"
+      [boxActive]="boxActive()"
       [page]="store.page()"
       (sortChange)="onSortChange($event)"
       (filterChange)="onFilterChange($event)"
