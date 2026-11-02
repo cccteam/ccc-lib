@@ -166,8 +166,9 @@ export const IDLE_KEEPALIVE_DURATION = new InjectionToken<number>('IDLE_KEEPALIV
  * @cccteam/resource-firestore, provided once in the application's providers. With it,
  * AuthService starts the client's live session when the session first authenticates
  * (fetching the feed's identity from the API) and stops it at logout, before the session
- * is logged out, and every page configured `live: true` stays current. Without it no page
- * is live, whatever its config says.
+ * is logged out, and every live page stays current (a page on a resource whose changes are
+ * published, unless its config says `live: false`). Without it no page is live, whatever
+ * its config says.
  * @defaultValue none: live pages are off
  */
 export const CHANGE_FEED = new InjectionToken<ChangeFeed>('CHANGE_FEED');

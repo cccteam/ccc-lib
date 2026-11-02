@@ -341,6 +341,13 @@ export interface ClientBase {
    * read with `get()` and watched with `subscribe()`. `dev` is a server built locally.
    */
   readonly serverRelease: Store<string | undefined>;
+  /**
+   * The client's warning hook (`ClientOptions.warn`, the console by default), each
+   * distinct message delivered once: what the client announces the descriptor's gaps
+   * through, and what a page layer announces its own through, so an application's
+   * warnings arrive in one place.
+   */
+  readonly warn: Warn;
   /** Issues a request under baseUrl; the escape hatch for routes the generator did not describe. */
   readonly request: Requester;
   /** Issues a request and resolves with the headers too. */
@@ -414,6 +421,7 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
     features,
     auth,
     serverRelease,
+    warn,
     request,
     requestResponse,
     batch: (operations) => batch(request, descriptor, operations),

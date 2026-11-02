@@ -203,6 +203,17 @@ export interface ResourceMeta {
    * the view is a read-only list.
    */
   rowsOf?: Resource;
+  /**
+   * Whether a commit's changes to this resource are published to live pages. True on a
+   * table-backed resource: the generated handlers publish its touched rows after every
+   * commit, so a page on it is live unless its config says `live: false`. False on a view
+   * or a computed resource, which no publish reaches yet: a page on it stays plain, and
+   * one that says `live: true` is announced once and asks plainly, since its subscription
+   * would never hear a change. Absent on metadata from a generator that predates the
+   * field: no page is live by itself, and a page's own `live: true` is honored as before.
+   * See pageIsLive. Emitted by the ccc TypeScript generator.
+   */
+  live?: boolean;
   listDisabled?: boolean;
   readDisabled?: boolean;
   createDisabled?: boolean;

@@ -887,9 +887,14 @@ export interface ListViewConfigOptions extends BaseConfigOptions {
    * the tab to changes of the resource in its domain, and the page refetches when the
    * change feed reports one (and the row page it opens does the same for its row). The
    * browser caches a live answer for five minutes, so a page left and reopened inside
-   * the window asks the server for nothing. It takes effect only when the application
-   * provides a change feed (CHANGE_FEED) and the outlet serves live subscriptions;
-   * otherwise the page asks as a plain one. Default false.
+   * the window asks the server for nothing. The default is the generated metadata's word
+   * (ResourceMeta.live): a page on a resource whose changes are published, every
+   * table-backed one, is live unless it says false here, and a page on one whose changes
+   * are not, a view or a computed resource, stays plain, true here announced once and
+   * ignored; metadata from a generator that predates the field makes no page live by
+   * itself. It takes effect only when the application provides a change feed
+   * (CHANGE_FEED) and the outlet serves live subscriptions; otherwise the page asks as a
+   * plain one.
    */
   live?: boolean;
 }
@@ -978,9 +983,14 @@ export interface ViewConfigOptions extends BaseConfigOptions {
    * Whether the record page stays current without polling: the read subscribes the tab
    * to changes of the row, and the page refetches when the change feed reports one. The
    * browser caches a live answer for five minutes, so a page left and reopened inside
-   * the window asks the server for nothing. It takes effect only when the application
-   * provides a change feed (CHANGE_FEED) and the outlet serves live subscriptions;
-   * otherwise the page asks as a plain one. Default false.
+   * the window asks the server for nothing. The default is the generated metadata's word
+   * (ResourceMeta.live): a page on a resource whose changes are published, every
+   * table-backed one, is live unless it says false here, and a page on one whose changes
+   * are not, a view or a computed resource, stays plain, true here announced once and
+   * ignored; metadata from a generator that predates the field makes no page live by
+   * itself. It takes effect only when the application provides a change feed
+   * (CHANGE_FEED) and the outlet serves live subscriptions; otherwise the page asks as a
+   * plain one.
    */
   live?: boolean;
 }

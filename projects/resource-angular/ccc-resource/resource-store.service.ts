@@ -41,6 +41,7 @@ import {
   LiveSubscription,
   Operation,
   Page,
+  pageIsLive,
   readMode,
   Resource as ClientResource,
   ResourceDescriptor,
@@ -95,13 +96,28 @@ export class ResourceStore {
   /** Set while the page has nothing to ask for (the digest grants none of its columns): no request is made. */
   listSuspended = signal(false);
   /**
-   * Whether the page asked to be live (`live: true` on its ListViewConfig or ViewConfig).
-   * The list page's requests and the row's read then carry the client's live option, and
-   * the page and the row are refetched when the client's live session reports a change
-   * to them, or a resync. Nothing changes until the application's live session runs
-   * (see LiveSession in @cccteam/resource): until then the requests are plain.
+   * The page's own choice about being live: `live` on its ListViewConfig or ViewConfig,
+   * undefined when the config says nothing. Resolved against the metadata in `live`.
    */
-  live = signal(false);
+  liveChoice = signal<boolean | undefined>(undefined);
+  /**
+   * Whether the page is live: its own choice resolved against the resource's metadata
+   * (`ResourceMeta.live`, whether the resource's changes are published) by pageIsLive in
+   * @cccteam/resource, so a page on a table-backed resource is live unless its config
+   * says `live: false`. The list page's requests and the row's read then carry the
+   * client's live option, and the page and the row are refetched when the client's live
+   * session reports a change to them, or a resync. Nothing changes until the application's
+   * live session runs (see LiveSession in @cccteam/resource): until then the requests are
+   * plain.
+   */
+  live = computed(() =>
+    pageIsLive(
+      this.resourceName() || this.resourceMeta().route,
+      this.liveChoice(),
+      this.resourceMeta(),
+      this.client.warn,
+    ),
+  );
   uuid = signal<string>('');
   error = signal<string>('');
 

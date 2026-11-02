@@ -12,8 +12,10 @@ import {
   mintLiveId,
   noLiveRoutesWarning,
   PageEvents,
+  pageIsLive,
   sameSubscription,
   subscribeHeader,
+  unpublishedLiveWarning,
   versionedUrl,
 } from './live';
 import { TransportRequest } from './transport';
@@ -825,4 +827,39 @@ describe('leaving and logging out', () => {
     expect(feed.stopped).toBe(1);
     expect(client.live.started).toBe(false);
   });
+});
+
+describe('pageIsLive', () => {
+  // The metadata decides the default; the page's own word declines, or asks where the
+  // metadata is silent; asking of a resource whose changes are not published is announced.
+  const cases: { name: string; choice?: boolean; meta?: { live?: boolean }; want: boolean; announced: boolean }[] = [
+    { name: 'published, no choice: live', meta: { live: true }, want: true, announced: false },
+    { name: 'published, asked: live', choice: true, meta: { live: true }, want: true, announced: false },
+    { name: 'published, declined: plain', choice: false, meta: { live: true }, want: false, announced: false },
+    { name: 'not published, no choice: plain, nothing said', meta: { live: false }, want: false, announced: false },
+    {
+      name: 'not published, asked: plain, announced',
+      choice: true,
+      meta: { live: false },
+      want: false,
+      announced: true,
+    },
+    {
+      name: 'not published, declined: plain, nothing said',
+      choice: false,
+      meta: { live: false },
+      want: false,
+      announced: false,
+    },
+    { name: 'metadata without the field, no choice: plain', meta: {}, want: false, announced: false },
+    { name: 'metadata without the field, asked: live', choice: true, meta: {}, want: true, announced: false },
+    { name: 'no metadata yet, asked: live', choice: true, want: true, announced: false },
+  ];
+  for (const tt of cases) {
+    it(tt.name, () => {
+      const warnings: string[] = [];
+      expect(pageIsLive('Ships', tt.choice, tt.meta, (message) => warnings.push(message))).toBe(tt.want);
+      expect(warnings).toEqual(tt.announced ? [unpublishedLiveWarning('Ships')] : []);
+    });
+  }
 });

@@ -809,7 +809,7 @@ export class ResourceListComponent implements OnInit {
         this.store.filter.set(this.filters());
         this.store.disableCacheForFilterPii.set(this.config().disableCacheForFilterPii);
         this.store.searchPII.set(this.searchPII());
-        this.store.live.set(this.config().live === true);
+        this.store.liveChoice.set(this.config().live);
         this.store.listColumns.set(columns);
         // Nothing the digest grants is on this page: there is nothing to ask for, and
         // the table says so instead of provoking the refusal it already predicts.
