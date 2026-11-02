@@ -345,6 +345,41 @@ describe('ResourceListComponent', () => {
       expect(listRequests().at(-1)).toBe('GET /api/clients?filter=*%3Asearch%3A%22merid%22&columns=name%2Cid&count=true');
     });
 
+    it('drops a branch whose child resource the caller holds no List on at all', async () => {
+      // List on the clients' name alone, and nothing on ClientContacts: the branch drops
+      // with the PII fields, and the hint names all three.
+      const digest: PermissionDigest = {
+        [clients]: { List: 'granted' },
+        [`${clients}.id`]: { List: 'granted' },
+        [`${clients}.name`]: { List: 'granted' },
+      };
+      const config = listViewConfig({ elements: [], primaryResource: clients, listColumns: [{ id: 'name' as FieldName }] });
+      transport = scriptedTransport((request: TransportRequest): TransportResponse =>
+        request.url.startsWith('/api/permission-digest')
+          ? { status: 200, body: digest }
+          : { status: 200, body: [], headers: { 'total-count': '0' } },
+      );
+      await TestBed.configureTestingModule({
+        imports: [ResourceListComponent],
+        providers: [
+          provideResourceTesting({ transport, client: (t) => createClient(descriptor, { baseUrl: '/api', transport: t }) }),
+          { provide: RESOURCE_META, useValue: (resource: Resource): ResourceMeta => metas[resource] },
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { data: { config: rootConfig({ parentConfig: config }) }, params: {}, queryParams: {} } },
+          },
+        ],
+      }).compileComponents();
+      await TestBed.inject<ClientBase>(RESOURCE_CLIENT).permissions.loadDigest();
+      fixture = TestBed.createComponent(ResourceListComponent);
+      fixture.componentRef.setInput('compoundResourceComponent', CompoundResourceComponent);
+      fixture.componentRef.setInput('resourceConfig', config);
+      fixture.detectChanges();
+      await settle();
+      expect(fixture.componentInstance.searchFields()).toEqual(['name']);
+      expect(fixture.componentInstance.searchHint()).toBe('Not searched for your role: Contact Email, Client Contact Display Name');
+    });
+
     it('draws no box over a resource without search fields', async () => {
       await create({ primaryResource: ships, listColumns: [{ id: 'name' as FieldName }] });
       fixture.detectChanges();

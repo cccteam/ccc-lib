@@ -16,7 +16,6 @@ import {
   EnumeratedConfig,
   EnumerationOption,
   FieldElement,
-  ListPermission,
   Resource,
   RootConfig,
 } from '@cccteam/resource-angular/types';
@@ -27,6 +26,7 @@ import { pageLabel } from '../../../resource-list/list-request';
 import { SearchBoxComponent } from '../../../search-box/search-box.component';
 import {
   filterReachesPII,
+  listableFieldsOf,
   searchedFields,
   searchFieldLabel,
   searchPlaceholder,
@@ -149,11 +149,8 @@ export class EnumeratedFieldComponent extends BaseInputComponent implements OnIn
     return resource ? this.resourceMeta(resource) : undefined;
   });
 
-  /** The digest's List field set for a resource, undefined when it carries none; a denied search field drops out of the box. */
-  private listableOf(resource: Resource): ReadonlySet<string> | undefined {
-    const fields = Object.keys(this.auth.fieldPermissionStates({ resource, permission: ListPermission }));
-    return fields.length > 0 ? new Set(fields) : undefined;
-  }
+  /** The digest's List field set for any resource (listableFieldsOf): the source's own and a search branch's child. */
+  private readonly listableOf = listableFieldsOf(this.auth);
 
   /** The digest's List field set for the source itself. */
   private sourceListable = computed<ReadonlySet<string> | undefined>(() => {
@@ -162,9 +159,7 @@ export class EnumeratedFieldComponent extends BaseInputComponent implements OnIn
   });
 
   /** The fields the box over the source searches for this caller: the source's, less the denied, a branch judged on its child. */
-  sourceSearchFields = computed(() =>
-    searchedFields(this.sourceMeta(), this.sourceListable(), (resource) => this.listableOf(resource)),
-  );
+  sourceSearchFields = computed(() => searchedFields(this.sourceMeta(), this.sourceListable(), this.listableOf));
 
   /**
    * Whether the source's request must travel in the body: the config asked for it, the
@@ -503,8 +498,16 @@ export class EnumeratedFieldComponent extends BaseInputComponent implements OnIn
   ngOnInit(): void {
     // A searchable picker over a paged source nothing narrows is a configuration error,
     // raised here naming the resource and the DDL way out, before anything is requested.
+    // The judgment is the metadata's alone: a caller whose grants leave the box no field
+    // gets a panel with no box, never an error.
     const resource = this.resource();
-    if (resource && this.fieldConfig().enumeratedConfig.searchable && this.paged() && this.narrowing() === undefined) {
+    const meta = this.sourceMeta();
+    if (
+      resource &&
+      this.fieldConfig().enumeratedConfig.searchable &&
+      this.paged() &&
+      pickerNarrowing(meta, this.displayColumn(), meta?.searchFields ?? []) === undefined
+    ) {
       refuseUnsearchablePicker(resource, this.displayColumn());
     }
   }

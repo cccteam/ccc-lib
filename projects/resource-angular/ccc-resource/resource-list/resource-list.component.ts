@@ -40,7 +40,6 @@ import {
   FieldSort,
   iconCellKey,
   keyFields,
-  ListPermission,
   ListViewConfig,
   ReadPermission,
   RecordData,
@@ -69,6 +68,7 @@ import { SearchBoxComponent } from '../search-box/search-box.component';
 import {
   deniedSearchFields,
   searchDeniedHint,
+  listableFieldsOf,
   searchedFields,
   searchFieldLabel,
   searchPlaceholder,
@@ -257,20 +257,18 @@ export class ResourceListComponent implements OnInit {
    * The digest's field-level List entries for the page's resource: the columns worth
    * asking for. A configured column outside them is denied, and a request naming it
    * refuses the whole list, so it leaves the request and the table alike — the way the
-   * create form leaves out the inputs the digest does not grant. Undefined means the
-   * digest carries no field information for List (denied outright, or a keys-only
-   * resource) and nothing narrows. Conditional entries stay; the server masks their cells.
+   * create form leaves out the inputs the digest does not grant. Undefined means nothing
+   * is known (the digest has not loaded, or grants List with no field entries, a keys-only
+   * resource) and nothing narrows; a loaded digest holding no List on the resource at all
+   * lists nothing. Conditional entries stay; the server masks their cells.
    */
   listableFields = computed<ReadonlySet<string> | undefined>(() => {
     const resource = this.config().primaryResource;
     return resource ? this.listableOf(resource) : undefined;
   });
 
-  /** The digest's List field set for any resource, as listableFields reads it for the page's own; a search branch's child is asked here. */
-  private listableOf(resource: Resource): ReadonlySet<string> | undefined {
-    const fields = Object.keys(this.auth.fieldPermissionStates({ resource, permission: ListPermission }));
-    return fields.length > 0 ? new Set(fields) : undefined;
-  }
+  /** The digest's List field set for any resource (listableFieldsOf): the page's own and a search branch's child. */
+  private readonly listableOf = listableFieldsOf(this.auth);
 
   /**
    * The configured columns the caller may list: every column when nothing narrows,
@@ -376,7 +374,7 @@ export class ResourceListComponent implements OnInit {
    * grant on the child resource. The resource decides the set, never the page; a page
    * that should search fewer fields lists a view projecting fewer.
    */
-  searchFields = computed(() => searchedFields(this.meta(), this.listableFields(), (resource) => this.listableOf(resource)));
+  searchFields = computed(() => searchedFields(this.meta(), this.listableFields(), this.listableOf));
 
   /** Whether the box reaches a PII field, its own or a branch's: the request then travels in the body. */
   searchPII = computed(() => searchReachesPII(this.meta(), this.searchFields()));
@@ -402,7 +400,7 @@ export class ResourceListComponent implements OnInit {
   /** What the box says under itself: the search fields the caller's role leaves out, if any. */
   searchHint = computed(() =>
     searchDeniedHint(
-      deniedSearchFields(this.meta(), this.listableFields(), (resource) => this.listableOf(resource)).map((field) =>
+      deniedSearchFields(this.meta(), this.listableFields(), this.listableOf).map((field) =>
         searchFieldLabel(field, this.columnHeaders()),
       ),
     ),
