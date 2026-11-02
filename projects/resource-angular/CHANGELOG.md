@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.31](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.30...resource-angular/v0.0.31) (2026-11-02)
+
+
+### Bug Fixes
+
+* **resource-angular:** the search box drops a branch whose child resource the caller holds no List on at all, AuthService.hasDigestFor says whether the digest answering for a scope has loaded, and a searchable picker's startup refusal judges the metadata alone ([#195](https://github.com/cccteam/ccc-lib/issues/195)) ([379f77e](https://github.com/cccteam/ccc-lib/commit/379f77e836817a7ea648f8c09c467ba8354dc3ef))
+
 ## [0.0.30](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.29...resource-angular/v0.0.30) (2026-11-01)
 
 
