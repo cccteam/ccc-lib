@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.23](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.22...resource/v0.0.23) (2026-11-03)
+
+
+### Bug Fixes
+
+* **resource-angular:** the live session's page-leave unsubscribe echoes the XSRF token Angular's extractor reads from the cookie the application names, so it is no longer refused on every leave of a live page, and the stop after an expired session sends no unsubscribe the server could not accept ([#203](https://github.com/cccteam/ccc-lib/issues/203)) ([6059581](https://github.com/cccteam/ccc-lib/commit/6059581e1ee34ec00887a8f7e7ef83dea77d8ce9))
+* **resource:** the live session's page-leave unsubscribe takes its XSRF token from a token source, and stop with the session gone sends nothing ([#203](https://github.com/cccteam/ccc-lib/issues/203)) ([6059581](https://github.com/cccteam/ccc-lib/commit/6059581e1ee34ec00887a8f7e7ef83dea77d8ce9))
+
 ## [0.0.22](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.21...resource/v0.0.22) (2026-11-03)
 
 
