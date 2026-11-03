@@ -571,3 +571,44 @@ export class LiveSession {
     }
   }
 }
+
+/**
+ * Whether a page is live, from its own choice (`live` on its config, undefined when it made
+ * none) and its resource's metadata (`ResourceMeta.live`, whether the resource's changes
+ * are published). The metadata decides the default: a resource whose changes are published
+ * makes its page live unless the page said false; one whose changes are not, a view or a
+ * computed resource, makes it plain, and a page that asked anyway is announced once through
+ * `warn` and asks plainly, since its subscription would never hear a change. Metadata
+ * without the field, from a generator that predates it, leaves the page's own choice
+ * standing, plain when it made none.
+ */
+export function pageIsLive(
+  resource: string,
+  choice: boolean | undefined,
+  meta: { live?: boolean } | undefined,
+  warn: Warn,
+): boolean {
+  if (choice === false) {
+    return false;
+  }
+  const published = meta?.live;
+  if (published === false) {
+    if (choice === true) {
+      warn(unpublishedLiveWarning(resource));
+    }
+    return false;
+  }
+  if (published === true) {
+    return true;
+  }
+  return choice === true;
+}
+
+/** The announcement for a page that asked to be live on a resource whose changes are not published. */
+export function unpublishedLiveWarning(resource: string): string {
+  return (
+    `The ${resource} page asked to be live, but the generated metadata says changes to ${resource} are not ` +
+    'published (a view or a computed resource), so the page asks as a plain one. Drop live: true from its ' +
+    'config, or make the resource one whose changes are published.'
+  );
+}

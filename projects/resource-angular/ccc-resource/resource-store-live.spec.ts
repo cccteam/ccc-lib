@@ -15,6 +15,7 @@ import {
   subscribeHeader,
   Transport,
   TransportRequest,
+  unpublishedLiveWarning,
 } from '@cccteam/resource';
 import { ResourceStore } from './resource-store.service';
 
@@ -167,10 +168,12 @@ async function settle(done: () => boolean, rounds = 50): Promise<void> {
 function storeOver(
   script: Scripted,
   domain: WritableSignal<Domain | undefined> = signal('anvil' as Domain),
+  warnings: string[] = [],
 ): { store: ResourceStore; client: ClientBase; feed: FakeFeed } {
   const client = createClient(descriptor, {
     baseUrl: '/api',
     transport: script.transport,
+    warn: (message) => warnings.push(message),
     live: {
       renewInterval: 60 * 60 * 1000,
       page: { addEventListener: () => undefined, removeEventListener: () => undefined },
@@ -196,7 +199,7 @@ describe('ResourceStore live row', () => {
     const script = scripted({ [s1]: { rows: { id: 's1', name: 'Kestrel' } } });
     const { store, client, feed } = storeOver(script);
     store.resourceMeta.set({ route: 'sectors/{sectorID}/ships', fields: [] });
-    store.live.set(true);
+    store.liveChoice.set(true);
     store.uuid.set('s1');
     store.buildStoreViewData();
     await settle(() => store.rowPresent());
@@ -256,7 +259,7 @@ describe('ResourceStore live row', () => {
     const script = scripted({ [s1]: { rows: { id: 's1' } }, [s2]: { rows: { id: 's2' } } });
     const { store, client, feed } = storeOver(script);
     store.resourceMeta.set({ route: 'sectors/{sectorID}/ships', fields: [] });
-    store.live.set(true);
+    store.liveChoice.set(true);
     store.uuid.set('s1');
     store.buildStoreViewData();
     await client.live.start(feed);
@@ -280,7 +283,7 @@ describe('ResourceStore live list page', () => {
     store.resourceName.set('Ships' as Resource);
     store.resourceMeta.set({ route: 'sectors/{sectorID}/ships', fields: [] });
     store.listColumns.set([{ id: 'name' } as ColumnConfig]);
-    store.live.set(true);
+    store.liveChoice.set(true);
     store.buildStorePage();
   };
 
@@ -386,5 +389,63 @@ describe('ResourceStore live list page', () => {
     ]);
     TestBed.resetTestingModule();
     expect(client.live.subscriptions()).toEqual([]);
+  });
+});
+
+describe('ResourceStore live by default', () => {
+  // The metadata's word decides: a resource whose changes are published (ResourceMeta.live)
+  // makes its page live unless the config says false; one whose changes are not makes it
+  // plain, and a config asking anyway is announced once; metadata without the field, from a
+  // generator that predates it, leaves the config's own word standing.
+  const page = (store: ResourceStore, meta: { live?: boolean }, choice: boolean | undefined): void => {
+    store.resourceName.set('Ships' as Resource);
+    store.resourceMeta.set({ route: 'sectors/{sectorID}/ships', fields: [], ...meta });
+    store.listColumns.set([{ id: 'name' } as ColumnConfig]);
+    store.liveChoice.set(choice);
+    store.buildStorePage();
+  };
+  const fleet = (): Scripted => scripted({ [anvilPage]: { rows: [{ id: 's1', name: 'Kestrel' }] } });
+
+  it('a page on a resource whose changes are published is live when its config says nothing', async () => {
+    const script = fleet();
+    const { store, client } = storeOver(script);
+    page(store, { live: true }, undefined);
+    await settle(() => store.pageStatus() === 'resolved');
+    expect(store.live()).toBe(true);
+    expect(client.live.subscriptions()).toEqual([{ resource: 'Ships', domain: 'anvil' }]);
+  });
+
+  it('live: false opts such a page out', async () => {
+    const script = fleet();
+    const { store, client } = storeOver(script);
+    page(store, { live: true }, false);
+    await settle(() => store.pageStatus() === 'resolved');
+    expect(store.live()).toBe(false);
+    expect(client.live.subscriptions()).toEqual([]);
+  });
+
+  it('metadata without the field makes no page live by itself', async () => {
+    const script = fleet();
+    const { store, client } = storeOver(script);
+    page(store, {}, undefined);
+    await settle(() => store.pageStatus() === 'resolved');
+    expect(store.live()).toBe(false);
+    expect(client.live.subscriptions()).toEqual([]);
+  });
+
+  it('a page asking live: true on a resource whose changes are not published stays plain and is told once', async () => {
+    const warnings: string[] = [];
+    const script = fleet();
+    const { store, client } = storeOver(script, signal('anvil' as Domain), warnings);
+    page(store, { live: false }, true);
+    await settle(() => store.pageStatus() === 'resolved');
+    expect(store.live()).toBe(false);
+    expect(client.live.subscriptions()).toEqual([]);
+    expect(warnings).toEqual([unpublishedLiveWarning('Ships')]);
+    store.liveChoice.set(false);
+    TestBed.tick();
+    store.liveChoice.set(true);
+    await settle(() => false, 3);
+    expect(warnings).toHaveLength(1);
   });
 });
