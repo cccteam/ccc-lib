@@ -922,8 +922,11 @@ export interface ListViewConfig extends BaseConfig {
   showSearchBox: boolean;
   /** The server page size; see ListViewConfigOptions.pageSize. */
   pageSize?: number;
-  /** Whether the list page and its row page are live; see ListViewConfigOptions.live. */
-  live: boolean;
+  /**
+   * The page's own word on being live, as the options gave it; unset when they said
+   * nothing, so the resource's metadata decides. See ListViewConfigOptions.live.
+   */
+  live?: boolean;
 }
 
 export function listViewConfig(config: ListViewConfigOptions): ListViewConfig {
@@ -968,7 +971,6 @@ export const listViewConfigDefaults = {
   },
   showRowCount: true,
   showSearchBox: true,
-  live: false,
 } satisfies ListViewConfig;
 
 export type ViewType = 'OneToOne' | 'OneToMany';
@@ -1010,8 +1012,11 @@ export interface ViewConfig extends BaseConfig {
    * precedence and is based on a user's attributes
    */
   shouldRenderActions: Record<'edit' | 'delete' | 'create', (data: any) => boolean>;
-  /** Whether the record page is live; see ViewConfigOptions.live. */
-  live: boolean;
+  /**
+   * The page's own word on being live, as the options gave it; unset when they said
+   * nothing, so the resource's metadata decides. See ViewConfigOptions.live.
+   */
+  live?: boolean;
 }
 
 export function viewConfig(config: ViewConfigOptions): ViewConfig {
@@ -1045,7 +1050,6 @@ export const viewConfigDefaults = {
   },
   showBackButton: true,
   rpcConfigs: [],
-  live: false,
 } satisfies ViewConfig;
 
 export interface arrayConfigOptions {
