@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.33](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.32...resource-angular/v0.0.33) (2026-11-03)
+
+
+### Bug Fixes
+
+* a page config built by listViewConfig or viewConfig no longer forces live off, so the metadata's default reaches the page; live: false stays the opt-out ([#199](https://github.com/cccteam/ccc-lib/issues/199)) ([b23f2e0](https://github.com/cccteam/ccc-lib/commit/b23f2e0111a547ba5ca0d4cfb5d5a084ff131971))
+
 ## [0.0.32](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.31...resource-angular/v0.0.32) (2026-11-03)
 
 
