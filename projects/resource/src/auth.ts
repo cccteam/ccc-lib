@@ -436,6 +436,78 @@ interface RefusalAnswer {
 }
 
 /**
+ * The return address the server keeps, as a login page may follow it: `value` when it is a
+ * path in this application in canonical form, undefined otherwise. The rule is the
+ * server's own (the session library's `SanitizeReturnURL`, which a redirect method's
+ * `returnUrl` must pass and the callback redirects to): one leading `/` (not `//` or
+ * `/\`), printable ASCII with no backslash raw or as `%5C`, every `%` a valid escape, a
+ * path of RFC 3986 path characters with no empty, `.` or `..` segment as written or
+ * decoded, and a query and fragment that pass through. A value that is not such a path is
+ * never a page in this application, so a login page drops it instead of sending it on and
+ * being refused with 400, and an absolute URL never becomes a redirect to another origin.
+ */
+export function returnPath(value: string | null | undefined): string | undefined {
+  if (!value || value[0] !== '/' || value[1] === '/' || value[1] === '\\' || !hasSafeBytes(value)) {
+    return undefined;
+  }
+  const end = value.search(/[?#]/);
+  const path = end < 0 ? value : value.slice(0, end);
+  return isSafePath(path) ? value : undefined;
+}
+
+/** Whether `s` is printable ASCII without a backslash, and every `%` starts a valid escape that is not an encoded backslash. */
+function hasSafeBytes(s: string): boolean {
+  if (!/^[\x21-\x7e]*$/.test(s) || s.includes('\\')) {
+    return false;
+  }
+  for (let i = s.indexOf('%'); i >= 0; i = s.indexOf('%', i + 1)) {
+    const escape = s.slice(i + 1, i + 3);
+    if (!/^[0-9a-fA-F]{2}$/.test(escape) || escape.toLowerCase() === '5c') {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Whether the path `p` is made of path characters and is canonical as written and decoded, with no control character once decoded. */
+function isSafePath(p: string): boolean {
+  if (!/^[A-Za-z0-9\-._~!$&'()*+,;=:@%/]*$/.test(p) || !isCanonicalPath(p)) {
+    return false;
+  }
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(p);
+  } catch {
+    return false;
+  }
+  if (!isCanonicalPath(decoded)) {
+    return false;
+  }
+  for (const character of decoded) {
+    const code = character.charCodeAt(0);
+    if (code < 0x20 || code === 0x7f || character === '\\') {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Whether `p`, which starts with `/`, has no empty, `.` or `..` segment (a trailing `/` aside) and is not scheme-relative. */
+function isCanonicalPath(p: string): boolean {
+  if (p === '/') {
+    return true;
+  }
+  if (p.startsWith('//')) {
+    return false;
+  }
+  const segments = p.slice(1).split('/');
+  const last = segments.pop();
+  return (
+    last !== '.' && last !== '..' && segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
+  );
+}
+
+/**
  * AuthClient drives a sign-in from the browser against what the server offers. It is the
  * one place that knows the wire shape: the methods list and its route, the password
  * method's form, the redirect method's return parameter, the pending sign-in's status,

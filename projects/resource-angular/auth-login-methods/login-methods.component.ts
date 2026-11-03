@@ -16,6 +16,7 @@ import {
   OpenedInvitation,
   passwordChangeRequiredCode,
   PendingSignIn,
+  returnPath,
   SignInRefusal,
   SignInResult,
 } from '@cccteam/resource';
@@ -41,6 +42,19 @@ export interface AccountForm {
 }
 
 /**
+ * Where a sign-in lands. A page of the application, the router URL the login guard
+ * recorded or `home`, is emitted as `signedIn` and the page routes there. An address the
+ * server named, in this page's `returnUrl` or in the pending status, is a browser path the
+ * browser is sent to with a full navigation (`load`): it may be a page the server serves
+ * that no route of the application draws, and an application served at the root cannot
+ * tell such a page from its own by the path, so where the address came from decides.
+ */
+export interface Landing {
+  readonly url: string;
+  readonly load: boolean;
+}
+
+/**
  * The login page's sign-in methods, rendered from what the server offers. On arrival the
  * component reads the methods list through the application's client and renders it: the
  * password form when the list has a password method, and one button per redirect method,
@@ -59,6 +73,17 @@ export interface AccountForm {
  * sends the browser to the method's path, naming the same page as the one to return to;
  * the server's callback brings the browser back there signed in, or back to this page with
  * `?code=` for a refusal or `?pending=` for a step that waits.
+ *
+ * A `returnUrl` in this page's own URL names a browser path to return to, as the server
+ * sends one: the persona sign-in's picker, a page the server serves behind the session,
+ * sends a browser without one here naming itself. The component keeps the address through
+ * the sign-in's steps, names it as the page a redirect method returns to, and once the
+ * session stands sends the browser there with a full navigation instead of emitting
+ * `signedIn`, since no route of the application draws it; the address the pending status
+ * reports is followed the same way. Where the address came from decides, not its path: a
+ * page the guard recorded is the application's and is routed to, one the server handed
+ * over is loaded. Only a path in this application in canonical form is kept
+ * (`returnPath`), and never this page, the sign-out page or another origin.
  *
  * After a refusal, every redirect button asks the provider for its account chooser
  * (`prompt=select_account` on the method's path), so a person refused with the wrong
@@ -172,7 +197,11 @@ export class LoginMethodsComponent implements OnInit {
   labels = input<Readonly<Record<string, string>>>({});
   /** The router URL a sign-in lands on when the login guard recorded no page: the root by default. */
   home = input('/');
-  /** The sign-in is complete and the session checked: the router URL of the page to go to. */
+  /**
+   * The sign-in is complete and the session checked: the router URL of the page to go to.
+   * Not emitted when the browser is sent to an address the server named (`returnUrl`):
+   * the page unloads instead.
+   */
   signedIn = output<string>();
   /** The person cancelled the pending step, the password change, the account form or the sign-up; the list is shown again. */
   cancelled = output<void>();
@@ -253,8 +282,8 @@ export class LoginMethodsComponent implements OnInit {
   changing = signal(false);
   /** The sentence over the change form: the one the application holds for the server's code. */
   changeNote = computed(() => this.ui.loginMessage(passwordChangeRequiredCode));
-  /** The router URL the sign-in recorded, emitted once the password is changed. */
-  private afterChange = '/';
+  /** The landing the sign-in recorded, handed on once the password is changed. */
+  private afterChange: Landing = { url: '/', load: false };
   /** The invitation the URL's token opened, or the one the browser was found carrying; its note stands over the list until the sign-in that accepts it. */
   invitation = signal<OpenedInvitation | undefined>(undefined);
   /** The username of the session the page found standing on arrival: with an invitation, who may accept it as they are; alone, who may continue or sign out. */
@@ -285,8 +314,8 @@ export class LoginMethodsComponent implements OnInit {
   starting = signal(false);
   /** The address a sign-up link was sent to; the note takes the list's place. */
   started = signal<string | undefined>(undefined);
-  /** A session stands and a note about the followed link shows; the router URL waits on Continue. */
-  landed = signal<string | undefined>(undefined);
+  /** A session stands and a note about the followed link shows; the landing waits on Continue. */
+  landed = signal<Landing | undefined>(undefined);
   /** The address the followed link confirmed, shown while `landed`. */
   verified = signal<string | undefined>(undefined);
   /**
@@ -306,6 +335,12 @@ export class LoginMethodsComponent implements OnInit {
   readonly unreachableNote = this.ui.loginMessage('unreachable');
   /** The confirmation link's token, posted once a session stands. */
   private verifyToken = '';
+  /**
+   * The browser path this page's URL named to return to (`returnUrl`), kept through the
+   * sign-in's steps; undefined when the URL names none the server would keep, or names
+   * this page or the sign-out page.
+   */
+  private returnAddress: string | undefined;
 
   /** The refusal code the URL carries, or empty: the only thing the URL says. */
   private code = toSignal(this.route.queryParamMap.pipe(map((params) => params.get('code') ?? '')), {
@@ -464,27 +499,30 @@ export class LoginMethodsComponent implements OnInit {
     }
     return this.step(async () => {
       const result = await this.client.auth.verifyCode(this.signInCode, this.rememberDevice);
-      await this.follow(result, () => (waiting.returnUrl ? this.routerUrl(waiting.returnUrl) : this.landing()));
+      await this.follow(result, () => this.returned(waiting));
     });
   }
 
   /**
    * Sends the browser to a redirect method's path, naming the page the sign-in returns to:
-   * the page the guard recorded, or this page with the confirmation link's token when one
-   * waits to be posted, since the round trip through the identity provider reloads the
-   * application. The provider is asked for its account chooser while the card is choosing
-   * (after a refusal, or once "Use a different account" was pressed), and is told the
-   * account to take while an invitation stands: the invited address, as its login hint.
+   * the address the URL named, the page the guard recorded, or this page with the
+   * confirmation link's token when one waits to be posted, since the round trip through
+   * the identity provider reloads the application. The provider is asked for its account
+   * chooser while the card is choosing (after a refusal, or once "Use a different account"
+   * was pressed), and is told the account to take while an invitation stands: the invited
+   * address, as its login hint.
    */
   signInThrough(method: LoginMethod): void {
     if (this.busy()) {
       return;
     }
-    const page =
-      this.verifyToken === '' ? this.landing() : `${this.loginPath}?verify=${encodeURIComponent(this.verifyToken)}`;
+    const page: Landing =
+      this.verifyToken === ''
+        ? this.landing()
+        : { url: `${this.loginPath}?verify=${encodeURIComponent(this.verifyToken)}`, load: false };
     const invited = this.invitation();
     this.leaveFor(
-      this.client.auth.signInUrl(method, this.browserPath(page), {
+      this.client.auth.signInUrl(method, this.returnTo(page), {
         selectAccount: this.choosing(),
         ...(invited ? { loginHint: invited.email } : {}),
       }),
@@ -499,7 +537,7 @@ export class LoginMethodsComponent implements OnInit {
     }
     return this.step(async () => {
       const result = await this.client.auth.confirmPending(this.confirmation);
-      await this.follow(result, () => (waiting.returnUrl ? this.routerUrl(waiting.returnUrl) : this.landing()));
+      await this.follow(result, () => this.returned(waiting));
     });
   }
 
@@ -645,7 +683,7 @@ export class LoginMethodsComponent implements OnInit {
     }
     this.landed.set(undefined);
     this.verified.set(undefined);
-    this.signedIn.emit(page);
+    this.land(page);
   }
 
   /** Keeps the session the page found standing: it is checked again and `signedIn` emitted with the page the guard recorded, else `home`. */
@@ -733,6 +771,7 @@ export class LoginMethodsComponent implements OnInit {
     const invitation = params.get('invitation') ?? '';
     const signUp = params.get('signUp') ?? '';
     this.verifyToken = params.get('verify') ?? '';
+    this.returnAddress = this.addressNamed(params.get('returnUrl'));
     const linked = params.has('pending') || invitation !== '' || signUp !== '' || this.verifyToken !== '';
     const refused = (params.get('code') ?? '') !== '';
     let forwarded = false;
@@ -763,7 +802,7 @@ export class LoginMethodsComponent implements OnInit {
         const only = refused ? undefined : this.onlyRedirectMethod(list);
         if (only) {
           forwarded = true;
-          this.leaveFor(this.client.auth.signInUrl(only, this.browserPath(this.landing())));
+          this.leaveFor(this.client.auth.signInUrl(only, this.returnTo(this.landing())));
         }
       }
     } catch {
@@ -777,13 +816,17 @@ export class LoginMethodsComponent implements OnInit {
 
   /**
    * The redirect method a deep link is forwarded to: the list's only method, when it is a
-   * redirect, the guard recorded a page other than this one or the sign-out page, and no
-   * session was found standing; undefined when the page stops instead.
+   * redirect, the URL named an address to return to or the guard recorded a page other
+   * than this one or the sign-out page, and no session was found standing; undefined when
+   * the page stops instead.
    */
   private onlyRedirectMethod(list: LoginMethods): LoginMethod | undefined {
     const only = list.methods.length === 1 ? list.methods[0] : undefined;
     if (!only || only.kind !== 'redirect' || this.signedInAs() !== undefined || this.changing()) {
       return undefined;
+    }
+    if (this.returnAddress !== undefined) {
+      return only;
     }
     const recorded = this.auth.redirectUrl();
     if (recorded === '' || recorded.startsWith(this.loginPath) || recorded.startsWith(this.signOutPath)) {
@@ -932,7 +975,7 @@ export class LoginMethodsComponent implements OnInit {
    * refusal is rendered, and one that ends the pending sign-in, or says the link an
    * account form came from is gone, returns to the list.
    */
-  private async follow(result: SignInResult, page: () => string): Promise<void> {
+  private async follow(result: SignInResult, page: () => Landing): Promise<void> {
     switch (result.outcome) {
       case 'session':
         await this.complete(page());
@@ -1018,7 +1061,7 @@ export class LoginMethodsComponent implements OnInit {
    * the change form instead, keeping the page for after the change. A confirmation link's
    * token waiting to be posted is posted now, and what happened shows until Continue.
    */
-  private async complete(page: string): Promise<void> {
+  private async complete(page: Landing): Promise<void> {
     const session = await firstValueFrom(this.auth.checkUserSession());
     if (!session?.authenticated) {
       this.refusal.set(this.ui.loginMessage('internal_error'));
@@ -1043,11 +1086,11 @@ export class LoginMethodsComponent implements OnInit {
       await this.verify(page);
       return;
     }
-    this.signedIn.emit(page);
+    this.land(page);
   }
 
   /** Posts the confirmation link's token for the session that stands, and keeps the page for Continue. */
-  private async verify(page: string): Promise<void> {
+  private async verify(page: Landing): Promise<void> {
     const token = this.verifyToken;
     this.verifyToken = '';
     const result = await this.client.auth.verifyEmail(token);
@@ -1097,25 +1140,70 @@ export class LoginMethodsComponent implements OnInit {
   }
 
   /** The router URL a sign-in lands on: the page the login guard turned away from, read once, else `home`; the login and sign-out pages themselves count as none. */
-  private landing(): string {
+  /**
+   * Where the sign-in lands: the address this page's URL named, loaded by the browser;
+   * else the page the guard recorded, read once, or `home`, routed to. A recorded page
+   * that is this page or the sign-out page would loop, and lands on `home`.
+   */
+  private landing(): Landing {
+    if (this.returnAddress !== undefined) {
+      return { url: this.returnAddress, load: true };
+    }
     const recorded = this.auth.redirectUrl();
     this.auth.redirectUrl.set('');
     if (recorded === '' || recorded.startsWith(this.loginPath) || recorded.startsWith(this.signOutPath)) {
-      return this.home();
+      return { url: this.home(), load: false };
     }
-    return recorded;
+    return { url: recorded, load: false };
+  }
+
+  /**
+   * Where a pending step's sign-in lands: the address the server reported for it, loaded
+   * by the browser; else the landing. The status answers `/` for a sign-in that had none
+   * (a password sign-in: its sanitizer's fallback, which its own redirect leaves out too),
+   * so `/` is the landing's to decide, never an address.
+   */
+  private returned(waiting: PendingSignIn): Landing {
+    const address = waiting.returnUrl;
+    return address && address !== '/' ? { url: address, load: true } : this.landing();
+  }
+
+  /** Hands the landing on: a page of the application is emitted as `signedIn`; an address the server named is loaded by the browser. */
+  private land(landing: Landing): void {
+    if (landing.load) {
+      this.leaveFor(landing.url);
+      return;
+    }
+    this.signedIn.emit(landing.url);
+  }
+
+  /** The browser path a redirect method returns to: the address as named, or the page resolved against the application's mount. */
+  private returnTo(landing: Landing): string {
+    return landing.load ? landing.url : this.browserPath(landing.url);
+  }
+
+  /**
+   * The browser path the URL's `returnUrl` names, when the server would keep it: a path in
+   * this application in canonical form (`returnPath`), and not this page or the sign-out
+   * page, which would loop. Anything else is dropped, and the sign-in lands as if the URL
+   * named nothing.
+   */
+  private addressNamed(value: string | null): string | undefined {
+    const path = returnPath(value);
+    if (
+      path === undefined ||
+      path.startsWith(this.browserPath(this.loginPath)) ||
+      path.startsWith(this.browserPath(this.signOutPath))
+    ) {
+      return undefined;
+    }
+    return path;
   }
 
   /** The browser path of a router URL: resolved against the document's base, the application's mount. */
   private browserPath(url: string): string {
     const resolved = new URL(url.replace(/^\//, ''), this.document.baseURI);
     return resolved.pathname + resolved.search;
-  }
-
-  /** The router URL of a browser path the server reported: the path under the document's base, else the path itself. */
-  private routerUrl(path: string): string {
-    const base = new URL(this.document.baseURI).pathname;
-    return base !== '/' && path.startsWith(base) ? `/${path.slice(base.length)}` : path;
   }
 
   /** Sends the browser to a URL: a redirect method's, or the page the server chose for a pending step. */

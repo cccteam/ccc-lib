@@ -352,6 +352,10 @@ switch (result.outcome) {
 location.assign(api.auth.signInUrl(google, '/console/missions'));
 // After a refusal, or under "Use a different account": the provider shows its account chooser.
 location.assign(api.auth.signInUrl(google, '/console/missions', { selectAccount: true }));
+// A returnUrl the login page was opened with (a page the server serves behind the session sends
+// one) is followed only when it is a path in this application in canonical form, the server's
+// own rule for a return address; returnPath answers undefined for anything else.
+const address = returnPath(new URLSearchParams(location.search).get('returnUrl'));
 ```
 
 Every step that posts reads the list again first. The list's answer refreshes the XSRF cookie

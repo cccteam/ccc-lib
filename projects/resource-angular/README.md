@@ -219,6 +219,18 @@ page as the one to return to, resolved against the document's base; the server's
 the browser back there signed in, or back to the login page with `?code=` for a refusal or
 `?pending=` for a step that waits.
 
+A `returnUrl` in the login page's own URL names a browser path to return to, as the server sends
+one: the persona sign-in's picker, a page the server serves behind the session, sends a browser
+without one to the login page naming itself. The component keeps the address through the sign-in's
+steps, names it as the page a redirect method returns to, and once the session stands sends the
+browser there with a full navigation instead of emitting `signedIn`, since no route of the
+application draws it; the address the pending status reports after a redirect method's round trip
+is followed the same way. Where the address came from decides, not its path: a page the guard
+recorded is the application's and is routed to, one the server handed over is loaded. Only a path
+in this application in canonical form is kept (`returnPath` in `@cccteam/resource`, the server's
+own rule), and never the login page, the sign-out page or another origin: anything else is dropped
+and the sign-in lands as if the URL named nothing. The page needs nothing for this.
+
 After a refusal, every redirect button asks the provider for its account chooser
 (`prompt=select_account` on the method's path) and says so ("Choose a Google account"), so a
 person refused with the wrong account picks another instead of being sent round the same loop by

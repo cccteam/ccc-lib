@@ -6,6 +6,7 @@ import {
   loginMethodsRoute,
   passwordChangeRequiredCode,
   refusedForPasswordChange,
+  returnPath,
   unknownKindWarning,
 } from './auth';
 import { createClient } from './client';
@@ -267,6 +268,55 @@ describe('a redirect method', () => {
   it('is refused as a URL when it is a password method', () => {
     const { auth } = authOver(server());
     expect(() => auth.signInUrl(password)).toThrow('not a redirect');
+  });
+});
+
+describe('the return address', () => {
+  it('keeps a path in this application in canonical form, its query and fragment passing through', () => {
+    for (const path of [
+      '/',
+      '/persona/pick/req-1',
+      '/settings/sso?test=done',
+      '/reports#x',
+      '/a%20b/',
+      '/x:y@z',
+      '/console/missions?sector=anvil&page=2',
+    ]) {
+      expect(returnPath(path)).toBe(path);
+    }
+  });
+
+  it('answers undefined for anything else: nothing, another origin, a scheme-relative URL, a backslash raw or encoded, a dot or empty segment as written or decoded, a bad escape, a control character or a character outside the path set', () => {
+    for (const value of [
+      '',
+      undefined,
+      null,
+      'persona/pick/req-1',
+      'https://evil.example/pick',
+      '//evil.example/pick',
+      '/\\evil.example',
+      '/a\\b',
+      '/a%5Cb',
+      '/a%5cb',
+      '/a/../b',
+      '/./a',
+      '/a/.',
+      '/a/..',
+      '/a//b',
+      '/a/%2e%2e/b',
+      '/a/%2E/b',
+      '/a%zz',
+      '/a%2',
+      '/a b',
+      '/a\tb',
+      '/a%00b',
+      '/a%7fb',
+      '/ä',
+      '/a?b\\c',
+      '/a<b>',
+    ]) {
+      expect([value, returnPath(value)]).toEqual([value, undefined]);
+    }
   });
 });
 

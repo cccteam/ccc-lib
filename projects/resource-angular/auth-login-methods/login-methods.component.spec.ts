@@ -783,6 +783,104 @@ describe('LoginMethodsComponent forwards a deep link to the only redirect method
   }
 });
 
+describe('LoginMethodsComponent returns the browser to the address the login URL names', () => {
+  /** The persona sign-in's picker: a page the server serves behind the session, which no route of the application draws. */
+  const picker = '/persona/pick/req-1';
+  const googleTo = (address: string): string =>
+    `/console/api/user/google/login?returnUrl=${encodeURIComponent(address)}`;
+  async function signIn(page: Page): Promise<void> {
+    page.component.username = 'overseer';
+    page.component.password = 'lodestar';
+    await page.component.login();
+    await page.settle();
+  }
+
+  it('a password sign-in sends the browser there with a full navigation and emits nothing', async () => {
+    const page = await pageOver(server(), { returnUrl: picker }, { home: '/dashboard' });
+    await signIn(page);
+    expect(page.left).toEqual([picker]);
+    expect(page.signedIn).toEqual([]);
+    expect(TestBed.inject(AuthService).authenticated()).toBe(true);
+  });
+
+  it('the address outranks the page the guard recorded', async () => {
+    const page = await pageOver(server(), { returnUrl: picker });
+    TestBed.inject(AuthService).redirectUrl.set('/missions/m-7');
+    await signIn(page);
+    expect(page.left).toEqual([picker]);
+    expect(page.signedIn).toEqual([]);
+  });
+
+  it('a redirect method is sent the address as named, not resolved against the application mount', async () => {
+    const unmount = mountedAt('/console/');
+    try {
+      const page = await pageOver(server(), { returnUrl: picker });
+      page.component.signInThrough(google);
+      expect(page.left).toEqual([googleTo(picker)]);
+    } finally {
+      unmount();
+    }
+  });
+
+  it('the only redirect method is forwarded to at once, the address named, rendering nothing', async () => {
+    const page = await pageOver(server({ methods: { methods: [google], pending: pendingRoutes } }), {
+      returnUrl: picker,
+    });
+    expect(page.left).toEqual([googleTo(picker)]);
+    expect(page.component.arriving()).toBe(true);
+    expect(page.element.querySelector('button')).toBeNull();
+  });
+
+  it('a session found standing is sent there on Continue', async () => {
+    const page = await pageOver(server({ arrivesSignedIn: true }), { returnUrl: picker });
+    await page.component.continueAs();
+    await page.settle();
+    expect(page.left).toEqual([picker]);
+    expect(page.signedIn).toEqual([]);
+  });
+
+  it('the address survives the sign-in code step of a password sign-in, whose status names no address', async () => {
+    const codeStep = { ...waiting, reason: 'mfa', returnUrl: '', factors: ['email-code'], emailCode: codeMailed };
+    const page = await pageOver(
+      server({
+        login: { status: 200, body: { mfaIsRequired: true } },
+        status: { status: 200, body: codeStep },
+        verifyCode: { status: 200, body: { mfaIsRequired: false } },
+      }),
+      { returnUrl: picker },
+    );
+    await signIn(page);
+    expect(page.element.querySelector('input[name="code"]')).not.toBeNull();
+    page.component.signInCode = '123456';
+    await page.component.verifyCode();
+    await page.settle();
+    expect(page.left).toEqual([picker]);
+    expect(page.signedIn).toEqual([]);
+  });
+
+  for (const returnUrl of [
+    'https://evil.example/pick',
+    '//evil.example/pick',
+    '/persona/../pick',
+    '/persona/pick%5c',
+    '/console/login?code=x',
+    '/console/logout',
+    'persona/pick/req-1',
+  ]) {
+    it(`drops an address the server would not keep, or one naming this page or the sign-out page, and lands as if the URL named nothing (${returnUrl})`, async () => {
+      const unmount = mountedAt('/console/');
+      try {
+        const page = await pageOver(server(), { returnUrl }, { home: '/dashboard' });
+        await signIn(page);
+        expect(page.left).toEqual([]);
+        expect(page.signedIn).toEqual(['/dashboard']);
+      } finally {
+        unmount();
+      }
+    });
+  }
+});
+
 describe('LoginMethodsComponent renders the pending step', () => {
   it('entered with ?pending=, reads the status after the list and shows the confirmation form', async () => {
     const page = await pageOver(server({ status: { status: 200, body: waiting } }), { pending: 'confirmation' });
@@ -855,7 +953,7 @@ describe('LoginMethodsComponent renders the pending step', () => {
     await page.settle();
   }
 
-  it('confirms with the password after reading the list again, checks the session and emits the page the sign-in returns to', async () => {
+  it('confirms with the password after reading the list again, checks the session and sends the browser to the address the sign-in returns to', async () => {
     const page = await pageOver(server({ status: { status: 200, body: waiting } }), { pending: 'confirmation' });
     await confirmWith(page, 'lodestar');
     const requests = sent(page.transport);
@@ -865,54 +963,42 @@ describe('LoginMethodsComponent renders the pending step', () => {
       'GET /console/api/user/session',
     ]);
     expect(page.transport.requests[3].body).toEqual({ password: 'lodestar' });
-    // The application is mounted at the root here, so the path the server reports is the router URL.
-    expect(page.signedIn).toEqual(['/console/missions']);
+    // The address the server reports is loaded by the browser, never routed to: the server named it.
+    expect(page.left).toEqual(['/console/missions']);
+    expect(page.signedIn).toEqual([]);
     expect(page.component.pending()).toBeUndefined();
   });
 
-  it('turns the page the server reports into a router URL under the application mount', async () => {
-    const unmount = mountedAt('/console/');
-    try {
-      const page = await pageOver(
-        server({ status: { status: 200, body: { ...waiting, returnUrl: '/console/missions/m-7' } } }),
-        {
+  for (const returnUrl of ['/console/missions/m-7', '/portal/tracker']) {
+    it(`sends the browser to the address the server reports as it is, under the application mount or outside it (${returnUrl})`, async () => {
+      const unmount = mountedAt('/console/');
+      try {
+        const page = await pageOver(server({ status: { status: 200, body: { ...waiting, returnUrl } } }), {
           pending: 'confirmation',
+        });
+        await confirmWith(page, 'lodestar');
+        expect(page.left).toEqual([returnUrl]);
+        expect(page.signedIn).toEqual([]);
+      } finally {
+        unmount();
+      }
+    });
+  }
+
+  for (const returnUrl of ['', '/']) {
+    it(`emits home when the sign-in had no page to return to (the status says ${JSON.stringify(returnUrl)})`, async () => {
+      const page = await pageOver(
+        server({ status: { status: 200, body: { ...waiting, returnUrl } } }),
+        { pending: 'confirmation' },
+        {
+          home: '/dashboard',
         },
       );
       await confirmWith(page, 'lodestar');
-      expect(page.signedIn).toEqual(['/missions/m-7']);
-    } finally {
-      unmount();
-    }
-  });
-
-  it('hands on a page the server reports outside the application mount as it is', async () => {
-    const unmount = mountedAt('/console/');
-    try {
-      const page = await pageOver(
-        server({ status: { status: 200, body: { ...waiting, returnUrl: '/portal/tracker' } } }),
-        {
-          pending: 'confirmation',
-        },
-      );
-      await confirmWith(page, 'lodestar');
-      expect(page.signedIn).toEqual(['/portal/tracker']);
-    } finally {
-      unmount();
-    }
-  });
-
-  it('emits home when the sign-in had no page to return to', async () => {
-    const page = await pageOver(
-      server({ status: { status: 200, body: { ...waiting, returnUrl: '' } } }),
-      { pending: 'confirmation' },
-      {
-        home: '/dashboard',
-      },
-    );
-    await confirmWith(page, 'lodestar');
-    expect(page.signedIn).toEqual(['/dashboard']);
-  });
+      expect(page.signedIn).toEqual(['/dashboard']);
+      expect(page.left).toEqual([]);
+    });
+  }
 
   it("a wrong password shows the server's words and keeps the step", async () => {
     const page = await pageOver(
@@ -1115,7 +1201,7 @@ describe('LoginMethodsComponent runs the sign-in code step', () => {
     await page.settle();
   }
 
-  it('enters the code after reading the list again, with the box as checked, checks the session and emits the page the sign-in returns to', async () => {
+  it('enters the code after reading the list again, with the box as checked, checks the session and sends the browser to the address the sign-in returns to', async () => {
     const page = await pageOver(server({ status: { status: 200, body: standing } }), { pending: 'mfa' });
     await enterCode(page, '123456', true);
     expect(sent(page.transport).slice(2, 5)).toEqual([
@@ -1124,7 +1210,9 @@ describe('LoginMethodsComponent runs the sign-in code step', () => {
       'GET /console/api/user/session',
     ]);
     expect(page.transport.requests[3].body).toEqual({ code: '123456', rememberDevice: true });
-    expect(page.signedIn).toEqual(['/console/missions']);
+    // The address the status names is loaded by the browser, never routed to: the server named it.
+    expect(page.left).toEqual(['/console/missions']);
+    expect(page.signedIn).toEqual([]);
     expect(page.component.pending()).toBeUndefined();
     expect(page.component.signInCode).toBe('');
     expect(page.component.rememberDevice).toBe(false);
@@ -2009,7 +2097,7 @@ describe('LoginMethodsComponent confirms an email address', () => {
       'GET /console/api/user/session',
     ]);
     expect(page.component.verified()).toBe('pax@fleet.example');
-    expect(page.component.landed()).toBe('/');
+    expect(page.component.landed()).toEqual({ url: '/', load: false });
   });
 
   it("a dead or another account's link shows the server's words with Continue, the session standing", async () => {
@@ -2232,7 +2320,7 @@ describe("LoginMethodsComponent holds the list back while the arrival's reads an
     await page.component.login();
     await page.settle();
     expect(page.component.verified()).toBe('pax@fleet.example');
-    expect(page.component.landed()).toBe('/dashboard');
+    expect(page.component.landed()).toEqual({ url: '/dashboard', load: false });
   });
 
   it('with ?verify=, a session read that finds the person signed in moves straight on to the confirmation, with no form in between', async () => {
@@ -2248,7 +2336,7 @@ describe("LoginMethodsComponent holds the list back while the arrival's reads an
     expect(page.element.querySelector('form')).toBeNull();
     expect(page.element.querySelector('input[name="username"]')).toBeNull();
     expect(page.component.verified()).toBe('pax@fleet.example');
-    expect(page.component.landed()).toBe('/dashboard');
+    expect(page.component.landed()).toEqual({ url: '/dashboard', load: false });
     expect(page.element.querySelector('.ccc-login-landed-note')?.textContent?.trim()).toBe(
       'pax@fleet.example is confirmed as your email address.',
     );
