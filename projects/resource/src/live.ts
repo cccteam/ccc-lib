@@ -120,12 +120,28 @@ export interface PageEvents {
   removeEventListener(type: string, listener: (event: { persisted?: boolean }) => void): void;
 }
 
+/**
+ * Where the page-leave unsubscribe, which bypasses the transport, gets the XSRF token it
+ * echoes: a function answering the token the application's HTTP layer would send on a
+ * mutating request (null or undefined for none), as Angular's HttpXsrfTokenExtractor
+ * does. The header is the server's unless named.
+ */
+export interface XsrfTokenSource {
+  token(): string | null | undefined;
+  headerName?: string;
+}
+
 /** The knobs of a live session an application or a spec may turn. Every one has a default. */
 export interface LiveOptions {
   /** How often the tab renews its subscriptions; defaults to liveRenewInterval. */
   renewInterval?: number;
-  /** The XSRF echo on the page-leave unsubscribe, which bypasses the transport; the server's names by default, `false` for none. */
-  xsrf?: XsrfOptions | false;
+  /**
+   * The XSRF echo on the page-leave unsubscribe, which bypasses the transport: the cookie
+   * read under the server's default names, or under names given; a token source when the
+   * application's HTTP layer knows the cookie (the Angular adapter passes one); `false`
+   * for none.
+   */
+  xsrf?: XsrfOptions | XsrfTokenSource | false;
   /** The fetch the page-leave unsubscribe rides with keepalive; the global one by default. */
   fetch?: typeof fetch;
   /** Where pagehide and pageshow are heard; the window by default, nothing outside a browser. */
@@ -265,7 +281,7 @@ export class LiveSession {
   private readonly routes: LiveRoutes | undefined;
   private readonly warn: Warn;
   private readonly renewInterval: number;
-  private readonly xsrf: XsrfOptions | false;
+  private readonly xsrf: XsrfOptions | XsrfTokenSource | false;
   private readonly keepaliveFetch: typeof fetch | undefined;
   private readonly page: PageEvents | undefined;
   private readonly onPageHide = (): void => this.leave();
@@ -483,9 +499,12 @@ export class LiveSession {
    * the principal and revokes the feed's identity (`all: true`), stops the feed, forgets
    * every version seen, and mints a fresh seed so the next user on this machine never
    * meets this user's cached answers. Best effort: a refused unsubscribe still stops the
-   * feed. Without a running feed nothing is sent, since nothing was subscribed.
+   * feed. Without a running feed nothing is sent, since nothing was subscribed. When the
+   * session is already gone (`sessionGone`: a session check answered unauthenticated),
+   * nothing is sent either: the server would refuse a call no session speaks for, and its
+   * expiry ends the subscriptions; the feed stops and the seed is reminted all the same.
    */
-  async stop(): Promise<void> {
+  async stop(options: { sessionGone?: boolean } = {}): Promise<void> {
     if (this.timer !== undefined) {
       clearInterval(this.timer);
       this.timer = undefined;
@@ -499,7 +518,7 @@ export class LiveSession {
         release();
       }
       this.feedReleases = [];
-      if (this.routes) {
+      if (this.routes && !options.sessionGone) {
         try {
           await this.request<unknown>('POST', this.routes.unsubscribeRoute, {
             body: { tab: this.tab, all: true },
@@ -536,9 +555,9 @@ export class LiveSession {
       ...this.headers(),
     };
     if (this.xsrf) {
-      const token = readCookie(this.xsrf.cookieName);
+      const token = 'token' in this.xsrf ? (this.xsrf.token() ?? undefined) : readCookie(this.xsrf.cookieName);
       if (token !== undefined) {
-        headers[this.xsrf.headerName] = token;
+        headers[this.xsrf.headerName ?? defaultXsrf.headerName] = token;
       }
     }
     void this.keepaliveFetch(`${this.baseUrl}/${this.routes.unsubscribeRoute}`, {

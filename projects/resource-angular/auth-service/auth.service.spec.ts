@@ -178,7 +178,7 @@ describe('AuthService live session', () => {
     expect(auth.authenticated()).toBe(false);
   });
 
-  it('an unauthenticated answer ends a running live session', async () => {
+  it('an unauthenticated answer ends a running live session without the unsubscribe no session could speak for', async () => {
     let authenticated = true;
     const transport = scriptedTransport((request) =>
       request.url === '/api/user/session' ? { status: 200, body: { authenticated } } : serverWith(true)(request),
@@ -191,7 +191,7 @@ describe('AuthService live session', () => {
     authenticated = false;
     await firstValueFrom(auth.checkUserSession());
     expect(feed.stopped).toBe(1);
-    expect(transport.requests.filter((r) => r.url === '/api/live/unsubscribe')).toHaveLength(1);
+    expect(transport.requests.filter((r) => r.url === '/api/live/unsubscribe')).toEqual([]);
     expect(TestBed.inject(RESOURCE_CLIENT).live.started).toBe(false);
   });
 
