@@ -267,7 +267,10 @@ visible again after being hidden longer than the change document's ten-minute li
 browser throttles or drops a background page's connection. A quiet stretch is not one of
 them: the listener keeps its connection and resumes after a drop, so nothing is missed while
 it runs. `LiveOptions` on `createApi` (`live: { renewInterval, page, fetch, xsrf }`) are the
-knobs a spec turns; every one has a default.
+knobs a spec turns; every one has a default. The page-leave unsubscribe rides a keepalive
+fetch, not the transport, so it echoes the XSRF token itself: `xsrf` names the cookie and the
+header (the server's defaults), or is a token source (`{ token() }`) when the application's
+HTTP layer knows the cookie, as the Angular adapter's is, so the cookie is named once.
 
 ## Feature flags
 

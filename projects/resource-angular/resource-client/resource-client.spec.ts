@@ -1,4 +1,10 @@
-import { HttpClient, HttpErrorResponse, provideHttpClient, withInterceptors } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpErrorResponse,
+  provideHttpClient,
+  withInterceptors,
+  withXsrfConfiguration,
+} from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting, TestRequest } from '@angular/common/http/testing';
 import { Component, ErrorHandler, Injectable, Provider } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -31,6 +37,7 @@ import { NotificationService } from '@cccteam/resource-angular/ui-notification-s
 import {
   apiVersionInterceptor,
   httpClientTransport,
+  liveClientOptions,
   NO_RESPONSE_MESSAGE,
   provideResourceClient,
   RESOURCE_CLIENT,
@@ -102,6 +109,19 @@ describe('provideResourceClient', () => {
     expect(typeof received?.onError).toBe('function');
     expect(received?.apiVersion).toBe('');
     expect(TestBed.inject(ErrorHandler)).toBeInstanceOf(ResourceErrorHandler);
+  });
+
+  it("hands the factory the live session's XSRF token source, which reads the cookie HttpClient's configuration names", () => {
+    const xsrf = received?.live?.xsrf;
+    expect(xsrf && 'token' in xsrf).toBe(true);
+    if (!xsrf || !('token' in xsrf)) return;
+    // HttpClient's default cookie, as this TestBed configures it.
+    document.cookie = 'XSRF-TOKEN=from-the-cookie; path=/';
+    try {
+      expect(xsrf.token()).toBe('from-the-cookie');
+    } finally {
+      document.cookie = 'XSRF-TOKEN=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    }
   });
 
   it('a request of the client carries no release header when the build names none', () => {
@@ -625,5 +645,36 @@ describe('httpClientTransport', () => {
     TestBed.inject(HttpTestingController).expectOne('/api/missions').flush([]);
     await pending;
     expect(TestBed.inject(UiCoreService).isLoading()).toBe(false);
+  });
+});
+
+describe("the live session's XSRF token under a configured cookie name", () => {
+  it("answers the cookie withXsrfConfiguration names, so the page-leave unsubscribe echoes the application's cookie", () => {
+    let received: ResourceClientOptions | undefined;
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(withXsrfConfiguration({ cookieName: 'staff-xsrf' })),
+        provideHttpClientTesting(),
+        { provide: BASE_URL, useValue: 'https://console.example' },
+        provideResourceClient((options) => {
+          received = options;
+          return createClient(descriptor, { baseUrl: '/api', ...options });
+        }),
+      ],
+    });
+    TestBed.inject(RESOURCE_CLIENT);
+    const xsrf = received?.live?.xsrf;
+    expect(xsrf && 'token' in xsrf).toBe(true);
+    if (!xsrf || !('token' in xsrf)) return;
+    document.cookie = 'staff-xsrf=the-staff-token; path=/';
+    try {
+      expect(xsrf.token()).toBe('the-staff-token');
+    } finally {
+      document.cookie = 'staff-xsrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    }
+  });
+
+  it('without an extractor the adapter passes no live options, so the live session reads the default cookie', () => {
+    expect(liveClientOptions(null)).toBeUndefined();
   });
 });

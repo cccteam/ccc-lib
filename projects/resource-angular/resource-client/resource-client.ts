@@ -1,4 +1,10 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders, HttpInterceptorFn } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpErrorResponse,
+  HttpHeaders,
+  HttpInterceptorFn,
+  HttpXsrfTokenExtractor,
+} from '@angular/common/http';
 import {
   DestroyRef,
   DOCUMENT,
@@ -66,12 +72,26 @@ export const RESOURCE_CLIENT = new InjectionToken<ClientBase>('RESOURCE_CLIENT',
  * The client options the Angular adapter owns and hands the application's factory: the
  * transport over HttpClient, the error hook that returns the browser to the login page on
  * a 401 and hands the server's refusal of this build's release to the update service and
- * its maintenance answer to the maintenance service, and the release the build names
- * (API_VERSION), which the client sends in the version header.
- * The application spreads them into the generated createApi beside its own baseUrl.
+ * its maintenance answer to the maintenance service, the release the build names
+ * (API_VERSION), which the client sends in the version header, and the live session's
+ * XSRF token source, so the page-leave unsubscribe, which rides a keepalive fetch and not
+ * HttpClient, echoes the cookie HttpClient's XSRF configuration names (`withXsrfConfiguration`)
+ * and the application names its cookie once. The application spreads them into the
+ * generated createApi beside its own baseUrl; one that turns another live knob merges:
+ * `live: { ...options.live, renewInterval }`.
  */
 export type ResourceClientOptions = Required<Pick<ClientOptions, 'transport' | 'onError'>> &
-  Pick<ClientOptions, 'apiVersion'>;
+  Pick<ClientOptions, 'apiVersion' | 'live'>;
+
+/**
+ * The live options the adapter owns: the page-leave unsubscribe's token from Angular's
+ * extractor, which reads the configured XSRF cookie. Without an extractor (HttpClient
+ * provided without XSRF) the live session reads the cookie under the server's default
+ * names, as it does outside Angular.
+ */
+export function liveClientOptions(extractor: HttpXsrfTokenExtractor | null): ClientOptions['live'] {
+  return extractor ? { xsrf: { token: () => extractor.getToken() } } : undefined;
+}
 
 /** The activity counter the transport reports each request to. */
 export type RequestActivity = Pick<UiCoreService, 'beginActivity' | 'endActivity'>;
@@ -182,6 +202,7 @@ export function provideResourceClient(
           transport: httpClientTransport(inject(HttpClient), inject(UiCoreService)),
           onError: clientErrorHook(inject(Injector)),
           apiVersion: inject(API_VERSION),
+          live: liveClientOptions(inject(HttpXsrfTokenExtractor, { optional: true })),
         }),
     },
     { provide: ErrorHandler, useClass: ResourceErrorHandler },

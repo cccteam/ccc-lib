@@ -6,6 +6,7 @@ import {
   ChangeEvent,
   ChangeFeed,
   LiveIdentity,
+  LiveOptions,
   liveRenewLimit,
   LiveSubscription,
   liveSubscription,
@@ -210,6 +211,7 @@ interface Harness {
 function harness(
   pages: Record<string, { rows?: unknown; status?: number; headers?: Record<string, string> }>,
   api: ApiDescriptor = descriptor,
+  live: Partial<LiveOptions> = {},
 ): Harness {
   const transport = scripted(pages);
   const page = new FakePage();
@@ -223,7 +225,7 @@ function harness(
     baseUrl: '/api',
     transport,
     warn: (message) => warnings.push(message),
-    live: { renewInterval: 60 * 60 * 1000, page, fetch: fetchStandIn, xsrf: false },
+    live: { renewInterval: 60 * 60 * 1000, page, fetch: fetchStandIn, xsrf: false, ...live },
   });
   return { client, transport, feed: new FakeFeed(), page, keepalive, warnings };
 }
@@ -769,6 +771,68 @@ describe('leaving and logging out', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(h.transport.requests.filter((r) => r.url === '/api/live/renew')).toHaveLength(renewsBefore + 1);
     await h.client.live.stop();
+  });
+
+  const echoes: { name: string; live: Partial<LiveOptions>; cookie?: string; want: Record<string, string> }[] = [
+    {
+      name: "a token source answers the token, sent under the server's header",
+      live: { xsrf: { token: () => 'from-the-extractor' } },
+      want: { 'X-XSRF-TOKEN': 'from-the-extractor' },
+    },
+    {
+      name: 'a token source may name the header',
+      live: { xsrf: { token: () => 'from-the-extractor', headerName: 'X-Staff-XSRF' } },
+      want: { 'X-Staff-XSRF': 'from-the-extractor' },
+    },
+    { name: 'a token source answering none sends no header', live: { xsrf: { token: () => null } }, want: {} },
+    {
+      name: 'cookie names read the cookie',
+      live: { xsrf: { cookieName: 'staff-xsrf', headerName: 'X-XSRF-TOKEN' } },
+      cookie: 'staff-xsrf=from-the-cookie',
+      want: { 'X-XSRF-TOKEN': 'from-the-cookie' },
+    },
+    { name: 'false sends no header', live: { xsrf: false }, want: {} },
+  ];
+  for (const tt of echoes) {
+    it(`the page-leave unsubscribe's XSRF echo: ${tt.name}`, async () => {
+      // The cookie reader looks at the document's cookies; the test runner has no document.
+      const page = globalThis as { document?: { cookie: string } };
+      if (tt.cookie) {
+        page.document = { cookie: tt.cookie };
+      }
+      try {
+        const h = harness({}, descriptor, tt.live);
+        h.client.live.watch({ resource: 'ShipClasses' }, () => undefined);
+        await h.client.live.start(h.feed);
+        h.page.fire('pagehide');
+        expect(h.keepalive).toHaveLength(1);
+        const headers = h.keepalive[0].init.headers as Record<string, string>;
+        const xsrfHeaders = Object.fromEntries(Object.entries(headers).filter(([name]) => /xsrf/i.test(name)));
+        expect(xsrfHeaders).toEqual(tt.want);
+        await h.client.live.stop();
+      } finally {
+        if (tt.cookie) {
+          delete page.document;
+        }
+      }
+    });
+  }
+
+  it('stop with the session gone sends no unsubscribe, and still stops the feed, reseeds, and stops listening', async () => {
+    const h = harness({});
+    const live = h.client.live;
+    live.watch({ resource: 'Ships', key: 's1' }, () => undefined);
+    await live.start(h.feed);
+    const seedBefore = live.seed;
+
+    await live.stop({ sessionGone: true });
+    expect(h.transport.requests.filter((r) => r.url === '/api/live/unsubscribe')).toEqual([]);
+    expect(h.feed.stopped).toBe(1);
+    expect(h.feed.listening).toBe(0);
+    expect(live.started).toBe(false);
+    expect(live.seed).not.toBe(seedBefore);
+    h.page.fire('pagehide');
+    expect(h.keepalive).toEqual([]);
   });
 
   it('stop unsubscribes everything, stops the feed, reseeds, and stops listening to the page', async () => {

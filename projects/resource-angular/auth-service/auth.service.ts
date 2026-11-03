@@ -257,7 +257,9 @@ export class AuthService {
    * session also loads the global permission digest, the user's domains, and the enabled
    * set of feature flags when the API serves them, and starts the live session when a
    * change feed is provided; later checks (keepalives) leave the cached permissions, the
-   * set, and the feed alone. An unauthenticated answer ends them all. An authenticated
+   * set, and the feed alone. An unauthenticated answer ends them all, the feed without a
+   * word to the server: the session is gone, so no unsubscribe could be accepted, and the
+   * server's expiry ends the subscriptions. An authenticated
    * answer carrying `passwordChangeRequired` loads nothing: the server refuses every
    * request but the password change until the person sets a password of their own, and
    * the first check after the change loads them.
@@ -273,7 +275,7 @@ export class AuthService {
       switchMap((sessionInfo) => {
         if (!sessionInfo?.authenticated) {
           this.clearPermissions();
-          return from(this.stopLive()).pipe(map(() => sessionInfo));
+          return from(this.stopLive({ sessionGone: true })).pipe(map(() => sessionInfo));
         }
         if (sessionInfo.passwordChangeRequired || this.permissionsLoaded) return of(sessionInfo);
 
@@ -307,10 +309,13 @@ export class AuthService {
     }
   }
 
-  /** Ends the live session, best effort: a feed that was never started sends nothing. */
-  private async stopLive(): Promise<void> {
+  /**
+   * Ends the live session, best effort: a feed that was never started sends nothing, and
+   * neither does one whose session is already gone.
+   */
+  private async stopLive(options: { sessionGone?: boolean } = {}): Promise<void> {
     try {
-      await this.client.live.stop();
+      await this.client.live.stop(options);
     } catch (error) {
       console.error('The live session could not be stopped cleanly:', error);
     }
