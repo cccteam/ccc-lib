@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.22](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.21...resource/v0.0.22) (2026-11-03)
+
+
+### Features
+
+* **resource-angular:** the login page returns the browser to a server page named by returnUrl, so an application can host pages behind its session; a redirect method is sent the address, and the address the pending status reports is loaded by the browser ([#201](https://github.com/cccteam/ccc-lib/issues/201)) ([25317de](https://github.com/cccteam/ccc-lib/commit/25317de0f469b3cd8947810c7d27feae0782bbe0))
+* **resource:** returnPath keeps a return address only when it is a path in this application in canonical form, the server's own rule ([#201](https://github.com/cccteam/ccc-lib/issues/201)) ([25317de](https://github.com/cccteam/ccc-lib/commit/25317de0f469b3cd8947810c7d27feae0782bbe0))
+
 ## [0.0.21](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.20...resource/v0.0.21) (2026-11-03)
 
 
