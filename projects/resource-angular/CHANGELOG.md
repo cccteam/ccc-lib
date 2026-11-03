@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.0.32](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.31...resource-angular/v0.0.32) (2026-11-03)
+
+
+### Features
+
+* a list or record page is live by default when the generated metadata says its resource's changes are published; live: false opts out, and asking live of a resource whose changes are not published is announced once ([#197](https://github.com/cccteam/ccc-lib/issues/197)) ([8eb69a0](https://github.com/cccteam/ccc-lib/commit/8eb69a0b33730b9d94bf9fa749a69ea91627897c))
+
+
+### Dependencies
+
+* The following workspace dependencies were updated
+  * peerDependencies
+    * @cccteam/resource bumped from ^0.0.20 to ^0.0.21
+
 ## [0.0.31](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.30...resource-angular/v0.0.31) (2026-11-02)
 
 
