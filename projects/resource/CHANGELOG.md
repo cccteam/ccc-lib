@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.21](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.20...resource/v0.0.21) (2026-11-03)
+
+
+### Features
+
+* a list or record page is live by default when the generated metadata says its resource's changes are published; live: false opts out, and asking live of a resource whose changes are not published is announced once ([#197](https://github.com/cccteam/ccc-lib/issues/197)) ([8eb69a0](https://github.com/cccteam/ccc-lib/commit/8eb69a0b33730b9d94bf9fa749a69ea91627897c))
+
 ## [0.0.20](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.19...resource/v0.0.20) (2026-11-01)
 
 
