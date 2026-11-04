@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.24](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.23...resource/v0.0.24) (2026-11-04)
+
+
+### Features
+
+* **resource-angular:** the grid's filter menu takes a day from a date control on a date column and a day with an optional time of day on a timestamp column, sent as 2026-12-15 or 2026-12-15T09:30 and read by the server as the whole of that day or minute in the person's zone ([#205](https://github.com/cccteam/ccc-lib/issues/205)) ([e625aff](https://github.com/cccteam/ccc-lib/commit/e625aff2b4823eb3dcad9d04552687a7d88eee08))
+* **resource:** the client sends the person's time zone as the Time-Zone header on every request, the browser's own by default, so the server reads a date typed with no zone as the day the browser shows ([#205](https://github.com/cccteam/ccc-lib/issues/205)) ([e625aff](https://github.com/cccteam/ccc-lib/commit/e625aff2b4823eb3dcad9d04552687a7d88eee08))
+
+
+### Bug Fixes
+
+* **resource-angular:** a new operator in the grid's filter menu waits for Apply, Enter, or the menu closing, as a value does, so an operator and a value changed together are one request, and a menu closed on an unfinished draft keeps the committed filter ([#205](https://github.com/cccteam/ccc-lib/issues/205)) ([e625aff](https://github.com/cccteam/ccc-lib/commit/e625aff2b4823eb3dcad9d04552687a7d88eee08))
+
 ## [0.0.23](https://github.com/cccteam/ccc-lib/compare/resource/v0.0.22...resource/v0.0.23) (2026-11-03)
 
 
