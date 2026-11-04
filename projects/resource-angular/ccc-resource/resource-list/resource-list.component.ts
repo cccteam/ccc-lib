@@ -74,7 +74,14 @@ import {
   searchPlaceholder,
   searchReachesPII,
 } from '../search-box/search-fields';
-import { filterEligibility, listEmptyMessage, refuseKeylessConfig, refuseWriteOnlyColumns, searchEligibility } from './list-request';
+import {
+  filterEligibility,
+  filterInputKinds,
+  listEmptyMessage,
+  refuseKeylessConfig,
+  refuseWriteOnlyColumns,
+  searchEligibility,
+} from './list-request';
 import { listableColumns, sameColumns } from './listable-columns';
 
 @Component({
@@ -367,6 +374,9 @@ export class ResourceListComponent implements OnInit {
 
   /** Which text matches each column's field answers, from the listed resource's metadata: the grid's menu offers these. */
   searches = computed(() => searchEligibility(this.meta(), this.columns()));
+
+  /** Which control each column's menu takes a value from, from the listed resource's metadata: a date control on a date field, a date and a time on a timestamp. */
+  filterInputs = computed(() => filterInputKinds(this.meta(), this.columns()));
 
   /**
    * The fields the search box searches for this caller: the listed resource's search

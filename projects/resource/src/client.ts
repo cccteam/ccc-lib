@@ -41,6 +41,7 @@ import {
   maintenanceHeaderValue,
   retryAfterHeader,
   retryAfterSeconds,
+  timeZoneHeader,
 } from './transport';
 import { compareReleases, releaseVersion } from './versions';
 import { Warn, warnOnce } from './warnings';
@@ -74,10 +75,55 @@ export interface ClientOptions {
    * over ten seconds by default (olderServerRetryDelays).
    */
   olderServerRetryDelays?: readonly number[];
+  /**
+   * The person's time zone, an IANA name such as America/New_York, sent as the Time-Zone
+   * header on every request: the server reads a filter value written with no zone of its
+   * own, `2026-12-15` or `2026-12-15T09:30`, as the whole of that day or minute in it, so a
+   * list filters by the day the browser shows. Absent, the browser's own zone is sent
+   * (browserTimeZone); an empty value sends none, and the server reads such a value in the
+   * column's declared zone, else UTC.
+   */
+  timeZone?: string;
 }
 
 /** The default pauses before each retry of a request a server older than this build refused: 1 s, 3 s, 6 s. */
 export const olderServerRetryDelays: readonly number[] = [1000, 3000, 6000];
+
+/**
+ * The zone the person's device is set to, as Intl resolves it: an IANA name such as
+ * America/New_York, which the client sends as the Time-Zone header when ClientOptions
+ * names none; undefined where the device's zone is unknown (Etc/Unknown) or Intl is absent.
+ */
+export function browserTimeZone(): string | undefined {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return zone && zone !== 'Etc/Unknown' ? zone : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The zone the client sends: the option as given, the browser's own when the option is absent, none for an empty one. */
+function timeZoneToSend(option: string | undefined): string | undefined {
+  const zone = option ?? browserTimeZone();
+  return zone === undefined || zone.trim() === '' ? undefined : zone;
+}
+
+/** The request's headers with the release and the zone the client sends on every request; the caller's own alone when it sends neither. */
+function requestHeaders(
+  own: Record<string, string> | undefined,
+  version: string | undefined,
+  zone: string | undefined,
+): Record<string, string> | undefined {
+  if (version === undefined && zone === undefined) {
+    return own;
+  }
+  return {
+    ...own,
+    ...(version === undefined ? {} : { [apiVersionHeader]: version }),
+    ...(zone === undefined ? {} : { [timeZoneHeader]: zone }),
+  };
+}
 
 /** What every resource handle offers, whatever operations the resource supports. */
 export interface ResourceHandleBase<Row, Key extends unknown[]> {
@@ -392,6 +438,7 @@ export function createClient<G, D>(descriptor: ApiDescriptor, options: ClientOpt
     onError: options.onError,
     apiVersion: options.apiVersion,
     olderServerRetryDelays: options.olderServerRetryDelays,
+    timeZone: options.timeZone,
     serverRelease,
   });
   const request: Requester = async <T>(method: HttpMethod, path: string, requestOptions?: RequestOptions): Promise<T> =>
@@ -528,6 +575,8 @@ interface RequesterOptions {
   onError?: (error: ApiError) => void;
   apiVersion?: string;
   olderServerRetryDelays?: readonly number[];
+  /** The person's time zone to send on every request; absent, the browser's own. */
+  timeZone?: string;
   /** Where the release each answer names is kept, when the caller keeps it. */
   serverRelease?: Store<string | undefined>;
 }
@@ -550,11 +599,12 @@ interface RequesterOptions {
 function createRequester(baseUrl: string, transport: Transport, requester: RequesterOptions): ResponseRequester {
   const { onError } = requester;
   const version = releaseVersion(requester.apiVersion);
+  const zone = timeZoneToSend(requester.timeZone);
   const retryDelays = requester.olderServerRetryDelays ?? olderServerRetryDelays;
   return async <T>(method: HttpMethod, path: string, options?: RequestOptions): Promise<ClientResponse<T>> => {
     const query = options?.query?.toString();
     const url = options?.absolute ? resolveAbsolute(baseUrl, path) : `${baseUrl}/${path}${query ? `?${query}` : ''}`;
-    const headers = version === undefined ? options?.headers : { ...options?.headers, [apiVersionHeader]: version };
+    const headers = requestHeaders(options?.headers, version, zone);
     let retries = 0;
     for (;;) {
       const response = await transport({ method, url, body: options?.body, headers });

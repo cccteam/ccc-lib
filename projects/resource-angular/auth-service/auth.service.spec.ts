@@ -105,6 +105,8 @@ function authOver(
             baseUrl: '/api',
             transport,
             warn: options.warn,
+            // The zone header has its own suite in the resource package; these pin the live headers alone.
+            timeZone: '',
             live: {
               renewInterval: 60 * 60 * 1000,
               page: { addEventListener: () => undefined, removeEventListener: () => undefined },

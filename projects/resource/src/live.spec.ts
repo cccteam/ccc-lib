@@ -225,6 +225,8 @@ function harness(
     baseUrl: '/api',
     transport,
     warn: (message) => warnings.push(message),
+    // The zone header has its own suite (time-zone.spec); these pin the live headers alone.
+    timeZone: '',
     live: { renewInterval: 60 * 60 * 1000, page, fetch: fetchStandIn, xsrf: false, ...live },
   });
   return { client, transport, feed: new FakeFeed(), page, keepalive, warnings };
@@ -623,6 +625,7 @@ describe('renew', () => {
     });
     const client = createClient<Global, Sector>(descriptor, {
       baseUrl: '/api',
+      timeZone: '',
       transport,
       live: { renewInterval: 60 * 60 * 1000, page: h.page },
     });
@@ -702,6 +705,7 @@ describe('renew', () => {
     const transport = scripted({});
     const client = createClient<Global, Sector>(descriptor, {
       baseUrl: '/api',
+      timeZone: '',
       transport,
       live: { renewInterval: 20, page: new FakePage() },
     });
@@ -880,6 +884,7 @@ describe('leaving and logging out', () => {
     const errors: number[] = [];
     const client = createClient<Global, Sector>(descriptor, {
       baseUrl: '/api',
+      timeZone: '',
       transport,
       onError: (error) => errors.push(error.status),
       live: { renewInterval: 60 * 60 * 1000, page: new FakePage() },

@@ -3,7 +3,7 @@ import { provideResourceTesting } from '@cccteam/resource-angular/testing';
 import { iconCellKey, RecordData } from '@cccteam/resource-angular/types';
 
 import { AppGridComponent } from './ccc-grid.component';
-import { RowKey } from './grid-types';
+import { ColumnFilter, ColumnFilterInputs, RowKey } from './grid-types';
 
 // The grid identifies a row by `rowKey`, the caller's function from a row to its identity,
 // or by the row's position in the page when the caller passes none. The track expression,
@@ -147,5 +147,129 @@ describe('AppGridComponent', () => {
     fixture.componentRef.setInput('enableVirtualScroll', true);
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).querySelectorAll('tr.ccc-row').length).toBe(2);
+  });
+});
+
+// The filter menu's value control follows the column's field: a date control on a date
+// column, a date and a time of day on a timestamp column, typed text elsewhere and for a
+// list, and the value travels as the server reads it, the whole day or minute.
+describe('the filter menu\'s value control', () => {
+  let fixture: ComponentFixture<AppGridComponent>;
+  let emitted: ColumnFilter[] | undefined;
+
+  const create = async (filterInputs: ColumnFilterInputs): Promise<void> => {
+    await TestBed.configureTestingModule({
+      imports: [AppGridComponent],
+      providers: [provideResourceTesting()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(AppGridComponent);
+    fixture.componentRef.setInput('rowData', [{ deadline: '2026-12-15T09:30:00Z', expiresOn: '2026-12-20', title: 'Survey' }]);
+    fixture.componentRef.setInput('columnDefs', [{ id: 'deadline' }, { id: 'expiresOn' }, { id: 'title' }]);
+    fixture.componentRef.setInput('filterability', { deadline: 'always', expiresOn: 'always', title: 'always' });
+    fixture.componentRef.setInput('filterInputs', filterInputs);
+    emitted = undefined;
+    fixture.componentInstance.filterChange.subscribe((filters) => {
+      emitted = filters;
+    });
+    fixture.detectChanges();
+  };
+  const settle = async (): Promise<void> => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+  };
+  /** Opens the column's filter menu by its header button and hands back the menu's panel in the overlay. */
+  const openMenu = async (column: number): Promise<HTMLElement> => {
+    const triggers = (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('button.filter-trigger');
+    triggers[column].click();
+    await settle();
+    const menu = document.body.querySelector<HTMLElement>('.cdk-overlay-container .ccc-grid-filter-menu');
+    if (!menu) {
+      throw new Error('no menu open');
+    }
+    return menu;
+  };
+  const controls = (menu: HTMLElement): string[] => Array.from(menu.querySelectorAll('input')).map((input) => input.type);
+  const give = (input: HTMLInputElement | null, value: string): void => {
+    if (!input) {
+      throw new Error('no input');
+    }
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+  };
+  const choose = (menu: HTMLElement, operator: string): void => {
+    const select = menu.querySelector<HTMLSelectElement>('select.filter-operator');
+    if (!select) {
+      throw new Error('no operator select');
+    }
+    select.value = operator;
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+  };
+  const apply = async (menu: HTMLElement): Promise<void> => {
+    const button = Array.from(menu.querySelectorAll('button')).find((b) => b.textContent?.trim() === 'Apply');
+    if (!button) {
+      throw new Error('no Apply button');
+    }
+    button.click();
+    await settle();
+  };
+
+  it('a timestamp column takes a day and a time of day, sent as the minute', async () => {
+    await create({ deadline: 'datetime', expiresOn: 'date' });
+    const menu = await openMenu(0);
+    expect(controls(menu)).toEqual(['date', 'time']);
+    give(menu.querySelector('input[type=date]'), '2026-12-15');
+    give(menu.querySelector('input[type=time]'), '09:30');
+    await apply(menu);
+    expect(emitted).toEqual([{ field: 'deadline', operator: 'eq', value: '2026-12-15T09:30' }]);
+  });
+
+  it('a timestamp column with the day alone sends the day', async () => {
+    await create({ deadline: 'datetime', expiresOn: 'date' });
+    const menu = await openMenu(0);
+    give(menu.querySelector('input[type=date]'), '2026-12-15');
+    await apply(menu);
+    expect(emitted).toEqual([{ field: 'deadline', operator: 'eq', value: '2026-12-15' }]);
+  });
+
+  it('a time of day without a day is nothing yet', async () => {
+    await create({ deadline: 'datetime', expiresOn: 'date' });
+    const menu = await openMenu(0);
+    give(menu.querySelector('input[type=time]'), '09:30');
+    await apply(menu);
+    expect(emitted).toBeUndefined();
+  });
+
+  it('a date column takes a day alone', async () => {
+    await create({ deadline: 'datetime', expiresOn: 'date' });
+    const menu = await openMenu(1);
+    expect(controls(menu)).toEqual(['date']);
+    give(menu.querySelector('input[type=date]'), '2026-12-20');
+    await apply(menu);
+    expect(emitted).toEqual([{ field: 'expiresOn', operator: 'eq', value: '2026-12-20' }]);
+  });
+
+  it('a list on a date column is typed in the forms the server reads, and a return to one value starts over', async () => {
+    await create({ deadline: 'datetime', expiresOn: 'date' });
+    const menu = await openMenu(1);
+    choose(menu, 'in');
+    expect(controls(menu)).toEqual(['text']);
+    const text = menu.querySelector<HTMLInputElement>('input');
+    expect(text?.placeholder).toBe('2026-12-15, 12/2026');
+    give(text, '2026-12-01, 2027');
+    choose(menu, 'eq');
+    expect(controls(menu)).toEqual(['date']);
+    expect(menu.querySelector<HTMLInputElement>('input[type=date]')?.value).toBe('');
+    expect(emitted).toBeUndefined();
+  });
+
+  it('a column with no control keeps its text box', async () => {
+    await create({ deadline: 'datetime', expiresOn: 'date' });
+    const menu = await openMenu(2);
+    expect(controls(menu)).toEqual(['text']);
+    expect(menu.querySelector<HTMLInputElement>('input')?.placeholder).toBe('Value');
   });
 });

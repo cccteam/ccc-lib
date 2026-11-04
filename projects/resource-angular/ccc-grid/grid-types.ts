@@ -89,6 +89,21 @@ export type ColumnSearches = Readonly<Record<string, readonly SearchMatch[] | un
  */
 export type FilterControl = 'none' | 'enabled' | 'needsIndexed';
 
+/**
+ * How a column's filter menu takes a value: typed text; a day, from a date control, on a
+ * `civildate` column; or a day with an optional time of day, from a date and a time
+ * control, on a `date` column (a timestamp). The value travels as the server reads it,
+ * `2026-12-15` or `2026-12-15T09:30`, the whole of that day or minute in the person's
+ * zone, which the resource client sends with every request.
+ */
+export type FilterInput = 'text' | 'date' | 'datetime';
+
+/**
+ * Which control each column's menu takes a value from, by column id, from the generated
+ * field metadata's display type. A column absent here takes typed text.
+ */
+export type ColumnFilterInputs = Readonly<Record<string, FilterInput | undefined>>;
+
 /** Where the rows sit in the server's list: the rows before this page, whether neighbors exist, and the total when the first page asked for it. */
 export interface GridPageState {
   offset: number;

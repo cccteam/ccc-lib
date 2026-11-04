@@ -24,6 +24,15 @@ export const dryRunHeader = 'X-Dry-Run';
 export const apiVersionHeader = 'X-Api-Version';
 
 /**
+ * The person's time zone, an IANA name such as America/New_York, which the client sends on
+ * every request (`ClientOptions.timeZone`, the browser's own zone by default). The server
+ * reads a filter value written with no zone of its own, `2026-12-15` or
+ * `2026-12-15T09:30`, as the whole of that day or minute in it, so a list filters by the
+ * day the browser shows.
+ */
+export const timeZoneHeader = 'Time-Zone';
+
+/**
  * The marker every answer of a server down for maintenance carries, with
  * `maintenanceHeaderValue`: `X-Maintenance: 1`. It tells a maintenance 503 from an
  * ordinary 503 (an overloaded or failing server), which stays an ordinary ApiError.
