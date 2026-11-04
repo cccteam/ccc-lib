@@ -216,6 +216,15 @@ describe('the filter menu\'s value control', () => {
     button.click();
     await settle();
   };
+  /** Closes the open menu as a click beside it does. */
+  const closeMenu = async (): Promise<void> => {
+    const backdrop = document.body.querySelector<HTMLElement>('.cdk-overlay-backdrop');
+    if (!backdrop) {
+      throw new Error('no menu backdrop');
+    }
+    backdrop.click();
+    await settle();
+  };
 
   it('a timestamp column takes a day and a time of day, sent as the minute', async () => {
     await create({ deadline: 'datetime', expiresOn: 'date' });
@@ -233,6 +242,45 @@ describe('the filter menu\'s value control', () => {
     give(menu.querySelector('input[type=date]'), '2026-12-15');
     await apply(menu);
     expect(emitted).toEqual([{ field: 'deadline', operator: 'eq', value: '2026-12-15' }]);
+  });
+
+  it('a new operator waits for Apply, as a value does, and keeps the day the control shows', async () => {
+    await create({ deadline: 'datetime', expiresOn: 'date' });
+    const menu = await openMenu(0);
+    give(menu.querySelector('input[type=date]'), '2026-12-15');
+    await apply(menu);
+    fixture.componentRef.setInput('filters', emitted);
+    emitted = undefined;
+    choose(menu, 'gte');
+    expect(menu.querySelector<HTMLInputElement>('input[type=date]')?.value).toBe('2026-12-15');
+    expect(emitted).toBeUndefined();
+    give(menu.querySelector('input[type=time]'), '12:00');
+    await apply(menu);
+    expect(emitted).toEqual([{ field: 'deadline', operator: 'gte', value: '2026-12-15T12:00' }]);
+  });
+
+  it('a null test chosen alone commits as the menu closes', async () => {
+    await create({ deadline: 'datetime', expiresOn: 'date' });
+    const menu = await openMenu(2);
+    choose(menu, 'isnull');
+    expect(emitted).toBeUndefined();
+    await closeMenu();
+    expect(emitted).toEqual([{ field: 'title', operator: 'isnull', value: '' }]);
+  });
+
+  it('closing the menu on an unfinished draft keeps the committed filter', async () => {
+    await create({ deadline: 'datetime', expiresOn: 'date' });
+    const menu = await openMenu(1);
+    choose(menu, 'in');
+    give(menu.querySelector('input'), '2026-12-01, 2027');
+    await apply(menu);
+    expect(emitted).toEqual([{ field: 'expiresOn', operator: 'in', value: '2026-12-01, 2027' }]);
+    fixture.componentRef.setInput('filters', emitted);
+    emitted = undefined;
+    choose(menu, 'eq');
+    expect(menu.querySelector<HTMLInputElement>('input[type=date]')?.value).toBe('');
+    await closeMenu();
+    expect(emitted).toBeUndefined();
   });
 
   it('a time of day without a day is nothing yet', async () => {

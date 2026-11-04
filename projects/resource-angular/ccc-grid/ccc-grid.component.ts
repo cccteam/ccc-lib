@@ -424,18 +424,15 @@ export class AppGridComponent {
 
   /**
    * A new operator keeps the value where its control can show it and starts over where it
-   * cannot (a typed list under a date control); it commits at once when the draft is
-   * complete (a null test, or a value already given).
+   * cannot (a typed list under a date control). It stays a draft, as a value does: the menu
+   * commits on Apply, Enter, or closing, so an operator and a value changed together are
+   * one request, and a null test chosen alone commits as the menu closes.
    */
   setFilterOperator(col: ColumnConfig, event: Event): void {
     const operator = (event.target as HTMLSelectElement).value as FilterOperator;
     const current = this.draftFor(col);
     const value = fitsInput(current.value, filterInputFor(col.id, this.filterInputs(), operator)) ? current.value : '';
-    const draft = { ...current, operator, value };
-    this.drafts.set({ ...this.drafts(), [col.id]: draft });
-    if (isComplete(draft)) {
-      this.commitFilter(col);
-    }
+    this.drafts.set({ ...this.drafts(), [col.id]: { ...current, operator, value } });
   }
 
   setFilterValue(col: ColumnConfig, event: Event): void {
@@ -487,9 +484,14 @@ export class AppGridComponent {
     }
   }
 
-  /** A menu that closes with a complete draft commits it; an incomplete draft is dropped. */
+  /** A menu that closes with a complete draft commits it; an incomplete draft is dropped and the committed filter stays. */
   onFilterMenuClosed(col: ColumnConfig): void {
-    if (this.drafts()[col.id] === undefined) {
+    const draft = this.drafts()[col.id];
+    if (draft === undefined) {
+      return;
+    }
+    if (!isComplete(draft)) {
+      this.dropDraft(col);
       return;
     }
     this.commitFilter(col);
