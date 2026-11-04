@@ -29,6 +29,7 @@ export class IdleService implements OnDestroy {
   private readonly warningDuration = inject(IDLE_WARNING_DURATION);
   private readonly keepAliveDuration = inject(IDLE_KEEPALIVE_DURATION);
   private readonly timeoutRequireConfirmation = inject(IDLE_TIMEOUT_REQUIRE_CONFIRMATION);
+  private confirmationWarned = false;
   private readonly idleCheckFrequency = 1000;
   private readonly warningThreshold = this.sessionDuration - this.warningDuration;
 
@@ -72,6 +73,7 @@ export class IdleService implements OnDestroy {
     if (this.isActive()) {
       return;
     }
+    this.warnIfConfirmationRequested();
     this.isActive.set(true);
     this.lastActivityTimestamp.set(Date.now());
     this.addActivityListeners();
@@ -113,6 +115,22 @@ export class IdleService implements OnDestroy {
     });
   }
 
+  /**
+   * IDLE_TIMEOUT_REQUIRE_CONFIRMATION is retired: activity always ends the warning, since
+   * the application knows the person is back from it and asks for nothing more. An
+   * application that still provides the token true is told so once, in the console, and
+   * is otherwise unaffected.
+   */
+  private warnIfConfirmationRequested(): void {
+    if (!this.timeoutRequireConfirmation || this.confirmationWarned) {
+      return;
+    }
+    this.confirmationWarned = true;
+    console.warn(
+      'IDLE_TIMEOUT_REQUIRE_CONFIRMATION is retired and has no effect: any activity ends the idle warning. Remove the provider.',
+    );
+  }
+
   private startMainTicker(): void {
     this.mainTickerSubscription = interval(this.idleCheckFrequency).subscribe(() => {
       this.tick.set(Date.now());
@@ -123,9 +141,6 @@ export class IdleService implements OnDestroy {
       }
 
       if (this.isWarning()) {
-        if (this.timeoutRequireConfirmation) {
-          this.removeActivityListeners();
-        }
         this.showOrUpdateWarningAlert(this.countdown());
       } else {
         this.dismissWarningAlert();
@@ -150,16 +165,13 @@ export class IdleService implements OnDestroy {
   }
 
   /**
-   * Explicitly resets the idle timer and dismisses the warning alert.
-   * Use this as the handler for a "Stay Logged In" button when `IDLE_TIMEOUT_REQUIRE_CONFIRMATION` is true.
-   * Also works in the default mode.
+   * Resets the idle timer and ends the warning at once, as any activity does on the next
+   * tick. An application that offers a button for it calls this; none needs to, since a
+   * click is activity.
    */
   stayLoggedIn(): void {
     this.setLastActivity();
     this.dismissWarningAlert();
-    if (this.timeoutRequireConfirmation) {
-      this.addActivityListeners();
-    }
   }
 
   setLastActivity(): void {
@@ -179,15 +191,28 @@ export class IdleService implements OnDestroy {
     });
   }
 
+  /**
+   * The warning is one persistent notice, counted down in place: persistent so the alert's
+   * own auto-dismiss never hides it before the sign-out, and one so a second never stacks
+   * on the first. The notice's close is a click, which is activity, so closing it ends the
+   * warning the way moving the mouse does.
+   */
   private showOrUpdateWarningAlert(countdown: number): void {
     const message = `You will be logged out in ${countdown} seconds due to inactivity.`;
     if (this.alertId !== undefined) {
-      this.notifications.updateNotification({ id: this.alertId, type: AlertType.IDLE, link: '', message });
+      this.notifications.updateNotification({
+        id: this.alertId,
+        type: AlertType.IDLE,
+        link: '',
+        message,
+        persistent: true,
+      });
     } else {
       this.alertId = this.notifications.addGlobalNotification({
         message,
         type: AlertType.IDLE,
         link: '',
+        persistent: true,
       });
     }
   }
