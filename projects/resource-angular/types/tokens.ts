@@ -188,9 +188,12 @@ export const IDLE_LOGOUT_ACTION = new InjectionToken<() => void>('IDLE_LOGOUT_AC
 });
 
 /**
- * When true, user activity (mouse movement, keypress, etc.) will NOT reset the idle timer once the warning is shown.
- * The user must explicitly call `stayLoggedIn()` (e.g. via a modal button) to reset the timer.
- * When false (default), any activity resets the idle timer as usual.
+ * Retired, with no effect: any activity (mouse movement, a key, a click, a scroll) resets the
+ * idle timer and ends the warning, whatever this token says, since the application knows the
+ * person is back from it and asks for nothing more. `IdleService.start()` logs once in the
+ * console when an application still provides true. The token stays so a provider of it keeps
+ * compiling; remove the provider.
+ * @deprecated Activity always ends the idle warning; remove the provider.
  * @defaultValue false
  */
 export const IDLE_TIMEOUT_REQUIRE_CONFIRMATION = new InjectionToken<boolean>('IDLE_TIMEOUT_REQUIRE_CONFIRMATION', {
