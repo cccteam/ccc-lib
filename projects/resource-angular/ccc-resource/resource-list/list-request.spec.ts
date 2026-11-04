@@ -3,6 +3,7 @@ import { PageTurn } from '@cccteam/resource-angular/ccc-grid';
 import { ColumnConfig } from '@cccteam/resource-angular/types';
 import {
   filterEligibility,
+  filterInputKinds,
   listEmptyMessage,
   pageLabel,
   PagePosition,
@@ -45,6 +46,34 @@ describe('filterEligibility', () => {
   for (const tt of cases) {
     it(tt.name, () => {
       expect(filterEligibility(tt.meta, tt.columns.map((id) => ({ id })))).toEqual(tt.want as never);
+    });
+  }
+});
+
+describe('filterInputKinds', () => {
+  const dated: ResourceMeta = {
+    route: 'sectors/{sectorID}/consignments',
+    fields: [
+      field('bondCode', { isIndex: true, filterable: 'always' }),
+      field('expiresOn', { displayType: 'civildate', filterable: 'withIndexed' }),
+      field('releasedAt', { displayType: 'date', isIndex: true, filterable: 'always' }),
+      field('mass', { displayType: 'number', filterable: 'withIndexed' }),
+    ],
+  };
+  const cases: { name: string; meta: ResourceMeta | undefined; columns: string[]; want: Record<string, string> }[] = [
+    {
+      name: 'a date field takes a date control and a timestamp a date and a time',
+      meta: dated,
+      columns: ['bondCode', 'expiresOn', 'releasedAt', 'mass'],
+      want: { expiresOn: 'date', releasedAt: 'datetime' },
+    },
+    { name: 'an action column and a renamed duplicate are absent', meta: dated, columns: ['view', 'expiresOn_1'], want: {} },
+    { name: 'no metadata, typed text everywhere', meta: undefined, columns: ['expiresOn'], want: {} },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, () => {
+      expect(filterInputKinds(tt.meta, tt.columns.map((id) => ({ id })))).toEqual(tt.want as never);
     });
   }
 });

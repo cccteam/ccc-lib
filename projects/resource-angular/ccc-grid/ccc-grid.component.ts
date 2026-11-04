@@ -21,12 +21,24 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { RouterModule } from '@angular/router';
 import { CamelCaseToTitlePipe } from '@cccteam/resource-angular/ccc-camel-case-to-title';
 import { ColumnConfig, iconCellKey, RecordData } from '@cccteam/resource-angular/types';
-import { filterControlFor, indexedFilterActive, isComplete, operatorOption, operatorsFor } from './grid-filter.util';
+import {
+  dateTimeParts,
+  filterControlFor,
+  filterInputFor,
+  fitsInput,
+  indexedFilterActive,
+  isComplete,
+  joinDateTime,
+  operatorOption,
+  operatorsFor,
+} from './grid-filter.util';
 import {
   ColumnFilter,
   ColumnFilterability,
+  ColumnFilterInputs,
   ColumnSearches,
   FilterControl,
+  FilterInput,
   FilterOperator,
   FilterOperatorOption,
   GridPageState,
@@ -105,6 +117,8 @@ export class AppGridComponent {
   externalFilterFields = input<string[]>([]);
   /** Which text matches each column's field answers, by column id, from the generated field metadata's `search`. A column absent here offers none. */
   searches = input<ColumnSearches>({});
+  /** Which control each column's menu takes a value from, by column id, from the generated field metadata's display type: a date control on a `civildate` column, a date and a time on a `date` column. A column absent here takes typed text. */
+  filterInputs = input<ColumnFilterInputs>({});
   /** Whether the page's search box is in the request: it counts as the indexed filter a companion-only column waits for. */
   boxActive = input<boolean>(false);
   /** Where the rows sit in the server's list. The pager is drawn only when given. */
@@ -385,22 +399,57 @@ export class AppGridComponent {
     return operatorOption(this.draftFor(col).operator).takesValue;
   }
 
-  valuePlaceholder(col: ColumnConfig): string {
-    return operatorOption(this.draftFor(col).operator).takesList ? 'a, b, c' : 'Value';
+  /** The control the column's menu takes a value from under the draft's operator: the column's own for one value, typed text for a list. */
+  valueInput(col: ColumnConfig): FilterInput {
+    return filterInputFor(col.id, this.filterInputs(), this.draftFor(col).operator);
   }
 
-  /** A new operator commits at once when the draft is complete (a null test, or a value already typed). */
+  /** What the text box says when empty: a list's shape, in the forms the server reads a date in on a date or timestamp column. */
+  valuePlaceholder(col: ColumnConfig): string {
+    if (!operatorOption(this.draftFor(col).operator).takesList) {
+      return 'Value';
+    }
+    return this.filterInputs()[col.id] === undefined ? 'a, b, c' : '2026-12-15, 12/2026';
+  }
+
+  /** The day a date control shows: the draft's value up to its time of day. */
+  dateOf(col: ColumnConfig): string {
+    return dateTimeParts(this.draftFor(col).value).date;
+  }
+
+  /** The time of day a time control shows: the draft's value after its day, empty for a whole day. */
+  timeOf(col: ColumnConfig): string {
+    return dateTimeParts(this.draftFor(col).value).time;
+  }
+
+  /**
+   * A new operator keeps the value where its control can show it and starts over where it
+   * cannot (a typed list under a date control). It stays a draft, as a value does: the menu
+   * commits on Apply, Enter, or closing, so an operator and a value changed together are
+   * one request, and a null test chosen alone commits as the menu closes.
+   */
   setFilterOperator(col: ColumnConfig, event: Event): void {
     const operator = (event.target as HTMLSelectElement).value as FilterOperator;
-    const draft = { ...this.draftFor(col), operator };
-    this.drafts.set({ ...this.drafts(), [col.id]: draft });
-    if (isComplete(draft)) {
-      this.commitFilter(col);
-    }
+    const current = this.draftFor(col);
+    const value = fitsInput(current.value, filterInputFor(col.id, this.filterInputs(), operator)) ? current.value : '';
+    this.drafts.set({ ...this.drafts(), [col.id]: { ...current, operator, value } });
   }
 
   setFilterValue(col: ColumnConfig, event: Event): void {
-    const value = (event.target as HTMLInputElement).value;
+    this.setDraftValue(col, (event.target as HTMLInputElement).value);
+  }
+
+  /** The day from a date control, kept with the time of day already given. */
+  setFilterDate(col: ColumnConfig, event: Event): void {
+    this.setDraftValue(col, joinDateTime((event.target as HTMLInputElement).value, this.timeOf(col)));
+  }
+
+  /** The time of day from a time control, kept with the day already given; a time without a day is nothing yet. */
+  setFilterTime(col: ColumnConfig, event: Event): void {
+    this.setDraftValue(col, joinDateTime(this.dateOf(col), (event.target as HTMLInputElement).value));
+  }
+
+  private setDraftValue(col: ColumnConfig, value: string): void {
     this.drafts.set({ ...this.drafts(), [col.id]: { ...this.draftFor(col), value } });
   }
 
@@ -435,9 +484,14 @@ export class AppGridComponent {
     }
   }
 
-  /** A menu that closes with a complete draft commits it; an incomplete draft is dropped. */
+  /** A menu that closes with a complete draft commits it; an incomplete draft is dropped and the committed filter stays. */
   onFilterMenuClosed(col: ColumnConfig): void {
-    if (this.drafts()[col.id] === undefined) {
+    const draft = this.drafts()[col.id];
+    if (draft === undefined) {
+      return;
+    }
+    if (!isComplete(draft)) {
+      this.dropDraft(col);
       return;
     }
     this.commitFilter(col);

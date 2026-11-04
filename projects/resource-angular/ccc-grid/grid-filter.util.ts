@@ -2,9 +2,11 @@ import { and, Condition, searchBox, SearchMatch, serializeFilter, where } from '
 import {
   ColumnFilter,
   ColumnFilterability,
+  ColumnFilterInputs,
   ColumnSearches,
   FILTER_OPERATORS,
   FilterControl,
+  FilterInput,
   FilterOperator,
   FilterOperatorOption,
   MATCH_OPERATORS,
@@ -151,6 +153,48 @@ export function withoutOrphanedCompanions(
     return [...filters];
   }
   return filters.filter((filter) => filterability[filter.field] !== 'withIndexed');
+}
+
+/**
+ * The control a column's menu takes a value from under an operator: the column's own
+ * control (a date, or a date and a time) for one value, and typed text for a list, since
+ * a list is typed in the forms the server reads, and on a column with no control.
+ */
+export function filterInputFor(columnId: string, inputs: ColumnFilterInputs, operator: FilterOperator): FilterInput {
+  if (operatorOption(operator).takesList) {
+    return 'text';
+  }
+  return inputs[columnId] ?? 'text';
+}
+
+/** A date-and-time value as its two controls hold it: the day and the time of day, either empty. */
+export function dateTimeParts(value: string): { date: string; time: string } {
+  const [date = '', time = ''] = value.split('T');
+  return { date, time };
+}
+
+/** The value the two controls make: the day alone, the day and the time joined with T, and nothing without a day. */
+export function joinDateTime(date: string, time: string): string {
+  if (date === '') {
+    return '';
+  }
+  return time === '' ? date : `${date}T${time}`;
+}
+
+/**
+ * Whether a control can show a value: a date control shows a day, a date-and-time control
+ * a day with or without a time, and a text box anything. A value the next operator's
+ * control cannot show starts over.
+ */
+export function fitsInput(value: string, input: FilterInput): boolean {
+  switch (input) {
+    case 'date':
+      return value === '' || /^\d{4}-\d{2}-\d{2}$/.test(value);
+    case 'datetime':
+      return value === '' || /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$/.test(value);
+    default:
+      return true;
+  }
 }
 
 /** One column filter as a typed condition: a list operator splits its value on commas; a null test carries no value. */

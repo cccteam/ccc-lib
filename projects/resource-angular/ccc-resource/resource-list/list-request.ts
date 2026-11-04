@@ -1,5 +1,5 @@
 import { ApiError, Resource, ResourceMeta } from '@cccteam/resource';
-import { ColumnFilterability, ColumnSearches, PageTurn } from '@cccteam/resource-angular/ccc-grid';
+import { ColumnFilterability, ColumnFilterInputs, ColumnSearches, PageTurn } from '@cccteam/resource-angular/ccc-grid';
 import { ColumnConfig, keyFields, ListViewConfig } from '@cccteam/resource-angular/types';
 
 // The list page's pure parts around the server's page: which columns the server filters,
@@ -97,6 +97,26 @@ export function searchEligibility(meta: ResourceMeta | undefined, columns: reado
     }
   }
   return searches;
+}
+
+/**
+ * Which control each of the table's columns takes a filter value from: a date control
+ * for a `civildate` field and a date and a time control for a `date` field (a
+ * timestamp), by column id. Every other column, and one whose id is not a field of the
+ * listed resource, is absent and takes typed text.
+ */
+export function filterInputKinds(meta: ResourceMeta | undefined, columns: readonly { id: string }[]): ColumnFilterInputs {
+  const byField = new Map((meta?.fields ?? []).map((field) => [field.fieldName, field.displayType]));
+  const inputs: Record<string, ColumnFilterInputs[string]> = {};
+  for (const column of columns) {
+    const displayType = byField.get(column.id);
+    if (displayType === 'civildate') {
+      inputs[column.id] = 'date';
+    } else if (displayType === 'date') {
+      inputs[column.id] = 'datetime';
+    }
+  }
+  return inputs;
 }
 
 /** Where a page sits: the rows before it, and the total the first page answered. */

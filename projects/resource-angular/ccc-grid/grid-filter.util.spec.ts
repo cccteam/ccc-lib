@@ -1,15 +1,19 @@
 import {
   composeFilter,
   conditionOf,
+  dateTimeParts,
   filterControlFor,
   filterFields,
+  filterInputFor,
+  fitsInput,
   indexedFilterActive,
   isComplete,
   isListedMatch,
+  joinDateTime,
   operatorsFor,
   withoutOrphanedCompanions,
 } from './grid-filter.util';
-import { ColumnFilter, ColumnFilterability, ColumnSearches, FilterControl } from './grid-types';
+import { ColumnFilter, ColumnFilterability, ColumnFilterInputs, ColumnSearches, FilterControl, FilterInput } from './grid-types';
 
 // The grid's filters as the server sees them: which fields a grammar string names, when
 // a companion column may join, which operators a column's menu offers, and how the
@@ -226,4 +230,55 @@ describe('composeFilter', () => {
       });
     }
   });
+});
+
+// The value control a column's menu draws: the column's own control for one value, typed
+// text for a list and for a column with none; what the date and time controls hold and
+// make; and which values a control can show when the operator changes.
+describe('filterInputFor', () => {
+  const inputs: ColumnFilterInputs = { deadline: 'datetime', expiresOn: 'date' };
+  const cases: { name: string; column: string; operator: ColumnFilter['operator']; want: FilterInput }[] = [
+    { name: 'a timestamp column takes a day and a time', column: 'deadline', operator: 'eq', want: 'datetime' },
+    { name: 'a date column takes a day', column: 'expiresOn', operator: 'lte', want: 'date' },
+    { name: 'a list on a date column is typed', column: 'expiresOn', operator: 'in', want: 'text' },
+    { name: 'a list on a timestamp column is typed', column: 'deadline', operator: 'notin', want: 'text' },
+    { name: 'a column with no control is typed', column: 'title', operator: 'eq', want: 'text' },
+  ];
+
+  for (const tt of cases) {
+    it(tt.name, () => {
+      expect(filterInputFor(tt.column, inputs, tt.operator)).toBe(tt.want);
+    });
+  }
+});
+
+describe('the date and time controls', () => {
+  it('split a value into the day and the time of day', () => {
+    expect(dateTimeParts('2026-12-15T09:30')).toEqual({ date: '2026-12-15', time: '09:30' });
+    expect(dateTimeParts('2026-12-15')).toEqual({ date: '2026-12-15', time: '' });
+    expect(dateTimeParts('')).toEqual({ date: '', time: '' });
+  });
+
+  it('make the day alone, the day and time joined, and nothing without a day', () => {
+    expect(joinDateTime('2026-12-15', '')).toBe('2026-12-15');
+    expect(joinDateTime('2026-12-15', '09:30')).toBe('2026-12-15T09:30');
+    expect(joinDateTime('', '09:30')).toBe('');
+  });
+
+  const fits: { name: string; value: string; input: FilterInput; want: boolean }[] = [
+    { name: 'a date control shows a day', value: '2026-12-15', input: 'date', want: true },
+    { name: 'a date control shows nothing', value: '', input: 'date', want: true },
+    { name: 'a date control cannot show a typed list', value: '2026-12-01, 2027', input: 'date', want: false },
+    { name: 'a date control cannot show a minute', value: '2026-12-15T09:30', input: 'date', want: false },
+    { name: 'a date-and-time control shows a day', value: '2026-12-15', input: 'datetime', want: true },
+    { name: 'a date-and-time control shows a minute', value: '2026-12-15T09:30', input: 'datetime', want: true },
+    { name: 'a date-and-time control cannot show a US date', value: '12/15/2026', input: 'datetime', want: false },
+    { name: 'a text box shows anything', value: '12/15/2026, 2027', input: 'text', want: true },
+  ];
+
+  for (const tt of fits) {
+    it(tt.name, () => {
+      expect(fitsInput(tt.value, tt.input)).toBe(tt.want);
+    });
+  }
 });

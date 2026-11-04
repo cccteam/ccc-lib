@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { createClient, olderServerRetryDelays } from './client';
 import { ApiDescriptor } from './descriptor';
-import { ApiError, ApiVersionError, apiVersionHeader } from './transport';
+import { ApiError, ApiVersionError, apiVersionHeader, timeZoneHeader } from './transport';
 import { compareReleases, releaseVersion } from './versions';
 import { scriptedTransport } from '@cccteam/resource/testing';
 
@@ -45,9 +45,13 @@ describe('the release header', () => {
 
   it('rides beside the request\'s own headers', async () => {
     const transport = scriptedTransport({ status: 200, body: undefined });
-    const client = createClient(descriptor, { baseUrl: '/api', transport, apiVersion: '1.5.0' });
+    const client = createClient(descriptor, { baseUrl: '/api', transport, apiVersion: '1.5.0', timeZone: 'America/New_York' });
     await client.request('POST', 'complete-mission', { body: {}, headers: { 'X-Dry-Run': 'true' } });
-    expect(transport.requests[0].headers).toEqual({ 'X-Dry-Run': 'true', [apiVersionHeader]: '1.5.0' });
+    expect(transport.requests[0].headers).toEqual({
+      'X-Dry-Run': 'true',
+      [apiVersionHeader]: '1.5.0',
+      [timeZoneHeader]: 'America/New_York',
+    });
   });
 });
 

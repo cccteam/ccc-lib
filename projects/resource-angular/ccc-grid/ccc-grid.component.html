@@ -79,15 +79,56 @@
                     }
                   </select>
                   @if (operatorTakesValue(col)) {
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic" (click)="$event.stopPropagation()">
-                      <input
-                        matInput
-                        [placeholder]="valuePlaceholder(col)"
-                        [value]="draftFor(col).value"
-                        (input)="setFilterValue(col, $event)"
-                        (keydown.enter)="commitFilter(col)"
-                        (keydown)="keepTyping($event)" />
-                    </mat-form-field>
+                    @switch (valueInput(col)) {
+                      @case ('date') {
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-date" (click)="$event.stopPropagation()">
+                          <input
+                            matInput
+                            type="date"
+                            aria-label="Date"
+                            [value]="dateOf(col)"
+                            (input)="setFilterDate(col, $event)"
+                            (change)="setFilterDate(col, $event)"
+                            (keydown.enter)="commitFilter(col)"
+                            (keydown)="keepTyping($event)" />
+                        </mat-form-field>
+                      }
+                      @case ('datetime') {
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-date" (click)="$event.stopPropagation()">
+                          <input
+                            matInput
+                            type="date"
+                            aria-label="Date"
+                            [value]="dateOf(col)"
+                            (input)="setFilterDate(col, $event)"
+                            (change)="setFilterDate(col, $event)"
+                            (keydown.enter)="commitFilter(col)"
+                            (keydown)="keepTyping($event)" />
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="filter-time" (click)="$event.stopPropagation()">
+                          <input
+                            matInput
+                            type="time"
+                            aria-label="Time of day"
+                            [value]="timeOf(col)"
+                            (input)="setFilterTime(col, $event)"
+                            (change)="setFilterTime(col, $event)"
+                            (keydown.enter)="commitFilter(col)"
+                            (keydown)="keepTyping($event)" />
+                        </mat-form-field>
+                      }
+                      @default {
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic" (click)="$event.stopPropagation()">
+                          <input
+                            matInput
+                            [placeholder]="valuePlaceholder(col)"
+                            [value]="draftFor(col).value"
+                            (input)="setFilterValue(col, $event)"
+                            (keydown.enter)="commitFilter(col)"
+                            (keydown)="keepTyping($event)" />
+                        </mat-form-field>
+                      }
+                    }
                   }
                   <button type="button" mat-button (click)="commitFilter(col)">Apply</button>
                   <button type="button" mat-button (click)="clearFilter(col)">Clear</button>
