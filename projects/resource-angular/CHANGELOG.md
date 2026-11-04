@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.37](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.36...resource-angular/v0.0.37) (2026-11-04)
+
+
+### Bug Fixes
+
+* **resource-angular:** the idle warning is one persistent notice that stays until the person is back or signed out, any activity ends it, the notice's close among it, and IDLE_TIMEOUT_REQUIRE_CONFIRMATION retires as a no-op that logs once ([#207](https://github.com/cccteam/ccc-lib/issues/207)) ([d3195bf](https://github.com/cccteam/ccc-lib/commit/d3195bf272606cee6619585710f86fb78259c46d))
+
 ## [0.0.36](https://github.com/cccteam/ccc-lib/compare/resource-angular/v0.0.35...resource-angular/v0.0.36) (2026-11-04)
 
 
