@@ -17,7 +17,7 @@ import {
   UserPermissionCollection,
 } from '@cccteam/ccc-lib/types';
 import { errorOptions } from '@cccteam/ccc-lib/util-request-options';
-import { catchError, forkJoin, map, Observable, of, tap } from 'rxjs';
+import { catchError, defer, finalize, forkJoin, map, Observable, of, tap } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -33,6 +33,10 @@ export class AuthService<TAdditional extends AdditionalSessionData = AdditionalS
   http = inject(HttpClient);
   private authenticatedSignal = signal(false);
   private sessionInfoSignal = signal({} as SessionInfo<TAdditional>);
+  // A session check that overlaps a logout may have been answered before the server ended the session, so its
+  // answer is discarded: the epoch advances when a logout starts and ends, and answers arriving mid-logout are dropped.
+  private sessionEpoch = 0;
+  private pendingLogouts = 0;
 
   redirectUrl = signal('');
   authenticated = this.authenticatedSignal.asReadonly();
@@ -85,28 +89,41 @@ export class AuthService<TAdditional extends AdditionalSessionData = AdditionalS
 
   /**
    * Logs a user out and calls the configured logout action.
+   * The client is signed out once the request ends, whether it succeeds, fails or is cancelled.
    *
    * @returns Observable with a boolean indicating whether they were logged out.
    */
   logout(): Observable<boolean> {
-    return this.http
-      .delete(`${this.apiUrl}/${this.sessionUrl}`, errorOptions(false))
-      .pipe(map(() => true))
-      .pipe(
-        tap(() => {
-          try {
-            this.logoutAction();
-          } catch (error) {
-            console.error('Error during logout action (LOGOUT_ACTION token):', error);
-          }
-          this.authenticatedSignal.set(false);
-          this.sessionInfoSignal.set({} as SessionInfo<TAdditional>);
-        }),
-      );
+    return defer(() => {
+      this.sessionEpoch++;
+      this.pendingLogouts++;
+      return this.http.delete(`${this.apiUrl}/${this.sessionUrl}`, errorOptions(false));
+    }).pipe(
+      map(() => true),
+      tap(() => {
+        try {
+          this.logoutAction();
+        } catch (error) {
+          console.error('Error during logout action (LOGOUT_ACTION token):', error);
+        }
+        this.clearSession();
+      }),
+      finalize(() => {
+        this.pendingLogouts--;
+        this.sessionEpoch++;
+        this.clearSession();
+      }),
+    );
+  }
+
+  private clearSession(): void {
+    this.authenticatedSignal.set(false);
+    this.sessionInfoSignal.set({} as SessionInfo<TAdditional>);
   }
 
   /**
    * Checks a user's session with the server, and fetches additional session data in parallel.
+   * An answer to a check that overlapped a logout is treated as signed out.
    *
    * @returns Observable with the user session info
    */
@@ -114,32 +131,27 @@ export class AuthService<TAdditional extends AdditionalSessionData = AdditionalS
     const session$ = this.http.get<SessionInfo<TAdditional>>(`${this.apiUrl}/${this.sessionUrl}`, errorOptions(false));
     const shouldFetchAdditional = this.additionalSessionDataUrl && !this.router.url.includes(this.loginUrl);
 
-    if (!shouldFetchAdditional) {
-      return session$.pipe(
+    const sessionInfo$ = shouldFetchAdditional
+      ? forkJoin({
+          sessionInfo: session$,
+          additionalData: this.http
+            .get<TAdditional>(`${this.apiUrl}/${this.additionalSessionDataUrl}`, errorOptions(false))
+            .pipe(catchError(() => of({} as TAdditional))),
+        }).pipe(map(({ sessionInfo, additionalData }) => ({ ...sessionInfo, additionalData })))
+      : session$;
+
+    return defer(() => {
+      const epoch = this.sessionEpoch;
+      return sessionInfo$.pipe(
+        map((sessionInfo) =>
+          epoch === this.sessionEpoch && this.pendingLogouts === 0 ? sessionInfo : ({} as SessionInfo<TAdditional>),
+        ),
         tap((sessionInfo) => {
           this.authenticatedSignal.set(!!sessionInfo?.authenticated);
           this.sessionInfoSignal.set(sessionInfo);
         }),
       );
-    }
-
-    const additionalData$ = this.http
-      .get<TAdditional>(`${this.apiUrl}/${this.additionalSessionDataUrl}`, errorOptions(false))
-      .pipe(catchError(() => of({} as TAdditional)));
-
-    return forkJoin({
-      sessionInfo: session$,
-      additionalData: additionalData$,
-    }).pipe(
-      map(({ sessionInfo, additionalData }) => ({
-        ...sessionInfo,
-        additionalData,
-      })),
-      tap((sessionInfo) => {
-        this.authenticatedSignal.set(!!sessionInfo?.authenticated);
-        this.sessionInfoSignal.set(sessionInfo);
-      }),
-    );
+    });
   }
 
   loginRoute(): string {
