@@ -23,8 +23,8 @@ import {
   Observable,
   of,
   Subscription,
-  take,
-  timeout,
+  takeUntil,
+  timer,
 } from 'rxjs';
 
 @Injectable({
@@ -131,8 +131,7 @@ export class IdleService implements OnDestroy {
 
     logout
       .pipe(
-        timeout(this.logoutWaitLimit),
-        take(1),
+        takeUntil(timer(this.logoutWaitLimit)),
         catchError((error: unknown) => {
           console.error('Error during idle logout action (IDLE_LOGOUT_ACTION token):', error);
           return EMPTY;
