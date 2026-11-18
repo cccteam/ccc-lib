@@ -126,6 +126,32 @@ describe('AuthService', () => {
     expect(auth.authenticated()).toBe(false);
   });
 
+  it('signs out as soon as the logout starts', async () => {
+    await signIn();
+
+    const logout = firstValueFrom(auth.logout());
+    const logoutRequest = http.expectOne({ method: 'DELETE', url: sessionUrl });
+
+    expect(auth.authenticated()).toBe(false);
+    logoutRequest.flush(null);
+    await logout;
+  });
+
+  it('keeps a newer sign-in when a check from before the logout answers late', async () => {
+    await signIn();
+    const staleCheck = firstValueFrom(auth.checkUserSession());
+    const staleRequest = http.expectOne({ method: 'GET', url: sessionUrl });
+    const logout = firstValueFrom(auth.logout());
+    http.expectOne({ method: 'DELETE', url: sessionUrl }).flush(null);
+    await logout;
+    await signIn();
+
+    staleRequest.flush({});
+
+    expect((await staleCheck).authenticated).toBeFalsy();
+    expect(auth.authenticated()).toBe(true);
+  });
+
   it('accepts a session check sent after the logout ended', async () => {
     await signIn();
     const logout = firstValueFrom(auth.logout());

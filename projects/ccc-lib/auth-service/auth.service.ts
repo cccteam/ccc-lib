@@ -34,7 +34,7 @@ export class AuthService<TAdditional extends AdditionalSessionData = AdditionalS
   private authenticatedSignal = signal(false);
   private sessionInfoSignal = signal({} as SessionInfo<TAdditional>);
   // A session check that overlaps a logout may have been answered before the server ended the session, so its
-  // answer is discarded: the epoch advances when a logout starts and ends, and answers arriving mid-logout are dropped.
+  // answer is ignored: the epoch advances when a logout starts and ends, and answers arriving mid-logout are dropped.
   private sessionEpoch = 0;
   private pendingLogouts = 0;
 
@@ -89,7 +89,7 @@ export class AuthService<TAdditional extends AdditionalSessionData = AdditionalS
 
   /**
    * Logs a user out and calls the configured logout action.
-   * The client is signed out once the request ends, whether it succeeds, fails or is cancelled.
+   * The client is signed out from the start of the request, whether it succeeds, fails or is cancelled.
    *
    * @returns Observable with a boolean indicating whether they were logged out.
    */
@@ -97,6 +97,7 @@ export class AuthService<TAdditional extends AdditionalSessionData = AdditionalS
     return defer(() => {
       this.sessionEpoch++;
       this.pendingLogouts++;
+      this.clearSession();
       return this.http.delete(`${this.apiUrl}/${this.sessionUrl}`, errorOptions(false));
     }).pipe(
       map(() => true),
@@ -123,7 +124,7 @@ export class AuthService<TAdditional extends AdditionalSessionData = AdditionalS
 
   /**
    * Checks a user's session with the server, and fetches additional session data in parallel.
-   * An answer to a check that overlapped a logout is treated as signed out.
+   * An answer to a check that overlapped a logout reports the user signed out and leaves the client's state alone.
    *
    * @returns Observable with the user session info
    */
@@ -142,14 +143,15 @@ export class AuthService<TAdditional extends AdditionalSessionData = AdditionalS
 
     return defer(() => {
       const epoch = this.sessionEpoch;
+      const isCurrent = (): boolean => epoch === this.sessionEpoch && this.pendingLogouts === 0;
       return sessionInfo$.pipe(
-        map((sessionInfo) =>
-          epoch === this.sessionEpoch && this.pendingLogouts === 0 ? sessionInfo : ({} as SessionInfo<TAdditional>),
-        ),
         tap((sessionInfo) => {
-          this.authenticatedSignal.set(!!sessionInfo?.authenticated);
-          this.sessionInfoSignal.set(sessionInfo);
+          if (isCurrent()) {
+            this.authenticatedSignal.set(!!sessionInfo?.authenticated);
+            this.sessionInfoSignal.set(sessionInfo);
+          }
         }),
+        map((sessionInfo) => (isCurrent() ? sessionInfo : ({} as SessionInfo<TAdditional>))),
       );
     });
   }
