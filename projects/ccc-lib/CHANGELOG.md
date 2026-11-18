@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.48](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.47...ccc-lib/v0.0.48) (2026-11-18)
+
+
+### Bug Fixes
+
+* **ccc-lib:** a session check that overlaps a logout no longer signs the user back in ([#209](https://github.com/cccteam/ccc-lib/issues/209)) ([6c3b57b](https://github.com/cccteam/ccc-lib/commit/6c3b57be2b5e5ba5d9e75173b1a7d025a8465ff4))
+
 ## [0.0.47](https://github.com/cccteam/ccc-lib/compare/ccc-lib/v0.0.46...ccc-lib/v0.0.47) (2026-10-24)
 
 
