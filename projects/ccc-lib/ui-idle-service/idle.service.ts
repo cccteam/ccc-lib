@@ -121,8 +121,8 @@ export class IdleService implements OnDestroy {
     let logout: Observable<unknown> = of(undefined);
     try {
       const result = this.logoutAction();
-      if (isObservable(result) || result instanceof Promise) {
-        logout = from(result);
+      if (isObservable(result) || typeof (result as PromiseLike<unknown> | undefined)?.then === 'function') {
+        logout = from(result as Observable<unknown> | PromiseLike<unknown>);
       }
     } catch (error) {
       console.error('Error during idle logout action (IDLE_LOGOUT_ACTION token):', error);
