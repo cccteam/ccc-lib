@@ -13,7 +13,19 @@ import {
 } from '@cccteam/ccc-lib/types';
 import { UiCoreService } from '@cccteam/ccc-lib/ui-core-service';
 import { NotificationService } from '@cccteam/ccc-lib/ui-notification-service';
-import { interval, Subscription } from 'rxjs';
+import {
+  catchError,
+  EMPTY,
+  finalize,
+  from,
+  interval,
+  isObservable,
+  Observable,
+  of,
+  Subscription,
+  take,
+  timeout,
+} from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -31,6 +43,8 @@ export class IdleService implements OnDestroy {
   private readonly keepAliveDuration = inject(IDLE_KEEPALIVE_DURATION);
   private readonly timeoutRequireConfirmation = inject(IDLE_TIMEOUT_REQUIRE_CONFIRMATION);
   private readonly idleCheckFrequency = 1000;
+  private readonly logoutWaitLimit = 10_000;
+  private loggingOut = false;
   private readonly warningThreshold = this.sessionDuration - this.warningDuration;
 
   public readonly isActive = signal(false);
@@ -94,21 +108,46 @@ export class IdleService implements OnDestroy {
 
   /**
    * Logs out the user due to inactivity, calls the configured logout action, and stops the service.
+   * Opens the login page once the logout action's Observable or Promise settles, whether it succeeds or fails,
+   * or after 10 seconds if it has not.
    */
   logoutAndStop(): void {
+    // The keep-alive check can find the session gone while the logout request is still in flight.
+    if (this.loggingOut) {
+      return;
+    }
+    this.loggingOut = true;
+
+    let logout: Observable<unknown> = of(undefined);
     try {
-      this.logoutAction();
+      const result = this.logoutAction();
+      if (isObservable(result) || result instanceof Promise) {
+        logout = from(result);
+      }
     } catch (error) {
       console.error('Error during idle logout action (IDLE_LOGOUT_ACTION token):', error);
     }
     this.stop();
 
-    this.router.navigate([this.loginPath]);
-    this.core.publishError({
-      message: 'You have been logged out due to inactivity.',
-      type: AlertType.IDLE,
-      link: '',
-    });
+    logout
+      .pipe(
+        timeout(this.logoutWaitLimit),
+        take(1),
+        catchError((error: unknown) => {
+          console.error('Error during idle logout action (IDLE_LOGOUT_ACTION token):', error);
+          return EMPTY;
+        }),
+        finalize(() => {
+          this.loggingOut = false;
+          this.router.navigate([this.loginPath]);
+          this.core.publishError({
+            message: 'You have been logged out due to inactivity.',
+            type: AlertType.IDLE,
+            link: '',
+          });
+        }),
+      )
+      .subscribe();
   }
 
   private startMainTicker(): void {

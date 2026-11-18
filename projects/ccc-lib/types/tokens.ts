@@ -1,4 +1,5 @@
 import { InjectionToken } from '@angular/core';
+import { Observable } from 'rxjs';
 import { Domain, Permission, Resource } from './permissions';
 import { MethodMeta, ResourceMeta } from './resource-meta';
 
@@ -100,11 +101,15 @@ export const LOGOUT_ACTION = new InjectionToken<() => void>('LOGOUT_ACTION', { f
 
 /**
  * A function to be called when the user is logged out due to inactivity.
- * @defaultValue a no-op function that returns 0
+ * Return the logout request as an Observable or Promise, without subscribing to it: the idle service subscribes
+ * and waits up to 10 seconds for it to complete or fail before it opens the login page. Otherwise the login page
+ * can check the session before the logout ends it and find the user still signed in.
+ * @defaultValue a no-op function
  */
-export const IDLE_LOGOUT_ACTION = new InjectionToken<() => void>('IDLE_LOGOUT_ACTION', {
-  factory: () => () => 0,
-});
+export const IDLE_LOGOUT_ACTION = new InjectionToken<() => void | Observable<unknown> | Promise<unknown>>(
+  'IDLE_LOGOUT_ACTION',
+  { factory: () => () => undefined },
+);
 
 /**
  * When true, user activity (mouse movement, keypress, etc.) will NOT reset the idle timer once the warning is shown.
